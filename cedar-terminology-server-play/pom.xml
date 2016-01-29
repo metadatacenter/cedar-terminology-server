@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>org.metadatacenter</groupId>
+    <artifactId>cedar-terminology-server-play</artifactId>
+    <name>CEDAR Terminology Server Play</name>
+    <version>0.1.0</version>
+    <packaging>play2</packaging>
+
+    <parent>
+        <groupId>org.metadatacenter</groupId>
+        <artifactId>cedar-terminology-server</artifactId>
+        <version>0.1.0</version>
+    </parent>
+
+    <repositories>
+
+        <repository>
+            <id>typesafe-releases</id>
+            <url>http://repo.typesafe.com/typesafe/releases/</url>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </repository>
+
+    </repositories>
+
+    <pluginRepositories>
+
+        <pluginRepository>
+            <id>typesafe-releases-plugins</id>
+            <url>http://repo.typesafe.com/typesafe/releases/</url>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </pluginRepository>
+
+        <pluginRepository>
+            <id>sonatype-nexus-snapshots</id>
+            <name>Sonatype Nexus Snapshots</name>
+            <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+            <releases>
+                <enabled>false</enabled>
+            </releases>
+        </pluginRepository>
+
+    </pluginRepositories>
+
+    <dependencies>
+
+        <dependency>
+            <groupId>org.metadatacenter</groupId>
+            <artifactId>cedar-terminology-server-core</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.scala-lang</groupId>
+            <artifactId>scala-library</artifactId>
+            <version>${scala.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.typesafe.play</groupId>
+            <artifactId>play_${play2.scala.version}</artifactId>
+            <version>${play2.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.typesafe.play</groupId>
+            <artifactId>play-test_${play2.scala.version}</artifactId>
+            <version>${play2.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Required for IntegrationSpec -->
+        <dependency>
+            <groupId>org.apache.httpcomponents</groupId>
+            <artifactId>httpclient</artifactId>
+            <version>${apache.httpclient.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Jackson -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-core</artifactId>
+            <version>${jackson.core.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>${jackson.core.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-annotations</artifactId>
+            <version>${jackson.core.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>edu.washington.cs.types.checker</groupId>
+            <artifactId>checker-framework</artifactId>
+            <version>${checker.framework.version}</version>
+        </dependency>
+
+        <!-- Play WS -->
+        <dependency>
+            <groupId>com.typesafe.play</groupId>
+            <artifactId>play-java-ws_2.11</artifactId>
+            <version>${play-java-ws.version}</version>
+        </dependency>
+
+        <!-- Swagger-Play2 -->
+        <dependency>
+            <groupId>com.wordnik</groupId>
+            <artifactId>swagger-play2_${play2.scala.version}</artifactId>
+            <version>${swagger-play2.version}</version>
+        </dependency>
+
+    </dependencies>
+
+    <build>
+
+        <sourceDirectory>${basedir}/app</sourceDirectory>
+        <testSourceDirectory>${basedir}/test</testSourceDirectory>
+
+        <resources>
+            <resource>
+                <directory>${basedir}/conf</directory>
+            </resource>
+            <resource>
+                <directory>${basedir}</directory>
+                <includes>
+                    <include>public/**</include>
+                </includes>
+            </resource>
+        </resources>
+
+        <plugins>
+
+            <plugin>
+                <groupId>com.google.code.play2-maven-plugin</groupId>
+                <artifactId>play2-maven-plugin</artifactId>
+                <version>${play2.maven.plugin.version}</version>
+                <extensions>true</extensions>
+                <configuration>
+                    <httpPort>9000</httpPort>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>${maven.surefire.plugin.version}</version>
+                <configuration>
+                    <includes>
+                        <include>**/*Spec.java</include>
+                        <include>**/*Test.java</include>
+                    </includes>
+                </configuration>
+            </plugin>
+
+        </plugins>
+
+    </build>
+
+</project>
