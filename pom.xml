@@ -21,10 +21,8 @@
     <play2.version>2.3.8</play2.version>
     <play2.scala.version>2.11</play2.scala.version>
     <apache.httpclient.version>4.5.1</apache.httpclient.version>
-    <mongodb.version>3.0.0</mongodb.version>
     <jackson.core.version>2.7.0</jackson.core.version>
     <checker.framework.version>1.7.5</checker.framework.version>
-
     <junit.version>4.12</junit.version>
     <fge.version>2.2.6</fge.version>
     <slf4j.version>1.7.7</slf4j.version>
