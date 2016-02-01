@@ -11,9 +11,10 @@ GET            /api-docs/bioportal           controllers.ApiHelpController.getRe
 
 # BioPortal search
 GET            /bioportal/search             controllers.BioPortalController.search(q: String, scope: String ?= "all", sources: String ?= "", page: Int ?= 1, pageSize: Int ?= 50)
-# BioPortal provisional classes
+# BioPortal classes and provisional classes
 POST           /bioportal/classes            controllers.BioPortalController.createClass
 GET            /bioportal/classes/:id        controllers.BioPortalController.findClass(id: String)
+GET            /bioportal/classes            controllers.BioPortalController.findAllProvisionalClasses(ontology: String ?= "")
 
 # For CORS - preflight request
 OPTIONS        /*all                         controllers.Application.preflight(all)

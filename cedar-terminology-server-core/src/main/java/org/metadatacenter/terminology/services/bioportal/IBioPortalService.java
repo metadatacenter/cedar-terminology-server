@@ -14,7 +14,7 @@ public interface IBioPortalService
   /** Provisional classes **/
   OntologyClass createClass(OntologyClass c, String apiKey) throws IOException;
   OntologyClass findClass(String id, String apiKey) throws IOException;
-//  List<OntologyClass> findAllProvisionalClasses() throws Exception;
+  List<OntologyClass> findAllProvisionalClasses(String ontology, String apiKey) throws IOException;
 //  OntologyClass updateProvisionalClass(OntologyClass provisionalClass, String apiKey) throws IOException;
 //  void deleteProvisionalClass(OntologyClass provisionalClass, String apiKey) throws IOException;
 

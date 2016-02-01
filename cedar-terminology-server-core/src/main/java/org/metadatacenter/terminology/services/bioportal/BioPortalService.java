@@ -124,14 +124,19 @@ public class BioPortalService implements org.metadatacenter.terminology.services
   public OntologyClass createClass(OntologyClass c, String apiKey) throws IOException
   {
     OntologyClassDAO classDAO = new OntologyClassDAO(connectTimeout, socketTimeout);
-    return classDAO.createOntologyClass(c, apiKey);
+    return classDAO.create(c, apiKey);
   }
 
   // TODO: extend it to work with regular classes
   public OntologyClass findClass(String id, String apiKey) throws IOException
   {
     OntologyClassDAO classDAO = new OntologyClassDAO(connectTimeout, socketTimeout);
-    return classDAO.findOntologyClass(id, apiKey);
+    return classDAO.find(id, apiKey);
+  }
+
+  public List<OntologyClass> findAllProvisionalClasses(String ontology, String apiKey) throws IOException {
+    OntologyClassDAO classDAO = new OntologyClassDAO(connectTimeout, socketTimeout);
+    return classDAO.findAllProvisionalClasses(ontology, apiKey);
   }
 }
 

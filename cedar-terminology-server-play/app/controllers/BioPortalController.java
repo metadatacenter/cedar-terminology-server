@@ -89,7 +89,8 @@ public class BioPortalController extends Controller
       List<String> sourcesList = new ArrayList<String>();
       if (sources != null && sources.length()>0)
         sourcesList = Arrays.asList(sources.split("\\s*,\\s*"));
-      SearchResults results = bioPortalService.search(q, scopeList, sourcesList, page, pageSize, false, true, Utils.getApiKeyFromHeader(request()));
+      SearchResults results = bioPortalService.search(q, scopeList, sourcesList, page, pageSize, false, true,
+        Utils.getApiKeyFromHeader(request()));
       return ok((JsonNode)new ObjectMapper().valueToTree(results));
 
     } catch (HTTPException e) {
@@ -122,6 +123,21 @@ public class BioPortalController extends Controller
     try {
       OntologyClass c = bioPortalService.findClass(id, Utils.getApiKeyFromHeader(request()));
       return ok((JsonNode)new ObjectMapper().valueToTree(c));
+    } catch (HTTPException e) {
+      return Results.status(e.getStatusCode());
+    } catch (IOException e) {
+      return internalServerError(e.getMessage());
+    }
+  }
+
+  public static Result findAllProvisionalClasses(String ontology)
+  {
+    if (ontology.length() == 0)
+      ontology = null;
+    try {
+      List<OntologyClass> classes = bioPortalService
+        .findAllProvisionalClasses(ontology, Utils.getApiKeyFromHeader(request()));
+      return ok((JsonNode)new ObjectMapper().valueToTree(classes));
     } catch (HTTPException e) {
       return Results.status(e.getStatusCode());
     } catch (IOException e) {

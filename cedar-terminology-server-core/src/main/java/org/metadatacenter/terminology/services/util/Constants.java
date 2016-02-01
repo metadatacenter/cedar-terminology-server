@@ -11,7 +11,10 @@ public class Constants
   /** BioPortal API endpoints */
   public static final String BP_API_BASE = "http://data.bioontology.org/";
   public static final String BP_SEARCH_BASE_URL = BP_API_BASE + "search";
-  public static final String BP_PROVISIONAL_CLASSES_BASE_URL = BP_API_BASE + "provisional_classes/";
+  public static final String BP_PROVISIONAL_CLASSES = "provisional_classes/";
+  public static final String BP_ONTOLOGIES = "ontologies/";
+  public static final String BP_PROVISIONAL_CLASSES_BASE_URL = BP_API_BASE + BP_PROVISIONAL_CLASSES;
+  public static final String BP_ONTOLOGIES_BASE_URL = BP_API_BASE + BP_ONTOLOGIES;
 
   /** BioPortal Search endpoint - Search scopes */
   public static final String BP_SEARCH_SCOPE_ALL = "all";

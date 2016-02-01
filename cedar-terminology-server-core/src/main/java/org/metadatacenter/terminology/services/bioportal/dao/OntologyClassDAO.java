@@ -11,8 +11,11 @@ import org.metadatacenter.terminology.services.util.Util;
 
 import javax.xml.ws.http.HTTPException;
 import java.io.IOException;
-import java.net.URLEncoder;
+import java.util.ArrayList;
+import java.util.List;
 
+import static org.metadatacenter.terminology.services.util.Constants.BP_ONTOLOGIES_BASE_URL;
+import static org.metadatacenter.terminology.services.util.Constants.BP_PROVISIONAL_CLASSES;
 import static org.metadatacenter.terminology.services.util.Constants.BP_PROVISIONAL_CLASSES_BASE_URL;
 
 public class OntologyClassDAO
@@ -26,7 +29,7 @@ public class OntologyClassDAO
     this.socketTimeout = socketTimeout;
   }
 
-  public OntologyClass createOntologyClass(OntologyClass c, String apiKey) throws IOException
+  public OntologyClass create(OntologyClass c, String apiKey) throws IOException
   {
     ObjectMapper mapper = new ObjectMapper();
     // Send request to the BioPortal API
@@ -47,7 +50,7 @@ public class OntologyClassDAO
 
   // TODO: expand to deal with regular classes.
   // TODO: Issue: not able to retrieve provisional classes from bioportal using the full id
-  public OntologyClass findOntologyClass(String id, String apiKey) throws IOException
+  public OntologyClass find(String id, String apiKey) throws IOException
   {
     HttpResponse response = Request.Get(BP_PROVISIONAL_CLASSES_BASE_URL + id)
       .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
@@ -59,6 +62,35 @@ public class OntologyClassDAO
       ObjectMapper mapper = new ObjectMapper();
       JsonNode bpResult = mapper.readTree(new String(EntityUtils.toByteArray(response.getEntity())));
       return mapper.convertValue(bpResult, OntologyClass.class);
+    } else {
+      throw new HTTPException(statusCode);
+    }
+  }
+
+  // Note: the result from BioPortal is not paged
+  public List<OntologyClass> findAllProvisionalClasses(String ontology, String apiKey) throws IOException
+  {
+    HttpResponse response = null;
+    if (ontology != null) {
+      response = Request.Get(BP_ONTOLOGIES_BASE_URL + ontology + "/" + BP_PROVISIONAL_CLASSES)
+        .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
+          connectTimeout(connectTimeout).socketTimeout(socketTimeout).execute().returnResponse();
+    } else {
+      response = Request.Get(BP_PROVISIONAL_CLASSES_BASE_URL)
+        .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
+          connectTimeout(connectTimeout).socketTimeout(socketTimeout).execute().returnResponse();
+    }
+
+    int statusCode = response.getStatusLine().getStatusCode();
+
+    if (statusCode == 200) {
+      ObjectMapper mapper = new ObjectMapper();
+      JsonNode bpResult = mapper.readTree(new String(EntityUtils.toByteArray(response.getEntity())));
+      List<OntologyClass> classes = new ArrayList<>();
+      for (JsonNode n : bpResult) {
+        classes.add(mapper.convertValue(n, OntologyClass.class));
+      }
+      return classes;
     } else {
       throw new HTTPException(statusCode);
     }

@@ -16,10 +16,11 @@ public class OntologyClass
   private List<String> synonyms;
   private String subclassOf;
   private List<Relation> relations;
+  private boolean provisional;
   private String created;
 
   public OntologyClass(String id, String label, String creator, String ontology, List<String> definitions,
-    List<String> synonyms, String subclassOf, List<Relation> relations, String created)
+    List<String> synonyms, String subclassOf, List<Relation> relations, boolean provisional, String created)
   {
     this.id = id;
     this.label = label;
@@ -29,6 +30,7 @@ public class OntologyClass
     this.synonyms = synonyms;
     this.subclassOf = subclassOf;
     this.relations = relations;
+    this.provisional = provisional;
     this.created = created;
   }
 
@@ -110,6 +112,16 @@ public class OntologyClass
   public void setRelations(List<Relation> relations)
   {
     this.relations = relations;
+  }
+
+  public boolean isProvisional()
+  {
+    return provisional;
+  }
+
+  public void setProvisional(boolean provisional)
+  {
+    this.provisional = provisional;
   }
 
   public String getCreated()

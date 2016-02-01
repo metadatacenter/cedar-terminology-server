@@ -57,10 +57,16 @@ public class OntologyClassDeserializer extends JsonDeserializer<OntologyClass>
         relations.add(new ObjectMapper().treeToValue(n, Relation.class));
     }
 
+    boolean provisional = false;
+    if (id != null)
+      // If the class id contains the substring 'provisional_classes' is because it is a provisional class
+      provisional = id.toLowerCase().contains("provisional_classes")? true : false;
+
     JsonNode createdNode = node.get("created");
     String created = (createdNode != null) ? createdNode.asText() : null;
 
-    return new OntologyClass(id, label, creator, ontology, definitions, synonyms, subclassOf, relations, created);
+    return new OntologyClass(id, label, creator, ontology, definitions, synonyms, subclassOf, relations, provisional,
+      created);
 
   }
 }
