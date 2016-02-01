@@ -73,7 +73,7 @@ public class BioPortalController extends Controller
   {
     //log.info("Received BioPortal search request");
     try {
-      if (q.isEmpty() || Utils.isValidAuthorizationHeader(request()) == false)
+      if (q.isEmpty() || !Utils.isValidAuthorizationHeader(request()))
         return badRequest();
       // Review and clean scope
       List<String> scopeList = new ArrayList<String>();
@@ -101,11 +101,27 @@ public class BioPortalController extends Controller
 
   public static Result createClass()
   {
+    if (!Utils.isValidAuthorizationHeader(request()))
+      return badRequest();
     ObjectMapper mapper = new ObjectMapper();
     OntologyClass c = mapper.convertValue(request().body().asJson(), OntologyClass.class);
     try {
-      OntologyClass createdClass = bioPortalService.createProvisionalClass(c, Utils.getApiKeyFromHeader(request()));
+      OntologyClass createdClass = bioPortalService.createClass(c, Utils.getApiKeyFromHeader(request()));
       return created((JsonNode)mapper.valueToTree(createdClass));
+    } catch (HTTPException e) {
+      return Results.status(e.getStatusCode());
+    } catch (IOException e) {
+      return internalServerError(e.getMessage());
+    }
+  }
+
+  public static Result findClass(String id)
+  {
+    if (id.isEmpty() || !Utils.isValidAuthorizationHeader(request()))
+      return badRequest();
+    try {
+      OntologyClass c = bioPortalService.findClass(id, Utils.getApiKeyFromHeader(request()));
+      return ok((JsonNode)new ObjectMapper().valueToTree(c));
     } catch (HTTPException e) {
       return Results.status(e.getStatusCode());
     } catch (IOException e) {

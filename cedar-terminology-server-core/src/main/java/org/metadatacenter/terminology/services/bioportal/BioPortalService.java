@@ -1,11 +1,10 @@
 package org.metadatacenter.terminology.services.bioportal;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.fluent.Request;
-import org.apache.http.entity.ContentType;
 import org.apache.http.util.EntityUtils;
+import org.metadatacenter.terminology.services.bioportal.dao.OntologyClassDAO;
 import org.metadatacenter.terminology.services.bioportal.domainObjects.OntologyClass;
 import org.metadatacenter.terminology.services.bioportal.domainObjects.SearchResults;
 import org.metadatacenter.terminology.services.util.Util;
@@ -21,7 +20,6 @@ import static org.metadatacenter.terminology.services.util.Constants.BP_SEARCH_S
 import static org.metadatacenter.terminology.services.util.Constants.BP_SEARCH_SCOPE_CLASSES;
 import static org.metadatacenter.terminology.services.util.Constants.BP_SEARCH_SCOPE_VALUES;
 import static org.metadatacenter.terminology.services.util.Constants.BP_SEARCH_SCOPE_VALUE_SETS;
-import static org.metadatacenter.terminology.services.util.Constants.BP_PROVISIONAL_CLASSES_BASE_URL;
 
 public class BioPortalService implements org.metadatacenter.terminology.services.bioportal.IBioPortalService
 {
@@ -122,24 +120,18 @@ public class BioPortalService implements org.metadatacenter.terminology.services
     }
   }
 
-  public OntologyClass createProvisionalClass(OntologyClass provisionalClass, String apiKey) throws IOException
-  {
-    ObjectMapper mapper = new ObjectMapper();
-    // Send request to the BioPortal API
-    HttpResponse response = Request.Post(BP_PROVISIONAL_CLASSES_BASE_URL)
-      .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
-        connectTimeout(connectTimeout).socketTimeout(socketTimeout)
-      .bodyString(mapper.writeValueAsString(provisionalClass), ContentType.APPLICATION_JSON).execute().returnResponse();
 
-    int statusCode = response.getStatusLine().getStatusCode();
-    // The class was successfully created
-    if (statusCode == 201) {
-      JsonNode bpResult = mapper.readTree(new String(EntityUtils.toByteArray(response.getEntity())));
-      return mapper.convertValue(bpResult, OntologyClass.class);
-    } else {
-      throw new HTTPException(statusCode);
-    }
+  public OntologyClass createClass(OntologyClass c, String apiKey) throws IOException
+  {
+    OntologyClassDAO classDAO = new OntologyClassDAO(connectTimeout, socketTimeout);
+    return classDAO.createOntologyClass(c, apiKey);
   }
 
+  // TODO: extend it to work with regular classes
+  public OntologyClass findClass(String id, String apiKey) throws IOException
+  {
+    OntologyClassDAO classDAO = new OntologyClassDAO(connectTimeout, socketTimeout);
+    return classDAO.findOntologyClass(id, apiKey);
+  }
 }
 

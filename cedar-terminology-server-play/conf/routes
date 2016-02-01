@@ -3,27 +3,28 @@
 # ~~~~
 
 # Swagger - UI
-GET            /                          controllers.Assets.at(path="/public/swagger-ui", file="index.html")
+GET            /                             controllers.Assets.at(path="/public/swagger-ui", file="index.html")
 #GET            /                          controllers.Default.redirect(to = "/index.html?/url=http://localhost:9000/api-docs")
 # Swagger - API documentation
-GET            /api-docs                  controllers.ApiHelpController.getResources
-GET            /api-docs/bioportal        controllers.ApiHelpController.getResource(path = "/bioportal")
+GET            /api-docs                     controllers.ApiHelpController.getResources
+GET            /api-docs/bioportal           controllers.ApiHelpController.getResource(path = "/bioportal")
 
 # BioPortal search
-GET            /bioportal/search          controllers.BioPortalController.search(q: String, scope: String ?= "all", sources: String ?= "", page: Int ?= 1, pageSize: Int ?= 50)
+GET            /bioportal/search             controllers.BioPortalController.search(q: String, scope: String ?= "all", sources: String ?= "", page: Int ?= 1, pageSize: Int ?= 50)
 # BioPortal provisional classes
-POST           /bioportal/classes         controllers.BioPortalController.createClass
+POST           /bioportal/classes            controllers.BioPortalController.createClass
+GET            /bioportal/classes/:id        controllers.BioPortalController.findClass(id: String)
 
 # For CORS - preflight request
-OPTIONS        /*all                      controllers.Application.preflight(all)
+OPTIONS        /*all                         controllers.Application.preflight(all)
 
 ## Map static resources from the /public folder to the /assets URL path
-GET            /assets/*file              controllers.Assets.at(path="/public", file)
+GET            /assets/*file                 controllers.Assets.at(path="/public", file)
 
 ## Map relevant static resources from the /public/swagger-ui folder to /assets corresponding path - Swagger - UI
 #GET            /css/*file                 controllers.Assets.at(path="/public/swagger-ui/css", file)
 #GET            /images/*file              controllers.Assets.at(path="/public/swagger-ui/images", file)
 #GET            /lib/*file                 controllers.Assets.at(path="/public/swagger-ui/lib", file)
 #GET            /*file                     controllers.Assets.at(path="/public/swagger-ui", file)
-GET            /*file                     controllers.Assets.at(path="/public/swagger-ui", file)
+GET            /*file                        controllers.Assets.at(path="/public/swagger-ui", file)
 

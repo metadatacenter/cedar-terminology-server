@@ -1,5 +1,6 @@
 package org.metadatacenter.terminology.services.bioportal;
 
+import org.metadatacenter.terminology.services.bioportal.domainObjects.OntologyClass;
 import org.metadatacenter.terminology.services.bioportal.domainObjects.SearchResults;
 
 import java.io.IOException;
@@ -10,8 +11,18 @@ public interface IBioPortalService
   SearchResults search(String q, List<String> scope, List<String> sources, int page, int pageSize, boolean displayContext,
     boolean displayLinks, String apiKey) throws IOException;
 
+  /** Provisional classes **/
+  OntologyClass createClass(OntologyClass c, String apiKey) throws IOException;
+  OntologyClass findClass(String id, String apiKey) throws IOException;
+//  List<OntologyClass> findAllProvisionalClasses() throws Exception;
+//  OntologyClass updateProvisionalClass(OntologyClass provisionalClass, String apiKey) throws IOException;
+//  void deleteProvisionalClass(OntologyClass provisionalClass, String apiKey) throws IOException;
 
-  //BpProvisionalClass createProvisionalClass(BpProvisionalClass provisionalClass, String apiKey) throws IOException;
+  /** Provisional relations **/
+
+
+
+
 
   /** TODO:
    * - Get all ontologies
