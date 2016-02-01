@@ -8,8 +8,10 @@ package org.metadatacenter.terminology.services.util;
 public class Constants
 {
 
-  /** BioPortal Search endpoint url */
-  public static final String BP_SEARCH_BASE_URL = "http://data.bioontology.org/search";
+  /** BioPortal API endpoints */
+  public static final String BP_API_BASE = "http://data.bioontology.org/";
+  public static final String BP_SEARCH_BASE_URL = BP_API_BASE + "search";
+  public static final String BP_PROVISIONAL_CLASSES_BASE_URL = BP_API_BASE + "provisional_classes/";
 
   /** BioPortal Search endpoint - Search scopes */
   public static final String BP_SEARCH_SCOPE_ALL = "all";

@@ -1,6 +1,7 @@
 package controllers;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.wordnik.swagger.annotations.Api;
 import com.wordnik.swagger.annotations.ApiImplicitParam;
 import com.wordnik.swagger.annotations.ApiImplicitParams;
@@ -8,7 +9,10 @@ import com.wordnik.swagger.annotations.ApiOperation;
 import com.wordnik.swagger.annotations.ApiParam;
 import com.wordnik.swagger.annotations.ApiResponse;
 import com.wordnik.swagger.annotations.ApiResponses;
-import org.metadatacenter.terminology.services.BioPortalService;
+import org.metadatacenter.terminology.services.bioportal.BioPortalService;
+import org.metadatacenter.terminology.services.bioportal.domainObjects.OntologyClass;
+import org.metadatacenter.terminology.services.bioportal.domainObjects.Relation;
+import org.metadatacenter.terminology.services.bioportal.domainObjects.SearchResults;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import play.Configuration;
@@ -27,8 +31,8 @@ import java.util.List;
 
 import static org.metadatacenter.terminology.services.util.Constants.BP_SEARCH_SCOPE_ALL;
 import static org.metadatacenter.terminology.services.util.Constants.BP_SEARCH_SCOPE_CLASSES;
-import static org.metadatacenter.terminology.services.util.Constants.BP_SEARCH_SCOPE_VALUE_SETS;
 import static org.metadatacenter.terminology.services.util.Constants.BP_SEARCH_SCOPE_VALUES;
+import static org.metadatacenter.terminology.services.util.Constants.BP_SEARCH_SCOPE_VALUE_SETS;
 
 @Api(value = "/bioportal", description = "BioPortal operations")
 public class BioPortalController extends Controller
@@ -85,10 +89,23 @@ public class BioPortalController extends Controller
       List<String> sourcesList = new ArrayList<String>();
       if (sources != null && sources.length()>0)
         sourcesList = Arrays.asList(sources.split("\\s*,\\s*"));
-      JsonNode result = bioPortalService.search(q, scopeList, sourcesList, page, pageSize, false, true,
-        Utils.getApiKeyFromHeader(request()));
-      return ok(result);
+      SearchResults results = bioPortalService.search(q, scopeList, sourcesList, page, pageSize, false, true, Utils.getApiKeyFromHeader(request()));
+      return ok((JsonNode)new ObjectMapper().valueToTree(results));
 
+    } catch (HTTPException e) {
+      return Results.status(e.getStatusCode());
+    } catch (IOException e) {
+      return internalServerError(e.getMessage());
+    }
+  }
+
+  public static Result createClass()
+  {
+    ObjectMapper mapper = new ObjectMapper();
+    OntologyClass c = mapper.convertValue(request().body().asJson(), OntologyClass.class);
+    try {
+      OntologyClass createdClass = bioPortalService.createProvisionalClass(c, Utils.getApiKeyFromHeader(request()));
+      return created((JsonNode)mapper.valueToTree(createdClass));
     } catch (HTTPException e) {
       return Results.status(e.getStatusCode());
     } catch (IOException e) {

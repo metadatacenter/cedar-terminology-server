@@ -11,6 +11,8 @@ GET            /api-docs/bioportal        controllers.ApiHelpController.getResou
 
 # BioPortal search
 GET            /bioportal/search          controllers.BioPortalController.search(q: String, scope: String ?= "all", sources: String ?= "", page: Int ?= 1, pageSize: Int ?= 50)
+# BioPortal provisional classes
+POST           /bioportal/classes         controllers.BioPortalController.createClass
 
 # For CORS - preflight request
 OPTIONS        /*all                      controllers.Application.preflight(all)

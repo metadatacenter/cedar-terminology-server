@@ -1,12 +1,13 @@
-package org.metadatacenter.terminology.services;
+package org.metadatacenter.terminology.services.bioportal;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.JsonNodeFactory;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.fluent.Request;
+import org.apache.http.entity.ContentType;
 import org.apache.http.util.EntityUtils;
+import org.metadatacenter.terminology.services.bioportal.domainObjects.OntologyClass;
+import org.metadatacenter.terminology.services.bioportal.domainObjects.SearchResults;
 import org.metadatacenter.terminology.services.util.Util;
 
 import javax.xml.ws.http.HTTPException;
@@ -20,8 +21,9 @@ import static org.metadatacenter.terminology.services.util.Constants.BP_SEARCH_S
 import static org.metadatacenter.terminology.services.util.Constants.BP_SEARCH_SCOPE_CLASSES;
 import static org.metadatacenter.terminology.services.util.Constants.BP_SEARCH_SCOPE_VALUES;
 import static org.metadatacenter.terminology.services.util.Constants.BP_SEARCH_SCOPE_VALUE_SETS;
+import static org.metadatacenter.terminology.services.util.Constants.BP_PROVISIONAL_CLASSES_BASE_URL;
 
-public class BioPortalService implements org.metadatacenter.terminology.services.IBioPortalService
+public class BioPortalService implements org.metadatacenter.terminology.services.bioportal.IBioPortalService
 {
   private final int connectTimeout;
   private final int socketTimeout;
@@ -49,12 +51,13 @@ public class BioPortalService implements org.metadatacenter.terminology.services
    * @return
    * @throws IOException
    */
-  public JsonNode search(String q, List<String> scope, List<String> sources, int page, int pageSize,
+  public SearchResults search(String q, List<String> scope, List<String> sources, int page, int pageSize,
     boolean displayContext, boolean displayLinks, String apiKey) throws IOException
   {
     // Encode query
     q = URLEncoder.encode(q, "UTF-8");
     // TODO: Check that provisional classes are actually returned
+    // TODO: Add attribute with result type on the BioPortal side
     /** Build url **/
     String url = "";
     // Search for ontology classes, value sets and values
@@ -111,30 +114,32 @@ public class BioPortalService implements org.metadatacenter.terminology.services
     // The request has succeeded
     if (statusCode == 200) {
       ObjectMapper mapper = new ObjectMapper();
-      JsonNode bpResult = mapper.readTree(new String(EntityUtils.toByteArray(response.getEntity())));
-      return updatePaginationInfo(bpResult);
+      //JsonNode bpResult = mapper.readTree(new String(EntityUtils.toByteArray(response.getEntity())));
+      String bpResponse = new String(EntityUtils.toByteArray(response.getEntity()));
+      return(mapper.readValue(bpResponse, SearchResults.class));
     } else {
       throw new HTTPException(statusCode);
     }
   }
 
-  /**
-   * Updates the pagination information returned by the BioPortal API. For instance, the BioPortal answer contains
-   * BioPortal specific urls (links.prevpage and links.nextpage) that it is not necessary to expose to the caller class
-   *
-   * @param original
-   * @return
-   */
-  private JsonNode updatePaginationInfo(JsonNode original)
+  public OntologyClass createProvisionalClass(OntologyClass provisionalClass, String apiKey) throws IOException
   {
-    ObjectNode updated = JsonNodeFactory.instance.objectNode();
-    updated.set("page", original.get("page"));
-    updated.set("pageCount", original.get("pageCount"));
-    updated.put("pageSize", original.get("collection").size());
-    updated.set("prevPage", original.get("prevPage"));
-    updated.set("nextPage", original.get("nextPage"));
-    updated.set("collection", original.get("collection"));
-    return updated;
+    ObjectMapper mapper = new ObjectMapper();
+    // Send request to the BioPortal API
+    HttpResponse response = Request.Post(BP_PROVISIONAL_CLASSES_BASE_URL)
+      .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
+        connectTimeout(connectTimeout).socketTimeout(socketTimeout)
+      .bodyString(mapper.writeValueAsString(provisionalClass), ContentType.APPLICATION_JSON).execute().returnResponse();
+
+    int statusCode = response.getStatusLine().getStatusCode();
+    // The class was successfully created
+    if (statusCode == 201) {
+      JsonNode bpResult = mapper.readTree(new String(EntityUtils.toByteArray(response.getEntity())));
+      return mapper.convertValue(bpResult, OntologyClass.class);
+    } else {
+      throw new HTTPException(statusCode);
+    }
   }
+
 }
 

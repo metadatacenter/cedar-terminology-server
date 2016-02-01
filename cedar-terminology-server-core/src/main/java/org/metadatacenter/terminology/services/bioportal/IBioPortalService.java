@@ -1,13 +1,17 @@
-package org.metadatacenter.terminology.services;
+package org.metadatacenter.terminology.services.bioportal;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import org.metadatacenter.terminology.services.bioportal.domainObjects.SearchResults;
+
 import java.io.IOException;
 import java.util.List;
 
 public interface IBioPortalService
 {
-  JsonNode search(String q, List<String> scope, List<String> sources, int page, int pageSize, boolean displayContext,
+  SearchResults search(String q, List<String> scope, List<String> sources, int page, int pageSize, boolean displayContext,
     boolean displayLinks, String apiKey) throws IOException;
+
+
+  //BpProvisionalClass createProvisionalClass(BpProvisionalClass provisionalClass, String apiKey) throws IOException;
 
   /** TODO:
    * - Get all ontologies
