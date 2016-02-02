@@ -46,7 +46,6 @@ public class BioPortalController extends Controller
     bioPortalService = new BioPortalService(config.getInt("bioportal.connectTimeout"), config.getInt("bioportal.socketTimeout"));
   }
 
-  /* General */
   @ApiOperation(
     value = "Find classes, value sets and value set items",
     //notes = "The search scope can be specified using comma separated strings",
@@ -60,11 +59,12 @@ public class BioPortalController extends Controller
     @ApiImplicitParam(name = "Authorization", value="Format: apikey token={your_bioportal_apikey}. "
       + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
       required = true, dataType = "string", paramType = "header")})
+
   public static Result search(
     @ApiParam(value = "Search query. Example: 'melanoma'", required = true) @QueryParam("q") String q,
     @ApiParam(value = "Comma-separated list of search scopes. Accepted values={all,classes,value_sets,values}. "
       + "Default: 'scope=all'", required = false) @QueryParam("scope") String scope,
-  @ApiParam(value = "Comma-separated list of target ontologies and/or value sets. "
+    @ApiParam(value = "Comma-separated list of target ontologies and/or value sets. "
     + "Example: 'ontologies=CEDARVS,NCIT'. By default, all BioPortal ontologies and value sets are considered. "
     + "The value of 'scope' overrides the list of sources specified using this parameter",
     required=false) @QueryParam("sources") String sources,
@@ -102,6 +102,19 @@ public class BioPortalController extends Controller
 
   /** Classes **/
 
+  @ApiOperation(
+    value = "Create an ontology class",
+    httpMethod = "POST")
+  @ApiResponses(value = {
+    @ApiResponse(code = 200, message = "Created"),
+    @ApiResponse(code = 400, message = "Bad Request"),
+    @ApiResponse(code = 401, message = "Unauthorized"),
+    @ApiResponse(code = 500, message = "Internal Server Error")})
+  @ApiImplicitParams(value = {
+    @ApiImplicitParam(name = "Authorization", value="Format: apikey token={your_bioportal_apikey}. "
+      + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
+      required = true, dataType = "string", paramType = "header"),
+    @ApiImplicitParam(value="Class to be created", required = true, dataType = "org.metadatacenter.terminology.services.bioportal.domainObjects.OntologyClass", paramType = "body")})
   public static Result createClass()
   {
     if (!Utils.isValidAuthorizationHeader(request()))
