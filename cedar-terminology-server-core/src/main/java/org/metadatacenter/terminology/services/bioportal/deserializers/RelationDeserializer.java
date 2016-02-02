@@ -15,10 +15,12 @@ public class RelationDeserializer extends JsonDeserializer<Relation>
   {
     JsonNode node = parser.getCodec().readTree(parser);
 
+    String id = (node.get("@id") != null) ? node.get("@id").asText() : null;
+    String source = (node.get("source") != null) ? node.get("source").asText() : null;
     String relationType = (node.get("relationType") != null) ? node.get("relationType").asText() : null;
     String targetClassId = (node.get("targetClassId") != null) ? node.get("targetClassId").asText() : null;
     String targetClassOntology = (node.get("targetClassOntology") != null) ? node.get("targetClassOntology").asText() : null;
 
-    return new Relation(relationType, targetClassId, targetClassOntology);
+    return new Relation(id, source, relationType, targetClassId, targetClassOntology);
   }
 }

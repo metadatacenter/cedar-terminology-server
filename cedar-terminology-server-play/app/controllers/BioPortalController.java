@@ -100,6 +100,8 @@ public class BioPortalController extends Controller
     }
   }
 
+  /** Classes **/
+
   public static Result createClass()
   {
     if (!Utils.isValidAuthorizationHeader(request()))
@@ -138,6 +140,38 @@ public class BioPortalController extends Controller
       List<OntologyClass> classes = bioPortalService
         .findAllProvisionalClasses(ontology, Utils.getApiKeyFromHeader(request()));
       return ok((JsonNode)new ObjectMapper().valueToTree(classes));
+    } catch (HTTPException e) {
+      return Results.status(e.getStatusCode());
+    } catch (IOException e) {
+      return internalServerError(e.getMessage());
+    }
+  }
+
+  /** Relations **/
+
+  public static Result createRelation()
+  {
+    if (!Utils.isValidAuthorizationHeader(request()))
+      return badRequest();
+    ObjectMapper mapper = new ObjectMapper();
+    Relation r = mapper.convertValue(request().body().asJson(), Relation.class);
+    try {
+      Relation createdRelation = bioPortalService.createRelation(r, Utils.getApiKeyFromHeader(request()));
+      return created((JsonNode)mapper.valueToTree(createdRelation));
+    } catch (HTTPException e) {
+      return Results.status(e.getStatusCode());
+    } catch (IOException e) {
+      return internalServerError(e.getMessage());
+    }
+  }
+
+  public static Result findRelation(String id)
+  {
+    if (id.isEmpty() || !Utils.isValidAuthorizationHeader(request()))
+      return badRequest();
+    try {
+      Relation r = bioPortalService.findRelation(id, Utils.getApiKeyFromHeader(request()));
+      return ok((JsonNode)new ObjectMapper().valueToTree(r));
     } catch (HTTPException e) {
       return Results.status(e.getStatusCode());
     } catch (IOException e) {

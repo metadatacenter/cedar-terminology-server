@@ -48,7 +48,7 @@ public class OntologyClassDAO
     }
   }
 
-  // TODO: expand to deal with regular classes.
+  // TODO: expand it to deal with regular classes.
   // TODO: Issue: not able to retrieve provisional classes from bioportal using the full id
   public OntologyClass find(String id, String apiKey) throws IOException
   {
@@ -95,10 +95,5 @@ public class OntologyClassDAO
       throw new HTTPException(statusCode);
     }
   }
-
-  //  public OntologyClass findProvisionalClassById(String id, String apiKey) throws Exception;
-  //  public List<OntologyClass> findAllProvisionalClasses() throws Exception;
-  //  public OntologyClass updateProvisionalClass(OntologyClass provisionalClass, String apiKey) throws IOException;
-  //  public void deleteProvisionalClass(OntologyClass provisionalClass, String apiKey) throws IOException;
 
 }

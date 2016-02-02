@@ -1,6 +1,7 @@
 package org.metadatacenter.terminology.services.bioportal;
 
 import org.metadatacenter.terminology.services.bioportal.domainObjects.OntologyClass;
+import org.metadatacenter.terminology.services.bioportal.domainObjects.Relation;
 import org.metadatacenter.terminology.services.bioportal.domainObjects.SearchResults;
 
 import java.io.IOException;
@@ -15,14 +16,31 @@ public interface IBioPortalService
   OntologyClass createClass(OntologyClass c, String apiKey) throws IOException;
   OntologyClass findClass(String id, String apiKey) throws IOException;
   List<OntologyClass> findAllProvisionalClasses(String ontology, String apiKey) throws IOException;
-//  OntologyClass updateProvisionalClass(OntologyClass provisionalClass, String apiKey) throws IOException;
-//  void deleteProvisionalClass(OntologyClass provisionalClass, String apiKey) throws IOException;
+  // TODO: This call is pending (to be released by the BioPortal team first)
+  OntologyClass updateClass(OntologyClass c, String apiKey) throws IOException;
+  // TODO: This call is pending (to be released by the BioPortal team first)
+  void deleteClass(String classId, String apiKey) throws IOException;
 
   /** Provisional relations **/
+  Relation createRelation(Relation relation, String apiKey) throws IOException;
+  Relation findRelation(String id, String apiKey) throws IOException;
+  // TODO: This call is pending (to be released by the BioPortal team first)
+  Relation deleteRelation(String id, String apiKey) throws IOException;
 
+  /** Value sets **/
+  // TODO:
+  // - Create a Value Set
+  // - Return all value sets in a specific value set collection
+  // - Return all values in a value set (including provisional classes)
+  // - Retrieve value set by id
+  // - Update value set- Delete value set
 
-
-
+  /** Value set items **/
+  // TODO:
+  //  - Create a Value Set Item
+  //  - Retrieve value set item by id
+  //  - Update value set item
+  //  - Delete value set item
 
   /** TODO:
    * - Get all ontologies
@@ -36,31 +54,5 @@ public interface IBioPortalService
    * - Get ontology tree root
    * - Get all value sets in a value set collection
    * - Get ontology classes
-   *
-   * ==== NEW ====
-   *
-   * Provisional classes and relations
-   * - Create a provisional class
-   * - Retrieve a provisional class by id
-   * - Retrieve all provisional classes
-   * - Update a provisional class [TO BE RELEASED]
-   * - Delete a provisional class [TO BE RELEASED]
-   * - Add a provisional relation to an existing provisional class
-   * - Retrieve a provisional relation by id
-   * - Delete a provisional relation [TO BE RELEASED]
-   *
-   * Value Sets
-   * - Create a Value Set
-   * - Return all value sets in a specific value set collection
-   * - Return all values in a value set (including provisional classes)
-   * - Retrieve value set by id
-   * - Update value set
-   * - Delete value set
-   * Value Set Items
-   * - Create a Value Set Item
-   * - Retrieve value set item by id
-   * - Update value set item
-   * - Delete value set item
-   *
    */
 }

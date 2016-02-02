@@ -5,7 +5,9 @@ import org.apache.http.HttpResponse;
 import org.apache.http.client.fluent.Request;
 import org.apache.http.util.EntityUtils;
 import org.metadatacenter.terminology.services.bioportal.dao.OntologyClassDAO;
+import org.metadatacenter.terminology.services.bioportal.dao.RelationDAO;
 import org.metadatacenter.terminology.services.bioportal.domainObjects.OntologyClass;
+import org.metadatacenter.terminology.services.bioportal.domainObjects.Relation;
 import org.metadatacenter.terminology.services.bioportal.domainObjects.SearchResults;
 import org.metadatacenter.terminology.services.util.Util;
 
@@ -111,15 +113,14 @@ public class BioPortalService implements org.metadatacenter.terminology.services
     int statusCode = response.getStatusLine().getStatusCode();
     // The request has succeeded
     if (statusCode == 200) {
-      ObjectMapper mapper = new ObjectMapper();
-      //JsonNode bpResult = mapper.readTree(new String(EntityUtils.toByteArray(response.getEntity())));
       String bpResponse = new String(EntityUtils.toByteArray(response.getEntity()));
-      return(mapper.readValue(bpResponse, SearchResults.class));
+      return(new ObjectMapper().readValue(bpResponse, SearchResults.class));
     } else {
       throw new HTTPException(statusCode);
     }
   }
 
+  /** Class operations **/
 
   public OntologyClass createClass(OntologyClass c, String apiKey) throws IOException
   {
@@ -138,5 +139,35 @@ public class BioPortalService implements org.metadatacenter.terminology.services
     OntologyClassDAO classDAO = new OntologyClassDAO(connectTimeout, socketTimeout);
     return classDAO.findAllProvisionalClasses(ontology, apiKey);
   }
+
+  public OntologyClass updateClass(OntologyClass c, String apiKey) throws IOException {
+    // TODO
+    return null;
+  }
+
+  public void deleteClass(String classId, String apiKey) throws IOException {
+    // TODO
+  }
+
+  /** Relation operations **/
+
+  public Relation createRelation(Relation relation, String apiKey) throws IOException
+  {
+    RelationDAO relationDAO = new RelationDAO(connectTimeout, socketTimeout);
+    return relationDAO.create(relation, apiKey);
+  }
+
+  public Relation findRelation(String id, String apiKey) throws IOException
+  {
+    RelationDAO relationDAO = new RelationDAO(connectTimeout, socketTimeout);
+    return relationDAO.find(id, apiKey);
+  }
+
+  @Override public Relation deleteRelation(String id, String apiKey) throws IOException
+  {
+    // TODO
+    return null;
+  }
+
 }
 
