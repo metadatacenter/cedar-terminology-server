@@ -6,14 +6,18 @@ import org.apache.http.client.fluent.Request;
 import org.apache.http.util.EntityUtils;
 import org.metadatacenter.terminology.services.bioportal.dao.OntologyClassDAO;
 import org.metadatacenter.terminology.services.bioportal.dao.RelationDAO;
+import org.metadatacenter.terminology.services.bioportal.dao.ValueSetDAO;
 import org.metadatacenter.terminology.services.bioportal.domainObjects.OntologyClass;
 import org.metadatacenter.terminology.services.bioportal.domainObjects.Relation;
 import org.metadatacenter.terminology.services.bioportal.domainObjects.SearchResults;
+import org.metadatacenter.terminology.services.bioportal.domainObjects.SingleValueSet;
+import org.metadatacenter.terminology.services.bioportal.domainObjects.ValueSets;
 import org.metadatacenter.terminology.services.util.Util;
 
 import javax.xml.ws.http.HTTPException;
 import java.io.IOException;
 import java.net.URLEncoder;
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -22,11 +26,17 @@ import static org.metadatacenter.terminology.services.util.Constants.BP_SEARCH_S
 import static org.metadatacenter.terminology.services.util.Constants.BP_SEARCH_SCOPE_CLASSES;
 import static org.metadatacenter.terminology.services.util.Constants.BP_SEARCH_SCOPE_VALUES;
 import static org.metadatacenter.terminology.services.util.Constants.BP_SEARCH_SCOPE_VALUE_SETS;
+import static org.metadatacenter.terminology.services.util.Constants.BP_VS_COLLECTIONS;
+import static org.metadatacenter.terminology.services.util.Constants.BP_VS_CREATION_COLLECTIONS;
 
 public class BioPortalService implements org.metadatacenter.terminology.services.bioportal.IBioPortalService
 {
   private final int connectTimeout;
   private final int socketTimeout;
+
+  private OntologyClassDAO classDAO;
+  private RelationDAO relationDAO;
+  private ValueSetDAO valueSetDAO;
 
   /**
    * @param connectTimeout
@@ -36,6 +46,9 @@ public class BioPortalService implements org.metadatacenter.terminology.services
   {
     this.connectTimeout = connectTimeout;
     this.socketTimeout = socketTimeout;
+    classDAO = new OntologyClassDAO(connectTimeout, socketTimeout);
+    relationDAO = new RelationDAO(connectTimeout, socketTimeout);
+    valueSetDAO = new ValueSetDAO(connectTimeout, socketTimeout);
   }
 
   /**
@@ -120,23 +133,20 @@ public class BioPortalService implements org.metadatacenter.terminology.services
     }
   }
 
-  /** Class operations **/
+  /** Classes **/
 
   public OntologyClass createClass(OntologyClass c, String apiKey) throws IOException
   {
-    OntologyClassDAO classDAO = new OntologyClassDAO(connectTimeout, socketTimeout);
     return classDAO.create(c, apiKey);
   }
 
   // TODO: extend it to work with regular classes
   public OntologyClass findClass(String id, String apiKey) throws IOException
   {
-    OntologyClassDAO classDAO = new OntologyClassDAO(connectTimeout, socketTimeout);
     return classDAO.find(id, apiKey);
   }
 
   public List<OntologyClass> findAllProvisionalClasses(String ontology, String apiKey) throws IOException {
-    OntologyClassDAO classDAO = new OntologyClassDAO(connectTimeout, socketTimeout);
     return classDAO.findAllProvisionalClasses(ontology, apiKey);
   }
 
@@ -149,17 +159,15 @@ public class BioPortalService implements org.metadatacenter.terminology.services
     // TODO
   }
 
-  /** Relation operations **/
+  /** Relations **/
 
   public Relation createRelation(Relation relation, String apiKey) throws IOException
   {
-    RelationDAO relationDAO = new RelationDAO(connectTimeout, socketTimeout);
     return relationDAO.create(relation, apiKey);
   }
 
   public Relation findRelation(String id, String apiKey) throws IOException
   {
-    RelationDAO relationDAO = new RelationDAO(connectTimeout, socketTimeout);
     return relationDAO.find(id, apiKey);
   }
 
@@ -167,6 +175,29 @@ public class BioPortalService implements org.metadatacenter.terminology.services
   {
     // TODO
     return null;
+  }
+
+  /** Value sets **/
+
+  public SingleValueSet createValueSet(SingleValueSet vs, String apiKey) throws IOException
+  {
+    // Creation of value sets is restricted to the CEDARVS ontology
+    if ((vs.getOntology() != null) && (Arrays.asList(BP_VS_CREATION_COLLECTIONS).contains(vs.getOntology()))) {
+      return valueSetDAO.create(vs, apiKey);
+    } else {
+      // Bad request
+      throw new HTTPException(400);
+    }
+  }
+
+  public ValueSets findValueSetsByVsCollection(String vsCollection, String apiKey) throws IOException
+  {
+    if ((vsCollection != null) && (Arrays.asList(BP_VS_COLLECTIONS).contains(vsCollection))) {
+      return valueSetDAO.findByValueSetCollection(vsCollection, apiKey);
+    } else {
+      // Bad request
+      throw new HTTPException(400);
+    }
   }
 
 }

@@ -24,6 +24,12 @@ public class Constants
   public static final String BP_SEARCH_SCOPE_VALUE_SETS = "value_sets";
   public static final String BP_SEARCH_SCOPE_VALUES = "values";
 
+  /** Other constants **/
+  // BioPortal VS collections
+  public static final String[] BP_VS_COLLECTIONS = {"CEDARVS", "NLMVS"};
+  // Creation of value sets is restricted to this VS collections
+  public static final String[] BP_VS_CREATION_COLLECTIONS = {"CEDARVS"};
+
   // PRIVATE //
 
   /**

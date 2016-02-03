@@ -18,6 +18,11 @@ GET            /bioportal/classes              controllers.BioPortalController.f
 # BioPortal relations
 POST           /bioportal/relations            controllers.BioPortalController.createRelation
 GET            /bioportal/relations/:id        controllers.BioPortalController.findRelation(id: String)
+# BioPortal value sets
+POST           /bioportal/value_sets           controllers.BioPortalController.createValueSet
+GET            /bioportal/value_sets           controllers.BioPortalController.findValueSetsByVsCollection(valueSetCollection : String ?= "")
+
+## Other routes
 
 # For CORS - preflight request
 OPTIONS        /*all                           controllers.Application.preflight(all)

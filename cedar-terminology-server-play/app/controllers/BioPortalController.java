@@ -13,6 +13,8 @@ import org.metadatacenter.terminology.services.bioportal.BioPortalService;
 import org.metadatacenter.terminology.services.bioportal.domainObjects.OntologyClass;
 import org.metadatacenter.terminology.services.bioportal.domainObjects.Relation;
 import org.metadatacenter.terminology.services.bioportal.domainObjects.SearchResults;
+import org.metadatacenter.terminology.services.bioportal.domainObjects.SingleValueSet;
+import org.metadatacenter.terminology.services.bioportal.domainObjects.ValueSets;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import play.Configuration;
@@ -115,6 +117,7 @@ public class BioPortalController extends Controller
       + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
       required = true, dataType = "string", paramType = "header"),
     @ApiImplicitParam(value="Class to be created", required = true, dataType = "org.metadatacenter.terminology.services.bioportal.domainObjects.OntologyClass", paramType = "body")})
+  // TODO: specify OntologyClass required parameters
   public static Result createClass()
   {
     if (!Utils.isValidAuthorizationHeader(request()))
@@ -147,6 +150,8 @@ public class BioPortalController extends Controller
 
   public static Result findAllProvisionalClasses(String ontology)
   {
+    if (!Utils.isValidAuthorizationHeader(request()))
+      return badRequest();
     if (ontology.length() == 0)
       ontology = null;
     try {
@@ -191,4 +196,40 @@ public class BioPortalController extends Controller
       return internalServerError(e.getMessage());
     }
   }
+
+  /** Value Sets **/
+
+  public static Result createValueSet()
+  {
+    if (!Utils.isValidAuthorizationHeader(request()))
+      return badRequest();
+    ObjectMapper mapper = new ObjectMapper();
+    SingleValueSet vs = mapper.convertValue(request().body().asJson(), SingleValueSet.class);
+    try {
+      SingleValueSet createdVs = bioPortalService.createValueSet(vs, Utils.getApiKeyFromHeader(request()));
+      return created((JsonNode)mapper.valueToTree(createdVs));
+    } catch (HTTPException e) {
+      return Results.status(e.getStatusCode());
+    } catch (IOException e) {
+      return internalServerError(e.getMessage());
+    }
+  }
+
+  public static Result findValueSetsByVsCollection(String ontology)
+  {
+    if (!Utils.isValidAuthorizationHeader(request()))
+      return badRequest();
+    if ((ontology == null) || (ontology.length() == 0))
+      return badRequest();
+    try {
+      ValueSets valueSets = bioPortalService.
+        findValueSetsByVsCollection(ontology, Utils.getApiKeyFromHeader(request()));
+      return ok((JsonNode)new ObjectMapper().valueToTree(valueSets));
+    } catch (HTTPException e) {
+      return Results.status(e.getStatusCode());
+    } catch (IOException e) {
+      return internalServerError(e.getMessage());
+    }
+  }
+
 }
