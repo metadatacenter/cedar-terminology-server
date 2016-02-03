@@ -3,7 +3,7 @@ package org.metadatacenter.terminology.services.bioportal;
 import org.metadatacenter.terminology.services.bioportal.domainObjects.OntologyClass;
 import org.metadatacenter.terminology.services.bioportal.domainObjects.Relation;
 import org.metadatacenter.terminology.services.bioportal.domainObjects.SearchResults;
-import org.metadatacenter.terminology.services.bioportal.domainObjects.SingleValueSet;
+import org.metadatacenter.terminology.services.bioportal.domainObjects.ValueSet;
 import org.metadatacenter.terminology.services.bioportal.domainObjects.ValueSets;
 
 import java.io.IOException;
@@ -43,12 +43,10 @@ public interface IBioPortalService
   Relation deleteRelation(String id, String apiKey) throws IOException;
 
   /** Value sets **/
-  SingleValueSet createValueSet(SingleValueSet vs, String apiKey) throws IOException;
+  ValueSet createValueSet(ValueSet vs, String apiKey) throws IOException;
   ValueSets findValueSetsByVsCollection(String vsCollection, String apiKey) throws IOException;
 
   // TODO:
-  // - Create a Value Set
-  // - Return all value sets in a specific value set collection
   // - Return all values in a value set (including provisional classes)
   // - Retrieve value set by id
   // - Update value set- Delete value set

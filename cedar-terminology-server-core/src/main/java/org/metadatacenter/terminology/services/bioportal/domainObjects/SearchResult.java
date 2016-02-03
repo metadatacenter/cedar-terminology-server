@@ -1,10 +1,10 @@
 package org.metadatacenter.terminology.services.bioportal.domainObjects;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import org.metadatacenter.terminology.services.bioportal.deserializers.SingleSearchResultDeserializer;
+import org.metadatacenter.terminology.services.bioportal.deserializers.SearchResultDeserializer;
 
-@JsonDeserialize(using = SingleSearchResultDeserializer.class)
-public class SingleSearchResult
+@JsonDeserialize(using = SearchResultDeserializer.class)
+public class SearchResult
 {
   public enum ResultType {CLASS, VALUE_SET, VALUE};
 
@@ -20,7 +20,7 @@ public class SingleSearchResult
   private String creator;
   private String creationDate;
 
-  public SingleSearchResult(String id, String label, ResultType resultType, boolean provisional, String source,
+  public SearchResult(String id, String label, ResultType resultType, boolean provisional, String source,
     String creator, String creationDate)
   {
     this.id = id;

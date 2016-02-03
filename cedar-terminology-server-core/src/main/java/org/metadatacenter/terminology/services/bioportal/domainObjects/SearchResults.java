@@ -15,9 +15,9 @@ public class SearchResults
   private int pageSize;
   private int prevPage;
   private int nextPage;
-  private List<SingleSearchResult> collection = new ArrayList<>();
+  private List<SearchResult> collection = new ArrayList<>();
 
-  public SearchResults(int page, int pageCount, int pageSize, int prevPage, int nextPage, List<SingleSearchResult> collection)
+  public SearchResults(int page, int pageCount, int pageSize, int prevPage, int nextPage, List<SearchResult> collection)
   {
     this.page = page;
     this.pageCount = pageCount;
@@ -77,12 +77,12 @@ public class SearchResults
     this.nextPage = nextPage;
   }
 
-  public List<SingleSearchResult> getCollection()
+  public List<SearchResult> getCollection()
   {
     return collection;
   }
 
-  public void setCollection(List<SingleSearchResult> collection)
+  public void setCollection(List<SearchResult> collection)
   {
     this.collection = collection;
   }

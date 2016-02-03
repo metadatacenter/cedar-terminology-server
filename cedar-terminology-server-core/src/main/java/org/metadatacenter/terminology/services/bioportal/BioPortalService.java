@@ -10,7 +10,7 @@ import org.metadatacenter.terminology.services.bioportal.dao.ValueSetDAO;
 import org.metadatacenter.terminology.services.bioportal.domainObjects.OntologyClass;
 import org.metadatacenter.terminology.services.bioportal.domainObjects.Relation;
 import org.metadatacenter.terminology.services.bioportal.domainObjects.SearchResults;
-import org.metadatacenter.terminology.services.bioportal.domainObjects.SingleValueSet;
+import org.metadatacenter.terminology.services.bioportal.domainObjects.ValueSet;
 import org.metadatacenter.terminology.services.bioportal.domainObjects.ValueSets;
 import org.metadatacenter.terminology.services.util.Util;
 
@@ -179,10 +179,10 @@ public class BioPortalService implements org.metadatacenter.terminology.services
 
   /** Value sets **/
 
-  public SingleValueSet createValueSet(SingleValueSet vs, String apiKey) throws IOException
+  public ValueSet createValueSet(ValueSet vs, String apiKey) throws IOException
   {
-    // Creation of value sets is restricted to the CEDARVS ontology
-    if ((vs.getOntology() != null) && (Arrays.asList(BP_VS_CREATION_COLLECTIONS).contains(vs.getOntology()))) {
+    // Creation of value sets is restricted to the CEDARVS value set collection
+    if ((vs.getVsCollection() != null) && (Arrays.asList(BP_VS_CREATION_COLLECTIONS).contains(vs.getVsCollection()))) {
       return valueSetDAO.create(vs, apiKey);
     } else {
       // Bad request

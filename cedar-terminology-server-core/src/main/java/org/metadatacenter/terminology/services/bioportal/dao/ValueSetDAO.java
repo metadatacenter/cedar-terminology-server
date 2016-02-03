@@ -6,7 +6,7 @@ import org.apache.http.HttpResponse;
 import org.apache.http.client.fluent.Request;
 import org.apache.http.entity.ContentType;
 import org.apache.http.util.EntityUtils;
-import org.metadatacenter.terminology.services.bioportal.domainObjects.SingleValueSet;
+import org.metadatacenter.terminology.services.bioportal.domainObjects.ValueSet;
 import org.metadatacenter.terminology.services.bioportal.domainObjects.ValueSets;
 import org.metadatacenter.terminology.services.util.Util;
 
@@ -27,7 +27,7 @@ public class ValueSetDAO
     this.socketTimeout = socketTimeout;
   }
 
-  public SingleValueSet create(SingleValueSet vs, String apiKey) throws IOException
+  public ValueSet create(ValueSet vs, String apiKey) throws IOException
   {
     ObjectMapper mapper = new ObjectMapper();
     // Send request to the BioPortal API
@@ -40,7 +40,7 @@ public class ValueSetDAO
     // Success
     if (statusCode == 201) {
       JsonNode bpResult = mapper.readTree(new String(EntityUtils.toByteArray(response.getEntity())));
-      return mapper.convertValue(bpResult, SingleValueSet.class);
+      return mapper.convertValue(bpResult, ValueSet.class);
     } else {
       throw new HTTPException(statusCode);
     }

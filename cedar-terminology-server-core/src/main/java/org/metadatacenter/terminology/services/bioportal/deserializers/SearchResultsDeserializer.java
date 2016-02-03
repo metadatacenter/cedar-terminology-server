@@ -5,8 +5,8 @@ import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.metadatacenter.terminology.services.bioportal.domainObjects.SearchResult;
 import org.metadatacenter.terminology.services.bioportal.domainObjects.SearchResults;
-import org.metadatacenter.terminology.services.bioportal.domainObjects.SingleSearchResult;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -31,13 +31,13 @@ public class SearchResultsDeserializer extends JsonDeserializer<SearchResults>
     JsonNode nextPageNode = node.get("nextPage");
     int nextPage = (nextPageNode != null) ? nextPageNode.intValue() : -1;
 
-    List<SingleSearchResult> collection = new ArrayList<>();
+    List<SearchResult> collection = new ArrayList<>();
     int pageSize = -1;
     JsonNode resultsNode = node.get("collection");
     if (resultsNode != null) {
       pageSize = resultsNode.size();
       for (JsonNode n : resultsNode) {
-        collection.add(new ObjectMapper().treeToValue(n, SingleSearchResult.class));
+        collection.add(new ObjectMapper().treeToValue(n, SearchResult.class));
       }
     }
 

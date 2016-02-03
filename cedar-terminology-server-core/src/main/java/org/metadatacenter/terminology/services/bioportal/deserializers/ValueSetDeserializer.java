@@ -6,32 +6,44 @@ import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.metadatacenter.terminology.services.bioportal.domainObjects.Relation;
-import org.metadatacenter.terminology.services.bioportal.domainObjects.SingleValueSet;
+import org.metadatacenter.terminology.services.bioportal.domainObjects.ValueSet;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-public class SingleValueSetDeserializer extends JsonDeserializer<SingleValueSet>
+public class ValueSetDeserializer extends JsonDeserializer<ValueSet>
 {
   @Override
-  public SingleValueSet deserialize(JsonParser parser, DeserializationContext ctx) throws IOException
+  public ValueSet deserialize(JsonParser parser, DeserializationContext ctx) throws IOException
   {
     JsonNode node = parser.getCodec().readTree(parser);
 
     JsonNode idNode = node.get("@id");
     String id = (idNode != null) ? idNode.textValue() : null;
 
-    JsonNode labelNode = node.get("label");
+    JsonNode labelNode = node.get("prefLabel");
     String label = (labelNode != null) ? labelNode.textValue() : null;
 
     JsonNode creatorNode = node.get("creator");
     String creator = (creatorNode != null) ? creatorNode.textValue() : null;
 
+    String vsCollection = null;
     JsonNode ontologyNode = node.get("ontology");
-    String ontology = (ontologyNode != null) ? ontologyNode.textValue() : null;
+    if (ontologyNode != null) {
+      vsCollection = ontologyNode.asText();
+    }
+    else {
+      JsonNode linksNode = node.get("links");
+      if (linksNode != null) {
+        ontologyNode = linksNode.get("ontology");
+        if (ontologyNode != null) {
+          vsCollection = ontologyNode.asText();
+        }
+      }
+    }
 
-    JsonNode definitionsNode = node.get("definitions");
+    JsonNode definitionsNode = node.get("definition");
     List<String> definitions = new ArrayList<>();
     if (definitionsNode != null) {
       for (JsonNode n : definitionsNode) {
@@ -39,7 +51,7 @@ public class SingleValueSetDeserializer extends JsonDeserializer<SingleValueSet>
       }
     }
 
-    JsonNode synonymsNode = node.get("synonyms");
+    JsonNode synonymsNode = node.get("synonym");
     List<String> synonyms = new ArrayList<>();
     if (synonymsNode != null) {
       for (JsonNode n : synonymsNode) {
@@ -62,7 +74,7 @@ public class SingleValueSetDeserializer extends JsonDeserializer<SingleValueSet>
     JsonNode createdNode = node.get("created");
     String created = (createdNode != null) ? createdNode.asText() : null;
 
-    return new SingleValueSet(id, label, creator, ontology, definitions, synonyms, relations, provisional,
+    return new ValueSet(id, label, creator, vsCollection, definitions, synonyms, relations, provisional,
       created);
 
   }

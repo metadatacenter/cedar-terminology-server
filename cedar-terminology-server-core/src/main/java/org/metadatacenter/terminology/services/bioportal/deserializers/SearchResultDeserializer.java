@@ -4,14 +4,14 @@ import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.JsonNode;
-import org.metadatacenter.terminology.services.bioportal.domainObjects.SingleSearchResult;
+import org.metadatacenter.terminology.services.bioportal.domainObjects.SearchResult;
 
 import java.io.IOException;
 
-public class SingleSearchResultDeserializer extends JsonDeserializer<SingleSearchResult>
+public class SearchResultDeserializer extends JsonDeserializer<SearchResult>
 {
   @Override
-  public SingleSearchResult deserialize(JsonParser parser, DeserializationContext ctx) throws IOException
+  public SearchResult deserialize(JsonParser parser, DeserializationContext ctx) throws IOException
   {
     JsonNode node = parser.getCodec().readTree(parser);
     
@@ -22,7 +22,7 @@ public class SingleSearchResultDeserializer extends JsonDeserializer<SingleSearc
     String label = (labelNode != null) ? labelNode.textValue() : null;
     
     // TODO: resultType: use specific attribute implemented on the BioPortal side
-    SingleSearchResult.ResultType resultType = SingleSearchResult.ResultType.CLASS;
+    SearchResult.ResultType resultType = SearchResult.ResultType.CLASS;
 
     Boolean provisional = false;
     JsonNode bpTypeNode = node.get("@type");
@@ -53,6 +53,6 @@ public class SingleSearchResultDeserializer extends JsonDeserializer<SingleSearc
     JsonNode createdNode = node.get("created");
     String created = (createdNode != null) ? createdNode.textValue() : null;
 
-    return new SingleSearchResult(id, label, resultType, provisional, source, creator, created);
+    return new SearchResult(id, label, resultType, provisional, source, creator, created);
   }
 }

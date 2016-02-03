@@ -13,7 +13,7 @@ import org.metadatacenter.terminology.services.bioportal.BioPortalService;
 import org.metadatacenter.terminology.services.bioportal.domainObjects.OntologyClass;
 import org.metadatacenter.terminology.services.bioportal.domainObjects.Relation;
 import org.metadatacenter.terminology.services.bioportal.domainObjects.SearchResults;
-import org.metadatacenter.terminology.services.bioportal.domainObjects.SingleValueSet;
+import org.metadatacenter.terminology.services.bioportal.domainObjects.ValueSet;
 import org.metadatacenter.terminology.services.bioportal.domainObjects.ValueSets;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -204,9 +204,9 @@ public class BioPortalController extends Controller
     if (!Utils.isValidAuthorizationHeader(request()))
       return badRequest();
     ObjectMapper mapper = new ObjectMapper();
-    SingleValueSet vs = mapper.convertValue(request().body().asJson(), SingleValueSet.class);
+    ValueSet vs = mapper.convertValue(request().body().asJson(), ValueSet.class);
     try {
-      SingleValueSet createdVs = bioPortalService.createValueSet(vs, Utils.getApiKeyFromHeader(request()));
+      ValueSet createdVs = bioPortalService.createValueSet(vs, Utils.getApiKeyFromHeader(request()));
       return created((JsonNode)mapper.valueToTree(createdVs));
     } catch (HTTPException e) {
       return Results.status(e.getStatusCode());

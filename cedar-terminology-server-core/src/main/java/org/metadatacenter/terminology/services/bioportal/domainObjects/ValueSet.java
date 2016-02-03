@@ -1,30 +1,30 @@
 package org.metadatacenter.terminology.services.bioportal.domainObjects;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import org.metadatacenter.terminology.services.bioportal.deserializers.SingleValueSetDeserializer;
+import org.metadatacenter.terminology.services.bioportal.deserializers.ValueSetDeserializer;
 
 import java.util.List;
 
-@JsonDeserialize(using = SingleValueSetDeserializer.class)
-public class SingleValueSet
+@JsonDeserialize(using = ValueSetDeserializer.class)
+public class ValueSet
 {
   private String id;
   private String label;
   private String creator;
-  private String ontology;
+  private String vsCollection;
   private List<String> definitions;
   private List<String> synonyms;
   private List<Relation> relations;
   private boolean provisional;
   private String created;
 
-  public SingleValueSet(String id, String label, String creator, String ontology, List<String> definitions,
+  public ValueSet(String id, String label, String creator, String vsCollection, List<String> definitions,
     List<String> synonyms, List<Relation> relations, boolean provisional, String created)
   {
     this.id = id;
     this.label = label;
     this.creator = creator;
-    this.ontology = ontology;
+    this.vsCollection = vsCollection;
     this.definitions = definitions;
     this.synonyms = synonyms;
     this.relations = relations;
@@ -62,14 +62,14 @@ public class SingleValueSet
     this.creator = creator;
   }
 
-  public String getOntology()
+  public String getVsCollection()
   {
-    return ontology;
+    return vsCollection;
   }
 
-  public void setOntology(String ontology)
+  public void setVsCollection(String vsCollection)
   {
-    this.ontology = ontology;
+    this.vsCollection = vsCollection;
   }
 
   public List<String> getDefinitions()
