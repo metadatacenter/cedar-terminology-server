@@ -15,6 +15,7 @@ import org.metadatacenter.terminology.services.bioportal.domainObjects.Relation;
 import org.metadatacenter.terminology.services.bioportal.domainObjects.SearchResults;
 import org.metadatacenter.terminology.services.bioportal.domainObjects.ValueSet;
 import org.metadatacenter.terminology.services.bioportal.domainObjects.ValueSets;
+import org.metadatacenter.terminology.services.bioportal.domainObjects.Values;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import play.Configuration;
@@ -27,6 +28,7 @@ import utils.Utils;
 import javax.ws.rs.QueryParam;
 import javax.xml.ws.http.HTTPException;
 import java.io.IOException;
+import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -225,6 +227,24 @@ public class BioPortalController extends Controller
       ValueSets valueSets = bioPortalService.
         findValueSetsByVsCollection(ontology, Utils.getApiKeyFromHeader(request()));
       return ok((JsonNode)new ObjectMapper().valueToTree(valueSets));
+    } catch (HTTPException e) {
+      return Results.status(e.getStatusCode());
+    } catch (IOException e) {
+      return internalServerError(e.getMessage());
+    }
+  }
+
+  public static Result findValuesByValueSet(String vsId, String vsCollection)
+  {
+    if (!Utils.isValidAuthorizationHeader(request()))
+      return badRequest();
+    if ((vsId == null) || (vsId.length() == 0) || (vsCollection == null) || (vsCollection.length() == 0)  )
+      return badRequest();
+
+    try {
+      vsId = URLEncoder.encode(vsId, "UTF-8");
+      Values values = bioPortalService.findValuesByValueSet(vsId, vsCollection, Utils.getApiKeyFromHeader(request()));
+      return ok((JsonNode)new ObjectMapper().valueToTree(values));
     } catch (HTTPException e) {
       return Results.status(e.getStatusCode());
     } catch (IOException e) {

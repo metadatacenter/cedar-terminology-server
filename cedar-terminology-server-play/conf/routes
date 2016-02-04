@@ -18,9 +18,10 @@ GET            /bioportal/classes              controllers.BioPortalController.f
 # BioPortal relations
 POST           /bioportal/relations            controllers.BioPortalController.createRelation
 GET            /bioportal/relations/:id        controllers.BioPortalController.findRelation(id: String)
-# BioPortal value sets
+# BioPortal value sets and values
 POST           /bioportal/value_sets           controllers.BioPortalController.createValueSet
 GET            /bioportal/value_sets           controllers.BioPortalController.findValueSetsByVsCollection(valueSetCollection : String ?= "")
+GET            /bioportal/values               controllers.BioPortalController.findValuesByValueSet(vsId: String, vsCollection: String)
 
 ## Other routes
 

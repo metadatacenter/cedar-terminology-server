@@ -6,12 +6,14 @@ import org.apache.http.client.fluent.Request;
 import org.apache.http.util.EntityUtils;
 import org.metadatacenter.terminology.services.bioportal.dao.OntologyClassDAO;
 import org.metadatacenter.terminology.services.bioportal.dao.RelationDAO;
+import org.metadatacenter.terminology.services.bioportal.dao.ValueDAO;
 import org.metadatacenter.terminology.services.bioportal.dao.ValueSetDAO;
 import org.metadatacenter.terminology.services.bioportal.domainObjects.OntologyClass;
 import org.metadatacenter.terminology.services.bioportal.domainObjects.Relation;
 import org.metadatacenter.terminology.services.bioportal.domainObjects.SearchResults;
 import org.metadatacenter.terminology.services.bioportal.domainObjects.ValueSet;
 import org.metadatacenter.terminology.services.bioportal.domainObjects.ValueSets;
+import org.metadatacenter.terminology.services.bioportal.domainObjects.Values;
 import org.metadatacenter.terminology.services.util.Util;
 
 import javax.xml.ws.http.HTTPException;
@@ -37,6 +39,7 @@ public class BioPortalService implements org.metadatacenter.terminology.services
   private OntologyClassDAO classDAO;
   private RelationDAO relationDAO;
   private ValueSetDAO valueSetDAO;
+  private ValueDAO valueDAO;
 
   /**
    * @param connectTimeout
@@ -49,6 +52,7 @@ public class BioPortalService implements org.metadatacenter.terminology.services
     classDAO = new OntologyClassDAO(connectTimeout, socketTimeout);
     relationDAO = new RelationDAO(connectTimeout, socketTimeout);
     valueSetDAO = new ValueSetDAO(connectTimeout, socketTimeout);
+    valueDAO = new ValueDAO(connectTimeout, socketTimeout);
   }
 
   /**
@@ -198,6 +202,10 @@ public class BioPortalService implements org.metadatacenter.terminology.services
       // Bad request
       throw new HTTPException(400);
     }
+  }
+
+  public Values findValuesByValueSet(String vsId, String vsCollection, String apiKey) throws IOException {
+    return valueDAO.findByValueSet(vsId, vsCollection, apiKey);
   }
 
 }

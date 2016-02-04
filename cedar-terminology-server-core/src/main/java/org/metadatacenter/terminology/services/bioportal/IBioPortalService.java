@@ -5,6 +5,7 @@ import org.metadatacenter.terminology.services.bioportal.domainObjects.Relation;
 import org.metadatacenter.terminology.services.bioportal.domainObjects.SearchResults;
 import org.metadatacenter.terminology.services.bioportal.domainObjects.ValueSet;
 import org.metadatacenter.terminology.services.bioportal.domainObjects.ValueSets;
+import org.metadatacenter.terminology.services.bioportal.domainObjects.Values;
 
 import java.io.IOException;
 import java.util.List;
@@ -45,6 +46,7 @@ public interface IBioPortalService
   /** Value sets **/
   ValueSet createValueSet(ValueSet vs, String apiKey) throws IOException;
   ValueSets findValueSetsByVsCollection(String vsCollection, String apiKey) throws IOException;
+  Values findValuesByValueSet(String vsId, String vsCollection, String apiKey) throws IOException;
 
   // TODO:
   // - Return all values in a value set (including provisional classes)

@@ -2,12 +2,13 @@ package org.metadatacenter.terminology.services.bioportal.domainObjects;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import org.metadatacenter.terminology.services.bioportal.deserializers.ValueSetsDeserializer;
+import org.metadatacenter.terminology.services.bioportal.deserializers.ValuesDeserializer;
 
 import java.util.ArrayList;
 import java.util.List;
 
-@JsonDeserialize(using = ValueSetsDeserializer.class)
-public class ValueSets
+@JsonDeserialize(using = ValuesDeserializer.class)
+public class Values
 {
 
   private int page;
@@ -15,17 +16,16 @@ public class ValueSets
   private int pageSize;
   private int prevPage;
   private int nextPage;
-  private List<ValueSet> valueSets = new ArrayList<>();
+  private List<Value> values = new ArrayList<>();
 
-  public ValueSets(int page, int pageCount, int pageSize, int prevPage, int nextPage,
-    List<ValueSet> valueSets)
+  public Values(int page, int pageCount, int pageSize, int prevPage, int nextPage, List<Value> values)
   {
     this.page = page;
     this.pageCount = pageCount;
     this.pageSize = pageSize;
     this.prevPage = prevPage;
     this.nextPage = nextPage;
-    this.valueSets = valueSets;
+    this.values = values;
   }
 
   public int getPage()
@@ -78,13 +78,13 @@ public class ValueSets
     this.nextPage = nextPage;
   }
 
-  public List<ValueSet> getValueSets()
+  public List<Value> getValues()
   {
-    return valueSets;
+    return values;
   }
 
-  public void setValueSets(List<ValueSet> valueSets)
+  public void setValues(List<Value> values)
   {
-    this.valueSets = valueSets;
+    this.values = values;
   }
 }
