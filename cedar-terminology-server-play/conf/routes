@@ -3,39 +3,46 @@
 # ~~~~
 
 # Swagger - UI
-GET            /                                controllers.Assets.at(path="/public/swagger-ui", file="index.html")
+GET            /                                                                     controllers.Assets.at(path="/public/swagger-ui", file="index.html")
 #GET            /                          controllers.Default.redirect(to = "/index.html?/url=http://localhost:9000/api-docs")
 # Swagger - API documentation
-GET            /api-docs                        controllers.ApiHelpController.getResources
-GET            /api-docs/bioportal              controllers.ApiHelpController.getResource(path = "/bioportal")
+GET            /api-docs                                                             controllers.ApiHelpController.getResources
+GET            /api-docs/bioportal                                                   controllers.ApiHelpController.getResource(path = "/bioportal")
 
 # BioPortal search
 #GET            /bioportal/search                controllers.BioPortalController.search(q: String, scope: String ?= "all", sources: String ?= "", page: Int ?= 1, pageSize: Int ?= 50)
-# BioPortal classes and provisional classes
-POST           /bioportal/classes               controllers.TerminologyController.createClass
-#GET            /bioportal/classes/:id           controllers.BioPortalController.findClass(id: String)
-#GET            /bioportal/classes               controllers.BioPortalController.findAllProvisionalClasses(ontology: String ?= "")
-# BioPortal relations
-#POST           /bioportal/relations             controllers.BioPortalController.createRelation
-#GET            /bioportal/relations/:id         controllers.BioPortalController.findRelation(id: String)
-# BioPortal value sets and values
-#POST           /bioportal/value_sets            controllers.BioPortalController.createValueSet
-#GET            /bioportal/value_sets/:id        controllers.BioPortalController.findValueSet(id: String)
-#GET            /bioportal/value_sets            controllers.BioPortalController.findValueSetsByVsCollection(valueSetCollection : String ?= "")
-#GET            /bioportal/values                controllers.BioPortalController.findValuesByValueSet(vsId: String, vsCollection: String)
+
+### Provisional Classes ###
+
+POST           /bioportal/classes/provisional                                        controllers.TerminologyController.createProvisionalClass()
+GET            /bioportal/classes/provisional/:id                                    controllers.TerminologyController.findProvisionalClass(id: String)
+GET            /bioportal/classes/provisional                                        controllers.TerminologyController.findAllProvisionalClasses(ontology: String ?= "")
+
+### Provisional Relations ###
+
+POST           /bioportal/relations/provisional                                      controllers.TerminologyController.createProvisionalRelation()
+GET            /bioportal/relations/provisional/:id                                  controllers.TerminologyController.findProvisionalRelation(id: String)
+
+### Provisional Value Sets ###
+POST           /bioportal/value_sets/provisional                                     controllers.TerminologyController.createProvisionalValueSet()
+GET            /bioportal/value_sets/provisional/:id                                 controllers.TerminologyController.findProvisionalValueSet(id: String)
+
+### Value Sets ###
+GET            /bioportal/vs_collections/:vs_collection/value_sets                   controllers.TerminologyController.findValueSetsByVsCollection(vs_collection : String)
+GET            /bioportal/vs_collections/:vs_collection/value_sets/:vs/values        controllers.TerminologyController.findValuesByValueSet(vs: String, vs_collection: String)
 
 ## Other routes
 
 # For CORS - preflight request
-OPTIONS        /*all                            controllers.Application.preflight(all)
+OPTIONS        /*all                                                                 controllers.Application.preflight(all)
 
 ## Map static resources from the /public folder to the /assets URL path
-GET            /assets/*file                    controllers.Assets.at(path="/public", file)
+GET            /assets/*file                                                         controllers.Assets.at(path="/public", file)
 
 ## Map relevant static resources from the /public/swagger-ui folder to /assets corresponding path - Swagger - UI
 #GET            /css/*file                 controllers.Assets.at(path="/public/swagger-ui/css", file)
 #GET            /images/*file              controllers.Assets.at(path="/public/swagger-ui/images", file)
 #GET            /lib/*file                 controllers.Assets.at(path="/public/swagger-ui/lib", file)
 #GET            /*file                     controllers.Assets.at(path="/public/swagger-ui", file)
-GET            /*file                           controllers.Assets.at(path="/public/swagger-ui", file)
+GET            /*file                                                                controllers.Assets.at(path="/public/swagger-ui", file)
 

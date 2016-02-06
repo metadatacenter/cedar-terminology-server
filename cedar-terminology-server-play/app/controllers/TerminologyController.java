@@ -1,16 +1,21 @@
 package controllers;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectWriter;
 import com.wordnik.swagger.annotations.Api;
 import com.wordnik.swagger.annotations.ApiImplicitParam;
 import com.wordnik.swagger.annotations.ApiImplicitParams;
 import com.wordnik.swagger.annotations.ApiOperation;
 import com.wordnik.swagger.annotations.ApiResponse;
 import com.wordnik.swagger.annotations.ApiResponses;
-import org.metadatacenter.terminology.TerminologyService;
-import org.metadatacenter.terminology.bioportal.BioPortalService;
-import org.metadatacenter.terminology.bioportal.domainObjects2.custom.OntologyClass;
+import org.metadatacenter.terms.TerminologyService;
+import org.metadatacenter.terms.domainObjects.OntologyClass;
+import org.metadatacenter.terms.domainObjects.Relation;
+import org.metadatacenter.terms.customObjects.SearchResults;
+import org.metadatacenter.terms.domainObjects.Value;
+import org.metadatacenter.terms.domainObjects.ValueSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import play.Configuration;
@@ -22,6 +27,8 @@ import utils.Utils;
 
 import javax.xml.ws.http.HTTPException;
 import java.io.IOException;
+import java.net.URLEncoder;
+import java.util.List;
 
 @Api(value = "/bioportal", description = "BioPortal operations")
 public class TerminologyController extends Controller
@@ -105,14 +112,14 @@ public class TerminologyController extends Controller
       required = true, dataType = "string", paramType = "header"),
     @ApiImplicitParam(value="Class to be created", required = true, dataType = "org.metadatacenter.terminology.services.bioportal.domainObjects.OntologyClass", paramType = "body")})
   // TODO: specify OntologyClass required parameters
-  public static Result createClass()
+  public static Result createProvisionalClass()
   {
     if (!Utils.isValidAuthorizationHeader(request()))
       return badRequest();
     ObjectMapper mapper = new ObjectMapper();
     OntologyClass c = mapper.convertValue(request().body().asJson(), OntologyClass.class);
     try {
-      OntologyClass createdClass = termService.createClass(c, Utils.getApiKeyFromHeader(request()));
+      OntologyClass createdClass = termService.createProvisionalClass(c, Utils.getApiKeyFromHeader(request()));
       return created((JsonNode)mapper.valueToTree(createdClass));
     } catch (HTTPException e) {
       return Results.status(e.getStatusCode());
@@ -120,135 +127,144 @@ public class TerminologyController extends Controller
       return internalServerError(e.getMessage());
     }
   }
-//
-//  public static Result findClass(String id)
-//  {
-//    if (id.isEmpty() || !Utils.isValidAuthorizationHeader(request()))
-//      return badRequest();
-//    try {
-//      OntologyClass c = bioPortalService.findClass(id, Utils.getApiKeyFromHeader(request()));
-//      return ok((JsonNode)new ObjectMapper().valueToTree(c));
-//    } catch (HTTPException e) {
-//      return Results.status(e.getStatusCode());
-//    } catch (IOException e) {
-//      return internalServerError(e.getMessage());
-//    }
-//  }
-//
-//  public static Result findAllProvisionalClasses(String ontology)
-//  {
-//    if (!Utils.isValidAuthorizationHeader(request()))
-//      return badRequest();
-//    if (ontology.length() == 0)
-//      ontology = null;
-//    try {
-//      List<OntologyClass> classes = bioPortalService
-//        .findAllProvisionalClasses(ontology, Utils.getApiKeyFromHeader(request()));
-//      return ok((JsonNode)new ObjectMapper().valueToTree(classes));
-//    } catch (HTTPException e) {
-//      return Results.status(e.getStatusCode());
-//    } catch (IOException e) {
-//      return internalServerError(e.getMessage());
-//    }
-//  }
-//
-//  /** Relations **/
-//
-//  public static Result createRelation()
-//  {
-//    if (!Utils.isValidAuthorizationHeader(request()))
-//      return badRequest();
-//    ObjectMapper mapper = new ObjectMapper();
-//    Relation r = mapper.convertValue(request().body().asJson(), Relation.class);
-//    try {
-//      Relation createdRelation = bioPortalService.createRelation(r, Utils.getApiKeyFromHeader(request()));
-//      return created((JsonNode)mapper.valueToTree(createdRelation));
-//    } catch (HTTPException e) {
-//      return Results.status(e.getStatusCode());
-//    } catch (IOException e) {
-//      return internalServerError(e.getMessage());
-//    }
-//  }
-//
-//  public static Result findRelation(String id)
-//  {
-//    if (id.isEmpty() || !Utils.isValidAuthorizationHeader(request()))
-//      return badRequest();
-//    try {
-//      Relation r = bioPortalService.findRelation(id, Utils.getApiKeyFromHeader(request()));
-//      return ok((JsonNode)new ObjectMapper().valueToTree(r));
-//    } catch (HTTPException e) {
-//      return Results.status(e.getStatusCode());
-//    } catch (IOException e) {
-//      return internalServerError(e.getMessage());
-//    }
-//  }
-//
-//  /** Value Sets **/
-//
-//  public static Result createValueSet()
-//  {
-//    if (!Utils.isValidAuthorizationHeader(request()))
-//      return badRequest();
-//    ObjectMapper mapper = new ObjectMapper();
-//    ValueSet vs = mapper.convertValue(request().body().asJson(), ValueSet.class);
-//    try {
-//      ValueSet createdVs = bioPortalService.createValueSet(vs, Utils.getApiKeyFromHeader(request()));
-//      return created((JsonNode)mapper.valueToTree(createdVs));
-//    } catch (HTTPException e) {
-//      return Results.status(e.getStatusCode());
-//    } catch (IOException e) {
-//      return internalServerError(e.getMessage());
-//    }
-//  }
-//
-//  public static Result findValueSet(String id)
-//  {
-//    if (id.isEmpty() || !Utils.isValidAuthorizationHeader(request()))
-//      return badRequest();
-//    try {
-//      ValueSet c = bioPortalService.findValueSet(id, Utils.getApiKeyFromHeader(request()));
-//      return ok((JsonNode)new ObjectMapper().valueToTree(c));
-//    } catch (HTTPException e) {
-//      return Results.status(e.getStatusCode());
-//    } catch (IOException e) {
-//      return internalServerError(e.getMessage());
-//    }
-//  }
-//
-//  public static Result findValueSetsByVsCollection(String vsCollection)
-//  {
-//    if (!Utils.isValidAuthorizationHeader(request()))
-//      return badRequest();
-//    if ((vsCollection == null) || (vsCollection.length() == 0))
-//      return badRequest();
-//    try {
-//      ValueSets valueSets = bioPortalService.
-//        findValueSetsByVsCollection(vsCollection, Utils.getApiKeyFromHeader(request()));
-//      return ok((JsonNode)new ObjectMapper().valueToTree(valueSets));
-//    } catch (HTTPException e) {
-//      return Results.status(e.getStatusCode());
-//    } catch (IOException e) {
-//      return internalServerError(e.getMessage());
-//    }
-//  }
-//
-//  public static Result findValuesByValueSet(String vsId, String vsCollection)
-//  {
-//    if (!Utils.isValidAuthorizationHeader(request()))
-//      return badRequest();
-//    if ((vsId == null) || (vsId.length() == 0) || (vsCollection == null) || (vsCollection.length() == 0)  )
-//      return badRequest();
-//
-//    try {
-//      vsId = URLEncoder.encode(vsId, "UTF-8");
-//      Values values = bioPortalService.findValuesByValueSet(vsId, vsCollection, Utils.getApiKeyFromHeader(request()));
-//      return ok((JsonNode)new ObjectMapper().valueToTree(values));
-//    } catch (HTTPException e) {
-//      return Results.status(e.getStatusCode());
-//    } catch (IOException e) {
-//      return internalServerError(e.getMessage());
-//    }
-//  }
+
+  public static Result findProvisionalClass(String id)
+  {
+    if (id.isEmpty() || !Utils.isValidAuthorizationHeader(request()))
+      return badRequest();
+    try {
+      OntologyClass c = termService.findProvisionalClass(id, Utils.getApiKeyFromHeader(request()));
+      return ok((JsonNode)new ObjectMapper().valueToTree(c));
+    } catch (HTTPException e) {
+      return Results.status(e.getStatusCode());
+    } catch (IOException e) {
+      return internalServerError(e.getMessage());
+    }
+  }
+
+  public static Result findAllProvisionalClasses(String ontology)
+  {
+    if (!Utils.isValidAuthorizationHeader(request()))
+      return badRequest();
+    if (ontology.length() == 0)
+      ontology = null;
+    try {
+      List<OntologyClass> classes = termService
+        .findAllProvisionalClasses(ontology, Utils.getApiKeyFromHeader(request()));
+      ObjectMapper mapper = new ObjectMapper();
+      // This line ensures that @class type annotations are included for each element in the list
+      ObjectWriter writer = mapper.writerFor(new TypeReference<List<OntologyClass>>(){ });
+      return ok(mapper.readTree(writer.writeValueAsString(classes)));
+    } catch (HTTPException e) {
+      return Results.status(e.getStatusCode());
+    } catch (IOException e) {
+      return internalServerError(e.getMessage());
+    }
+  }
+
+  /** Relations **/
+
+  public static Result createProvisionalRelation()
+  {
+    if (!Utils.isValidAuthorizationHeader(request()))
+      return badRequest();
+    ObjectMapper mapper = new ObjectMapper();
+    Relation r = mapper.convertValue(request().body().asJson(), Relation.class);
+    try {
+      Relation createdRelation = termService.createProvisionalRelation(r, Utils.getApiKeyFromHeader(request()));
+      return created((JsonNode)mapper.valueToTree(createdRelation));
+    } catch (HTTPException e) {
+      return Results.status(e.getStatusCode());
+    } catch (IOException e) {
+      return internalServerError(e.getMessage());
+    }
+  }
+
+  public static Result findProvisionalRelation(String id)
+  {
+    if (id.isEmpty() || !Utils.isValidAuthorizationHeader(request()))
+      return badRequest();
+    try {
+      Relation r = termService.findProvisionalRelation(id, Utils.getApiKeyFromHeader(request()));
+      return ok((JsonNode)new ObjectMapper().valueToTree(r));
+    } catch (HTTPException e) {
+      return Results.status(e.getStatusCode());
+    } catch (IOException e) {
+      return internalServerError(e.getMessage());
+    }
+  }
+
+  /** Value Sets **/
+
+  public static Result createProvisionalValueSet()
+  {
+    if (!Utils.isValidAuthorizationHeader(request()))
+      return badRequest();
+    ObjectMapper mapper = new ObjectMapper();
+    ValueSet vs = mapper.convertValue(request().body().asJson(), ValueSet.class);
+    try {
+      ValueSet createdVs = termService.createProvisionalValueSet(vs, Utils.getApiKeyFromHeader(request()));
+      return created((JsonNode)mapper.valueToTree(createdVs));
+    } catch (HTTPException e) {
+      return Results.status(e.getStatusCode());
+    } catch (IOException e) {
+      return internalServerError(e.getMessage());
+    }
+  }
+
+  public static Result findProvisionalValueSet(String id)
+  {
+    if (id.isEmpty() || !Utils.isValidAuthorizationHeader(request()))
+      return badRequest();
+    try {
+      ValueSet c = termService.findProvisionalValueSet(id, Utils.getApiKeyFromHeader(request()));
+      return ok((JsonNode)new ObjectMapper().valueToTree(c));
+    } catch (HTTPException e) {
+      return Results.status(e.getStatusCode());
+    } catch (IOException e) {
+      return internalServerError(e.getMessage());
+    }
+  }
+
+  public static Result findValueSetsByVsCollection(String vsCollection)
+  {
+    if (!Utils.isValidAuthorizationHeader(request()))
+      return badRequest();
+    if ((vsCollection == null) || (vsCollection.length() == 0))
+      return badRequest();
+    try {
+      SearchResults<ValueSet> valueSets = termService.
+        findValueSetsByVsCollection(vsCollection, Utils.getApiKeyFromHeader(request()));
+      ObjectMapper mapper = new ObjectMapper();
+      // This line ensures that @class type annotations are included for each element in the collection
+      ObjectWriter writer = mapper.writerFor(new TypeReference<SearchResults<Value>>(){ });
+      return ok(mapper.readTree(writer.writeValueAsString(valueSets)));
+    } catch (HTTPException e) {
+      return Results.status(e.getStatusCode());
+    } catch (IOException e) {
+      return internalServerError(e.getMessage());
+    }
+  }
+
+  public static Result findValuesByValueSet(String vsId, String vsCollection)
+  {
+    if (!Utils.isValidAuthorizationHeader(request()))
+      return badRequest();
+    if ((vsId == null) || (vsId.length() == 0) || (vsCollection == null) || (vsCollection.length() == 0)  )
+      return badRequest();
+
+    try {
+      vsId = URLEncoder.encode(vsId, "UTF-8");
+      SearchResults<Value> values = termService.findValuesByValueSet(vsId, vsCollection, Utils.getApiKeyFromHeader(request()));
+      ObjectMapper mapper = new ObjectMapper();
+      // This line ensures that @class type annotations are included for each element in the collection
+      ObjectWriter writer = mapper.writerFor(new TypeReference<SearchResults<Value>>(){ });
+      return ok(mapper.readTree(writer.writeValueAsString(values)));
+    } catch (HTTPException e) {
+      return Results.status(e.getStatusCode());
+    } catch (IOException e) {
+      return internalServerError(e.getMessage());
+    }
+  }
 
 }
