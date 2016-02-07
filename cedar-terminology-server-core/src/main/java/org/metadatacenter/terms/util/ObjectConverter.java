@@ -43,6 +43,18 @@ public class ObjectConverter
       vs.getDefinitions(), vs.getSynonyms(), null, relations, true, vs.getCreated());
   }
 
+  public static BpProvisionalClass toBpProvisionalClass(Value v)
+  {
+    List<BpProvisionalRelation> relations = new ArrayList<>();
+    if (v.getRelations() != null) {
+      for (Relation r : v.getRelations()) {
+        relations.add(toBpProvisionalRelation(r));
+      }
+    }
+    return new BpProvisionalClass(v.getId(), null, v.getLabel(), v.getCreator(), v.getVsCollection(),
+      v.getDefinitions(), v.getSynonyms(), v.getVsId(), relations, true, v.getCreated());
+  }
+
   public static BpProvisionalRelation toBpProvisionalRelation(Relation r)
   {
     return new BpProvisionalRelation(r.getId(), r.getSourceClassId(), r.getRelationType(), r.getTargetClassId(),
@@ -55,6 +67,7 @@ public class ObjectConverter
 
   public static OntologyClass toOntologyClass(BpProvisionalClass pc)
   {
+    boolean provisional = true;
     List<Relation> relations = new ArrayList<>();
     if (pc.getRelations() != null) {
       for (BpProvisionalRelation pr : pc.getRelations()) {
@@ -62,11 +75,19 @@ public class ObjectConverter
       }
     }
     return new OntologyClass(pc.getId(), pc.getLabel(), pc.getCreator(), pc.getOntology(), pc.getDefinition(),
-      pc.getSynonym(), pc.getSubclassOf(), relations, true, pc.getCreated());
+      pc.getSynonym(), pc.getSubclassOf(), relations, provisional, pc.getCreated());
+  }
+
+  public static OntologyClass toOntologyClass(BpClass pc)
+  {
+    boolean provisional = false;
+    return new OntologyClass(pc.getId(), pc.getPrefLabel(), null, pc.getLinks().getOntology(), pc.getDefinition(),
+      pc.getSynonym(), null, null, provisional, null);
   }
 
   public static ValueSet toValueSet(BpProvisionalClass pc)
   {
+    boolean provisional = true;
     List<Relation> relations = new ArrayList<>();
     if (pc.getRelations() != null) {
       for (BpProvisionalRelation pr : pc.getRelations()) {
@@ -74,7 +95,7 @@ public class ObjectConverter
       }
     }
     return new ValueSet(pc.getId(), pc.getLabel(), pc.getCreator(), pc.getOntology(), pc.getDefinition(),
-      pc.getSynonym(), relations, true, pc.getCreated());
+      pc.getSynonym(), relations, provisional, pc.getCreated());
   }
 
   public static Relation toRelation(BpProvisionalRelation pr)
@@ -85,14 +106,29 @@ public class ObjectConverter
 
   public static ValueSet toValueSet(BpClass c)
   {
+    boolean provisional = false;
     return new ValueSet(c.getId(), c.getPrefLabel(), null, c.getLinks().getOntology(), c.getDefinition(),
-      c.getSynonym(), null, false, null);
+      c.getSynonym(), null, provisional, null);
   }
 
   public static Value toValue(BpClass c)
   {
+    boolean provisional = false;
     return new Value(c.getId(), c.getPrefLabel(), null, null, c.getLinks().getOntology(), c.getDefinition(),
-      c.getSynonym(), null, false, null);
+      c.getSynonym(), null, provisional, null);
+  }
+
+  public static Value toValue(BpProvisionalClass pc)
+  {
+    boolean provisional = true;
+    List<Relation> relations = new ArrayList<>();
+    if (pc.getRelations() != null) {
+      for (BpProvisionalRelation pr : pc.getRelations()) {
+        relations.add(toRelation(pr));
+      }
+    }
+    return new Value(pc.getId(), pc.getLabel(), pc.getCreator(), null, pc.getOntology(), pc.getDefinition(),
+      pc.getSynonym(), relations, provisional, pc.getCreated());
   }
 
   public static SearchResults<ValueSet> toValueSetResults(BpSearchResults<BpClass> bpr)
@@ -113,6 +149,16 @@ public class ObjectConverter
     }
     return new SearchResults<>(bpr.getPage(), bpr.getPageCount(), bpr.getCollection().size(), bpr.getPrevPage(),
       bpr.getNextPage(), values);
+  }
+
+  public static SearchResults<OntologyClass> toClassResults(BpSearchResults<BpClass> bpr)
+  {
+    List<OntologyClass> classes = new ArrayList<>();
+    for (BpClass c : bpr.getCollection()) {
+      classes.add(toOntologyClass(c));
+    }
+    return new SearchResults<>(bpr.getPage(), bpr.getPageCount(), bpr.getCollection().size(), bpr.getPrevPage(),
+      bpr.getNextPage(), classes);
   }
 
 }

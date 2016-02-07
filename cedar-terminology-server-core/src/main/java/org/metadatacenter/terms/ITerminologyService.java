@@ -11,10 +11,11 @@ import java.util.List;
 
 public interface ITerminologyService
 {
-  //  SearchResults search(String q, List<String> scope, List<String> sources, int page, int pageSize, boolean
-  // displayContext,
-  //    boolean displayLinks, String apiKey) throws IOException;
-  //
+  // TODO: Adapt BioPortal to return provisional classes too
+  // TODO: Add attribute with result type on the BioPortal side
+    SearchResults<OntologyClass> search(String q, List<String> scope, List<String> sources, int page, int pageSize, boolean displayContext,
+      boolean displayLinks, String apiKey) throws IOException;
+
   //  /** TODO:
   //   * - Get all ontologies
   //   * - Get ontology details
@@ -73,8 +74,16 @@ public interface ITerminologyService
   // TODO: This call does not return provisional classes yet and the vs must be a regular class
   SearchResults<Value> findValuesByValueSet(String vsId, String vsCollection, String apiKey) throws IOException;
 
-  // TODO:
-  // - Update value set- Delete value set
+  // TODO: not supported by BioPortal yet
+  // - Update Provisional Value Set
+  // - Delete Provisional Value Set
+
+  /**
+   * Values
+   **/
+
+  Value createProvisionalValue(Value v, String apiKey) throws IOException;
+
 
   /** Value set items **/
   // TODO:

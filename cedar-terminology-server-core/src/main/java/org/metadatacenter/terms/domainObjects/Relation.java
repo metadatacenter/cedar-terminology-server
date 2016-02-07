@@ -1,8 +1,5 @@
 package org.metadatacenter.terms.domainObjects;
 
-import com.fasterxml.jackson.annotation.JsonTypeInfo;
-
-@JsonTypeInfo(use=JsonTypeInfo.Id.CLASS, include=JsonTypeInfo.As.PROPERTY, property="@class")
 public class Relation
 {
   String id;

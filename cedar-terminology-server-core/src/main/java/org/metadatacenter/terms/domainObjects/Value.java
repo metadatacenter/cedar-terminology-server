@@ -1,10 +1,7 @@
 package org.metadatacenter.terms.domainObjects;
 
-import com.fasterxml.jackson.annotation.JsonTypeInfo;
-
 import java.util.List;
 
-@JsonTypeInfo(use = JsonTypeInfo.Id.CLASS, include = JsonTypeInfo.As.PROPERTY, property = "@class")
 public class Value
 {
   private String id;
@@ -18,6 +15,7 @@ public class Value
   private boolean provisional;
   private String created;
 
+  // The default constructor is used by Jackson for deserialization
   public Value() {}
 
   public Value(String id, String label, String creator, String vsId, String vsCollection, List<String> definitions,

@@ -4,12 +4,16 @@ import org.metadatacenter.terms.bioportal.domainObjects.BpClass;
 import org.metadatacenter.terms.bioportal.domainObjects.BpProvisionalClass;
 import org.metadatacenter.terms.bioportal.domainObjects.BpProvisionalRelation;
 import org.metadatacenter.terms.bioportal.customObjects.BpSearchResults;
+import org.metadatacenter.terms.customObjects.SearchResults;
 
 import java.io.IOException;
 import java.util.List;
 
 public interface IBioPortalService
 {
+
+  BpSearchResults<BpClass> search(String q, List<String> scope, List<String> sources, int page, int pageSize, boolean displayContext,
+    boolean displayLinks, String apiKey) throws IOException;
 
   /**
    * Provisional Classes
