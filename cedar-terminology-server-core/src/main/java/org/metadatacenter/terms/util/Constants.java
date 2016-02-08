@@ -25,6 +25,7 @@ public class Constants
   public static final String BP_SEARCH_SCOPE_VALUES = "values";
 
   /** Other constants **/
+  public static final String BP_VS_COLLECTIONS_BASE_URL = BP_API_BASE + BP_ONTOLOGIES;
   // BioPortal VS collections
   public static final String[] BP_VS_COLLECTIONS = {"CEDARVS", "NLMVS"};
   // Creation of value sets is restricted to this VS collections

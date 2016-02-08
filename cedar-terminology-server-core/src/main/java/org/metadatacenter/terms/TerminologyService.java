@@ -11,6 +11,7 @@ import org.metadatacenter.terms.domainObjects.Relation;
 import org.metadatacenter.terms.domainObjects.Value;
 import org.metadatacenter.terms.domainObjects.ValueSet;
 import org.metadatacenter.terms.util.ObjectConverter;
+import org.metadatacenter.terms.util.Util;
 
 import javax.xml.ws.http.HTTPException;
 import java.io.IOException;
@@ -88,9 +89,22 @@ public class TerminologyService implements ITerminologyService
   public ValueSet createProvisionalValueSet(ValueSet vs, String apiKey) throws IOException
   {
     // Creation of value sets is restricted to the CEDARVS value set collection
-    if ((vs.getVsCollection() != null) && (Arrays.asList(BP_VS_CREATION_COLLECTIONS).contains(vs.getVsCollection()))) {
+    if (Util.validVsCollection(vs.getVsCollection(), true)) {
+      // Create value set
       BpProvisionalClass pc = bpService.createBpProvisionalClass(ObjectConverter.toBpProvisionalClass(vs), apiKey);
-      return ObjectConverter.toValueSet(pc);
+      ValueSet createdVs = ObjectConverter.toValueSet(pc);
+      // Create values
+//      if (vs.getValues() != null) {
+//        for (Value v : vs.getValues()) {
+//          v.setVsId(createdVs.getId());
+//          v.setCreator(createdVs.getCreator());
+//          v.setVsCollection(createdVs.getVsCollection());
+//          createProvisionalValue(v, apiKey);
+//        }
+//        List<Value> createdValues = findValuesByValueSet(createdVs.getId(), createdVs.getVsCollection(), apiKey).getCollection();
+//        createdVs.setValues(createdValues);
+//      }
+      return createdVs;
     } else {
       // Bad request
       throw new HTTPException(400);
@@ -106,7 +120,7 @@ public class TerminologyService implements ITerminologyService
   public SearchResults<ValueSet> findValueSetsByVsCollection(String vsCollection, String apiKey) throws IOException
   {
     // Check that vsCollection is a valid Value Set Collection
-    if ((vsCollection != null) && (Arrays.asList(BP_VS_COLLECTIONS).contains(vsCollection))) {
+    if (Util.validVsCollection(vsCollection, false)) {
       BpSearchResults<BpClass> bpResults = bpService.findValueSetsByValueSetCollection(vsCollection, apiKey);
       return ObjectConverter.toValueSetResults(bpResults);
     } else {
@@ -118,7 +132,7 @@ public class TerminologyService implements ITerminologyService
   public SearchResults<Value> findValuesByValueSet(String vsId, String vsCollection, String apiKey) throws IOException
   {
     // Check that vsCollection is a valid Value Set Collection
-    if ((vsCollection != null) && (Arrays.asList(BP_VS_COLLECTIONS).contains(vsCollection))) {
+    if (Util.validVsCollection(vsCollection, true)) {
       BpSearchResults<BpClass> bpResults = bpService.findValuesByValueSet(vsId, vsCollection, apiKey);
       return ObjectConverter.toValueResults(bpResults);
     } else {
@@ -130,7 +144,7 @@ public class TerminologyService implements ITerminologyService
   public Value createProvisionalValue(Value v, String apiKey) throws IOException
   {
     // Creation of value sets is restricted to the CEDARVS value set collection
-    if ((v.getVsId() != null) && (v.getVsCollection() != null) && (Arrays.asList(BP_VS_CREATION_COLLECTIONS).contains(v.getVsCollection()))) {
+    if ((v.getVsId() != null) && (Util.validVsCollection(v.getVsCollection(), true))) {
       BpProvisionalClass pc = bpService.createBpProvisionalClass(ObjectConverter.toBpProvisionalClass(v), apiKey);
       return ObjectConverter.toValue(pc);
     } else {
