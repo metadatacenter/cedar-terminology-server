@@ -66,6 +66,7 @@ public interface ITerminologyService
   ValueSet createProvisionalValueSet(ValueSet vs, String apiKey) throws IOException;
 
   // TODO: implement find for regular classes?
+  // TODO: this call is not checking if the class that is returned is actually a value set. Some type property is required for each class to specify its type
   ValueSet findProvisionalValueSet(String id, String apiKey) throws IOException;
 
   // TODO: does not support provisional classes yet
@@ -84,11 +85,9 @@ public interface ITerminologyService
 
   Value createProvisionalValue(Value v, String apiKey) throws IOException;
 
+  Value findProvisionalValue(String id, String apiKey) throws IOException;
 
-  /** Value set items **/
-  // TODO:
-  //  - Create a Value Set Item
-  //  - Retrieve value set item by id
+  // TODO: not supported by BioPortal yet
   //  - Update value set item
   //  - Delete value set item
 }

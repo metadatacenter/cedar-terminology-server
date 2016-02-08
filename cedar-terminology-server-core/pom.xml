@@ -49,6 +49,13 @@
             <version>${jackson.core.version}</version>
         </dependency>
 
+        <!-- Swagger annotations. They can be used by Swagger to generate the service documentation -->
+        <dependency>
+            <groupId>com.wordnik</groupId>
+            <artifactId>swagger-annotations</artifactId>
+            <version>${swagger-annotations.version}</version>
+        </dependency>
+
         <dependency>
             <groupId>edu.washington.cs.types.checker</groupId>
             <artifactId>checker-framework</artifactId>

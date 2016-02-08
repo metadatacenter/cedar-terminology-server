@@ -27,6 +27,8 @@ import play.mvc.Result;
 import play.mvc.Results;
 import utils.Utils;
 
+import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
 import javax.ws.rs.QueryParam;
 import javax.xml.ws.http.HTTPException;
 import java.io.IOException;
@@ -75,7 +77,7 @@ public class TerminologyController extends Controller
     + "The value of 'scope' overrides the list of sources specified using this parameter",
     required=false) @QueryParam("sources") String sources,
     @ApiParam(value = "Integer representing the page number. Default: 'page=1'", required = false) @QueryParam("page") int page,
-    @ApiParam(value = "Integer representing the size of the returned page. Default: 'pageSize=50'", required = false) @QueryParam("pagesize") int pageSize)
+    @ApiParam(value = "Integer representing the size of the returned page. Default: 'pageSize=50'", required = false) @QueryParam("page_size") int pageSize)
   {
     //log.info("Received BioPortal search request");
     try {
@@ -109,10 +111,11 @@ public class TerminologyController extends Controller
   /** Classes **/
 
   @ApiOperation(
-    value = "Create an ontology class",
+    value = "Create a provisional class",
     httpMethod = "POST")
   @ApiResponses(value = {
-    @ApiResponse(code = 200, message = "Created"),
+    @ApiResponse(code = 200, message = "Successful creation of a provisional class"),
+    //@ApiResponse(code = 200, message = "Successful creation of a provisional class", response = OntologyClass.class),
     @ApiResponse(code = 400, message = "Bad Request"),
     @ApiResponse(code = 401, message = "Unauthorized"),
     @ApiResponse(code = 500, message = "Internal Server Error")})
@@ -120,8 +123,7 @@ public class TerminologyController extends Controller
     @ApiImplicitParam(name = "Authorization", value="Format: apikey token={your_bioportal_apikey}. "
       + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
       required = true, dataType = "string", paramType = "header"),
-    @ApiImplicitParam(value="Class to be created", required = true, dataType = "org.metadatacenter.terminology.services.bioportal.domainObjects.OntologyClass", paramType = "body")})
-  // TODO: specify OntologyClass required parameters
+    @ApiImplicitParam(value="Class to be created", required = true, dataType = "org.metadatacenter.terms.domainObjects.OntologyClass", paramType = "body")})
   public static Result createProvisionalClass()
   {
     if (!Utils.isValidAuthorizationHeader(request()))
@@ -138,6 +140,21 @@ public class TerminologyController extends Controller
     }
   }
 
+  @ApiOperation(
+    value = "Find provisional class by id",
+    httpMethod = "GET")
+  @ApiResponses(value = {
+    @ApiResponse(code = 200, message = "Success!"),
+    @ApiResponse(code = 400, message = "Bad Request"),
+    @ApiResponse(code = 401, message = "Unauthorized"),
+    @ApiResponse(code = 404, message = "Not Found"),
+    @ApiResponse(code = 500, message = "Internal Server Error")})
+  @ApiImplicitParams(value = {
+    @ApiImplicitParam(name = "Authorization", value="Format: apikey token={your_bioportal_apikey}. "
+      + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
+      required = true, dataType = "string", paramType = "header"),
+  @ApiImplicitParam(name = "id", value="Provisional class id. Example: 93966640-ab48-0133-d0ff-005056010088",
+    required = true, dataType = "string", paramType = "path")})
   public static Result findProvisionalClass(String id)
   {
     if (id.isEmpty() || !Utils.isValidAuthorizationHeader(request()))
@@ -152,7 +169,20 @@ public class TerminologyController extends Controller
     }
   }
 
-  public static Result findAllProvisionalClasses(String ontology)
+  @ApiOperation(
+    value = "Find all provisional classes (including provisional value sets and provisional values)",
+    //notes = "This call is not paged",
+    httpMethod = "GET")
+  @ApiResponses(value = {
+    @ApiResponse(code = 200, message = "Success!"),
+    @ApiResponse(code = 400, message = "Bad Request"),
+    @ApiResponse(code = 401, message = "Unauthorized"),
+    @ApiResponse(code = 500, message = "Internal Server Error")})
+  @ApiImplicitParams(value = {
+    @ApiImplicitParam(name = "Authorization", value="Format: apikey token={your_bioportal_apikey}. "
+      + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
+      required = true, dataType = "string", paramType = "header")})
+  public static Result findAllProvisionalClasses(@ApiParam(value = "Ontology", required = false) @QueryParam("ontology") String ontology)
   {
     if (!Utils.isValidAuthorizationHeader(request()))
       return badRequest();
@@ -172,8 +202,41 @@ public class TerminologyController extends Controller
     }
   }
 
+  @ApiOperation(
+    value = "Update provisional class",
+    notes = "TO BE IMPLEMENTED",
+    httpMethod = "PUT")
+  public static Result updateProvisionalClass()
+  {
+    //TODO:
+    return null;
+  }
+
+  @ApiOperation(
+    value = "Delete provisional class",
+    notes = "TO BE IMPLEMENTED",
+    httpMethod = "DELETE")
+  public static Result deleteProvisionalClass(String id)
+  {
+    //TODO
+    return null;
+  }
+
   /** Relations **/
 
+  @ApiOperation(
+    value = "Create a provisional relation",
+    httpMethod = "POST")
+  @ApiResponses(value = {
+    @ApiResponse(code = 200, message = "Successful creation of a provisional relation"),
+    @ApiResponse(code = 400, message = "Bad Request"),
+    @ApiResponse(code = 401, message = "Unauthorized"),
+    @ApiResponse(code = 500, message = "Internal Server Error")})
+  @ApiImplicitParams(value = {
+    @ApiImplicitParam(name = "Authorization", value="Format: apikey token={your_bioportal_apikey}. "
+      + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
+      required = true, dataType = "string", paramType = "header"),
+    @ApiImplicitParam(value="Relation to be created", required = true, dataType = "org.metadatacenter.terms.domainObjects.Relation", paramType = "body")})
   public static Result createProvisionalRelation()
   {
     if (!Utils.isValidAuthorizationHeader(request()))
@@ -190,6 +253,21 @@ public class TerminologyController extends Controller
     }
   }
 
+  @ApiOperation(
+    value = "Find provisional relation by id",
+    httpMethod = "GET")
+  @ApiResponses(value = {
+    @ApiResponse(code = 200, message = "Success!"),
+    @ApiResponse(code = 400, message = "Bad Request"),
+    @ApiResponse(code = 401, message = "Unauthorized"),
+    @ApiResponse(code = 404, message = "Not Found"),
+    @ApiResponse(code = 500, message = "Internal Server Error")})
+  @ApiImplicitParams(value = {
+    @ApiImplicitParam(name = "Authorization", value="Format: apikey token={your_bioportal_apikey}. "
+      + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
+      required = true, dataType = "string", paramType = "header"),
+    @ApiImplicitParam(name = "id", value="Provisional relation id. Example: 720f50f0-ae6f-0133-848f-005056010073",
+      required = true, dataType = "string", paramType = "path")})
   public static Result findProvisionalRelation(String id)
   {
     if (id.isEmpty() || !Utils.isValidAuthorizationHeader(request()))
@@ -204,8 +282,41 @@ public class TerminologyController extends Controller
     }
   }
 
+  @ApiOperation(
+    value = "Update provisional relation",
+    notes = "TO BE IMPLEMENTED",
+    httpMethod = "PUT")
+  public static Result updateProvisionalRelation()
+  {
+    //TODO:
+    return null;
+  }
+
+  @ApiOperation(
+    value = "Delete provisional relation",
+    notes = "TO BE IMPLEMENTED",
+    httpMethod = "DELETE")
+  public static Result deleteProvisionalRelation(String id)
+  {
+    //TODO
+    return null;
+  }
+
   /** Value Sets **/
 
+  @ApiOperation(
+    value = "Create a provisional value set",
+    httpMethod = "POST")
+  @ApiResponses(value = {
+    @ApiResponse(code = 200, message = "Successful creation of a provisional value set"),
+    @ApiResponse(code = 400, message = "Bad Request"),
+    @ApiResponse(code = 401, message = "Unauthorized"),
+    @ApiResponse(code = 500, message = "Internal Server Error")})
+  @ApiImplicitParams(value = {
+    @ApiImplicitParam(name = "Authorization", value="Format: apikey token={your_bioportal_apikey}. "
+      + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
+      required = true, dataType = "string", paramType = "header"),
+    @ApiImplicitParam(value="Value set to be created", required = true, dataType = "org.metadatacenter.terms.domainObjects.ValueSet", paramType = "body")})
   public static Result createProvisionalValueSet()
   {
     if (!Utils.isValidAuthorizationHeader(request()))
@@ -222,6 +333,21 @@ public class TerminologyController extends Controller
     }
   }
 
+  @ApiOperation(
+    value = "Find provisional value set by id",
+    httpMethod = "GET")
+  @ApiResponses(value = {
+    @ApiResponse(code = 200, message = "Success!"),
+    @ApiResponse(code = 400, message = "Bad Request"),
+    @ApiResponse(code = 401, message = "Unauthorized"),
+    @ApiResponse(code = 404, message = "Not Found"),
+    @ApiResponse(code = 500, message = "Internal Server Error")})
+  @ApiImplicitParams(value = {
+    @ApiImplicitParam(name = "Authorization", value="Format: apikey token={your_bioportal_apikey}. "
+      + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
+      required = true, dataType = "string", paramType = "header"),
+    @ApiImplicitParam(name = "id", value="Provisional value set id. Example: af033050-b04b-0133-981f-005056010074",
+      required = true, dataType = "string", paramType = "path")})
   public static Result findProvisionalValueSet(String id)
   {
     if (id.isEmpty() || !Utils.isValidAuthorizationHeader(request()))
@@ -236,6 +362,21 @@ public class TerminologyController extends Controller
     }
   }
 
+  @ApiOperation(
+    value = "Find all value sets in a value set collection",
+    // notes = ...
+    httpMethod = "GET")
+  @ApiResponses(value = {
+    @ApiResponse(code = 200, message = "Success!"),
+    @ApiResponse(code = 400, message = "Bad Request"),
+    @ApiResponse(code = 401, message = "Unauthorized"),
+    @ApiResponse(code = 500, message = "Internal Server Error")})
+  @ApiImplicitParams(value = {
+    @ApiImplicitParam(name = "Authorization", value="Format: apikey token={your_bioportal_apikey}. "
+      + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
+      required = true, dataType = "string", paramType = "header"),
+    @ApiImplicitParam(name = "vs_collection", value="Value set collection. Example: CEDARVS",
+      required = true, dataType = "string", paramType = "path")})
   public static Result findValueSetsByVsCollection(String vsCollection)
   {
     if (!Utils.isValidAuthorizationHeader(request()))
@@ -256,15 +397,53 @@ public class TerminologyController extends Controller
     }
   }
 
+  @ApiOperation(
+    value = "Update provisional value set",
+    notes = "TO BE IMPLEMENTED",
+    httpMethod = "PUT")
+  public static Result updateProvisionalValueSet()
+  {
+    //TODO:
+    return null;
+  }
+
+  @ApiOperation(
+    value = "Delete provisional value set",
+    notes = "TO BE IMPLEMENTED",
+    httpMethod = "DELETE")
+  public static Result deleteProvisionalValueSet(String id)
+  {
+    //TODO
+    return null;
+  }
+
+
+  @ApiOperation(
+    value = "Find all values in a value set",
+    // notes = ...
+    httpMethod = "GET")
+  @ApiResponses(value = {
+    @ApiResponse(code = 200, message = "Success!"),
+    @ApiResponse(code = 400, message = "Bad Request"),
+    @ApiResponse(code = 401, message = "Unauthorized"),
+    @ApiResponse(code = 404, message = "Not Found"),
+    @ApiResponse(code = 500, message = "Internal Server Error")})
+  @ApiImplicitParams(value = {
+    @ApiImplicitParam(name = "Authorization", value="Format: apikey token={your_bioportal_apikey}. "
+      + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
+      required = true, dataType = "string", paramType = "header"),
+    @ApiImplicitParam(name = "vs", value="Value set identifier",
+      required = true, dataType = "string", paramType = "path"),
+    @ApiImplicitParam(name = "vs_collection", value="Value set collection. Example: CEDARVS",
+      required = true, dataType = "string", paramType = "path")})
   public static Result findValuesByValueSet(String vsId, String vsCollection)
   {
     if (!Utils.isValidAuthorizationHeader(request()))
       return badRequest();
     if ((vsId == null) || (vsId.length() == 0) || (vsCollection == null) || (vsCollection.length() == 0)  )
       return badRequest();
-
     try {
-      vsId = URLEncoder.encode(vsId, "UTF-8");
+      vsId = Utils.encodeIfNeeded(vsId);
       SearchResults<Value> values = termService.findValuesByValueSet(vsId, vsCollection, Utils.getApiKeyFromHeader(request()));
       ObjectMapper mapper = new ObjectMapper();
       // This line ensures that @class type annotations are included for each element in the collection
@@ -278,6 +457,20 @@ public class TerminologyController extends Controller
   }
 
   /** Values **/
+
+  @ApiOperation(
+    value = "Create a provisional value",
+    httpMethod = "POST")
+  @ApiResponses(value = {
+    @ApiResponse(code = 200, message = "Successful creation of a provisional value"),
+    @ApiResponse(code = 400, message = "Bad Request"),
+    @ApiResponse(code = 401, message = "Unauthorized"),
+    @ApiResponse(code = 500, message = "Internal Server Error")})
+  @ApiImplicitParams(value = {
+    @ApiImplicitParam(name = "Authorization", value="Format: apikey token={your_bioportal_apikey}. "
+      + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
+      required = true, dataType = "string", paramType = "header"),
+    @ApiImplicitParam(value="Value to be created", required = true, dataType = "org.metadatacenter.terms.domainObjects.Value", paramType = "body")})
   public static Result createProvisionalValue()
   {
     if (!Utils.isValidAuthorizationHeader(request()))
@@ -294,5 +487,52 @@ public class TerminologyController extends Controller
     }
   }
 
+  @ApiOperation(
+    value = "Find provisional value by id",
+    httpMethod = "GET")
+  @ApiResponses(value = {
+    @ApiResponse(code = 200, message = "Success!"),
+    @ApiResponse(code = 400, message = "Bad Request"),
+    @ApiResponse(code = 401, message = "Unauthorized"),
+    @ApiResponse(code = 500, message = "Internal Server Error")})
+  @ApiImplicitParams(value = {
+    @ApiImplicitParam(name = "Authorization", value="Format: apikey token={your_bioportal_apikey}. "
+      + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
+      required = true, dataType = "string", paramType = "header"),
+    @ApiImplicitParam(name = "id", value="Provisional value id. Example: 42f22880-b04b-0133-848f-005056010073",
+      required = true, dataType = "string", paramType = "path")})
+  public static Result findProvisionalValue(String id)
+  {
+    if (id.isEmpty() || !Utils.isValidAuthorizationHeader(request()))
+      return badRequest();
+    try {
+      Value c = termService.findProvisionalValue(id, Utils.getApiKeyFromHeader(request()));
+      return ok((JsonNode)new ObjectMapper().valueToTree(c));
+    } catch (HTTPException e) {
+      return Results.status(e.getStatusCode());
+    } catch (IOException e) {
+      return internalServerError(e.getMessage());
+    }
+  }
+
+  @ApiOperation(
+    value = "Update provisional value",
+    notes = "TO BE IMPLEMENTED",
+    httpMethod = "PUT")
+  public static Result updateProvisionalValue()
+  {
+    //TODO:
+    return null;
+  }
+
+  @ApiOperation(
+    value = "Delete provisional value",
+    notes = "TO BE IMPLEMENTED",
+    httpMethod = "DELETE")
+  public static Result deleteProvisionalValue(String id)
+  {
+    //TODO
+    return null;
+  }
 
 }

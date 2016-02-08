@@ -1,18 +1,33 @@
 package org.metadatacenter.terms.domainObjects;
 
+
+import com.wordnik.swagger.annotations.ApiModel;
+import com.wordnik.swagger.annotations.ApiModelProperty;
+
 import java.util.List;
 
+@ApiModel
 public class OntologyClass
 {
+  @ApiModelProperty(hidden = true)
   private String id;
+  @ApiModelProperty(required = true)
   private String label;
+  @ApiModelProperty(required = true)
   private String creator;
+  @ApiModelProperty(required = true)
   private String ontology;
+  @ApiModelProperty(required = false)
   private List<String> definitions;
+  @ApiModelProperty(required = false)
   private List<String> synonyms;
+  @ApiModelProperty(required = false)
   private String subclassOf;
+  @ApiModelProperty(required = false)
   private List<Relation> relations;
+  @ApiModelProperty(hidden = true)
   private boolean provisional;
+  @ApiModelProperty(hidden = true)
   private String created;
 
   // The default constructor is used by Jackson for deserialization

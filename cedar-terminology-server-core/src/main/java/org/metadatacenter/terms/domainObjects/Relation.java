@@ -1,12 +1,22 @@
 package org.metadatacenter.terms.domainObjects;
 
+import com.wordnik.swagger.annotations.ApiModel;
+import com.wordnik.swagger.annotations.ApiModelProperty;
+
+@ApiModel
 public class Relation
 {
+  @ApiModelProperty(hidden = true)
   String id;
+  @ApiModelProperty(required = true)
   private String sourceClassId;
+  @ApiModelProperty(required = true)
   private String relationType;
+  @ApiModelProperty(required = true)
   private String targetClassId;
+  @ApiModelProperty(required = true)
   private String targetClassOntology;
+  @ApiModelProperty(hidden = true)
   private String created;
 
   // The default constructor is used by Jackson for deserialization

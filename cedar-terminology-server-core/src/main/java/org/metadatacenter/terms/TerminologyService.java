@@ -138,4 +138,10 @@ public class TerminologyService implements ITerminologyService
       throw new HTTPException(400);
     }
   }
+
+  public Value findProvisionalValue(String id, String apiKey) throws IOException
+  {
+    BpProvisionalClass pc = bpService.findBpProvisionalClassById(id, apiKey);
+    return ObjectConverter.toValue(pc);
+  }
 }

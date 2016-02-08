@@ -67,7 +67,7 @@ public class BioPortalService implements IBioPortalService
     boolean displayContext, boolean displayLinks, String apiKey) throws IOException
   {
     // Encode query
-    q = URLEncoder.encode(q, "UTF-8");
+    q = Util.encodeIfNeeded(q);
     /** Build url **/
     String url = "";
     // Search for ontology classes, value sets and values
