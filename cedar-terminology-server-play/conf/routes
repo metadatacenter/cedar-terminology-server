@@ -26,14 +26,14 @@ PUT            /bioportal/relations/provisional                                 
 DELETE         /bioportal/relations/provisional/:id                                  controllers.TerminologyController.deleteProvisionalRelation(id: String)
 
 ### Provisional Value Sets ###
-POST           /bioportal/value_sets/provisional                                     controllers.TerminologyController.createProvisionalValueSet()
-GET            /bioportal/value_sets/provisional/:id                                 controllers.TerminologyController.findProvisionalValueSet(id: String)
-PUT            /bioportal/value_sets/provisional                                     controllers.TerminologyController.updateProvisionalValueSet()
-DELETE         /bioportal/value_sets/provisional/:id                                 controllers.TerminologyController.deleteProvisionalValueSet(id: String)
+POST           /bioportal/value-sets/provisional                                     controllers.TerminologyController.createProvisionalValueSet()
+GET            /bioportal/value-sets/provisional/:id                                 controllers.TerminologyController.findProvisionalValueSet(id: String)
+PUT            /bioportal/value-sets/provisional                                     controllers.TerminologyController.updateProvisionalValueSet()
+DELETE         /bioportal/value-sets/provisional/:id                                 controllers.TerminologyController.deleteProvisionalValueSet(id: String)
 
 ### Value Sets ###
-GET            /bioportal/vs_collections/:vs_collection/value_sets                   controllers.TerminologyController.findValueSetsByVsCollection(vs_collection : String)
-GET            /bioportal/vs_collections/:vs_collection/value_sets/:vs/values        controllers.TerminologyController.findValuesByValueSet(vs: String, vs_collection: String)
+GET            /bioportal/vs-collections/:vs_collection/value-sets                   controllers.TerminologyController.findValueSetsByVsCollection(vs_collection : String)
+GET            /bioportal/vs-collections/:vs_collection/value-sets/:vs/values        controllers.TerminologyController.findValuesByValueSet(vs: String, vs_collection: String)
 
 ### Provisional Values ###
 POST           /bioportal/values/provisional                                         controllers.TerminologyController.createProvisionalValue()
