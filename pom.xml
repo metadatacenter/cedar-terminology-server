@@ -36,6 +36,7 @@
     <swagger-ui.version>2.1.8-M1</swagger-ui.version>
     <swagger-annotations.version>1.5.3-M1</swagger-annotations.version>
 
+    <maven-compiler-plugin.version>3.5.1</maven-compiler-plugin.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
   </properties>
