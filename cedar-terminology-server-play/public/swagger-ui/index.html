@@ -47,6 +47,12 @@
         // url: url,
         // Customization to directly open our documentation
         url: "/api-docs",
+        // disable validator
+        validatorUrl : null,
+        docExpansion: 'list',
+        apisSorter: 'alpha',
+        operationsSorter: 'method',
+        jsonEditor: true,
         dom_id: "swagger-ui-container",
         supportedSubmitMethods: ['get', 'post', 'put', 'delete', 'patch'],
         onComplete: function(swaggerApi, swaggerUi){
