@@ -67,6 +67,10 @@ public class TerminologyService implements ITerminologyService
     return classes;
   }
 
+  public void updateProvisionalClass(OntologyClass c, String apiKey) throws IOException {
+    bpService.updateProvisionalClass(ObjectConverter.toBpProvisionalClass(c), apiKey);
+  }
+
   /** Relations **/
 
   public Relation createProvisionalRelation(Relation r, String apiKey) throws IOException

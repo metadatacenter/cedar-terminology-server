@@ -203,13 +203,37 @@ public class TerminologyController extends Controller
   }
 
   @ApiOperation(
-    value = "Update provisional class",
-    notes = "TO BE IMPLEMENTED",
-    httpMethod = "PUT")
-  public static Result updateProvisionalClass()
+      value = "Update a provisional class",
+      httpMethod = "PATCH")
+  @ApiResponses(value = {
+      @ApiResponse(code = 204, message = "Success! (No Content)"),
+      @ApiResponse(code = 400, message = "Bad Request"),
+      @ApiResponse(code = 401, message = "Unauthorized"),
+      @ApiResponse(code = 404, message = "Not Found"),
+      @ApiResponse(code = 500, message = "Internal Server Error")})
+  @ApiImplicitParams(value = {
+      @ApiImplicitParam(name = "Authorization", value = "Format: apikey token={your_bioportal_apikey}. "
+          + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
+          required = true, dataType = "string", paramType = "header"),
+      @ApiImplicitParam(name = "id", value = "Provisional class id. Example: 720f50f0-ae6f-0133-848f-005056010073",
+          required = true, dataType = "string", paramType = "path"),
+      @ApiImplicitParam(value = "Updated information for the class", required = true, dataType = "org.metadatacenter.terms" +
+          ".domainObjects.OntologyClass", paramType = "body")})
+  public static Result updateProvisionalClass(String id)
   {
-    //TODO:
-    return null;
+    if (id.isEmpty() || !Utils.isValidAuthorizationHeader(request()))
+      return badRequest();
+    ObjectMapper mapper = new ObjectMapper();
+    OntologyClass c = mapper.convertValue(request().body().asJson(), OntologyClass.class);
+    c.setId(id);
+    try {
+      termService.updateProvisionalClass(c, Utils.getApiKeyFromHeader(request()));
+    } catch (HTTPException e) {
+      return Results.status(e.getStatusCode());
+    } catch (IOException e) {
+      return internalServerError(e.getMessage());
+    }
+    return internalServerError();
   }
 
   @ApiOperation(

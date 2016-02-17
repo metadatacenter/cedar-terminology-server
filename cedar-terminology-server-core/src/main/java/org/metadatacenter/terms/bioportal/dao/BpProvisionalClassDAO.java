@@ -88,4 +88,18 @@ public class BpProvisionalClassDAO
     }
   }
 
+  public void update(BpProvisionalClass c, String apiKey) throws IOException
+  {
+    ObjectMapper mapper = new ObjectMapper();
+    // Send request to the BioPortal API
+    HttpResponse response = Request.Patch(Constants.BP_PROVISIONAL_CLASSES_BASE_URL + Util.getShortIdentifier(c.getId()))
+        .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
+            connectTimeout(connectTimeout).socketTimeout(socketTimeout)
+        .bodyString(mapper.writeValueAsString(c), ContentType.APPLICATION_JSON).execute().returnResponse();
+
+    int statusCode = response.getStatusLine().getStatusCode();
+    throw new HTTPException(statusCode);
+
+  }
+
 }

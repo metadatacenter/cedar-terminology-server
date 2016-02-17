@@ -74,14 +74,14 @@ public class ObjectConverter
         relations.add(toRelation(pr));
       }
     }
-    return new OntologyClass(pc.getId(), pc.getLabel(), pc.getCreator(), pc.getOntology(), pc.getDefinition(),
+    return new OntologyClass(Util.getShortIdentifier(pc.getId()), pc.getId(),  pc.getLabel(), pc.getCreator(), pc.getOntology(), pc.getDefinition(),
       pc.getSynonym(), pc.getSubclassOf(), relations, provisional, pc.getCreated());
   }
 
   public static OntologyClass toOntologyClass(BpClass pc)
   {
     boolean provisional = false;
-    return new OntologyClass(pc.getId(), pc.getPrefLabel(), null, pc.getLinks().getOntology(), pc.getDefinition(),
+    return new OntologyClass(Util.getShortIdentifier(pc.getId()), pc.getId(),  pc.getPrefLabel(), null, pc.getLinks().getOntology(), pc.getDefinition(),
       pc.getSynonym(), null, null, provisional, null);
   }
 
@@ -94,27 +94,27 @@ public class ObjectConverter
         relations.add(toRelation(pr));
       }
     }
-    return new ValueSet(pc.getId(), pc.getLabel(), pc.getCreator(), pc.getOntology(), pc.getDefinition(),
+    return new ValueSet(Util.getShortIdentifier(pc.getId()), pc.getId(), pc.getLabel(), pc.getCreator(), pc.getOntology(), pc.getDefinition(),
       pc.getSynonym(), relations, provisional, pc.getCreated());
   }
 
   public static Relation toRelation(BpProvisionalRelation pr)
   {
-    return new Relation(pr.getId(), pr.getSource(), pr.getRelationType(), pr.getTargetClassId(),
+    return new Relation(Util.getShortIdentifier(pr.getId()), pr.getId(), pr.getSource(), pr.getRelationType(), pr.getTargetClassId(),
       pr.getTargetClassOntology(), pr.getCreated());
   }
 
   public static ValueSet toValueSet(BpClass c)
   {
     boolean provisional = false;
-    return new ValueSet(c.getId(), c.getPrefLabel(), null, c.getLinks().getOntology(), c.getDefinition(),
+    return new ValueSet(Util.getShortIdentifier(c.getId()), c.getId(), c.getPrefLabel(), null, c.getLinks().getOntology(), c.getDefinition(),
       c.getSynonym(), null, provisional, null);
   }
 
   public static Value toValue(BpClass c)
   {
     boolean provisional = false;
-    return new Value(c.getId(), c.getPrefLabel(), null, null, c.getLinks().getOntology(), c.getDefinition(),
+    return new Value(Util.getShortIdentifier(c.getId()), c.getId(), c.getPrefLabel(), null, null, c.getLinks().getOntology(), c.getDefinition(),
       c.getSynonym(), null, provisional, null);
   }
 
@@ -127,7 +127,7 @@ public class ObjectConverter
         relations.add(toRelation(pr));
       }
     }
-    return new Value(pc.getId(), pc.getLabel(), pc.getCreator(), null, pc.getOntology(), pc.getDefinition(),
+    return new Value(Util.getShortIdentifier(pc.getId()), pc.getId(), pc.getLabel(), pc.getCreator(), null, pc.getOntology(), pc.getDefinition(),
       pc.getSynonym(), relations, provisional, pc.getCreated());
   }
 

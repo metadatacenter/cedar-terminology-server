@@ -70,14 +70,13 @@ public class Util
    * .org/provisional_classes/a909bab0-b0d1-0133-981f-005056010074". If the id is expressed in long format, the
    * method returns the short version of it.
    */
-  public static String getShortIdentifier(String id)
-  {
-    if (isUrl(id)){
-     return  id.substring(id.lastIndexOf("/") + 1, id.length());
+  public static String getShortIdentifier(String id) {
+    if (isUrl(id)) {
+      if (id.contains("http://data.bioontology.org/provisional")) {
+        return id.substring(id.lastIndexOf("/") + 1, id.length());
+      }
     }
-    else {
-      return id;
-    }
+    return id;
   }
 
 }

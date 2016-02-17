@@ -25,6 +25,10 @@ public interface IBioPortalService
 
   List<BpProvisionalClass> findAllProvisionalClasses(String ontology, String apiKey) throws IOException;
 
+  void updateProvisionalClass(BpProvisionalClass c, String apiKey) throws IOException;
+
+  //void deleteProvisionalClass(BpProvisionalClass c, String apiKey) throws IOException;
+
   /**
    * Provisional Relations
    **/

@@ -43,7 +43,7 @@ public interface ITerminologyService
   List<OntologyClass> findAllProvisionalClasses(String ontology, String apiKey) throws IOException;
 
   // TODO: This call is pending (to be released by the BioPortal team first)
-  //OntologyClass updateProvisionalClass(OntologyClass c, String apiKey) throws IOException;
+  void updateProvisionalClass(OntologyClass c, String apiKey) throws IOException;
 
   // TODO: This call is pending (to be released by the BioPortal team first)
   //void deleteProvisionalClass(String classId, String apiKey) throws IOException;

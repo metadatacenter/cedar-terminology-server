@@ -150,6 +150,10 @@ public class BioPortalService implements IBioPortalService
     return bpProvClassDAO.findAll(ontology, apiKey);
   }
 
+  public void updateProvisionalClass(BpProvisionalClass c, String apiKey) throws IOException {
+    bpProvClassDAO.update(c, apiKey);
+  }
+
   public BpProvisionalRelation createBpProvisionalRelation(BpProvisionalRelation pr, String apiKey) throws IOException
   {
     return bpProvRelationDAO.create(pr, apiKey);

@@ -16,7 +16,7 @@ GET            /bioportal/search                                                
 POST           /bioportal/classes/provisional                                        controllers.TerminologyController.createProvisionalClass()
 GET            /bioportal/classes/provisional/:id                                    controllers.TerminologyController.findProvisionalClass(id: String)
 GET            /bioportal/classes/provisional                                        controllers.TerminologyController.findAllProvisionalClasses(ontology: String ?= "")
-PUT            /bioportal/classes/provisional                                        controllers.TerminologyController.updateProvisionalClass()
+PATCH          /bioportal/classes/provisional/:id                                    controllers.TerminologyController.updateProvisionalClass(id: String)
 DELETE         /bioportal/classes/provisional/:id                                    controllers.TerminologyController.deleteProvisionalClass(id: String)
 
 ### Provisional Relations ###
