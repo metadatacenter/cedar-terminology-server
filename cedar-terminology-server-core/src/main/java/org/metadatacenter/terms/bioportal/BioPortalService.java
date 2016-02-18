@@ -154,6 +154,10 @@ public class BioPortalService implements IBioPortalService
     bpProvClassDAO.update(c, apiKey);
   }
 
+  public void deleteProvisionalClass(String id, String apiKey) throws IOException {
+    bpProvClassDAO.delete(id, apiKey);
+  }
+
   public BpProvisionalRelation createBpProvisionalRelation(BpProvisionalRelation pr, String apiKey) throws IOException
   {
     return bpProvRelationDAO.create(pr, apiKey);

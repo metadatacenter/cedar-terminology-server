@@ -99,7 +99,17 @@ public class BpProvisionalClassDAO
 
     int statusCode = response.getStatusLine().getStatusCode();
     throw new HTTPException(statusCode);
+  }
 
+  public void delete(String id, String apiKey) throws IOException
+  {
+    // Send request to the BioPortal API
+    HttpResponse response = Request.Delete(Constants.BP_PROVISIONAL_CLASSES_BASE_URL + id)
+        .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
+            connectTimeout(connectTimeout).socketTimeout(socketTimeout).execute().returnResponse();
+
+    int statusCode = response.getStatusLine().getStatusCode();
+    throw new HTTPException(statusCode);
   }
 
 }

@@ -1,19 +1,15 @@
 import com.fasterxml.jackson.databind.JsonNode;
 import org.junit.*;
-import org.metadatacenter.terms.TerminologyService;
 import play.Configuration;
 import play.Play;
 import play.libs.Json;
 import play.libs.ws.WS;
 import play.libs.ws.WSResponse;
 
-import java.io.UnsupportedEncodingException;
-import java.net.URLEncoder;
-
-import static play.mvc.Http.HeaderNames.SERVER;
-import static play.mvc.Http.Status.OK;
+import static play.mvc.Http.Status.*;
 import static play.test.Helpers.running;
 import static play.test.Helpers.testServer;
+import static utils.Constants.*;
 
 /**
  * Integration tests. They are done by starting a test server that makes it possible to test the real HTTP stack.
@@ -21,9 +17,11 @@ import static play.test.Helpers.testServer;
 public class TerminologyServerHttpTest {
 
   private static final int TEST_SERVER_PORT = 3333;
-  private static final String SERVER_URL = "http://localhost:" + TEST_SERVER_PORT;
-  private static final String SERVER_URL_BIOPORTAL = SERVER_URL + "/bioportal/";
-  private static final int TIMEOUT_MS = 10000;
+  private static final String SERVER_URL = "http://localhost:" + TEST_SERVER_PORT + "/";
+  private static final String SERVER_URL_BIOPORTAL = SERVER_URL + BP_ENDPOINT;
+  private static final int TIMEOUT_MS = 30000;
+
+  private static JsonNode class1;
 
   private static String bioportalApikey;
 
@@ -48,13 +46,10 @@ public class TerminologyServerHttpTest {
    */
   @Before
   public void setUp() {
-//    templateElement1 = Json.newObject().
-//        put("@id", "http://metadatacenter.org/template-elements/682c8141-9a61-4899-9d21-7083e861b0bf").
-//        put("name", "template element 1 name").put("value", "template element 1 value");
-//    templateElement2 = Json.newObject().
-//        put("@id", "http://metadatacenter.org/template-elements/1dd58530-fdba-4c06-8d31-539b18296d8b").
-//        put("name", "template element 2 name").put("value", "template element 2 value");
-//
+    class1 = Json.newObject().
+        put("label", "class1_test").
+        put("creator", "cedar").
+        put("ontology", "CEDARVS");
 //    running(testServer(TEST_SERVER_PORT), new Runnable() {
 //      public void run() {
 //        deleteAllTemplateElements();
@@ -76,12 +71,16 @@ public class TerminologyServerHttpTest {
 //    });
   }
 
+  /**
+   * Search tests
+   */
+
   @Test
    public void searchAllTest() {
     running(testServer(TEST_SERVER_PORT), new Runnable() {
       public void run() {
         Configuration config = Play.application().configuration();
-        String url = SERVER_URL_BIOPORTAL + "search";
+        String url = SERVER_URL_BIOPORTAL + BP_SEARCH;
         // Query parameters
         String q = "white blood cell";
         // Authorization header
@@ -101,12 +100,12 @@ public class TerminologyServerHttpTest {
     });
   }
 
-  @Test
+//  @Test
   public void searchClassesTest() {
     running(testServer(TEST_SERVER_PORT), new Runnable() {
       public void run() {
         Configuration config = Play.application().configuration();
-        String url = SERVER_URL_BIOPORTAL + "search";
+        String url = SERVER_URL_BIOPORTAL + BP_SEARCH;
         // Query parameters
         String q = "white blood cell";
         String scope = "classes";
@@ -127,12 +126,12 @@ public class TerminologyServerHttpTest {
     });
   }
 
-  @Test
+//  @Test
   public void searchValueSetsTest() {
     running(testServer(TEST_SERVER_PORT), new Runnable() {
       public void run() {
         Configuration config = Play.application().configuration();
-        String url = SERVER_URL_BIOPORTAL + "search";
+        String url = SERVER_URL_BIOPORTAL + BP_SEARCH;
         // Query parameters
         String q = "Amblyopia";
         String scope = "value_sets";
@@ -153,12 +152,12 @@ public class TerminologyServerHttpTest {
     });
   }
 
-  @Test
+//  @Test
   public void searchValuesTest() {
     running(testServer(TEST_SERVER_PORT), new Runnable() {
       public void run() {
         Configuration config = Play.application().configuration();
-        String url = SERVER_URL_BIOPORTAL + "search";
+        String url = SERVER_URL_BIOPORTAL + BP_SEARCH;
         // Query parameters
         String q = "inclusion";
         String scope = "values";
@@ -178,6 +177,70 @@ public class TerminologyServerHttpTest {
       }
     });
   }
+
+  /** Classes **/
+  @Test
+  public void createProvisionalClass() {
+    running(testServer(TEST_SERVER_PORT), new Runnable() {
+      public void run() {
+        Configuration config = Play.application().configuration();
+        String url = SERVER_URL_BIOPORTAL + BP_PROVISIONAL_CLASSES;
+        // Authorization header
+        String authHeader = "apikey token=" + config.getString("bioportal.apikey.test");
+        // Service invocation - Create
+        WSResponse wsResponse = WS.url(url).setHeader("Authorization", authHeader).setContentType("application/json").post(class1).get(TIMEOUT_MS);
+        // Check HTTP response
+        Assert.assertEquals(CREATED, wsResponse.getStatus());
+        // Check Content-Type
+        Assert.assertEquals("application/json; charset=utf-8", wsResponse.getHeader("Content-Type"));
+        // Check fields
+        JsonNode expected = class1;
+        JsonNode actual = wsResponse.asJson();
+        Assert.assertNotNull(actual.get("@id"));
+        Assert.assertNotNull(actual.get("id"));
+        Assert.assertNotNull(actual.get("label"));
+        Assert.assertEquals(expected.get("label"), actual.get("label"));
+        // Delete the class that has been created
+        String classUrl = url + "/" + actual.get("id").asText();
+        WS.url(classUrl).setHeader("Authorization", authHeader).setContentType("application/json").delete().get(TIMEOUT_MS);
+      }
+    });
+  }
+
+  @Test
+  public void deleteProvisionalClass() {
+    running(testServer(TEST_SERVER_PORT), new Runnable() {
+      public void run() {
+        Configuration config = Play.application().configuration();
+        String url = SERVER_URL_BIOPORTAL + BP_PROVISIONAL_CLASSES;
+        // Authorization header
+        String authHeader = "apikey token=" + config.getString("bioportal.apikey.test");
+        // Create a provisional class
+        WSResponse wsResponse = WS.url(url).setHeader("Authorization", authHeader).setContentType("application/json").post(class1).get(TIMEOUT_MS);
+        // Check HTTP response
+        Assert.assertEquals(CREATED, wsResponse.getStatus());
+        // Delete the class that has been created
+        JsonNode response = wsResponse.asJson();
+        String classUrl = url + "/" + response.get("id").asText();
+        WS.url(classUrl).setHeader("Authorization", authHeader).setContentType("application/json").delete().get(TIMEOUT_MS);
+        // Check HTTP response
+        Assert.assertEquals(NO_CONTENT, wsResponse.getStatus());
+        // Check Content-Type
+        Assert.assertEquals("application/json; charset=utf-8", wsResponse.getHeader("Content-Type"));
+        // TODO: check that the class does not exist
+      }
+    });
+  }
+
+
+
+  /** Relations **/
+
+  /** Value Sets **/
+
+  /** Values **/
+
+
 }
 
 

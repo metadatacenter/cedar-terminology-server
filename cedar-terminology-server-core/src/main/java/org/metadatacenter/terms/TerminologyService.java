@@ -71,6 +71,10 @@ public class TerminologyService implements ITerminologyService
     bpService.updateProvisionalClass(ObjectConverter.toBpProvisionalClass(c), apiKey);
   }
 
+  public void deleteProvisionalClass(String id, String apiKey) throws IOException {
+    bpService.deleteProvisionalClass(id, apiKey);
+  }
+
   /** Relations **/
 
   public Relation createProvisionalRelation(Relation r, String apiKey) throws IOException

@@ -27,7 +27,7 @@ public interface IBioPortalService
 
   void updateProvisionalClass(BpProvisionalClass c, String apiKey) throws IOException;
 
-  //void deleteProvisionalClass(BpProvisionalClass c, String apiKey) throws IOException;
+  void deleteProvisionalClass(String id, String apiKey) throws IOException;
 
   /**
    * Provisional Relations

@@ -4,20 +4,13 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
-import com.wordnik.swagger.annotations.Api;
-import com.wordnik.swagger.annotations.ApiImplicitParam;
-import com.wordnik.swagger.annotations.ApiImplicitParams;
-import com.wordnik.swagger.annotations.ApiOperation;
-import com.wordnik.swagger.annotations.ApiParam;
-import com.wordnik.swagger.annotations.ApiResponse;
-import com.wordnik.swagger.annotations.ApiResponses;
+import com.wordnik.swagger.annotations.*;
 import org.metadatacenter.terms.TerminologyService;
+import org.metadatacenter.terms.customObjects.SearchResults;
 import org.metadatacenter.terms.domainObjects.OntologyClass;
 import org.metadatacenter.terms.domainObjects.Relation;
-import org.metadatacenter.terms.customObjects.SearchResults;
 import org.metadatacenter.terms.domainObjects.Value;
 import org.metadatacenter.terms.domainObjects.ValueSet;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import play.Configuration;
@@ -27,20 +20,14 @@ import play.mvc.Result;
 import play.mvc.Results;
 import utils.Utils;
 
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
 import javax.ws.rs.QueryParam;
 import javax.xml.ws.http.HTTPException;
 import java.io.IOException;
-import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import static org.metadatacenter.terms.util.Constants.BP_SEARCH_SCOPE_ALL;
-import static org.metadatacenter.terms.util.Constants.BP_SEARCH_SCOPE_CLASSES;
-import static org.metadatacenter.terms.util.Constants.BP_SEARCH_SCOPE_VALUES;
-import static org.metadatacenter.terms.util.Constants.BP_SEARCH_SCOPE_VALUE_SETS;
+import static org.metadatacenter.terms.util.Constants.*;
 
 @Api(value = "/bioportal", description = "BioPortal operations")
 public class TerminologyController extends Controller
@@ -237,13 +224,32 @@ public class TerminologyController extends Controller
   }
 
   @ApiOperation(
-    value = "Delete provisional class",
-    notes = "TO BE IMPLEMENTED",
-    httpMethod = "DELETE")
+      value = "Delete a provisional class",
+      httpMethod = "DELETE")
+  @ApiResponses(value = {
+      @ApiResponse(code = 204, message = "Success! (No Content)"),
+      @ApiResponse(code = 400, message = "Bad Request"),
+      @ApiResponse(code = 401, message = "Unauthorized"),
+      @ApiResponse(code = 404, message = "Not Found"),
+      @ApiResponse(code = 500, message = "Internal Server Error")})
+  @ApiImplicitParams(value = {
+      @ApiImplicitParam(name = "Authorization", value = "Format: apikey token={your_bioportal_apikey}. "
+          + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
+          required = true, dataType = "string", paramType = "header"),
+      @ApiImplicitParam(name = "id", value = "Provisional class id. Example: 720f50f0-ae6f-0133-848f-005056010073",
+          required = true, dataType = "string", paramType = "path")})
   public static Result deleteProvisionalClass(String id)
   {
-    //TODO
-    return null;
+    if (id.isEmpty() || !Utils.isValidAuthorizationHeader(request()))
+      return badRequest();
+    try {
+      termService.deleteProvisionalClass(id, Utils.getApiKeyFromHeader(request()));
+    } catch (HTTPException e) {
+      return Results.status(e.getStatusCode());
+    } catch (IOException e) {
+      return internalServerError(e.getMessage());
+    }
+    return internalServerError();
   }
 
   /** Relations **/
