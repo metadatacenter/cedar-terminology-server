@@ -19,7 +19,7 @@ public interface IBioPortalService
    * Provisional Classes
    **/
 
-  BpProvisionalClass createBpProvisionalClass(BpProvisionalClass pc, String apiKey) throws IOException;
+  BpProvisionalClass createBpProvisionalClass(BpProvisionalClass c, String apiKey) throws IOException;
 
   BpProvisionalClass findBpProvisionalClassById(String id, String apiKey) throws IOException;
 
@@ -33,9 +33,13 @@ public interface IBioPortalService
    * Provisional Relations
    **/
 
-  BpProvisionalRelation createBpProvisionalRelation(BpProvisionalRelation pr, String apiKey) throws IOException;
+  BpProvisionalRelation createBpProvisionalRelation(BpProvisionalRelation r, String apiKey) throws IOException;
 
   BpProvisionalRelation findProvisionalRelationById(String id, String apiKey) throws IOException;
+
+//  void updateProvisionalRelation(BpProvisionalRelation r, String apiKey) throws IOException;
+
+  void deleteProvisionalRelation(String id, String apiKey) throws IOException;
 
   /**
    * Classes

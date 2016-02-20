@@ -312,24 +312,67 @@ public class TerminologyController extends Controller
     }
   }
 
-  @ApiOperation(
-    value = "Update provisional relation",
-    notes = "TO BE IMPLEMENTED",
-    httpMethod = "PUT")
-  public static Result updateProvisionalRelation()
-  {
-    //TODO:
-    return null;
-  }
+//  @ApiOperation(
+//      value = "Update a provisional relation",
+//      httpMethod = "PATCH")
+//  @ApiResponses(value = {
+//      @ApiResponse(code = 204, message = "Success! (No Content)"),
+//      @ApiResponse(code = 400, message = "Bad Request"),
+//      @ApiResponse(code = 401, message = "Unauthorized"),
+//      @ApiResponse(code = 404, message = "Not Found"),
+//      @ApiResponse(code = 500, message = "Internal Server Error")})
+//  @ApiImplicitParams(value = {
+//      @ApiImplicitParam(name = "Authorization", value = "Format: apikey token={your_bioportal_apikey}. "
+//          + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
+//          required = true, dataType = "string", paramType = "header"),
+//      @ApiImplicitParam(name = "id", value = "Provisional relation id. Example: 720f50f0-ae6f-0133-848f-005056010073",
+//          required = true, dataType = "string", paramType = "path"),
+//      @ApiImplicitParam(value = "Updated information for the relation", required = true, dataType = "org.metadatacenter.terms" +
+//          ".domainObjects.Relation", paramType = "body")})
+//  public static Result updateProvisionalRelation(String id)
+//  {
+//    if (id.isEmpty() || !Utils.isValidAuthorizationHeader(request()))
+//      return badRequest();
+//    ObjectMapper mapper = new ObjectMapper();
+//    Relation r = mapper.convertValue(request().body().asJson(), Relation.class);
+//    r.setId(id);
+//    try {
+//      termService.updateProvisionalRelation(r, Utils.getApiKeyFromHeader(request()));
+//    } catch (HTTPException e) {
+//      return Results.status(e.getStatusCode());
+//    } catch (IOException e) {
+//      return internalServerError(e.getMessage());
+//    }
+//    return internalServerError();
+//  }
 
   @ApiOperation(
-    value = "Delete provisional relation",
-    notes = "TO BE IMPLEMENTED",
-    httpMethod = "DELETE")
+      value = "Delete a provisional relation",
+      httpMethod = "DELETE")
+  @ApiResponses(value = {
+      @ApiResponse(code = 204, message = "Success! (No Content)"),
+      @ApiResponse(code = 400, message = "Bad Request"),
+      @ApiResponse(code = 401, message = "Unauthorized"),
+      @ApiResponse(code = 404, message = "Not Found"),
+      @ApiResponse(code = 500, message = "Internal Server Error")})
+  @ApiImplicitParams(value = {
+      @ApiImplicitParam(name = "Authorization", value = "Format: apikey token={your_bioportal_apikey}. "
+          + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
+          required = true, dataType = "string", paramType = "header"),
+      @ApiImplicitParam(name = "id", value = "Provisional relation id. Example: 720f50f0-ae6f-0133-848f-005056010073",
+          required = true, dataType = "string", paramType = "path")})
   public static Result deleteProvisionalRelation(String id)
   {
-    //TODO
-    return null;
+    if (id.isEmpty() || !Utils.isValidAuthorizationHeader(request()))
+      return badRequest();
+    try {
+      termService.deleteProvisionalRelation(id, Utils.getApiKeyFromHeader(request()));
+    } catch (HTTPException e) {
+      return Results.status(e.getStatusCode());
+    } catch (IOException e) {
+      return internalServerError(e.getMessage());
+    }
+    return internalServerError();
   }
 
   /** Value Sets **/

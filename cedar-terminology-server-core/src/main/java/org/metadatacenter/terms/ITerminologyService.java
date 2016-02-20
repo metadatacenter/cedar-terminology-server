@@ -54,8 +54,9 @@ public interface ITerminologyService
 
   Relation findProvisionalRelation(String id, String apiKey) throws IOException;
 
-  // TODO: This call is pending (to be released by the BioPortal team first)
-  //  void deleteProvisionalRelation(String classId, String apiKey) throws IOException;
+//  void updateProvisionalRelation(Relation r, String apiKey) throws IOException;
+
+  void deleteProvisionalRelation(String classId, String apiKey) throws IOException;
 
   /**
    * Value sets

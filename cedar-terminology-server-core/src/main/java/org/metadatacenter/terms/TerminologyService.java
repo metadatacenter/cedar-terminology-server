@@ -90,6 +90,14 @@ public class TerminologyService implements ITerminologyService
     return ObjectConverter.toRelation(pr);
   }
 
+//  public void updateProvisionalRelation(Relation r, String apiKey) throws IOException {
+//    bpService.updateProvisionalRelation(ObjectConverter.toBpProvisionalRelation(r), apiKey);
+//  }
+
+  public void deleteProvisionalRelation(String classId, String apiKey) throws IOException {
+    bpService.deleteProvisionalRelation(classId, apiKey);
+  }
+
   /**
    * Value Sets
    **/

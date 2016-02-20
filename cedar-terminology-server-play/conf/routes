@@ -22,13 +22,13 @@ DELETE         /bioportal/classes/provisional/:id                               
 ### Provisional Relations ###
 POST           /bioportal/relations/provisional                                      controllers.TerminologyController.createProvisionalRelation()
 GET            /bioportal/relations/provisional/:id                                  controllers.TerminologyController.findProvisionalRelation(id: String)
-PUT            /bioportal/relations/provisional                                      controllers.TerminologyController.updateProvisionalRelation()
+#PATCH          /bioportal/relations/provisional                                      controllers.TerminologyController.updateProvisionalRelation()
 DELETE         /bioportal/relations/provisional/:id                                  controllers.TerminologyController.deleteProvisionalRelation(id: String)
 
 ### Provisional Value Sets ###
 POST           /bioportal/value-sets/provisional                                     controllers.TerminologyController.createProvisionalValueSet()
 GET            /bioportal/value-sets/provisional/:id                                 controllers.TerminologyController.findProvisionalValueSet(id: String)
-PUT            /bioportal/value-sets/provisional                                     controllers.TerminologyController.updateProvisionalValueSet()
+PATCH          /bioportal/value-sets/provisional                                     controllers.TerminologyController.updateProvisionalValueSet()
 DELETE         /bioportal/value-sets/provisional/:id                                 controllers.TerminologyController.deleteProvisionalValueSet(id: String)
 
 ### Value Sets ###
@@ -38,7 +38,7 @@ GET            /bioportal/vs-collections/:vs_collection/value-sets/:vs/values   
 ### Provisional Values ###
 POST           /bioportal/values/provisional                                         controllers.TerminologyController.createProvisionalValue()
 GET            /bioportal/values/provisional/:id                                     controllers.TerminologyController.findProvisionalValue(id: String)
-PUT            /bioportal/values/provisional                                         controllers.TerminologyController.updateProvisionalValue()
+PATCH          /bioportal/values/provisional                                         controllers.TerminologyController.updateProvisionalValue()
 DELETE         /bioportal/values/provisional/:id                                     controllers.TerminologyController.deleteProvisionalValue(id: String)
 
 

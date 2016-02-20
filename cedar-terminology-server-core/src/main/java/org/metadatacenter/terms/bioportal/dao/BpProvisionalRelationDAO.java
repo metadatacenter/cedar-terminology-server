@@ -59,4 +59,28 @@ public class BpProvisionalRelationDAO
       throw new HTTPException(statusCode);
     }
   }
+
+//  public void update(BpProvisionalRelation relation, String apiKey) throws IOException
+//  {
+//    ObjectMapper mapper = new ObjectMapper();
+//    // Send request to the BioPortal API
+//    HttpResponse response = Request.Patch(Constants.BP_PROVISIONAL_RELATIONS_BASE_URL + Util.getShortIdentifier(relation.getId()))
+//        .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
+//            connectTimeout(connectTimeout).socketTimeout(socketTimeout)
+//        .bodyString(mapper.writeValueAsString(relation), ContentType.APPLICATION_JSON).execute().returnResponse();
+//
+//    int statusCode = response.getStatusLine().getStatusCode();
+//    throw new HTTPException(statusCode);
+//  }
+
+  public void delete(String id, String apiKey) throws IOException
+  {
+    // Send request to the BioPortal API
+    HttpResponse response = Request.Delete(Constants.BP_PROVISIONAL_RELATIONS_BASE_URL + id)
+        .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
+            connectTimeout(connectTimeout).socketTimeout(socketTimeout).execute().returnResponse();
+
+    int statusCode = response.getStatusLine().getStatusCode();
+    throw new HTTPException(statusCode);
+  }
 }

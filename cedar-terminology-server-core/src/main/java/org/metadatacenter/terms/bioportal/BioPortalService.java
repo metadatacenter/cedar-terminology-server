@@ -168,6 +168,14 @@ public class BioPortalService implements IBioPortalService
     return bpProvRelationDAO.find(id, apiKey);
   }
 
+//  public void updateProvisionalRelation(BpProvisionalRelation r, String apiKey) throws IOException {
+//    bpProvRelationDAO.update(r, apiKey);
+//  }
+
+  public void deleteProvisionalRelation(String id, String apiKey) throws IOException {
+    bpProvRelationDAO.delete(id, apiKey);
+  }
+
   public BpSearchResults<BpClass> findValueSetsByValueSetCollection(String vsCollection, String apiKey)
     throws IOException
   {
