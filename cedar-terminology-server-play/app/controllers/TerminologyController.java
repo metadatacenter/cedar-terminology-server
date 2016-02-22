@@ -471,25 +471,67 @@ public class TerminologyController extends Controller
   }
 
   @ApiOperation(
-    value = "Update provisional value set",
-    notes = "TO BE IMPLEMENTED",
-    httpMethod = "PUT")
-  public static Result updateProvisionalValueSet()
+      value = "Update a provisional value set",
+      httpMethod = "PATCH")
+  @ApiResponses(value = {
+      @ApiResponse(code = 204, message = "Success! (No Content)"),
+      @ApiResponse(code = 400, message = "Bad Request"),
+      @ApiResponse(code = 401, message = "Unauthorized"),
+      @ApiResponse(code = 404, message = "Not Found"),
+      @ApiResponse(code = 500, message = "Internal Server Error")})
+  @ApiImplicitParams(value = {
+      @ApiImplicitParam(name = "Authorization", value = "Format: apikey token={your_bioportal_apikey}. "
+          + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
+          required = true, dataType = "string", paramType = "header"),
+      @ApiImplicitParam(name = "id", value = "Provisional value set id. Example: 720f50f0-ae6f-0133-848f-005056010073",
+          required = true, dataType = "string", paramType = "path"),
+      @ApiImplicitParam(value = "Updated information for the value set", required = true, dataType = "org.metadatacenter.terms" +
+          ".domainObjects.ValueSet", paramType = "body")})
+  public static Result updateProvisionalValueSet(String id)
   {
-    //TODO:
-    return null;
+    if (id.isEmpty() || !Utils.isValidAuthorizationHeader(request()))
+      return badRequest();
+    ObjectMapper mapper = new ObjectMapper();
+    ValueSet vs = mapper.convertValue(request().body().asJson(), ValueSet.class);
+    vs.setId(id);
+    try {
+      termService.updateProvisionalValueSet(vs, Utils.getApiKeyFromHeader(request()));
+    } catch (HTTPException e) {
+      return Results.status(e.getStatusCode());
+    } catch (IOException e) {
+      return internalServerError(e.getMessage());
+    }
+    return internalServerError();
   }
 
   @ApiOperation(
-    value = "Delete provisional value set",
-    notes = "TO BE IMPLEMENTED",
-    httpMethod = "DELETE")
+      value = "Delete a provisional value set",
+      httpMethod = "DELETE")
+  @ApiResponses(value = {
+      @ApiResponse(code = 204, message = "Success! (No Content)"),
+      @ApiResponse(code = 400, message = "Bad Request"),
+      @ApiResponse(code = 401, message = "Unauthorized"),
+      @ApiResponse(code = 404, message = "Not Found"),
+      @ApiResponse(code = 500, message = "Internal Server Error")})
+  @ApiImplicitParams(value = {
+      @ApiImplicitParam(name = "Authorization", value = "Format: apikey token={your_bioportal_apikey}. "
+          + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
+          required = true, dataType = "string", paramType = "header"),
+      @ApiImplicitParam(name = "id", value = "Provisional value set id. Example: 720f50f0-ae6f-0133-848f-005056010073",
+          required = true, dataType = "string", paramType = "path")})
   public static Result deleteProvisionalValueSet(String id)
   {
-    //TODO
-    return null;
+    if (id.isEmpty() || !Utils.isValidAuthorizationHeader(request()))
+      return badRequest();
+    try {
+      termService.deleteProvisionalValueSet(id, Utils.getApiKeyFromHeader(request()));
+    } catch (HTTPException e) {
+      return Results.status(e.getStatusCode());
+    } catch (IOException e) {
+      return internalServerError(e.getMessage());
+    }
+    return internalServerError();
   }
-
 
   @ApiOperation(
     value = "Find all values in a value set",
@@ -589,23 +631,66 @@ public class TerminologyController extends Controller
   }
 
   @ApiOperation(
-    value = "Update provisional value",
-    notes = "TO BE IMPLEMENTED",
-    httpMethod = "PUT")
-  public static Result updateProvisionalValue()
+      value = "Update a provisional value",
+      httpMethod = "PATCH")
+  @ApiResponses(value = {
+      @ApiResponse(code = 204, message = "Success! (No Content)"),
+      @ApiResponse(code = 400, message = "Bad Request"),
+      @ApiResponse(code = 401, message = "Unauthorized"),
+      @ApiResponse(code = 404, message = "Not Found"),
+      @ApiResponse(code = 500, message = "Internal Server Error")})
+  @ApiImplicitParams(value = {
+      @ApiImplicitParam(name = "Authorization", value = "Format: apikey token={your_bioportal_apikey}. "
+          + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
+          required = true, dataType = "string", paramType = "header"),
+      @ApiImplicitParam(name = "id", value = "Provisional value id. Example: 720f50f0-ae6f-0133-848f-005056010073",
+          required = true, dataType = "string", paramType = "path"),
+      @ApiImplicitParam(value = "Updated information for the value", required = true, dataType = "org.metadatacenter.terms" +
+          ".domainObjects.OntologyClass", paramType = "body")})
+  public static Result updateProvisionalValue(String id)
   {
-    //TODO:
-    return null;
+    if (id.isEmpty() || !Utils.isValidAuthorizationHeader(request()))
+      return badRequest();
+    ObjectMapper mapper = new ObjectMapper();
+    Value v = mapper.convertValue(request().body().asJson(), Value.class);
+    v.setId(id);
+    try {
+      termService.updateProvisionalValue(v, Utils.getApiKeyFromHeader(request()));
+    } catch (HTTPException e) {
+      return Results.status(e.getStatusCode());
+    } catch (IOException e) {
+      return internalServerError(e.getMessage());
+    }
+    return internalServerError();
   }
 
   @ApiOperation(
-    value = "Delete provisional value",
-    notes = "TO BE IMPLEMENTED",
-    httpMethod = "DELETE")
+      value = "Delete a provisional value",
+      httpMethod = "DELETE")
+  @ApiResponses(value = {
+      @ApiResponse(code = 204, message = "Success! (No Content)"),
+      @ApiResponse(code = 400, message = "Bad Request"),
+      @ApiResponse(code = 401, message = "Unauthorized"),
+      @ApiResponse(code = 404, message = "Not Found"),
+      @ApiResponse(code = 500, message = "Internal Server Error")})
+  @ApiImplicitParams(value = {
+      @ApiImplicitParam(name = "Authorization", value = "Format: apikey token={your_bioportal_apikey}. "
+          + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
+          required = true, dataType = "string", paramType = "header"),
+      @ApiImplicitParam(name = "id", value = "Provisional value id. Example: 720f50f0-ae6f-0133-848f-005056010073",
+          required = true, dataType = "string", paramType = "path")})
   public static Result deleteProvisionalValue(String id)
   {
-    //TODO
-    return null;
+    if (id.isEmpty() || !Utils.isValidAuthorizationHeader(request()))
+      return badRequest();
+    try {
+      termService.deleteProvisionalValue(id, Utils.getApiKeyFromHeader(request()));
+    } catch (HTTPException e) {
+      return Results.status(e.getStatusCode());
+    } catch (IOException e) {
+      return internalServerError(e.getMessage());
+    }
+    return internalServerError();
   }
 
 }

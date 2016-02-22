@@ -109,17 +109,6 @@ public class TerminologyService implements ITerminologyService
       // Create value set
       BpProvisionalClass pc = bpService.createBpProvisionalClass(ObjectConverter.toBpProvisionalClass(vs), apiKey);
       ValueSet createdVs = ObjectConverter.toValueSet(pc);
-      // Create values
-//      if (vs.getValues() != null) {
-//        for (Value v : vs.getValues()) {
-//          v.setVsId(createdVs.getId());
-//          v.setCreator(createdVs.getCreator());
-//          v.setVsCollection(createdVs.getVsCollection());
-//          createProvisionalValue(v, apiKey);
-//        }
-//        List<Value> createdValues = findValuesByValueSet(createdVs.getId(), createdVs.getVsCollection(), apiKey).getCollection();
-//        createdVs.setValues(createdValues);
-//      }
       return createdVs;
     } else {
       // Bad request
@@ -131,6 +120,14 @@ public class TerminologyService implements ITerminologyService
   {
     BpProvisionalClass pc = bpService.findBpProvisionalClassById(id, apiKey);
     return ObjectConverter.toValueSet(pc);
+  }
+
+  public void updateProvisionalValueSet(ValueSet vs, String apiKey) throws IOException {
+    bpService.updateProvisionalClass(ObjectConverter.toBpProvisionalClass(vs), apiKey);
+  }
+
+  public void deleteProvisionalValueSet(String id, String apiKey) throws IOException {
+    bpService.deleteProvisionalClass(id, apiKey);
   }
 
   public SearchResults<ValueSet> findValueSetsByVsCollection(String vsCollection, String apiKey) throws IOException
@@ -173,5 +170,13 @@ public class TerminologyService implements ITerminologyService
   {
     BpProvisionalClass pc = bpService.findBpProvisionalClassById(id, apiKey);
     return ObjectConverter.toValue(pc);
+  }
+
+  public void updateProvisionalValue(Value v, String apiKey) throws IOException {
+    bpService.updateProvisionalClass(ObjectConverter.toBpProvisionalClass(v), apiKey);
+  }
+
+  public void deleteProvisionalValue(String id, String apiKey) throws IOException {
+    bpService.deleteProvisionalClass(id, apiKey);
   }
 }

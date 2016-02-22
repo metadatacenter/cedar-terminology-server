@@ -44,7 +44,7 @@ public interface ITerminologyService
 
   void updateProvisionalClass(OntologyClass c, String apiKey) throws IOException;
 
-  void deleteProvisionalClass(String classId, String apiKey) throws IOException;
+  void deleteProvisionalClass(String id, String apiKey) throws IOException;
 
   /**
    * Relations
@@ -56,7 +56,7 @@ public interface ITerminologyService
 
 //  void updateProvisionalRelation(Relation r, String apiKey) throws IOException;
 
-  void deleteProvisionalRelation(String classId, String apiKey) throws IOException;
+  void deleteProvisionalRelation(String id, String apiKey) throws IOException;
 
   /**
    * Value sets
@@ -68,15 +68,15 @@ public interface ITerminologyService
   // TODO: this call is not checking if the class that is returned is actually a value set. Some type property is required for each class to specify its type
   ValueSet findProvisionalValueSet(String id, String apiKey) throws IOException;
 
+  void updateProvisionalValueSet(ValueSet vs, String apiKey) throws IOException;
+
+  void deleteProvisionalValueSet(String id, String apiKey) throws IOException;
+
   // TODO: does not support provisional classes yet
   SearchResults<ValueSet> findValueSetsByVsCollection(String vsCollection, String apiKey) throws IOException;
 
   // TODO: This call does not return provisional classes yet and the vs must be a regular class
   SearchResults<Value> findValuesByValueSet(String vsId, String vsCollection, String apiKey) throws IOException;
-
-  // TODO: not supported by BioPortal yet
-  // - Update Provisional Value Set
-  // - Delete Provisional Value Set
 
   /**
    * Values
@@ -86,7 +86,7 @@ public interface ITerminologyService
 
   Value findProvisionalValue(String id, String apiKey) throws IOException;
 
-  // TODO: not supported by BioPortal yet
-  //  - Update value set item
-  //  - Delete value set item
+  void updateProvisionalValue(Value v, String apiKey) throws IOException;
+
+  void deleteProvisionalValue(String id, String apiKey) throws IOException;
 }

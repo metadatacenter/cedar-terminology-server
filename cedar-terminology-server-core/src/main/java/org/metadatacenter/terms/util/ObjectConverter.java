@@ -127,7 +127,7 @@ public class ObjectConverter
         relations.add(toRelation(pr));
       }
     }
-    return new Value(Util.getShortIdentifier(pc.getId()), pc.getId(), pc.getLabel(), pc.getCreator(), null, pc.getOntology(), pc.getDefinition(),
+    return new Value(Util.getShortIdentifier(pc.getId()), pc.getId(), pc.getLabel(), pc.getCreator(), pc.getSubclassOf(), pc.getOntology(), pc.getDefinition(),
       pc.getSynonym(), relations, provisional, pc.getCreated());
   }
 

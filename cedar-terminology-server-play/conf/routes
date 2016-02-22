@@ -28,7 +28,7 @@ DELETE         /bioportal/relations/provisional/:id                             
 ### Provisional Value Sets ###
 POST           /bioportal/value-sets/provisional                                     controllers.TerminologyController.createProvisionalValueSet()
 GET            /bioportal/value-sets/provisional/:id                                 controllers.TerminologyController.findProvisionalValueSet(id: String)
-PATCH          /bioportal/value-sets/provisional                                     controllers.TerminologyController.updateProvisionalValueSet()
+PATCH          /bioportal/value-sets/provisional/:id                                 controllers.TerminologyController.updateProvisionalValueSet(id: String)
 DELETE         /bioportal/value-sets/provisional/:id                                 controllers.TerminologyController.deleteProvisionalValueSet(id: String)
 
 ### Value Sets ###
@@ -38,7 +38,7 @@ GET            /bioportal/vs-collections/:vs_collection/value-sets/:vs/values   
 ### Provisional Values ###
 POST           /bioportal/values/provisional                                         controllers.TerminologyController.createProvisionalValue()
 GET            /bioportal/values/provisional/:id                                     controllers.TerminologyController.findProvisionalValue(id: String)
-PATCH          /bioportal/values/provisional                                         controllers.TerminologyController.updateProvisionalValue()
+PATCH          /bioportal/values/provisional/:id                                     controllers.TerminologyController.updateProvisionalValue(id: String)
 DELETE         /bioportal/values/provisional/:id                                     controllers.TerminologyController.deleteProvisionalValue(id: String)
 
 
