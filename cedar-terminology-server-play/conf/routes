@@ -12,6 +12,17 @@ GET            /api-docs/bioportal                                              
 # BioPortal search
 GET            /bioportal/search                                                     controllers.TerminologyController.search(q: String, scope: String ?= "all", sources: String ?= "", page: Int ?= 1, page_size: Int ?= 50)
 
+### Ontologies ###
+GET            /bioportal/ontologies                                                 controllers.TerminologyController.findAllOntologies(include_details: Boolean ?= false)
+GET            /bioportal/ontologies/:id                                             controllers.TerminologyController.findOntology(id: String, include_details: Boolean ?= false)
+GET            /bioportal/ontologies/:ontology/classes/roots                         controllers.TerminologyController.getRootClasses(ontology: String)
+
+### Classes ###
+GET            /bioportal/ontologies/:ontology/classes/:id                           controllers.TerminologyController.findClass(id: String, ontology: String)
+GET            /bioportal/ontologies/:ontology/classes/:id/tree                      controllers.TerminologyController.getClassTree(id: String, ontology: String)
+GET            /bioportal/ontologies/:ontology/classes/:id/children                  controllers.TerminologyController.getClassChildren(id: String, ontology: String)
+GET            /bioportal/ontologies/:ontology/classes/:id/parents                   controllers.TerminologyController.getClassParents(id: String, ontology: String)
+
 ### Provisional Classes ###
 POST           /bioportal/classes/provisional                                        controllers.TerminologyController.createProvisionalClass()
 GET            /bioportal/classes/provisional/:id                                    controllers.TerminologyController.findProvisionalClass(id: String)
@@ -32,6 +43,7 @@ PATCH          /bioportal/value-sets/provisional/:id                            
 DELETE         /bioportal/value-sets/provisional/:id                                 controllers.TerminologyController.deleteProvisionalValueSet(id: String)
 
 ### Value Sets ###
+GET            /bioportal/vs-collections                                             controllers.TerminologyController.findAllVSCollections(include_details: Boolean ?= false)
 GET            /bioportal/vs-collections/:vs_collection/value-sets                   controllers.TerminologyController.findValueSetsByVsCollection(vs_collection : String)
 GET            /bioportal/vs-collections/:vs_collection/value-sets/:vs/values        controllers.TerminologyController.findValuesByValueSet(vs: String, vs_collection: String)
 
@@ -40,7 +52,6 @@ POST           /bioportal/values/provisional                                    
 GET            /bioportal/values/provisional/:id                                     controllers.TerminologyController.findProvisionalValue(id: String)
 PATCH          /bioportal/values/provisional/:id                                     controllers.TerminologyController.updateProvisionalValue(id: String)
 DELETE         /bioportal/values/provisional/:id                                     controllers.TerminologyController.deleteProvisionalValue(id: String)
-
 
 ## Other routes
 

@@ -1,25 +1,22 @@
-package org.metadatacenter.terms.bioportal.customObjects;
-
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+package org.metadatacenter.terms.customObjects;
 
 import java.util.List;
 
-@JsonIgnoreProperties(ignoreUnknown = true)
-public class BpSearchResults<T>
+public class PagedResults<T>
 {
 
   private int page;
   private int pageCount;
+  private int pageSize;
   private int prevPage;
   private int nextPage;
   private List<T> collection;
 
-  public BpSearchResults() {}
-
-  public BpSearchResults(int page, int pageCount, int prevPage, int nextPage, List<T> collection)
+  public PagedResults(int page, int pageCount, int pageSize, int prevPage, int nextPage, List<T> collection)
   {
     this.page = page;
     this.pageCount = pageCount;
+    this.pageSize = pageSize;
     this.prevPage = prevPage;
     this.nextPage = nextPage;
     this.collection = collection;
@@ -43,6 +40,16 @@ public class BpSearchResults<T>
   public void setPageCount(int pageCount)
   {
     this.pageCount = pageCount;
+  }
+
+  public int getPageSize()
+  {
+    return pageSize;
+  }
+
+  public void setPageSize(int pageSize)
+  {
+    this.pageSize = pageSize;
   }
 
   public int getPrevPage()

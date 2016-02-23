@@ -6,27 +6,20 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.fluent.Request;
 import org.apache.http.util.EntityUtils;
+import org.metadatacenter.terms.bioportal.customObjects.BpPagedResults;
 import org.metadatacenter.terms.bioportal.dao.BpClassDAO;
+import org.metadatacenter.terms.bioportal.dao.BpOntologyDAO;
 import org.metadatacenter.terms.bioportal.dao.BpProvisionalClassDAO;
 import org.metadatacenter.terms.bioportal.dao.BpProvisionalRelationDAO;
-import org.metadatacenter.terms.bioportal.domainObjects.BpClass;
-import org.metadatacenter.terms.bioportal.domainObjects.BpProvisionalClass;
-import org.metadatacenter.terms.bioportal.domainObjects.BpProvisionalRelation;
-import org.metadatacenter.terms.bioportal.customObjects.BpSearchResults;
-import org.metadatacenter.terms.customObjects.SearchResults;
+import org.metadatacenter.terms.bioportal.domainObjects.*;
 import org.metadatacenter.terms.util.Util;
 
 import javax.xml.ws.http.HTTPException;
 import java.io.IOException;
-import java.net.URLEncoder;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static org.metadatacenter.terms.util.Constants.BP_SEARCH_BASE_URL;
-import static org.metadatacenter.terms.util.Constants.BP_SEARCH_SCOPE_ALL;
-import static org.metadatacenter.terms.util.Constants.BP_SEARCH_SCOPE_CLASSES;
-import static org.metadatacenter.terms.util.Constants.BP_SEARCH_SCOPE_VALUES;
-import static org.metadatacenter.terms.util.Constants.BP_SEARCH_SCOPE_VALUE_SETS;
+import static org.metadatacenter.terms.util.Constants.*;
 
 public class BioPortalService implements IBioPortalService
 {
@@ -36,6 +29,7 @@ public class BioPortalService implements IBioPortalService
   private BpProvisionalClassDAO bpProvClassDAO;
   private BpProvisionalRelationDAO bpProvRelationDAO;
   private BpClassDAO bpClassDAO;
+  private BpOntologyDAO bpOntologyDAO;
 
   /**
    * @param connectTimeout
@@ -48,6 +42,7 @@ public class BioPortalService implements IBioPortalService
     this.bpProvClassDAO = new BpProvisionalClassDAO(connectTimeout, socketTimeout);
     this.bpProvRelationDAO = new BpProvisionalRelationDAO(connectTimeout, socketTimeout);
     this.bpClassDAO = new BpClassDAO(connectTimeout, socketTimeout);
+    this.bpOntologyDAO = new BpOntologyDAO(connectTimeout, socketTimeout);
   }
 
   /**
@@ -63,7 +58,7 @@ public class BioPortalService implements IBioPortalService
    * @return
    * @throws IOException
    */
-  public BpSearchResults<BpClass> search(String q, List<String> scope, List<String> sources, int page, int pageSize,
+  public BpPagedResults<BpClass> search(String q, List<String> scope, List<String> sources, int page, int pageSize,
     boolean displayContext, boolean displayLinks, String apiKey) throws IOException
   {
     // Encode query
@@ -125,10 +120,42 @@ public class BioPortalService implements IBioPortalService
     if (statusCode == 200) {
       ObjectMapper mapper = new ObjectMapper();
       JsonNode bpResult = mapper.readTree(new String(EntityUtils.toByteArray(response.getEntity())));
-      return mapper.readValue(mapper.treeAsTokens(bpResult), new TypeReference<BpSearchResults<BpClass>>() {});
+      return mapper.readValue(mapper.treeAsTokens(bpResult), new TypeReference<BpPagedResults<BpClass>>() {});
     } else {
       throw new HTTPException(statusCode);
     }
+  }
+
+  public BpOntology findBpOntologyById(String id, String apiKey) throws IOException {
+    return bpOntologyDAO.find(id, apiKey);
+  }
+
+  public BpOntologySubmission getOntologyLatestSubmission(String id, String apiKey) throws IOException {
+    return bpOntologyDAO.getLatestSubmission(id, apiKey);
+  }
+
+  public List<BpOntology> findAllOntologies(String apiKey) throws IOException {
+    return bpOntologyDAO.findAll(apiKey);
+  }
+
+  public BpOntologyMetrics findOntologyMetrics(String id, String apiKey) throws IOException {
+    return bpOntologyDAO.getOntologyMetrics(id, apiKey);
+  }
+
+  public List<BpOntologyCategory> findOntologyCategories(String id, String apiKey) throws IOException {
+    return bpOntologyDAO.getOntologyCategories(id, apiKey);
+  }
+
+  public List<BpClass> getRootClasses(String ontologyId, String apiKey) throws IOException {
+    return bpOntologyDAO.getRootClasses(ontologyId, apiKey);
+  }
+
+  public BpClass findBpClassById(String id, String ontology, String apiKey) throws IOException {
+    return bpClassDAO.find(id, ontology, apiKey);
+  }
+
+  public List<BpTreeNode> getClassTree(String id, String ontology, String apiKey) throws IOException {
+    return bpClassDAO.getTree(id, ontology, apiKey);
   }
 
   /**
@@ -176,16 +203,24 @@ public class BioPortalService implements IBioPortalService
     bpProvRelationDAO.delete(id, apiKey);
   }
 
-  public BpSearchResults<BpClass> findValueSetsByValueSetCollection(String vsCollection, String apiKey)
+  public BpPagedResults<BpClass> findValueSetsByValueSetCollection(String vsCollection, String apiKey)
     throws IOException
   {
     return bpClassDAO.findValueSetsByValueSetCollection(vsCollection, apiKey);
   }
 
-  public BpSearchResults<BpClass> findValuesByValueSet(String vsId, String vsCollection, String apiKey)
+  public BpPagedResults<BpClass> findValuesByValueSet(String vsId, String vsCollection, String apiKey)
     throws IOException
   {
     return bpClassDAO.findValuesByValueSet(vsId, vsCollection, apiKey);
+  }
+
+  public BpPagedResults<BpClass> getClassChildren(String id, String ontology, String apiKey) throws IOException {
+    return bpClassDAO.getChildren(id, ontology, apiKey);
+  }
+
+  public List<BpClass> getClassParents(String id, String ontology, String apiKey) throws IOException {
+    return bpClassDAO.getParents(id, ontology, apiKey);
   }
 
 }

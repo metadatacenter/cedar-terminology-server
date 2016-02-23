@@ -68,6 +68,7 @@ public class BpProvisionalClassDAO
   {
     String url = null;
     if (ontology != null) {
+      // TODO: This URL  is returning 500 Internal Server Error
       url = Constants.BP_ONTOLOGIES_BASE_URL + ontology + "/" + Constants.BP_PROVISIONAL_CLASSES;
     } else {
       url = Constants.BP_PROVISIONAL_CLASSES_BASE_URL;
