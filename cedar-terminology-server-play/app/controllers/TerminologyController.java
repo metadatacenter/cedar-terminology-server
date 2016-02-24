@@ -15,6 +15,7 @@ import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.terms.domainObjects.*;
 import org.metadatacenter.terms.util.Util;
 import play.Configuration;
+import play.Logger;
 import play.Play;
 import play.mvc.Controller;
 import play.mvc.Result;
@@ -158,6 +159,7 @@ public class TerminologyController extends Controller {
       @ApiImplicitParam(name = "id", value = "Ontology id. Examples: NCIT, OBI, FMA",
           required = true, dataType = "string", paramType = "path")})
   public static Result findOntology(String id) {
+    Logger.info("Call to findOntology");
     if (id.isEmpty() || !Utils.isValidAuthorizationHeader(request())) {
       return badRequest();
     }

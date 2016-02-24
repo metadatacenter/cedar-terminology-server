@@ -14,7 +14,9 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.concurrent.*;
 
-import static utils.Constants.PATH_RESOURCES;
+import static utils.Constants.PLAY_MODULE_FOLDER_NAME;
+import static utils.Constants.CACHE_FOLDER_NAME;
+import static utils.Constants.ONTOLOGIES_CACHE_FILE;
 
 public class Cache {
 
@@ -23,10 +25,11 @@ public class Cache {
   private static final int refreshInitialDelay = 0;
   private static final int refreshDelay = 7;
   private static final TimeUnit delayUnit = TimeUnit.HOURS;
-  private static String ontologiesFilePath = PATH_RESOURCES + "ontologies.dat";
+  private static String ontologiesCachePath;
   private static boolean firstExecution = true;
 
   static {
+    ontologiesCachePath = getCacheObjectsPath() + "/" + ONTOLOGIES_CACHE_FILE;
     executor = Executors.newSingleThreadScheduledExecutor();
   }
 
@@ -45,7 +48,7 @@ public class Cache {
   public static LoadingCache<String, LinkedHashMap<String, Ontology>> ontologiesCache = CacheBuilder.newBuilder()
       .maximumSize(1)
           //.expireAfterAccess(5, TimeUnit.SECONDS)
-      .recordStats()
+          //.recordStats()
       .build(new CacheLoader<String, LinkedHashMap<String, Ontology>>() {
         @Override
         public LinkedHashMap<String, Ontology> load(String s) throws IOException {
@@ -68,7 +71,7 @@ public class Cache {
 
   public static LinkedHashMap<String, Ontology> getAllOntologiesAsMap() throws IOException {
     List<Ontology> ontologies = null;
-    if (firstExecution && new File(ontologiesFilePath).isFile()) {
+    if (firstExecution && new File(ontologiesCachePath).isFile()) {
       ontologies = readOntologiesFromFile();
     } else {
       ontologies = TerminologyController.termService.findAllOntologies(true, apiKeyCache);
@@ -84,7 +87,7 @@ public class Cache {
 
   public static void saveOntologiesToFile(List<Ontology> ontologies) {
     try {
-      ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream(ontologiesFilePath));
+      ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream(ontologiesCachePath));
       out.writeObject(ontologies);
       out.flush();
       out.close();
@@ -96,12 +99,12 @@ public class Cache {
   public static List<Ontology> readOntologiesFromFile() {
     List<Ontology> ontologies = null;
     // Check if the file exists
-    if (!new File(ontologiesFilePath).isFile()) {
+    if (!new File(ontologiesCachePath).isFile()) {
       return null;
     } else {
       ObjectInputStream in = null;
       try {
-        in = new ObjectInputStream(new FileInputStream(ontologiesFilePath));
+        in = new ObjectInputStream(new FileInputStream(ontologiesCachePath));
         ontologies = (List<Ontology>) in.readObject();
       } catch (IOException e) {
         e.printStackTrace();
@@ -110,6 +113,22 @@ public class Cache {
       }
       return ontologies;
     }
+  }
+
+  private static String getCacheObjectsPath() {
+    String path;
+    String workingDirectory = System.getProperty("user.dir");
+    // Get last fragment of working directory
+    String folder = workingDirectory.substring(workingDirectory.lastIndexOf("/") + 1, workingDirectory.length());
+    // Working directory for Maven execution (mvn play2:run)
+    if (folder.compareTo(PLAY_MODULE_FOLDER_NAME) == 0) {
+      path = CACHE_FOLDER_NAME;
+    }
+    // Working directory for IntelliJ execution
+    else {
+      path = PLAY_MODULE_FOLDER_NAME + "/" + CACHE_FOLDER_NAME;
+    }
+    return path;
   }
 
 }
