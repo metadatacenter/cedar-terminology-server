@@ -21,6 +21,8 @@ public class Constants {
 //  public static final String BP_PROVISIONAL_VALUES = BP_VALUES + "/provisional";
 
   public static final String PLAY_MODULE_FOLDER_NAME = "cedar-terminology-server-play";
+  public static final String PLAY_APP_FOLDER_NAME = "cedar-terminology-server";
+  public static final String PLAY_TEST_FOLDER_NAME = "modules";
   public static final String CACHE_FOLDER_NAME = "cache-objects";
   public static final String ONTOLOGIES_CACHE_FILE = "ontologies.cache";
 

@@ -6,21 +6,21 @@ import com.google.common.cache.LoadingCache;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.ListenableFutureTask;
 import controllers.TerminologyController;
-import org.metadatacenter.terms.TerminologyService;
 import org.metadatacenter.terms.domainObjects.Ontology;
 
 import java.io.*;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.concurrent.*;
+import java.util.concurrent.Callable;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
-import static utils.Constants.PLAY_MODULE_FOLDER_NAME;
-import static utils.Constants.CACHE_FOLDER_NAME;
-import static utils.Constants.ONTOLOGIES_CACHE_FILE;
+import static utils.Constants.*;
 
 public class Cache {
 
-  public static String apiKeyCache = "c4f0cadc-cec4-4ca6-9093-372d92804876"; // apikey for cedar-test user
+  public static String apiKeyCache = "8c478417-cae7-473d-bcd7-a03cf229bb5d"; // cedar-public user api key
   private static ScheduledExecutorService executor;
   private static final int refreshInitialDelay = 0;
   private static final int refreshDelay = 7;
@@ -124,9 +124,13 @@ public class Cache {
     if (folder.compareTo(PLAY_MODULE_FOLDER_NAME) == 0) {
       path = CACHE_FOLDER_NAME;
     }
-    // Working directory for IntelliJ execution
-    else {
+    // Working directory for execution from IntelliJ
+    else if (folder.compareTo(PLAY_APP_FOLDER_NAME)==0) {
       path = PLAY_MODULE_FOLDER_NAME + "/" + CACHE_FOLDER_NAME;
+    }
+    // Working directory for test execution from IntelliJ (working directory: ...cedar-terminology-server/.idea/modules)
+    else {
+      path = "../../" + PLAY_MODULE_FOLDER_NAME + "/" + CACHE_FOLDER_NAME;
     }
     return path;
   }
