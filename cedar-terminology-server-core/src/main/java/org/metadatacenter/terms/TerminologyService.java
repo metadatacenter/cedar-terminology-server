@@ -12,13 +12,11 @@ import org.metadatacenter.terms.util.Util;
 import javax.xml.ws.http.HTTPException;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
-import static org.metadatacenter.terms.util.Constants.BP_VS_COLLECTIONS;
-import static org.metadatacenter.terms.util.Constants.BP_VS_CREATION_COLLECTIONS;
-
 public class TerminologyService implements ITerminologyService {
+
+//  private int count = 2;
 
   private final int connectTimeout;
   private final int socketTimeout;
@@ -48,14 +46,18 @@ public class TerminologyService implements ITerminologyService {
     }
     // Get details
     if (includeDetails) {
+//      int i = 0;
+//      count++;
       for (Ontology o : ontologies) {
         o.setDetails(getOntologyDetails(o.getId(), apiKey));
         // Delay between calls (BioPortal requirement)
-        try {
-          Thread.sleep(Constants.BP_API_WAIT_TIME);
-        } catch (InterruptedException e) {
-          e.printStackTrace();
-        }
+//        try {
+//          Thread.sleep(Constants.BP_API_WAIT_TIME);
+//        } catch (InterruptedException e) {
+//          e.printStackTrace();
+//        }
+//        System.out.println(i++);
+//        if (i>count) break;
       }
     }
     return ontologies;

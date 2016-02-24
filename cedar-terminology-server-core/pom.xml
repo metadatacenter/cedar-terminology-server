@@ -68,13 +68,6 @@
       <version>${junit.version}</version>
     </dependency>
 
-    <!-- Google Guava -->
-    <dependency>
-      <groupId>com.google.guava</groupId>
-      <artifactId>guava</artifactId>
-      <version>${google-guava.version}</version>
-    </dependency>
-
   </dependencies>
 
   <build>

@@ -13,8 +13,8 @@ GET            /api-docs/bioportal                                              
 GET            /bioportal/search                                                     controllers.TerminologyController.search(q: String, scope: String ?= "all", sources: String ?= "", page: Int ?= 1, page_size: Int ?= 50)
 
 ### Ontologies ###
-GET            /bioportal/ontologies                                                 controllers.TerminologyController.findAllOntologies(include_details: Boolean ?= false)
-GET            /bioportal/ontologies/:id                                             controllers.TerminologyController.findOntology(id: String, include_details: Boolean ?= false)
+GET            /bioportal/ontologies                                                 controllers.TerminologyController.findAllOntologies()
+GET            /bioportal/ontologies/:id                                             controllers.TerminologyController.findOntology(id: String)
 GET            /bioportal/ontologies/:ontology/classes/roots                         controllers.TerminologyController.getRootClasses(ontology: String)
 
 ### Classes ###

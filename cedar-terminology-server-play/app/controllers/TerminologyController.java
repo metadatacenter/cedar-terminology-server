@@ -1,16 +1,19 @@
 package controllers;
 
+import cache.Cache;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.CacheStats;
+import com.google.common.cache.LoadingCache;
 import com.wordnik.swagger.annotations.*;
 import org.metadatacenter.terms.TerminologyService;
 import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.terms.domainObjects.*;
 import org.metadatacenter.terms.util.Util;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import play.Configuration;
 import play.Play;
 import play.mvc.Controller;
@@ -23,13 +26,16 @@ import javax.xml.ws.http.HTTPException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 
 import static org.metadatacenter.terms.util.Constants.*;
 
 @Api(value = "/bioportal", description = "BioPortal operations")
 public class TerminologyController extends Controller {
-  private static Logger log = LoggerFactory.getLogger(TerminologyController.class);
+  //private static Logger log = LoggerFactory.getLogger(TerminologyController.class);
 
   public static final TerminologyService termService;
 
@@ -37,6 +43,8 @@ public class TerminologyController extends Controller {
     Configuration config = Play.application().configuration();
     termService = new TerminologyService(config.getInt("bioportal.connectTimeout"), config.getInt("bioportal" +
         ".socketTimeout"));
+    // Pre-load data into the cache
+    Cache.loadAll();
   }
 
   @ApiOperation(
@@ -114,14 +122,13 @@ public class TerminologyController extends Controller {
       @ApiImplicitParam(name = "Authorization", value = "Format: apikey token={your_bioportal_apikey}. "
           + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
           required = true, dataType = "string", paramType = "header")})
-  // TODO: implement cache
-  public static Result findAllOntologies(@ApiParam(value = "Include ontology details, such as the number of classes " +
-      "and categories", required = true) @QueryParam("include_details") boolean includeDetails) {
+  public static Result findAllOntologies() {
     if (!Utils.isValidAuthorizationHeader(request())) {
       return badRequest();
     }
     try {
-      List<Ontology> ontologies = termService.findAllOntologies(includeDetails, Utils.getApiKeyFromHeader(request()));
+      Cache.apiKeyCache = Utils.getApiKeyFromHeader(request());
+      List<Ontology> ontologies = new ArrayList<Ontology>(Cache.ontologiesCache.get("ontologies").values());
       ObjectMapper mapper = new ObjectMapper();
       ObjectWriter writer = mapper.writerFor(new TypeReference<List<Ontology>>() {
       });
@@ -129,6 +136,8 @@ public class TerminologyController extends Controller {
     } catch (HTTPException e) {
       return Results.status(e.getStatusCode());
     } catch (IOException e) {
+      return internalServerError(e.getMessage());
+    } catch (ExecutionException e) {
       return internalServerError(e.getMessage());
     }
   }
@@ -148,19 +157,19 @@ public class TerminologyController extends Controller {
           required = true, dataType = "string", paramType = "header"),
       @ApiImplicitParam(name = "id", value = "Ontology id. Examples: NCIT, OBI, FMA",
           required = true, dataType = "string", paramType = "path")})
-  public static Result findOntology(String id, @ApiParam(value = "Include ontology details, such as the number of " +
-      "classes and categories", required = true) @QueryParam("include_details") boolean includeDetails) {
+  public static Result findOntology(String id) {
     if (id.isEmpty() || !Utils.isValidAuthorizationHeader(request())) {
       return badRequest();
     }
     try {
-      Ontology o = termService.findOntology(id, includeDetails, Utils.getApiKeyFromHeader(request()));
+      Cache.apiKeyCache = Utils.getApiKeyFromHeader(request());
+      Ontology o = Cache.ontologiesCache.get("ontologies").get(id);
       return ok((JsonNode) new ObjectMapper().valueToTree(o));
     } catch (HTTPException e) {
       return Results.status(e.getStatusCode());
     } catch (IllegalArgumentException e) {
       return badRequest();
-    } catch (IOException e) {
+    } catch (ExecutionException e) {
       return internalServerError(e.getMessage());
     }
   }
@@ -414,7 +423,8 @@ public class TerminologyController extends Controller {
   }
 
   @ApiOperation(
-      value = "Get all provisional classes for a specific ontology (including provisional value sets and provisional values)",
+      value = "Get all provisional classes for a specific ontology (including provisional value sets and provisional " +
+          "values)",
       httpMethod = "GET")
   @ApiResponses(value = {
       @ApiResponse(code = 200, message = "Success!"),
