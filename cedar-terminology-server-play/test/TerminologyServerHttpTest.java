@@ -919,7 +919,7 @@ public class TerminologyServerHttpTest {
       String deleteUrl = SERVER_URL_BIOPORTAL + BP_CLASSES + "/" + c.getId();
       if (WS.url(findUrl).setHeader("Authorization", authHeader).get().get(TIMEOUT_MS).getStatus() == OK) {
         WS.url(deleteUrl).setHeader("Authorization", authHeader).delete().get(TIMEOUT_MS);
-        Logger.info("Deleted class: " + c.getId());
+//        Logger.info("Deleted class: " + c.getId());
       }
     }
   }
@@ -930,7 +930,7 @@ public class TerminologyServerHttpTest {
       String relationUrl = SERVER_URL_BIOPORTAL + BP_RELATIONS + "/" + r.getId();
       if (WS.url(relationUrl).setHeader("Authorization", authHeader).get().get(TIMEOUT_MS).getStatus() == OK) {
         WS.url(relationUrl).setHeader("Authorization", authHeader).delete().get(TIMEOUT_MS);
-        Logger.info("Deleted relation: " + r.getId());
+//        Logger.info("Deleted relation: " + r.getId());
       }
     }
   }
@@ -944,7 +944,7 @@ public class TerminologyServerHttpTest {
       String deleteUrl = SERVER_URL_BIOPORTAL + BP_CLASSES + "/" + vs.getId();
       if (WS.url(findUrl).setHeader("Authorization", authHeader).get().get(TIMEOUT_MS).getStatus() == OK) {
         WS.url(deleteUrl).setHeader("Authorization", authHeader).delete().get(TIMEOUT_MS);
-        Logger.info("Deleted value set: " + vs.getId());
+//        Logger.info("Deleted value set: " + vs.getId());
       }
     }
   }
@@ -957,7 +957,7 @@ public class TerminologyServerHttpTest {
       String deleteUrl = SERVER_URL_BIOPORTAL + BP_VALUES + "/" + v.getId();
       if (WS.url(findUrl).setHeader("Authorization", authHeader).get().get(TIMEOUT_MS).getStatus() == OK) {
         WS.url(deleteUrl).setHeader("Authorization", authHeader).delete().get(TIMEOUT_MS);
-        Logger.info("Deleted value: " + v.getId());
+//        Logger.info("Deleted value: " + v.getId());
       }
     }
   }

@@ -22,12 +22,12 @@ public class Global extends GlobalSettings {
 
   @Override
   public void onStart(Application app) {
-    Logger.info("Application has started");
+//    Logger.info("Application has started");
   }
 
   @Override
   public void onStop(Application app) {
-    Logger.info("Application shutdown...");
+//    Logger.info("Application shutdown...");
   }
 
   /* For CORS */
