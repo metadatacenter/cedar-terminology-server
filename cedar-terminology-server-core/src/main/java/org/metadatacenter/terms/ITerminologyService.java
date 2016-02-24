@@ -16,7 +16,6 @@ public interface ITerminologyService
   /**
    * Ontologies
    */
-
   List<Ontology> findAllOntologies(boolean includeDetails, String apiKey) throws IOException;
 
   Ontology findOntology(String id, boolean includeDetails, String apiKey) throws IOException;

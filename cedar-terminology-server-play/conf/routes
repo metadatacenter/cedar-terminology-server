@@ -4,12 +4,12 @@
 
 # Swagger - UI
 GET            /                                                                     controllers.Assets.at(path="/public/swagger-ui", file="index.html")
-#GET            /                          controllers.Default.redirect(to = "/index.html?/url=http://localhost:9000/api-docs")
+
 # Swagger - API documentation
 GET            /api-docs                                                             controllers.ApiHelpController.getResources
 GET            /api-docs/bioportal                                                   controllers.ApiHelpController.getResource(path = "/bioportal")
 
-# BioPortal search
+### Search ###
 GET            /bioportal/search                                                     controllers.TerminologyController.search(q: String, scope: String ?= "all", sources: String ?= "", page: Int ?= 1, page_size: Int ?= 50)
 
 ### Ontologies ###
@@ -18,40 +18,38 @@ GET            /bioportal/ontologies/:id                                        
 GET            /bioportal/ontologies/:ontology/classes/roots                         controllers.TerminologyController.getRootClasses(ontology: String)
 
 ### Classes ###
+POST           /bioportal/ontologies/:ontology/classes                               controllers.TerminologyController.createClass(ontology: String)
+GET            /bioportal/classes/provisional                                        controllers.TerminologyController.getAllProvisionalClasses()
+GET            /bioportal/ontologies/:ontology/classes/provisional                   controllers.TerminologyController.getAllProvisionalClassesForOntology(ontology: String)
 GET            /bioportal/ontologies/:ontology/classes/:id                           controllers.TerminologyController.findClass(id: String, ontology: String)
+PATCH          /bioportal/classes/:id                                                controllers.TerminologyController.updateClass(id: String)
+DELETE         /bioportal/classes/:id                                                controllers.TerminologyController.deleteClass(id: String)
 GET            /bioportal/ontologies/:ontology/classes/:id/tree                      controllers.TerminologyController.getClassTree(id: String, ontology: String)
 GET            /bioportal/ontologies/:ontology/classes/:id/children                  controllers.TerminologyController.getClassChildren(id: String, ontology: String)
 GET            /bioportal/ontologies/:ontology/classes/:id/parents                   controllers.TerminologyController.getClassParents(id: String, ontology: String)
 
-### Provisional Classes ###
-POST           /bioportal/classes/provisional                                        controllers.TerminologyController.createProvisionalClass()
-GET            /bioportal/classes/provisional/:id                                    controllers.TerminologyController.findProvisionalClass(id: String)
-GET            /bioportal/classes/provisional                                        controllers.TerminologyController.findAllProvisionalClasses(ontology: String ?= "")
-PATCH          /bioportal/classes/provisional/:id                                    controllers.TerminologyController.updateProvisionalClass(id: String)
-DELETE         /bioportal/classes/provisional/:id                                    controllers.TerminologyController.deleteProvisionalClass(id: String)
-
-### Provisional Relations ###
-POST           /bioportal/relations/provisional                                      controllers.TerminologyController.createProvisionalRelation()
-GET            /bioportal/relations/provisional/:id                                  controllers.TerminologyController.findProvisionalRelation(id: String)
+### Relations ###
+POST           /bioportal/relations                                                  controllers.TerminologyController.createRelation()
+GET            /bioportal/relations/:id                                              controllers.TerminologyController.findRelation(id: String)
 #PATCH          /bioportal/relations/provisional                                      controllers.TerminologyController.updateProvisionalRelation()
-DELETE         /bioportal/relations/provisional/:id                                  controllers.TerminologyController.deleteProvisionalRelation(id: String)
+DELETE         /bioportal/relations/:id                                              controllers.TerminologyController.deleteRelation(id: String)
 
-### Provisional Value Sets ###
-POST           /bioportal/value-sets/provisional                                     controllers.TerminologyController.createProvisionalValueSet()
-GET            /bioportal/value-sets/provisional/:id                                 controllers.TerminologyController.findProvisionalValueSet(id: String)
-PATCH          /bioportal/value-sets/provisional/:id                                 controllers.TerminologyController.updateProvisionalValueSet(id: String)
-DELETE         /bioportal/value-sets/provisional/:id                                 controllers.TerminologyController.deleteProvisionalValueSet(id: String)
+### Value Set Collections ###
+GET            /bioportal/vs-collections                                             controllers.TerminologyController.findAllVSCollections(include_details: Boolean ?= false)
+
+### Values ###
+POST           /bioportal/vs-collections/:vs_collection/value-sets/:vs/values        controllers.TerminologyController.createValue(vs_collection: String, vs: String)
+GET            /bioportal/vs-collections/:vs_collection/value-sets/:vs/values        controllers.TerminologyController.findValuesByValueSet(vs: String, vs_collection: String)
+GET            /bioportal/vs-collections/:vs_collection/values/:id                   controllers.TerminologyController.findValue(id: String, vs_collection: String)
+PATCH          /bioportal/values/:id                                                 controllers.TerminologyController.updateValue(id: String)
+DELETE         /bioportal/values/:id                                                 controllers.TerminologyController.deleteValue(id: String)
 
 ### Value Sets ###
-GET            /bioportal/vs-collections                                             controllers.TerminologyController.findAllVSCollections(include_details: Boolean ?= false)
+POST           /bioportal/vs-collections/:vs_collection/value-sets                   controllers.TerminologyController.createValueSet(vs_collection: String)
 GET            /bioportal/vs-collections/:vs_collection/value-sets                   controllers.TerminologyController.findValueSetsByVsCollection(vs_collection : String)
-GET            /bioportal/vs-collections/:vs_collection/value-sets/:vs/values        controllers.TerminologyController.findValuesByValueSet(vs: String, vs_collection: String)
-
-### Provisional Values ###
-POST           /bioportal/values/provisional                                         controllers.TerminologyController.createProvisionalValue()
-GET            /bioportal/values/provisional/:id                                     controllers.TerminologyController.findProvisionalValue(id: String)
-PATCH          /bioportal/values/provisional/:id                                     controllers.TerminologyController.updateProvisionalValue(id: String)
-DELETE         /bioportal/values/provisional/:id                                     controllers.TerminologyController.deleteProvisionalValue(id: String)
+GET            /bioportal/vs-collections/:vs_collection/value-sets/:id               controllers.TerminologyController.findValueSet(id: String, vs_collection: String)
+PATCH          /bioportal/value-sets/:id                                             controllers.TerminologyController.updateValueSet(id: String)
+DELETE         /bioportal/value-sets/:id                                             controllers.TerminologyController.deleteValueSet(id: String)
 
 ## Other routes
 

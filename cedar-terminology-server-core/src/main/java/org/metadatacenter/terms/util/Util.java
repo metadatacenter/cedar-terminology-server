@@ -72,9 +72,7 @@ public class Util
    */
   public static String getShortIdentifier(String id) {
     if (isUrl(id)) {
-      if (id.contains("http://data.bioontology.org/provisional")) {
         return id.substring(id.lastIndexOf("/") + 1, id.length());
-      }
     }
     return id;
   }

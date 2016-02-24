@@ -178,14 +178,14 @@ public class TerminologyController extends Controller {
       @ApiImplicitParam(name = "Authorization", value = "Format: apikey token={your_bioportal_apikey}. "
           + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
           required = true, dataType = "string", paramType = "header"),
-      @ApiImplicitParam(name = "ontologyId", value = "Ontology identifier. Example: NCIT",
+      @ApiImplicitParam(name = "ontology", value = "Ontology identifier. Example: NCIT",
           required = true, dataType = "string", paramType = "path")})
-  public static Result getRootClasses(String ontologyId) {
-    if (ontologyId.isEmpty() || !Utils.isValidAuthorizationHeader(request())) {
+  public static Result getRootClasses(String ontology) {
+    if (ontology.isEmpty() || !Utils.isValidAuthorizationHeader(request())) {
       return badRequest();
     }
     try {
-      List<OntologyClass> roots = termService.getRootClasses(ontologyId, Utils.getApiKeyFromHeader(request()));
+      List<OntologyClass> roots = termService.getRootClasses(ontology, Utils.getApiKeyFromHeader(request()));
       return ok((JsonNode) new ObjectMapper().valueToTree(roots));
     } catch (HTTPException e) {
       return Results.status(e.getStatusCode());
@@ -214,50 +214,22 @@ public class TerminologyController extends Controller {
       @ApiImplicitParam(name = "Authorization", value = "Format: apikey token={your_bioportal_apikey}. "
           + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
           required = true, dataType = "string", paramType = "header"),
+      @ApiImplicitParam(name = "ontology", value = "Ontology identifier. Example: CEDARPC", required = true, dataType
+          = "string", paramType = "path"),
       @ApiImplicitParam(value = "Class to be created", required = true, dataType = "org.metadatacenter.terms" +
           ".domainObjects.OntologyClass", paramType = "body")})
-  public static Result createProvisionalClass() {
-    if (!Utils.isValidAuthorizationHeader(request())) {
+  public static Result createClass(String ontology) {
+    if (ontology.isEmpty() || !Utils.isValidAuthorizationHeader(request())) {
       return badRequest();
     }
     ObjectMapper mapper = new ObjectMapper();
     OntologyClass c = mapper.convertValue(request().body().asJson(), OntologyClass.class);
+    c.setOntology(ontology);
     try {
       OntologyClass createdClass = termService.createProvisionalClass(c, Utils.getApiKeyFromHeader(request()));
       return created((JsonNode) mapper.valueToTree(createdClass));
     } catch (HTTPException e) {
       return Results.status(e.getStatusCode());
-    } catch (IOException e) {
-      return internalServerError(e.getMessage());
-    }
-  }
-
-  @ApiOperation(
-      value = "Find provisional class by id",
-      httpMethod = "GET")
-  @ApiResponses(value = {
-      @ApiResponse(code = 200, message = "Success!"),
-      @ApiResponse(code = 400, message = "Bad Request"),
-      @ApiResponse(code = 401, message = "Unauthorized"),
-      @ApiResponse(code = 404, message = "Not Found"),
-      @ApiResponse(code = 500, message = "Internal Server Error")})
-  @ApiImplicitParams(value = {
-      @ApiImplicitParam(name = "Authorization", value = "Format: apikey token={your_bioportal_apikey}. "
-          + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
-          required = true, dataType = "string", paramType = "header"),
-      @ApiImplicitParam(name = "id", value = "Provisional class id. Example: 93966640-ab48-0133-d0ff-005056010088",
-          required = true, dataType = "string", paramType = "path")})
-  public static Result findProvisionalClass(String id) {
-    if (id.isEmpty() || !Utils.isValidAuthorizationHeader(request())) {
-      return badRequest();
-    }
-    try {
-      OntologyClass c = termService.findProvisionalClass(id, Utils.getApiKeyFromHeader(request()));
-      return ok((JsonNode) new ObjectMapper().valueToTree(c));
-    } catch (HTTPException e) {
-      return Results.status(e.getStatusCode());
-    } catch (IllegalArgumentException e) {
-      return badRequest();
     } catch (IOException e) {
       return internalServerError(e.getMessage());
     }
@@ -411,8 +383,7 @@ public class TerminologyController extends Controller {
   }
 
   @ApiOperation(
-      value = "Find all provisional classes (including provisional value sets and provisional values)",
-      //notes = "This call is not paged",
+      value = "Get all provisional classes (including provisional value sets and provisional values)",
       httpMethod = "GET")
   @ApiResponses(value = {
       @ApiResponse(code = 200, message = "Success!"),
@@ -423,13 +394,42 @@ public class TerminologyController extends Controller {
       @ApiImplicitParam(name = "Authorization", value = "Format: apikey token={your_bioportal_apikey}. "
           + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
           required = true, dataType = "string", paramType = "header")})
-  public static Result findAllProvisionalClasses(@ApiParam(value = "Ontology", required = false) @QueryParam
-      ("ontology") String ontology) {
+  public static Result getAllProvisionalClasses() {
     if (!Utils.isValidAuthorizationHeader(request())) {
       return badRequest();
     }
-    if (ontology.length() == 0) {
-      ontology = null;
+    try {
+      List<OntologyClass> classes = termService
+          .findAllProvisionalClasses(null, Utils.getApiKeyFromHeader(request()));
+      ObjectMapper mapper = new ObjectMapper();
+      // This line ensures that @class type annotations are included for each element in the list
+      ObjectWriter writer = mapper.writerFor(new TypeReference<List<OntologyClass>>() {
+      });
+      return ok(mapper.readTree(writer.writeValueAsString(classes)));
+    } catch (HTTPException e) {
+      return Results.status(e.getStatusCode());
+    } catch (IOException e) {
+      return internalServerError(e.getMessage());
+    }
+  }
+
+  @ApiOperation(
+      value = "Get all provisional classes for a specific ontology (including provisional value sets and provisional values)",
+      httpMethod = "GET")
+  @ApiResponses(value = {
+      @ApiResponse(code = 200, message = "Success!"),
+      @ApiResponse(code = 400, message = "Bad Request"),
+      @ApiResponse(code = 401, message = "Unauthorized"),
+      @ApiResponse(code = 500, message = "Internal Server Error")})
+  @ApiImplicitParams(value = {
+      @ApiImplicitParam(name = "Authorization", value = "Format: apikey token={your_bioportal_apikey}. "
+          + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
+          required = true, dataType = "string", paramType = "header"),
+      @ApiImplicitParam(name = "ontology", value = "Ontology. Example: NCIT",
+          required = true, dataType = "string", paramType = "path")})
+  public static Result getAllProvisionalClassesForOntology(String ontology) {
+    if (ontology.isEmpty() || !Utils.isValidAuthorizationHeader(request())) {
+      return badRequest();
     }
     try {
       List<OntologyClass> classes = termService
@@ -464,7 +464,7 @@ public class TerminologyController extends Controller {
       @ApiImplicitParam(value = "Updated information for the class", required = true, dataType = "org.metadatacenter" +
           ".terms" +
           ".domainObjects.OntologyClass", paramType = "body")})
-  public static Result updateProvisionalClass(String id) {
+  public static Result updateClass(String id) {
     if (id.isEmpty() || !Utils.isValidAuthorizationHeader(request())) {
       return badRequest();
     }
@@ -498,7 +498,7 @@ public class TerminologyController extends Controller {
           required = true, dataType = "string", paramType = "header"),
       @ApiImplicitParam(name = "id", value = "Provisional class id. Example: 720f50f0-ae6f-0133-848f-005056010073",
           required = true, dataType = "string", paramType = "path")})
-  public static Result deleteProvisionalClass(String id) {
+  public static Result deleteClass(String id) {
     if (id.isEmpty() || !Utils.isValidAuthorizationHeader(request())) {
       return badRequest();
     }
@@ -532,7 +532,7 @@ public class TerminologyController extends Controller {
           required = true, dataType = "string", paramType = "header"),
       @ApiImplicitParam(value = "Relation to be created", required = true, dataType = "org.metadatacenter.terms" +
           ".domainObjects.Relation", paramType = "body")})
-  public static Result createProvisionalRelation() {
+  public static Result createRelation() {
     if (!Utils.isValidAuthorizationHeader(request())) {
       return badRequest();
     }
@@ -563,7 +563,7 @@ public class TerminologyController extends Controller {
           required = true, dataType = "string", paramType = "header"),
       @ApiImplicitParam(name = "id", value = "Provisional relation id. Example: 720f50f0-ae6f-0133-848f-005056010073",
           required = true, dataType = "string", paramType = "path")})
-  public static Result findProvisionalRelation(String id) {
+  public static Result findRelation(String id) {
     if (id.isEmpty() || !Utils.isValidAuthorizationHeader(request())) {
       return badRequest();
     }
@@ -629,7 +629,7 @@ public class TerminologyController extends Controller {
           required = true, dataType = "string", paramType = "header"),
       @ApiImplicitParam(name = "id", value = "Provisional relation id. Example: 720f50f0-ae6f-0133-848f-005056010073",
           required = true, dataType = "string", paramType = "path")})
-  public static Result deleteProvisionalRelation(String id) {
+  public static Result deleteRelation(String id) {
     if (id.isEmpty() || !Utils.isValidAuthorizationHeader(request())) {
       return badRequest();
     }
@@ -697,14 +697,17 @@ public class TerminologyController extends Controller {
       @ApiImplicitParam(name = "Authorization", value = "Format: apikey token={your_bioportal_apikey}. "
           + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
           required = true, dataType = "string", paramType = "header"),
+      @ApiImplicitParam(name = "vs_collection", value = "Value set collection. Example: CEDARVS", required = true,
+          dataType = "string", paramType = "path"),
       @ApiImplicitParam(value = "Value set to be created", required = true, dataType = "org.metadatacenter.terms" +
           ".domainObjects.ValueSet", paramType = "body")})
-  public static Result createProvisionalValueSet() {
-    if (!Utils.isValidAuthorizationHeader(request())) {
+  public static Result createValueSet(String vsCollection) {
+    if (vsCollection.isEmpty() || !Utils.isValidAuthorizationHeader(request())) {
       return badRequest();
     }
     ObjectMapper mapper = new ObjectMapper();
     ValueSet vs = mapper.convertValue(request().body().asJson(), ValueSet.class);
+    vs.setVsCollection(vsCollection);
     try {
       ValueSet createdVs = termService.createProvisionalValueSet(vs, Utils.getApiKeyFromHeader(request()));
       return created((JsonNode) mapper.valueToTree(createdVs));
@@ -716,7 +719,7 @@ public class TerminologyController extends Controller {
   }
 
   @ApiOperation(
-      value = "Find provisional value set by id",
+      value = "Find provisional value set by id (either provisional or regular)",
       httpMethod = "GET")
   @ApiResponses(value = {
       @ApiResponse(code = 200, message = "Success!"),
@@ -728,14 +731,16 @@ public class TerminologyController extends Controller {
       @ApiImplicitParam(name = "Authorization", value = "Format: apikey token={your_bioportal_apikey}. "
           + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
           required = true, dataType = "string", paramType = "header"),
+      @ApiImplicitParam(name = "vs_collection", value = "Value set collection. Example: CEDARVS",
+          required = true, dataType = "string", paramType = "path"),
       @ApiImplicitParam(name = "id", value = "Provisional value set id. Example: af033050-b04b-0133-981f-005056010074",
           required = true, dataType = "string", paramType = "path")})
-  public static Result findProvisionalValueSet(String id) {
-    if (id.isEmpty() || !Utils.isValidAuthorizationHeader(request())) {
+  public static Result findValueSet(String id, String vsCollection) {
+    if (vsCollection.isEmpty() || id.isEmpty() || !Utils.isValidAuthorizationHeader(request())) {
       return badRequest();
     }
     try {
-      ValueSet c = termService.findProvisionalValueSet(id, Utils.getApiKeyFromHeader(request()));
+      ValueSet c = termService.findValueSet(id, vsCollection, Utils.getApiKeyFromHeader(request()));
       return ok((JsonNode) new ObjectMapper().valueToTree(c));
     } catch (HTTPException e) {
       return Results.status(e.getStatusCode());
@@ -801,7 +806,7 @@ public class TerminologyController extends Controller {
       @ApiImplicitParam(value = "Updated information for the value set", required = true, dataType = "org" +
           ".metadatacenter.terms" +
           ".domainObjects.ValueSet", paramType = "body")})
-  public static Result updateProvisionalValueSet(String id) {
+  public static Result updateValueSet(String id) {
     if (id.isEmpty() || !Utils.isValidAuthorizationHeader(request())) {
       return badRequest();
     }
@@ -835,7 +840,7 @@ public class TerminologyController extends Controller {
           required = true, dataType = "string", paramType = "header"),
       @ApiImplicitParam(name = "id", value = "Provisional value set id. Example: 720f50f0-ae6f-0133-848f-005056010073",
           required = true, dataType = "string", paramType = "path")})
-  public static Result deleteProvisionalValueSet(String id) {
+  public static Result deleteValueSet(String id) {
     if (id.isEmpty() || !Utils.isValidAuthorizationHeader(request())) {
       return badRequest();
     }
@@ -900,7 +905,7 @@ public class TerminologyController extends Controller {
    **/
 
   @ApiOperation(
-      value = "Create a provisional value",
+      value = "Create a value",
       httpMethod = "POST")
   @ApiResponses(value = {
       @ApiResponse(code = 200, message = "Successful creation of a provisional value"),
@@ -911,15 +916,22 @@ public class TerminologyController extends Controller {
       @ApiImplicitParam(name = "Authorization", value = "Format: apikey token={your_bioportal_apikey}. "
           + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
           required = true, dataType = "string", paramType = "header"),
+      @ApiImplicitParam(name = "vs_collection", value = "Value set collection. Example: CEDARVS",
+          required = true, dataType = "string", paramType = "path"),
+      @ApiImplicitParam(name = "vs", value = "Value set identifier. Example: http%3A%2F%2Fwww.semanticweb" +
+          ".org%2Fjgraybeal%2Fontologies%2F2015%2F7%2Fcedarvaluesets%23Study_File_Type",
+          required = true, dataType = "string", paramType = "path"),
       @ApiImplicitParam(value = "Value to be created", required = true, dataType = "org.metadatacenter.terms" +
           ".domainObjects.Value", paramType = "body")})
-  public static Result createProvisionalValue() {
-    if (!Utils.isValidAuthorizationHeader(request())) {
+  public static Result createValue(String vsCollection, String vs) {
+    if (vsCollection.isEmpty() || vs.isEmpty() || !Utils.isValidAuthorizationHeader(request())) {
       return badRequest();
     }
     try {
       ObjectMapper mapper = new ObjectMapper();
       Value v = mapper.convertValue(request().body().asJson(), Value.class);
+      v.setVsCollection(vsCollection);
+      v.setVsId(vs);
       Value createdValue = termService.createProvisionalValue(v, Utils.getApiKeyFromHeader(request()));
       return created((JsonNode) mapper.valueToTree(createdValue));
     } catch (HTTPException e) {
@@ -930,7 +942,7 @@ public class TerminologyController extends Controller {
   }
 
   @ApiOperation(
-      value = "Find provisional value by id",
+      value = "Find value by id",
       httpMethod = "GET")
   @ApiResponses(value = {
       @ApiResponse(code = 200, message = "Success!"),
@@ -941,14 +953,19 @@ public class TerminologyController extends Controller {
       @ApiImplicitParam(name = "Authorization", value = "Format: apikey token={your_bioportal_apikey}. "
           + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
           required = true, dataType = "string", paramType = "header"),
-      @ApiImplicitParam(name = "id", value = "Provisional value id. Example: 42f22880-b04b-0133-848f-005056010073",
+      @ApiImplicitParam(name = "vs_collection", value = "Value set collection. Example: CEDARVS",
+          required = true, dataType = "string", paramType = "path"),
+      @ApiImplicitParam(name = "vs", value = "Value set identifier. Example: http%3A%2F%2Fwww.semanticweb" +
+          ".org%2Fjgraybeal%2Fontologies%2F2015%2F7%2Fcedarvaluesets%23Study_File_Type",
+          required = true, dataType = "string", paramType = "path"),
+      @ApiImplicitParam(name = "id", value = "Value id. Example: 42f22880-b04b-0133-848f-005056010073",
           required = true, dataType = "string", paramType = "path")})
-  public static Result findProvisionalValue(String id) {
-    if (id.isEmpty() || !Utils.isValidAuthorizationHeader(request())) {
+  public static Result findValue(String id, String vsCollection) {
+    if (id.isEmpty() || vsCollection.isEmpty() || !Utils.isValidAuthorizationHeader(request())) {
       return badRequest();
     }
     try {
-      Value c = termService.findProvisionalValue(id, Utils.getApiKeyFromHeader(request()));
+      Value c = termService.findValue(id, vsCollection, Utils.getApiKeyFromHeader(request()));
       return ok((JsonNode) new ObjectMapper().valueToTree(c));
     } catch (HTTPException e) {
       return Results.status(e.getStatusCode());
@@ -977,7 +994,7 @@ public class TerminologyController extends Controller {
       @ApiImplicitParam(value = "Updated information for the value", required = true, dataType = "org.metadatacenter" +
           ".terms" +
           ".domainObjects.OntologyClass", paramType = "body")})
-  public static Result updateProvisionalValue(String id) {
+  public static Result updateValue(String id) {
     if (id.isEmpty() || !Utils.isValidAuthorizationHeader(request())) {
       return badRequest();
     }
@@ -1011,7 +1028,7 @@ public class TerminologyController extends Controller {
           required = true, dataType = "string", paramType = "header"),
       @ApiImplicitParam(name = "id", value = "Provisional value id. Example: 720f50f0-ae6f-0133-848f-005056010073",
           required = true, dataType = "string", paramType = "path")})
-  public static Result deleteProvisionalValue(String id) {
+  public static Result deleteValue(String id) {
     if (id.isEmpty() || !Utils.isValidAuthorizationHeader(request())) {
       return badRequest();
     }

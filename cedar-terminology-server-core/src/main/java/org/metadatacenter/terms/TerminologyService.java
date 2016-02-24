@@ -247,15 +247,15 @@ public class TerminologyService implements ITerminologyService {
     return ObjectConverter.toValueSet(pc);
   }
 
-  public ValueSet findRegularValueSet(String id, String ontology, String apiKey) throws IOException {
-    BpClass c = bpService.findBpClassById(id, ontology, apiKey);
+  public ValueSet findRegularValueSet(String id, String vsCollection, String apiKey) throws IOException {
+    BpClass c = bpService.findBpClassById(id, vsCollection, apiKey);
     return ObjectConverter.toValueSet(c);
   }
 
-  public ValueSet findValueSet(String id, String ontology, String apiKey) throws IOException {
+  public ValueSet findValueSet(String id, String vsCollection, String apiKey) throws IOException {
     ValueSet vs;
     try {
-      vs = findRegularValueSet(id, ontology, apiKey);
+      vs = findRegularValueSet(id, vsCollection, apiKey);
     } catch (HTTPException e) {
       try {
         vs = findProvisionalValueSet(id, apiKey);

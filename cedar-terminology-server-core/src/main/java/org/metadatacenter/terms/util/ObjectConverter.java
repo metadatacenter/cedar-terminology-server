@@ -73,10 +73,9 @@ public class ObjectConverter {
   }
 
   public static OntologyClass toOntologyClass(BpClass pc) {
-    boolean provisional = false;
     return new OntologyClass(Util.getShortIdentifier(pc.getId()), pc.getId(), pc.getPrefLabel(), null, pc.getLinks()
         .getOntology(), pc.getDefinition(),
-        pc.getSynonym(), null, null, provisional, null);
+        pc.getSynonym(), null, null, pc.isProvisional(), null);
   }
 
   public static ValueSet toValueSet(BpProvisionalClass pc) {
@@ -99,17 +98,15 @@ public class ObjectConverter {
   }
 
   public static ValueSet toValueSet(BpClass c) {
-    boolean provisional = false;
     return new ValueSet(Util.getShortIdentifier(c.getId()), c.getId(), c.getPrefLabel(), null, c.getLinks()
         .getOntology(), c.getDefinition(),
-        c.getSynonym(), null, provisional, null);
+        c.getSynonym(), null, c.isProvisional(), null);
   }
 
   public static Value toValue(BpClass c) {
-    boolean provisional = false;
     return new Value(Util.getShortIdentifier(c.getId()), c.getId(), c.getPrefLabel(), null, null, c.getLinks()
         .getOntology(), c.getDefinition(),
-        c.getSynonym(), null, provisional, null);
+        c.getSynonym(), null, c.isProvisional(), null);
   }
 
   public static Value toValue(BpProvisionalClass pc) {

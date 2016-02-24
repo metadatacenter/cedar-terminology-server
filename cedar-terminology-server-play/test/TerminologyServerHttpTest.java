@@ -6,13 +6,16 @@ import org.metadatacenter.terms.domainObjects.OntologyClass;
 import org.metadatacenter.terms.domainObjects.Relation;
 import org.metadatacenter.terms.domainObjects.Value;
 import org.metadatacenter.terms.domainObjects.ValueSet;
+import org.metadatacenter.terms.util.Util;
 import play.Configuration;
+import play.Logger;
 import play.Play;
 import play.libs.Json;
 import play.libs.ws.WS;
 import play.libs.ws.WSResponse;
 
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -34,10 +37,10 @@ public class TerminologyServerHttpTest {
 
   private static String authHeader;
 
-  private static List<String> createdClasses;
-  private static List<String> createdRelations;
-  private static List<String> createdValueSets;
-  private static List<String> createdValues;
+  private static List<OntologyClass> createdClasses;
+  private static List<Relation> createdRelations;
+  private static List<ValueSet> createdValueSets;
+  private static List<Value> createdValues;
 
   private static OntologyClass class1;
   private static Relation relation1;
@@ -63,7 +66,7 @@ public class TerminologyServerHttpTest {
     // Initialize test class
     String classLabel = "class1_test";
     String classCreator = "http://data.bioontology.org/users/cedar-test";
-    String classOntology = "http://data.bioontology.org/ontologies/CEDARVS";
+    String classOntology = "http://data.bioontology.org/ontologies/CEDARPC";
     List classDefinitions = new ArrayList<>();
     classDefinitions.add("classDefinition1");
     classDefinitions.add("classDefinition2");
@@ -174,7 +177,7 @@ public class TerminologyServerHttpTest {
     });
   }
 
-  //@Test
+  @Test
   public void searchClassesTest() {
     running(testServer(TEST_SERVER_PORT), new Runnable() {
       public void run() {
@@ -199,7 +202,7 @@ public class TerminologyServerHttpTest {
     });
   }
 
-  //  @Test
+  @Test
   public void searchValueSetsTest() {
     running(testServer(TEST_SERVER_PORT), new Runnable() {
       public void run() {
@@ -224,7 +227,7 @@ public class TerminologyServerHttpTest {
     });
   }
 
-  //  @Test
+  @Test
   public void searchValuesTest() {
     running(testServer(TEST_SERVER_PORT), new Runnable() {
       public void run() {
@@ -254,11 +257,12 @@ public class TerminologyServerHttpTest {
    **/
 
   @Test
-  public void createProvisionalClassTest() {
+  public void createClassTest() {
     running(testServer(TEST_SERVER_PORT), new Runnable() {
       public void run() {
         try {
-          String url = SERVER_URL_BIOPORTAL + BP_PROVISIONAL_CLASSES;
+          String url = SERVER_URL_BIOPORTAL + BP_ONTOLOGIES + "/" + Util.getShortIdentifier(class1.getOntology()) +
+              "/" + BP_CLASSES;
           // Service invocation - Create
           ObjectMapper mapper = new ObjectMapper();
           JsonNode class1Json = mapper.readTree(mapper.writeValueAsString(class1));
@@ -268,7 +272,7 @@ public class TerminologyServerHttpTest {
           Assert.assertEquals(CREATED, wsResponseCreate.getStatus());
           OntologyClass created = mapper.treeToValue(wsResponseCreate.asJson(), OntologyClass.class);
           // Store the id to delete the class after the test
-          createdClasses.add(created.getId());
+          createdClasses.add(created);
           // Check Content-Type
           Assert.assertEquals("application/json; charset=utf-8", wsResponseCreate.getHeader("Content-Type"));
           // Check fields
@@ -292,14 +296,16 @@ public class TerminologyServerHttpTest {
   }
 
   @Test
-  public void findProvisionalClassTest() {
+  // TODO: test regular classes
+  public void findClassTest() {
     running(testServer(TEST_SERVER_PORT), new Runnable() {
       public void run() {
         String url = SERVER_URL_BIOPORTAL + BP_PROVISIONAL_CLASSES;
         // Create a provisional class
-        OntologyClass created = createProvisionalClass();
+        OntologyClass created = createClass();
         // Find the provisional class by id
-        String classUrl = url + "/" + created.getId();
+        String classUrl = SERVER_URL_BIOPORTAL + BP_ONTOLOGIES + "/" + Util.getShortIdentifier(class1.getOntology()) +
+            "/" + BP_CLASSES + "/" + created.getId();
         WSResponse wsResponseFind = WS.url(classUrl).setHeader("Authorization", authHeader).get().get(TIMEOUT_MS);
         // Check response is OK
         Assert.assertEquals(wsResponseFind.getStatus(), OK);
@@ -338,7 +344,7 @@ public class TerminologyServerHttpTest {
         // Find all
         WSResponse wsResponse = WS.url(url).setHeader("Authorization", authHeader).get().get(TIMEOUT_MS);
         // Check response is OK
-        Assert.assertEquals(wsResponse.getStatus(), OK);
+        Assert.assertEquals(OK, wsResponse.getStatus());
         // Check Content-Type
         Assert.assertEquals(wsResponse.getHeader("Content-Type"), "application/json; charset=utf-8");
         // Check that the array returned is not empty
@@ -349,12 +355,33 @@ public class TerminologyServerHttpTest {
   }
 
   @Test
-  public void updateProvisionalClassTest() {
+  public void findAllProvisionalClassesForOntologyTest() {
     running(testServer(TEST_SERVER_PORT), new Runnable() {
       public void run() {
-        String url = SERVER_URL_BIOPORTAL + BP_PROVISIONAL_CLASSES;
         // Create a provisional class
-        OntologyClass createdClass = createProvisionalClass();
+        OntologyClass createdClass = createClass();
+        String url = SERVER_URL_BIOPORTAL + BP_ONTOLOGIES + "/" +
+            Util.getShortIdentifier(createdClass.getOntology()) + "/" + BP_PROVISIONAL_CLASSES;
+        // Find all
+        WSResponse wsResponse = WS.url(url).setHeader("Authorization", authHeader).get().get(TIMEOUT_MS);
+        // Check response is OK
+        Assert.assertEquals(OK, wsResponse.getStatus());
+        // Check Content-Type
+        Assert.assertEquals(wsResponse.getHeader("Content-Type"), "application/json; charset=utf-8");
+        // Check that the array returned is not empty
+        int classesCount = wsResponse.asJson().size();
+        Assert.assertFalse("Empty array returned", classesCount == 0);
+      }
+    });
+  }
+
+  @Test
+  public void updateClassTest() {
+    running(testServer(TEST_SERVER_PORT), new Runnable() {
+      public void run() {
+        String url = SERVER_URL_BIOPORTAL + BP_CLASSES;
+        // Create a provisional class
+        OntologyClass createdClass = createClass();
         // Update the created class
         String updatedLabel = "new label";
         JsonNode changes = Json.newObject().put("label", updatedLabel);
@@ -365,7 +392,9 @@ public class TerminologyServerHttpTest {
         // Check HTTP response
         Assert.assertEquals(NO_CONTENT, wsResponseUpdate.getStatus());
         // Retrieve the class
-        WSResponse wsResponseFind = WS.url(classUrl).setHeader("Authorization", authHeader).get().get(TIMEOUT_MS);
+        String findUrl = SERVER_URL_BIOPORTAL + BP_ONTOLOGIES + "/" + Util.getShortIdentifier(class1.getOntology()) +
+            "/" + BP_CLASSES + "/" + createdClass.getId();
+        WSResponse wsResponseFind = WS.url(findUrl).setHeader("Authorization", authHeader).get().get(TIMEOUT_MS);
         ObjectMapper mapper = new ObjectMapper();
         OntologyClass retrievedClass = null;
         try {
@@ -382,12 +411,12 @@ public class TerminologyServerHttpTest {
   }
 
   @Test
-  public void deleteProvisionalClassTest() {
+  public void deleteClassTest() {
     running(testServer(TEST_SERVER_PORT), new Runnable() {
       public void run() {
-        String url = SERVER_URL_BIOPORTAL + BP_PROVISIONAL_CLASSES;
+        String url = SERVER_URL_BIOPORTAL + BP_CLASSES;
         // Create a provisional class
-        OntologyClass createdClass = createProvisionalClass();
+        OntologyClass createdClass = createClass();
         // Delete the class that has been created
         String classUrl = url + "/" + createdClass.getId();
         WSResponse wsResponseDelete = WS.url(classUrl).setHeader("Authorization", authHeader).delete().get(TIMEOUT_MS);
@@ -406,15 +435,15 @@ public class TerminologyServerHttpTest {
    **/
 
   @Test
-  public void createProvisionalRelationTest() {
+  public void createRelationTest() {
     running(testServer(TEST_SERVER_PORT), new Runnable() {
       public void run() {
-        OntologyClass createdClass = createProvisionalClass();
+        OntologyClass createdClass = createClass();
         // Create provisional relation
         relation1.setSourceClassId(createdClass.getLdId());
         ObjectMapper mapper = new ObjectMapper();
         JsonNode relation1Json = mapper.valueToTree(relation1);
-        WSResponse wsResponseCreate = WS.url(SERVER_URL_BIOPORTAL + BP_PROVISIONAL_RELATIONS).setHeader
+        WSResponse wsResponseCreate = WS.url(SERVER_URL_BIOPORTAL + BP_RELATIONS).setHeader
             ("Authorization", authHeader).setContentType
             ("application/json").post(relation1Json).get(TIMEOUT_MS);
         // Check HTTP response
@@ -426,7 +455,7 @@ public class TerminologyServerHttpTest {
           e.printStackTrace();
         }
         // Store the id to delete the relation after the test
-        createdRelations.add(created.getId());
+        createdRelations.add(created);
         // Check Content-Type
         Assert.assertEquals("application/json; charset=utf-8", wsResponseCreate.getHeader("Content-Type"));
         // Check fields
@@ -443,12 +472,12 @@ public class TerminologyServerHttpTest {
   }
 
   @Test
-  public void findProvisionalRelationTest() {
+  public void findRelationTest() {
     running(testServer(TEST_SERVER_PORT), new Runnable() {
       public void run() {
-        String url = SERVER_URL_BIOPORTAL + BP_PROVISIONAL_RELATIONS;
+        String url = SERVER_URL_BIOPORTAL + BP_RELATIONS;
         // Create a provisional relation
-        Relation created = createProvisionalRelation();
+        Relation created = createRelation();
         // Find the provisional relation by id
         String relationUrl = url + "/" + created.getId();
         WSResponse wsResponseFind = WS.url(relationUrl).setHeader("Authorization", authHeader).get().get(TIMEOUT_MS);
@@ -476,12 +505,12 @@ public class TerminologyServerHttpTest {
   }
 
   @Test
-  public void deleteProvisionalRelationTest() {
+  public void deleteRelationTest() {
     running(testServer(TEST_SERVER_PORT), new Runnable() {
       public void run() {
-        String url = SERVER_URL_BIOPORTAL + BP_PROVISIONAL_RELATIONS;
+        String url = SERVER_URL_BIOPORTAL + BP_RELATIONS;
         // Create a provisional relation
-        Relation created = createProvisionalRelation();
+        Relation created = createRelation();
         // Delete the relation that has been created
         String relationUrl = url + "/" + created.getId();
         WSResponse wsResponseDelete = WS.url(relationUrl).setHeader("Authorization", authHeader).delete().get
@@ -501,10 +530,11 @@ public class TerminologyServerHttpTest {
    **/
 
   @Test
-  public void createProvisionalValueSetTest() {
+  public void createValueSetTest() {
     running(testServer(TEST_SERVER_PORT), new Runnable() {
       public void run() {
-        String url = SERVER_URL_BIOPORTAL + BP_PROVISIONAL_VALUE_SETS;
+        String url = SERVER_URL_BIOPORTAL + BP_VALUE_SET_COLLECTIONS + "/" + Util.getShortIdentifier(vs1
+            .getVsCollection()) + "/" + BP_VALUE_SETS;
         ObjectMapper mapper = new ObjectMapper();
         JsonNode vs1Json = mapper.valueToTree(vs1);
         // Service invocation - Create
@@ -519,7 +549,7 @@ public class TerminologyServerHttpTest {
           e.printStackTrace();
         }
         // Store the id to delete the class after the test
-        createdValueSets.add(created.getId());
+        createdValueSets.add(created);
         // Check Content-Type
         Assert.assertEquals("application/json; charset=utf-8", wsResponseCreate.getHeader("Content-Type"));
         // Check fields
@@ -539,12 +569,14 @@ public class TerminologyServerHttpTest {
   }
 
   @Test
-  public void findProvisionalValueSetTest() {
+  // TODO: test find for regular value sets
+  public void findValueSetTest() {
     running(testServer(TEST_SERVER_PORT), new Runnable() {
       public void run() {
-        String url = SERVER_URL_BIOPORTAL + BP_PROVISIONAL_VALUE_SETS;
+        String url = SERVER_URL_BIOPORTAL + BP_VALUE_SET_COLLECTIONS + "/" + Util.getShortIdentifier(vs1
+            .getVsCollection()) + "/" + BP_VALUE_SETS;
         // Create a provisional value set
-        ValueSet created = createProvisionalValueSet();
+        ValueSet created = createValueSet();
         // Find the provisional vs by id
         String vsUrl = url + "/" + created.getId();
         WSResponse wsResponseFind = WS.url(vsUrl).setHeader("Authorization", authHeader).get().get(TIMEOUT_MS);
@@ -576,12 +608,12 @@ public class TerminologyServerHttpTest {
   }
 
   @Test
-  public void updateProvisionalValueSetTest() {
+  public void updateValueSetTest() {
     running(testServer(TEST_SERVER_PORT), new Runnable() {
       public void run() {
-        String url = SERVER_URL_BIOPORTAL + BP_PROVISIONAL_VALUE_SETS;
+        String url = SERVER_URL_BIOPORTAL + BP_VALUE_SETS;
         // Create a provisional value set
-        ValueSet created = createProvisionalValueSet();
+        ValueSet created = createValueSet();
         // Update the created vs
         String updatedLabel = "new label";
         JsonNode changes = Json.newObject().put("label", updatedLabel);
@@ -591,8 +623,11 @@ public class TerminologyServerHttpTest {
             (TIMEOUT_MS);
         // Check HTTP response
         Assert.assertEquals(NO_CONTENT, wsResponseUpdate.getStatus());
-        // Retrieve the class
-        WSResponse wsResponseFind = WS.url(vsUrl).setHeader("Authorization", authHeader).get().get(TIMEOUT_MS);
+        // Retrieve the value set
+        String findUrl = SERVER_URL_BIOPORTAL + BP_VALUE_SET_COLLECTIONS + "/" + Util.getShortIdentifier(created
+            .getVsCollection()) +
+            "/" + BP_VALUE_SETS + "/" + created.getId();
+        WSResponse wsResponseFind = WS.url(findUrl).setHeader("Authorization", authHeader).get().get(TIMEOUT_MS);
         ObjectMapper mapper = new ObjectMapper();
         ValueSet retrievedVs = null;
         try {
@@ -609,19 +644,22 @@ public class TerminologyServerHttpTest {
   }
 
   @Test
-  public void deleteProvisionalValueSetTest() {
+  public void deleteValueSetTest() {
     running(testServer(TEST_SERVER_PORT), new Runnable() {
       public void run() {
-        String url = SERVER_URL_BIOPORTAL + BP_PROVISIONAL_VALUE_SETS;
+        String url = SERVER_URL_BIOPORTAL + BP_VALUE_SETS;
         // Create a provisional value set
-        ValueSet created = createProvisionalValueSet();
+        ValueSet created = createValueSet();
         // Delete the vs that has been created
         String vsUrl = url + "/" + created.getId();
         WSResponse wsResponseDelete = WS.url(vsUrl).setHeader("Authorization", authHeader).delete().get(TIMEOUT_MS);
         // Check HTTP response
         Assert.assertEquals(NO_CONTENT, wsResponseDelete.getStatus());
         // Try to retrieve the vs to check that it has been deleted correctly
-        WSResponse wsResponseFind = WS.url(vsUrl).setHeader("Authorization", authHeader).get().get(TIMEOUT_MS);
+        String findUrl = SERVER_URL_BIOPORTAL + BP_VALUE_SET_COLLECTIONS + "/" + Util.getShortIdentifier(created
+            .getVsCollection()) +
+            "/" + BP_VALUE_SETS + "/" + created.getId();
+        WSResponse wsResponseFind = WS.url(findUrl).setHeader("Authorization", authHeader).get().get(TIMEOUT_MS);
         // Check not found
         Assert.assertEquals(wsResponseFind.getStatus(), NOT_FOUND);
       }
@@ -633,15 +671,23 @@ public class TerminologyServerHttpTest {
    **/
 
   @Test
-  public void createProvisionalValueTest() {
+  public void createValueTest() {
     running(testServer(TEST_SERVER_PORT), new Runnable() {
       public void run() {
-        ValueSet createdVs = createProvisionalValueSet();
+        ValueSet createdVs = createValueSet();
         // Create provisional value
         value1.setVsId(createdVs.getLdId());
+        String url = null;
+        try {
+          url = SERVER_URL_BIOPORTAL + BP_VALUE_SET_COLLECTIONS + "/" + Util.getShortIdentifier(value1
+              .getVsCollection()) + "/" + BP_VALUE_SETS + "/" + Util.encodeIfNeeded(value1.getVsId()) + "/" +
+              BP_VALUES;
+        } catch (UnsupportedEncodingException e) {
+          e.printStackTrace();
+        }
         ObjectMapper mapper = new ObjectMapper();
         JsonNode value1Json = mapper.valueToTree(value1);
-        WSResponse wsResponseCreate = WS.url(SERVER_URL_BIOPORTAL + BP_PROVISIONAL_VALUES).setHeader
+        WSResponse wsResponseCreate = WS.url(url).setHeader
             ("Authorization", authHeader).setContentType
             ("application/json").post(value1Json).get(TIMEOUT_MS);
         // Check HTTP response
@@ -653,7 +699,7 @@ public class TerminologyServerHttpTest {
           e.printStackTrace();
         }
         // Store the id to delete the object after the test
-        createdValues.add(created.getId());
+        createdValues.add(created);
         // Check Content-Type
         Assert.assertEquals("application/json; charset=utf-8", wsResponseCreate.getHeader("Content-Type"));
         // Check fields
@@ -674,12 +720,13 @@ public class TerminologyServerHttpTest {
   }
 
   @Test
-  public void findProvisionalValueTest() {
+  public void findValueTest() {
     running(testServer(TEST_SERVER_PORT), new Runnable() {
       public void run() {
-        String url = SERVER_URL_BIOPORTAL + BP_PROVISIONAL_VALUES;
         // Create a provisional value
-        Value created = createProvisionalValue();
+        Value created = createValue();
+        String url = SERVER_URL_BIOPORTAL + BP_VALUE_SET_COLLECTIONS + "/" + Util.getShortIdentifier(created
+            .getVsCollection()) + "/" + BP_VALUES;
         // Find the provisional value by id
         String valueUrl = url + "/" + created.getId();
         WSResponse wsResponseFind = WS.url(valueUrl).setHeader("Authorization", authHeader).get().get(TIMEOUT_MS);
@@ -711,12 +758,12 @@ public class TerminologyServerHttpTest {
   }
 
   @Test
-  public void updateProvisionalValueTest() {
+  public void updateValueTest() {
     running(testServer(TEST_SERVER_PORT), new Runnable() {
       public void run() {
-        String url = SERVER_URL_BIOPORTAL + BP_PROVISIONAL_VALUES;
+        String url = SERVER_URL_BIOPORTAL + BP_VALUES;
         // Create a provisional value
-        Value created = createProvisionalValue();
+        Value created = createValue();
         // Update the created value
         String updatedLabel = "new label";
         JsonNode changes = Json.newObject().put("label", updatedLabel);
@@ -727,7 +774,9 @@ public class TerminologyServerHttpTest {
         // Check HTTP response
         Assert.assertEquals(NO_CONTENT, wsResponseUpdate.getStatus());
         // Retrieve the value
-        WSResponse wsResponseFind = WS.url(valueUrl).setHeader("Authorization", authHeader).get().get(TIMEOUT_MS);
+        String findUrl = SERVER_URL_BIOPORTAL + BP_VALUE_SET_COLLECTIONS + "/" + Util.getShortIdentifier(created.
+            getVsCollection()) + "/" + BP_VALUES + "/" + created.getId();
+        WSResponse wsResponseFind = WS.url(findUrl).setHeader("Authorization", authHeader).get().get(TIMEOUT_MS);
         ObjectMapper mapper = new ObjectMapper();
         Value retrievedValue = null;
         try {
@@ -744,12 +793,12 @@ public class TerminologyServerHttpTest {
   }
 
   @Test
-  public void deleteProvisionalValueTest() {
+  public void deleteValueTest() {
     running(testServer(TEST_SERVER_PORT), new Runnable() {
       public void run() {
-        String url = SERVER_URL_BIOPORTAL + BP_PROVISIONAL_VALUES;
+        String url = SERVER_URL_BIOPORTAL + BP_VALUES;
         // Create a provisional value
-        Value created = createProvisionalValue();
+        Value created = createValue();
         // Delete the value that has been created
         String valueUrl = url + "/" + created.getId();
         WSResponse wsResponseDelete = WS.url(valueUrl).setHeader("Authorization", authHeader).delete().get
@@ -767,8 +816,9 @@ public class TerminologyServerHttpTest {
   /**
    * Utils
    **/
-  private static OntologyClass createProvisionalClass() {
-    String url = SERVER_URL_BIOPORTAL + BP_PROVISIONAL_CLASSES;
+  private static OntologyClass createClass() {
+    String url = SERVER_URL_BIOPORTAL + BP_ONTOLOGIES + "/" + Util.getShortIdentifier(class1.getOntology()) + "/" +
+        BP_CLASSES;
     ObjectMapper mapper = new ObjectMapper();
     JsonNode class1Json = mapper.valueToTree(class1);
     // Service invocation - Create
@@ -783,13 +833,13 @@ public class TerminologyServerHttpTest {
       e.printStackTrace();
     }
     // Store the id to delete the class after the test
-    createdClasses.add(created.getId());
+    createdClasses.add(created);
     return created;
   }
 
-  private static Relation createProvisionalRelation() {
-    String url = SERVER_URL_BIOPORTAL + BP_PROVISIONAL_RELATIONS;
-    OntologyClass createdClass = createProvisionalClass();
+  private static Relation createRelation() {
+    String url = SERVER_URL_BIOPORTAL + BP_RELATIONS;
+    OntologyClass createdClass = createClass();
     // Create provisional relation
     relation1.setSourceClassId(createdClass.getId());
     ObjectMapper mapper = new ObjectMapper();
@@ -806,12 +856,13 @@ public class TerminologyServerHttpTest {
       e.printStackTrace();
     }
     // Store the id to delete the relation after the test
-    createdRelations.add(created.getId());
+    createdRelations.add(created);
     return created;
   }
 
-  private static ValueSet createProvisionalValueSet() {
-    String url = SERVER_URL_BIOPORTAL + BP_PROVISIONAL_VALUE_SETS;
+  private static ValueSet createValueSet() {
+    String url = SERVER_URL_BIOPORTAL + BP_VALUE_SET_COLLECTIONS + "/" + Util.getShortIdentifier(vs1
+        .getVsCollection()) + "/" + BP_VALUE_SETS;
     ObjectMapper mapper = new ObjectMapper();
     JsonNode vs1Json = mapper.valueToTree(vs1);
     // Service invocation - Create
@@ -826,15 +877,22 @@ public class TerminologyServerHttpTest {
       e.printStackTrace();
     }
     // Store the id to delete the class after the test
-    createdValueSets.add(created.getId());
+    createdValueSets.add(created);
     return created;
   }
 
-  private static Value createProvisionalValue() {
-    String url = SERVER_URL_BIOPORTAL + BP_PROVISIONAL_VALUES;
-    ValueSet createdVs = createProvisionalValueSet();
+  private static Value createValue() {
+    ValueSet createdVs = createValueSet();
     // Create provisional value
     value1.setVsId(createdVs.getLdId());
+    String url = null;
+    try {
+      url = SERVER_URL_BIOPORTAL + BP_VALUE_SET_COLLECTIONS + "/" + Util.getShortIdentifier(value1
+          .getVsCollection()) + "/" + BP_VALUE_SETS + "/" + Util.encodeIfNeeded(value1.getVsId()) + "/" +
+          BP_VALUES;
+    } catch (UnsupportedEncodingException e) {
+      e.printStackTrace();
+    }
     ObjectMapper mapper = new ObjectMapper();
     JsonNode value1Json = mapper.valueToTree(value1);
     WSResponse wsResponseCreate = WS.url(url).setHeader
@@ -849,50 +907,57 @@ public class TerminologyServerHttpTest {
       e.printStackTrace();
     }
     // Store the id to delete the object after the test
-    createdValues.add(created.getId());
+    createdValues.add(created);
     return created;
   }
 
   private static void deleteCreatedClasses() {
-    for (String id : createdClasses) {
+    for (OntologyClass c : createdClasses) {
       // Check if the class still exists
-      String classUrl = SERVER_URL_BIOPORTAL + BP_PROVISIONAL_CLASSES + "/" + id;
-      if (WS.url(classUrl).setHeader("Authorization", authHeader).get().get(TIMEOUT_MS).getStatus() == OK) {
-        WS.url(classUrl).setHeader("Authorization", authHeader).delete().get(TIMEOUT_MS);
-        //System.out.println("Deleted class: " + id);
+      String findUrl = SERVER_URL_BIOPORTAL + BP_ONTOLOGIES + "/" + Util.getShortIdentifier(c.getOntology()) +
+          "/" + BP_CLASSES + "/" + c.getId();
+      String deleteUrl = SERVER_URL_BIOPORTAL + BP_CLASSES + "/" + c.getId();
+      if (WS.url(findUrl).setHeader("Authorization", authHeader).get().get(TIMEOUT_MS).getStatus() == OK) {
+        WS.url(deleteUrl).setHeader("Authorization", authHeader).delete().get(TIMEOUT_MS);
+        Logger.info("Deleted class: " + c.getId());
       }
     }
   }
 
   private static void deleteCreatedRelations() {
-    for (String id : createdRelations) {
+    for (Relation r : createdRelations) {
       // Check if the relation still exists
-      String relationUrl = SERVER_URL_BIOPORTAL + BP_PROVISIONAL_RELATIONS + "/" + id;
+      String relationUrl = SERVER_URL_BIOPORTAL + BP_RELATIONS + "/" + r.getId();
       if (WS.url(relationUrl).setHeader("Authorization", authHeader).get().get(TIMEOUT_MS).getStatus() == OK) {
         WS.url(relationUrl).setHeader("Authorization", authHeader).delete().get(TIMEOUT_MS);
-        //System.out.println("Deleted relation: " + id);
+        Logger.info("Deleted relation: " + r.getId());
       }
     }
   }
 
   private static void deleteCreatedValueSets() {
-    for (String id : createdValueSets) {
+    for (ValueSet vs : createdValueSets) {
       // Check if the value set still exists
-      String relationUrl = SERVER_URL_BIOPORTAL + BP_PROVISIONAL_VALUE_SETS + "/" + id;
-      if (WS.url(relationUrl).setHeader("Authorization", authHeader).get().get(TIMEOUT_MS).getStatus() == OK) {
-        WS.url(relationUrl).setHeader("Authorization", authHeader).delete().get(TIMEOUT_MS);
-        //System.out.println("Deleted value set: " + id);
+      String findUrl = SERVER_URL_BIOPORTAL + BP_VALUE_SET_COLLECTIONS + "/" + Util.getShortIdentifier(vs
+          .getVsCollection()) +
+          "/" + BP_VALUE_SETS + "/" + vs.getId();
+      String deleteUrl = SERVER_URL_BIOPORTAL + BP_CLASSES + "/" + vs.getId();
+      if (WS.url(findUrl).setHeader("Authorization", authHeader).get().get(TIMEOUT_MS).getStatus() == OK) {
+        WS.url(deleteUrl).setHeader("Authorization", authHeader).delete().get(TIMEOUT_MS);
+        Logger.info("Deleted value set: " + vs.getId());
       }
     }
   }
 
   private static void deleteCreatedValues() {
-    for (String id : createdValues) {
+    for (Value v : createdValues) {
       // Check if the value still exists
-      String relationUrl = SERVER_URL_BIOPORTAL + BP_PROVISIONAL_VALUES + "/" + id;
-      if (WS.url(relationUrl).setHeader("Authorization", authHeader).get().get(TIMEOUT_MS).getStatus() == OK) {
-        WS.url(relationUrl).setHeader("Authorization", authHeader).delete().get(TIMEOUT_MS);
-        //System.out.println("Deleted value: " + id);
+      String findUrl = SERVER_URL_BIOPORTAL + BP_VALUE_SET_COLLECTIONS + "/" + Util.getShortIdentifier(v
+          .getVsCollection()) + "/" + BP_VALUES + "/" + v.getId();
+      String deleteUrl = SERVER_URL_BIOPORTAL + BP_VALUES + "/" + v.getId();
+      if (WS.url(findUrl).setHeader("Authorization", authHeader).get().get(TIMEOUT_MS).getStatus() == OK) {
+        WS.url(deleteUrl).setHeader("Authorization", authHeader).delete().get(TIMEOUT_MS);
+        Logger.info("Deleted value: " + v.getId());
       }
     }
   }

@@ -2,111 +2,118 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
 
-    <modelVersion>4.0.0</modelVersion>
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>org.metadatacenter</groupId>
+  <artifactId>cedar-terminology-server-core</artifactId>
+  <name>CEDAR Terminology Server Core</name>
+  <version>0.1.0</version>
+  <packaging>jar</packaging>
+
+  <parent>
     <groupId>org.metadatacenter</groupId>
-    <artifactId>cedar-terminology-server-core</artifactId>
-    <name>CEDAR Terminology Server Core</name>
+    <artifactId>cedar-terminology-server</artifactId>
     <version>0.1.0</version>
-    <packaging>jar</packaging>
+  </parent>
 
-    <parent>
-        <groupId>org.metadatacenter</groupId>
-        <artifactId>cedar-terminology-server</artifactId>
-        <version>0.1.0</version>
-    </parent>
+  <dependencies>
 
-    <dependencies>
+    <dependency>
+      <groupId>org.apache.httpcomponents</groupId>
+      <artifactId>httpclient</artifactId>
+      <version>${apache.httpclient.version}</version>
+    </dependency>
 
-        <dependency>
-            <groupId>org.apache.httpcomponents</groupId>
-            <artifactId>httpclient</artifactId>
-            <version>${apache.httpclient.version}</version>
-        </dependency>
+    <!-- HTTPClient Fluent API-->
+    <dependency>
+      <groupId>org.apache.httpcomponents</groupId>
+      <artifactId>fluent-hc</artifactId>
+      <version>${apache.httpclient.version}</version>
+    </dependency>
 
-        <!-- HTTPClient Fluent API-->
-        <dependency>
-            <groupId>org.apache.httpcomponents</groupId>
-            <artifactId>fluent-hc</artifactId>
-            <version>${apache.httpclient.version}</version>
-        </dependency>
+    <!-- Jackson -->
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-core</artifactId>
+      <version>${jackson.core.version}</version>
+    </dependency>
 
-        <!-- Jackson -->
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-core</artifactId>
-            <version>${jackson.core.version}</version>
-        </dependency>
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
+      <version>${jackson.core.version}</version>
+    </dependency>
 
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-databind</artifactId>
-            <version>${jackson.core.version}</version>
-        </dependency>
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-annotations</artifactId>
+      <version>${jackson.core.version}</version>
+    </dependency>
 
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-annotations</artifactId>
-            <version>${jackson.core.version}</version>
-        </dependency>
+    <!-- Swagger annotations. They can be used by Swagger to generate the service documentation -->
+    <dependency>
+      <groupId>com.wordnik</groupId>
+      <artifactId>swagger-annotations</artifactId>
+      <version>${swagger-annotations.version}</version>
+    </dependency>
 
-        <!-- Swagger annotations. They can be used by Swagger to generate the service documentation -->
-        <dependency>
-            <groupId>com.wordnik</groupId>
-            <artifactId>swagger-annotations</artifactId>
-            <version>${swagger-annotations.version}</version>
-        </dependency>
+    <dependency>
+      <groupId>edu.washington.cs.types.checker</groupId>
+      <artifactId>checker-framework</artifactId>
+      <version>${checker.framework.version}</version>
+    </dependency>
 
-        <dependency>
-            <groupId>edu.washington.cs.types.checker</groupId>
-            <artifactId>checker-framework</artifactId>
-            <version>${checker.framework.version}</version>
-        </dependency>
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <version>${junit.version}</version>
+    </dependency>
 
-        <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-            <version>${junit.version}</version>
-        </dependency>
+    <!-- Google Guava -->
+    <dependency>
+      <groupId>com.google.guava</groupId>
+      <artifactId>guava</artifactId>
+      <version>${google-guava.version}</version>
+    </dependency>
 
-    </dependencies>
+  </dependencies>
 
-    <build>
-        <sourceDirectory>src/main/java</sourceDirectory>
-        <testSourceDirectory>src/test/java</testSourceDirectory>
+  <build>
+    <sourceDirectory>src/main/java</sourceDirectory>
+    <testSourceDirectory>src/test/java</testSourceDirectory>
 
-        <plugins>
+    <plugins>
 
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>${maven-compiler-plugin.version}</version>
-                <configuration>
-                    <source>${java.version}</source>
-                    <target>${java.version}</target>
-                </configuration>
-            </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>${maven-compiler-plugin.version}</version>
+        <configuration>
+          <source>${java.version}</source>
+          <target>${java.version}</target>
+        </configuration>
+      </plugin>
 
-            <plugin>
-                <groupId>net.alchim31.maven</groupId>
-                <artifactId>scala-maven-plugin</artifactId>
-                <version>${scala.maven.plugin.version}</version>
-                <configuration>
-                    <source>${java.version}</source>
-                    <target>${java.version}</target>
-                    <checkMultipleScalaVersions>false</checkMultipleScalaVersions>
-                </configuration>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>compile</goal>
-                            <goal>testCompile</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
+      <plugin>
+        <groupId>net.alchim31.maven</groupId>
+        <artifactId>scala-maven-plugin</artifactId>
+        <version>${scala.maven.plugin.version}</version>
+        <configuration>
+          <source>${java.version}</source>
+          <target>${java.version}</target>
+          <checkMultipleScalaVersions>false</checkMultipleScalaVersions>
+        </configuration>
+        <executions>
+          <execution>
+            <goals>
+              <goal>compile</goal>
+              <goal>testCompile</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
 
-        </plugins>
+    </plugins>
 
-    </build>
+  </build>
 
 </project>
