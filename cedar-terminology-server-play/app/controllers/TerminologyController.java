@@ -43,8 +43,8 @@ public class TerminologyController extends Controller {
     Configuration config = Play.application().configuration();
     termService = new TerminologyService(config.getInt("bioportal.connectTimeout"), config.getInt("bioportal" +
         ".socketTimeout"));
-    // Pre-load data into the cache
-    Cache.loadAll();
+    // Initialize cache
+    Cache.init();
   }
 
   @ApiOperation(

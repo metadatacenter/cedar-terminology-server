@@ -7,7 +7,6 @@ package org.metadatacenter.terms.util;
  */
 public class Constants
 {
-
   // max calls/second allowed = 15 -> 1 call each 66 ms
   public static int BP_API_WAIT_TIME = 80;
 

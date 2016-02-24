@@ -3,12 +3,13 @@ package org.metadatacenter.terms.domainObjects;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.wordnik.swagger.annotations.ApiModel;
 
+import java.io.Serializable;
 import java.util.List;
 
 @ApiModel
 @JsonPropertyOrder({"description", "numberOfClasses", "categories", "hasOntologyLanguage", "released",
     "creationDate", "homepage", "publication", "documentation", "version"})
-public class OntologyDetails {
+public class OntologyDetails implements Serializable {
 
   private String description;
   private int numberOfClasses;

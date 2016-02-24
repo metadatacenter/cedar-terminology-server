@@ -13,10 +13,9 @@ import javax.xml.ws.http.HTTPException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 
 public class TerminologyService implements ITerminologyService {
-
-//  private int count = 2;
 
   private final int connectTimeout;
   private final int socketTimeout;
@@ -46,8 +45,7 @@ public class TerminologyService implements ITerminologyService {
     }
     // Get details
     if (includeDetails) {
-//      int i = 0;
-//      count++;
+      int i = 0;
       for (Ontology o : ontologies) {
         o.setDetails(getOntologyDetails(o.getId(), apiKey));
         // Delay between calls (BioPortal requirement)
@@ -56,8 +54,7 @@ public class TerminologyService implements ITerminologyService {
 //        } catch (InterruptedException e) {
 //          e.printStackTrace();
 //        }
-//        System.out.println(i++);
-//        if (i>count) break;
+        System.out.println("Ontologies loaded: " + i++);
       }
     }
     return ontologies;
@@ -324,7 +321,7 @@ public class TerminologyService implements ITerminologyService {
     List<BpOntology> bpOntologies = bpService.findAllOntologies(apiKey);
     List<VSCollection> vsCollections = new ArrayList<>();
     for (BpOntology o : bpOntologies) {
-      if (o.getType()!=null && o.getType().compareTo(Constants.BP_ONTOLOGY_TYPE_VS_COLLECTION) == 0) {
+      if (o.getType() != null && o.getType().compareTo(Constants.BP_ONTOLOGY_TYPE_VS_COLLECTION) == 0) {
         vsCollections.add(ObjectConverter.toVSCollection(ObjectConverter.toOntology(o)));
       }
     }

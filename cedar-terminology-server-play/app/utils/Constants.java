@@ -20,6 +20,8 @@ public class Constants {
 //  public static final String BP_PROVISIONAL_VALUE_SETS = BP_VALUE_SETS + "/provisional";
 //  public static final String BP_PROVISIONAL_VALUES = BP_VALUES + "/provisional";
 
+  public static final String PATH_RESOURCES = "cedar-terminology-server-play/serialized/";
+
   // PRIVATE //
 
   /**

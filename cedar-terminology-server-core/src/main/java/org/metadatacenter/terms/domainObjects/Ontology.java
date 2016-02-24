@@ -4,11 +4,12 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.wordnik.swagger.annotations.ApiModel;
 
+import java.io.Serializable;
 import java.util.List;
 
 @ApiModel
 @JsonPropertyOrder({"id", "@id", "@type", "name", "details"})
-public class Ontology {
+public class Ontology implements Serializable {
   private String id;
   @JsonProperty("@id")
   private String ldId;
