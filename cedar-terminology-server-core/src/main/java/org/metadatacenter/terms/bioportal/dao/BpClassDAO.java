@@ -9,13 +9,14 @@ import org.apache.http.util.EntityUtils;
 import org.metadatacenter.terms.bioportal.customObjects.BpPagedResults;
 import org.metadatacenter.terms.bioportal.domainObjects.BpClass;
 import org.metadatacenter.terms.bioportal.domainObjects.BpTreeNode;
-import org.metadatacenter.terms.util.Constants;
 import org.metadatacenter.terms.util.Util;
 
 import javax.xml.ws.http.HTTPException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+
+import static org.metadatacenter.terms.util.Constants.*;
 
 public class BpClassDAO
 {
@@ -29,7 +30,7 @@ public class BpClassDAO
   }
 
   public BpClass find(String id, String ontology, String apiKey) throws HTTPException, IOException {
-    String url = Constants.BP_ONTOLOGIES_BASE_URL + ontology + "/" + Constants.BP_CLASSES + id;
+    String url = BP_API_BASE + BP_ONTOLOGIES + ontology + "/" + BP_CLASSES + id;
     HttpResponse response = Request.Get(url)
         .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
             connectTimeout(connectTimeout).socketTimeout(socketTimeout).execute().returnResponse();
@@ -46,7 +47,7 @@ public class BpClassDAO
   }
 
   public List<BpTreeNode> getTree(String id, String ontology, String apiKey) throws IOException {
-    String url = Constants.BP_ONTOLOGIES_BASE_URL + ontology + "/" + Constants.BP_CLASSES + id + "/tree";
+    String url = BP_API_BASE + BP_ONTOLOGIES + ontology + "/" + BP_CLASSES + id + "/tree";
     HttpResponse response = Request.Get(url)
         .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
             connectTimeout(connectTimeout).socketTimeout(socketTimeout).execute().returnResponse();
@@ -68,7 +69,7 @@ public class BpClassDAO
 
   public BpPagedResults<BpClass> getChildren(String id, String ontology, String apiKey) throws IOException
   {
-    String url = Constants.BP_ONTOLOGIES_BASE_URL + ontology + "/" + Constants.BP_CLASSES + id + "/children";
+    String url = BP_API_BASE + BP_ONTOLOGIES + ontology + "/" + BP_CLASSES + id + "/children";
     HttpResponse response = Request.Get(url)
         .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
             connectTimeout(connectTimeout).socketTimeout(socketTimeout).execute().returnResponse();
@@ -85,7 +86,7 @@ public class BpClassDAO
 
   public List<BpClass> getParents(String id, String ontology, String apiKey) throws IOException
   {
-    String url = Constants.BP_ONTOLOGIES_BASE_URL + ontology + "/" + Constants.BP_CLASSES + id + "/parents";
+    String url = BP_API_BASE + BP_ONTOLOGIES + ontology + "/" + BP_CLASSES + id + "/parents";
     HttpResponse response = Request.Get(url)
         .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
             connectTimeout(connectTimeout).socketTimeout(socketTimeout).execute().returnResponse();
@@ -107,7 +108,7 @@ public class BpClassDAO
   public BpPagedResults<BpClass> findValueSetsByValueSetCollection(String vsCollection, String apiKey)
     throws IOException
   {
-    HttpResponse response = Request.Get(Constants.BP_SEARCH_BASE_URL +
+    HttpResponse response = Request.Get(BP_API_BASE + BP_SEARCH +
       "?also_search_provisional=true&valueset_roots_only=true&ontology_types=VALUE_SET_COLLECTION&ontologies="
       + vsCollection).addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
       connectTimeout(connectTimeout).socketTimeout(socketTimeout).execute().returnResponse();
@@ -126,7 +127,7 @@ public class BpClassDAO
   public BpPagedResults<BpClass> findValuesByValueSet(String vsId, String vsCollection, String apiKey)
     throws IOException
   {
-    String url = Constants.BP_ONTOLOGIES_BASE_URL + vsCollection + "/classes/" + vsId + "/children";
+    String url = BP_API_BASE + BP_ONTOLOGIES + vsCollection + "/classes/" + vsId + "/children";
     HttpResponse response = Request.Get(url).addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
       connectTimeout(connectTimeout).socketTimeout(socketTimeout).execute().returnResponse();
 

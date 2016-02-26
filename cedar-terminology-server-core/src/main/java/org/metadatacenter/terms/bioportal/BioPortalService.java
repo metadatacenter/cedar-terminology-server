@@ -21,11 +21,11 @@ import java.util.stream.Collectors;
 
 import static org.metadatacenter.terms.util.Constants.*;
 
+
 public class BioPortalService implements IBioPortalService
 {
   private final int connectTimeout;
   private final int socketTimeout;
-
   private BpProvisionalClassDAO bpProvClassDAO;
   private BpProvisionalRelationDAO bpProvRelationDAO;
   private BpClassDAO bpClassDAO;
@@ -67,20 +67,20 @@ public class BioPortalService implements IBioPortalService
     String url = "";
     // Search for ontology classes, value sets and values
     if (scope.contains(BP_SEARCH_SCOPE_ALL) || (!scope.contains(BP_SEARCH_SCOPE_ALL) && scope.size() == 3)) {
-      url = BP_SEARCH_BASE_URL + "?q=" + q + "&also_search_provisional=true&valueset_exclude_roots=false";
+      url = BP_API_BASE + BP_SEARCH + "?q=" + q + "&also_search_provisional=true&valueset_exclude_roots=false";
     } else if (scope.size() == 1) {
       // Search for ontology classes
       if (scope.contains(BP_SEARCH_SCOPE_CLASSES)) {
-        url = BP_SEARCH_BASE_URL + "?q=" + q + "&also_search_provisional=true&ontology_types=ONTOLOGY";
+        url = BP_API_BASE + BP_SEARCH + "?q=" + q + "&also_search_provisional=true&ontology_types=ONTOLOGY";
       }
       // Search for value sets
       else if (scope.contains(BP_SEARCH_SCOPE_VALUE_SETS)) {
-        url = BP_SEARCH_BASE_URL + "?q=" + q
+        url = BP_API_BASE + BP_SEARCH + "?q=" + q
           + "&also_search_provisional=true&ontology_types=VALUE_SET_COLLECTION&valueset_roots_only=true";
       }
       // Search for values in value sets
       else if ((scope.contains(BP_SEARCH_SCOPE_VALUES))) {
-        url = BP_SEARCH_BASE_URL + "?q=" + q
+        url = BP_API_BASE + BP_SEARCH + "?q=" + q
           + "&also_search_provisional=true&ontology_types=VALUE_SET_COLLECTION&valueset_exclude_roots=true";
       }
     } else if (scope.size() == 2) {
@@ -88,15 +88,15 @@ public class BioPortalService implements IBioPortalService
       // search to value sets and ignores ontology classes
       // Search for ontology classes and value sets
       if (scope.contains(BP_SEARCH_SCOPE_CLASSES) && scope.contains(BP_SEARCH_SCOPE_VALUE_SETS)) {
-        url = BP_SEARCH_BASE_URL + "?q=" + q + "&also_search_provisional=true&valueset_roots_only=true";
+        url = BP_API_BASE + BP_SEARCH + "?q=" + q + "&also_search_provisional=true&valueset_roots_only=true";
       }
       // Search for ontology classes and values
       else if (scope.contains(BP_SEARCH_SCOPE_CLASSES) && scope.contains(BP_SEARCH_SCOPE_VALUES)) {
-        url = BP_SEARCH_BASE_URL + "?q=" + q + "&also_search_provisional=true&valueset_exclude_roots=true";
+        url = BP_API_BASE + BP_SEARCH + "?q=" + q + "&also_search_provisional=true&valueset_exclude_roots=true";
       }
       // Search for value sets and values
       else if (scope.contains(BP_SEARCH_SCOPE_VALUE_SETS) && scope.contains(BP_SEARCH_SCOPE_VALUES)) {
-        url = BP_SEARCH_BASE_URL + "?q=" + q + "&also_search_provisional=true&ontology_types=VALUE_SET_COLLECTION";
+        url = BP_API_BASE + BP_SEARCH + "?q=" + q + "&also_search_provisional=true&ontology_types=VALUE_SET_COLLECTION";
       }
     }
 

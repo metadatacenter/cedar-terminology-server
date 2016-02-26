@@ -15,18 +15,18 @@ GET            /bioportal/search                                                
 ### Ontologies ###
 GET            /bioportal/ontologies                                                 controllers.TerminologyController.findAllOntologies()
 GET            /bioportal/ontologies/:id                                             controllers.TerminologyController.findOntology(id: String)
-GET            /bioportal/ontologies/:ontology/classes/roots                         controllers.TerminologyController.getRootClasses(ontology: String)
+GET            /bioportal/ontologies/:ontology/classes/roots                         controllers.TerminologyController.findRootClasses(ontology: String)
 
 ### Classes ###
 POST           /bioportal/ontologies/:ontology/classes                               controllers.TerminologyController.createClass(ontology: String)
-GET            /bioportal/classes/provisional                                        controllers.TerminologyController.getAllProvisionalClasses()
-GET            /bioportal/ontologies/:ontology/classes/provisional                   controllers.TerminologyController.getAllProvisionalClassesForOntology(ontology: String)
+GET            /bioportal/classes/provisional                                        controllers.TerminologyController.findAllProvisionalClasses()
+GET            /bioportal/ontologies/:ontology/classes/provisional                   controllers.TerminologyController.findAllProvisionalClassesForOntology(ontology: String)
 GET            /bioportal/ontologies/:ontology/classes/:id                           controllers.TerminologyController.findClass(id: String, ontology: String)
 PATCH          /bioportal/classes/:id                                                controllers.TerminologyController.updateClass(id: String)
 DELETE         /bioportal/classes/:id                                                controllers.TerminologyController.deleteClass(id: String)
-GET            /bioportal/ontologies/:ontology/classes/:id/tree                      controllers.TerminologyController.getClassTree(id: String, ontology: String)
-GET            /bioportal/ontologies/:ontology/classes/:id/children                  controllers.TerminologyController.getClassChildren(id: String, ontology: String)
-GET            /bioportal/ontologies/:ontology/classes/:id/parents                   controllers.TerminologyController.getClassParents(id: String, ontology: String)
+GET            /bioportal/ontologies/:ontology/classes/:id/tree                      controllers.TerminologyController.findClassTree(id: String, ontology: String)
+GET            /bioportal/ontologies/:ontology/classes/:id/children                  controllers.TerminologyController.findClassChildren(id: String, ontology: String)
+GET            /bioportal/ontologies/:ontology/classes/:id/parents                   controllers.TerminologyController.findClassParents(id: String, ontology: String)
 
 ### Relations ###
 POST           /bioportal/relations                                                  controllers.TerminologyController.createRelation()

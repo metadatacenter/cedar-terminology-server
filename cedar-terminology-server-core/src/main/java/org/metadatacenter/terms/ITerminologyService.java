@@ -1,7 +1,7 @@
 package org.metadatacenter.terms;
 
-import org.metadatacenter.terms.domainObjects.*;
 import org.metadatacenter.terms.customObjects.PagedResults;
+import org.metadatacenter.terms.domainObjects.*;
 
 import java.io.IOException;
 import java.util.List;

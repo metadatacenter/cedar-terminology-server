@@ -1,4 +1,3 @@
-import cache.Cache;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -9,7 +8,6 @@ import org.metadatacenter.terms.domainObjects.Value;
 import org.metadatacenter.terms.domainObjects.ValueSet;
 import org.metadatacenter.terms.util.Util;
 import play.Configuration;
-import play.Logger;
 import play.Play;
 import play.libs.Json;
 import play.libs.ws.WS;
@@ -58,7 +56,7 @@ public class TerminologyServerHttpTest {
       public void run() {
         Configuration config = Play.application().configuration();
         // Authorization header
-        authHeader = "apikey token=" + config.getString("bioportal.apikey.test");
+        authHeader = "apikey token=" + config.getString("bioportal.apiKeys.test");
       }
     });
 
@@ -222,7 +220,7 @@ public class TerminologyServerHttpTest {
         JsonNode jsonResponse = wsResponse.asJson();
         int resultsCount = jsonResponse.get("collection").size();
         int lowLimitCount = 1;
-        Assert.assertTrue("The number of value sets found for '" + q + "' is lower than expected", resultsCount >
+        Assert.assertTrue("The number of value sets found for '" + q + "' is lower than expected", resultsCount >=
             lowLimitCount);
       }
     });

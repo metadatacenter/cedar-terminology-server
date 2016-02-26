@@ -1,9 +1,9 @@
 package org.metadatacenter.terms.util;
 
-import org.metadatacenter.terms.bioportal.domainObjects.*;
 import org.metadatacenter.terms.bioportal.customObjects.BpPagedResults;
-import org.metadatacenter.terms.domainObjects.*;
+import org.metadatacenter.terms.bioportal.domainObjects.*;
 import org.metadatacenter.terms.customObjects.PagedResults;
+import org.metadatacenter.terms.domainObjects.*;
 
 import java.util.ArrayList;
 import java.util.List;

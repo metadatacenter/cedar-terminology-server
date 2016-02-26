@@ -7,6 +7,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.ListenableFutureTask;
 import controllers.TerminologyController;
 import org.metadatacenter.terms.domainObjects.Ontology;
+import play.Logger;
 
 import java.io.*;
 import java.util.LinkedHashMap;
@@ -34,6 +35,7 @@ public class Cache {
   }
 
   public static void init() {
+    Logger.info("Initializing cache");
     executor.scheduleWithFixedDelay(
         new Runnable() {
           public void run() {
@@ -50,15 +52,16 @@ public class Cache {
           //.expireAfterAccess(5, TimeUnit.SECONDS)
           //.recordStats()
       .build(new CacheLoader<String, LinkedHashMap<String, Ontology>>() {
-        @Override
+
         public LinkedHashMap<String, Ontology> load(String s) throws IOException {
+          Logger.info("Loading 'ontologies' cache");
           return getAllOntologiesAsMap();
         }
 
-        @Override
         public ListenableFuture<LinkedHashMap<String, Ontology>> reload(final String key, LinkedHashMap<String,
             Ontology> prevOntologies) {
           // asynchronous!
+          Logger.info("Reloading 'ontologies' cache asynchronously");
           ListenableFutureTask<LinkedHashMap<String, Ontology>> task = ListenableFutureTask.create(new Callable<LinkedHashMap<String, Ontology>>() {
             public LinkedHashMap<String, Ontology> call() throws IOException {
               return getAllOntologiesAsMap();
@@ -72,8 +75,10 @@ public class Cache {
   public static LinkedHashMap<String, Ontology> getAllOntologiesAsMap() throws IOException {
     List<Ontology> ontologies = null;
     if (firstExecution && new File(ontologiesCachePath).isFile()) {
+      Logger.info("Loading ontologies from file");
       ontologies = readOntologiesFromFile();
     } else {
+      Logger.info("Loading ontologies from BioPortal");
       ontologies = TerminologyController.termService.findAllOntologies(true, apiKeyCache);
       saveOntologiesToFile(ontologies);
     }
@@ -82,10 +87,12 @@ public class Cache {
     for (Ontology o : ontologies) {
       lhm.put(o.getId(), o);
     }
+    Logger.info("Ontologies loaded");
     return lhm;
   }
 
   public static void saveOntologiesToFile(List<Ontology> ontologies) {
+    Logger.info("Saving ontologies to file");
     try {
       ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream(ontologiesCachePath));
       out.writeObject(ontologies);
@@ -94,6 +101,7 @@ public class Cache {
     } catch (IOException e) {
       e.printStackTrace();
     }
+    Logger.info("Ontologies saved to file");
   }
 
   public static List<Ontology> readOntologiesFromFile() {

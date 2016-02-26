@@ -5,7 +5,6 @@ import org.metadatacenter.terms.bioportal.customObjects.BpPagedResults;
 import org.metadatacenter.terms.bioportal.domainObjects.*;
 import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.terms.domainObjects.*;
-import org.metadatacenter.terms.util.Constants;
 import org.metadatacenter.terms.util.ObjectConverter;
 import org.metadatacenter.terms.util.Util;
 
@@ -13,7 +12,10 @@ import javax.xml.ws.http.HTTPException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
+
+import static org.metadatacenter.terms.util.Constants.BP_API_BASE;
+import static org.metadatacenter.terms.util.Constants.BP_ONTOLOGY_TYPE_VS_COLLECTION;
+import static org.metadatacenter.terms.util.Constants.BP_API_WAIT_TIME;
 
 public class TerminologyService implements ITerminologyService {
 
@@ -21,7 +23,8 @@ public class TerminologyService implements ITerminologyService {
   private final int socketTimeout;
   private BioPortalService bpService;
 
-  public TerminologyService(int connectTimeout, int socketTimeout) {
+  public TerminologyService(String bpApiBasePath, int connectTimeout, int socketTimeout) {
+    BP_API_BASE = bpApiBasePath;
     this.connectTimeout = connectTimeout;
     this.socketTimeout = socketTimeout;
     this.bpService = new BioPortalService(connectTimeout, socketTimeout);
@@ -39,22 +42,22 @@ public class TerminologyService implements ITerminologyService {
     List<Ontology> ontologies = new ArrayList<>();
     for (BpOntology o : bpOntologies) {
       // Only keep ontologies. Value set collections will be excluded
-      if (o.getType() == null || o.getType().compareTo(Constants.BP_ONTOLOGY_TYPE_VS_COLLECTION) != 0) {
+      if (o.getType() == null || o.getType().compareTo(BP_API_BASE + BP_ONTOLOGY_TYPE_VS_COLLECTION) != 0) {
         ontologies.add(ObjectConverter.toOntology(o));
       }
     }
     // Get details
     if (includeDetails) {
-      int i = 0;
+//      int i = 1;
       for (Ontology o : ontologies) {
         o.setDetails(getOntologyDetails(o.getId(), apiKey));
         // Delay between calls (BioPortal requirement)
-//        try {
-//          Thread.sleep(Constants.BP_API_WAIT_TIME);
-//        } catch (InterruptedException e) {
-//          e.printStackTrace();
-//        }
-        System.out.println("Ontologies loaded: " + i++);
+        try {
+          Thread.sleep(BP_API_WAIT_TIME);
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+//        System.out.println("Ontologies loaded: " + i++);
       }
     }
     return ontologies;
@@ -83,7 +86,7 @@ public class TerminologyService implements ITerminologyService {
     }
     // Delay between calls (BioPortal requirement)
     try {
-      Thread.sleep(Constants.BP_API_WAIT_TIME);
+      Thread.sleep(BP_API_WAIT_TIME);
     } catch (InterruptedException e) {
       e.printStackTrace();
     }
@@ -321,7 +324,7 @@ public class TerminologyService implements ITerminologyService {
     List<BpOntology> bpOntologies = bpService.findAllOntologies(apiKey);
     List<VSCollection> vsCollections = new ArrayList<>();
     for (BpOntology o : bpOntologies) {
-      if (o.getType() != null && o.getType().compareTo(Constants.BP_ONTOLOGY_TYPE_VS_COLLECTION) == 0) {
+      if (o.getType() != null && o.getType().compareTo(BP_API_BASE + BP_ONTOLOGY_TYPE_VS_COLLECTION) == 0) {
         vsCollections.add(ObjectConverter.toVSCollection(ObjectConverter.toOntology(o)));
       }
     }
@@ -331,7 +334,7 @@ public class TerminologyService implements ITerminologyService {
         c.setDetails(ObjectConverter.toVSCollectionDetails(getOntologyDetails(c.getId(), apiKey)));
         // Delay between calls (BioPortal requirement)
         try {
-          Thread.sleep(Constants.BP_API_WAIT_TIME);
+          Thread.sleep(BP_API_WAIT_TIME);
         } catch (InterruptedException e) {
           e.printStackTrace();
         }

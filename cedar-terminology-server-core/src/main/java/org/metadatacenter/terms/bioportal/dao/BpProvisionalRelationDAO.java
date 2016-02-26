@@ -7,11 +7,13 @@ import org.apache.http.client.fluent.Request;
 import org.apache.http.entity.ContentType;
 import org.apache.http.util.EntityUtils;
 import org.metadatacenter.terms.bioportal.domainObjects.BpProvisionalRelation;
-import org.metadatacenter.terms.util.Constants;
 import org.metadatacenter.terms.util.Util;
 
 import javax.xml.ws.http.HTTPException;
 import java.io.IOException;
+
+import static org.metadatacenter.terms.util.Constants.BP_API_BASE;
+import static org.metadatacenter.terms.util.Constants.BP_PROVISIONAL_RELATIONS;
 
 public class BpProvisionalRelationDAO
 {
@@ -28,7 +30,7 @@ public class BpProvisionalRelationDAO
   {
     ObjectMapper mapper = new ObjectMapper();
     // Send request to the BioPortal API
-    HttpResponse response = Request.Post(Constants.BP_PROVISIONAL_RELATIONS_BASE_URL)
+    HttpResponse response = Request.Post(BP_API_BASE + BP_PROVISIONAL_RELATIONS)
       .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
         connectTimeout(connectTimeout).socketTimeout(socketTimeout)
       .bodyString(mapper.writeValueAsString(relation), ContentType.APPLICATION_JSON).execute().returnResponse();
@@ -45,7 +47,7 @@ public class BpProvisionalRelationDAO
 
   public BpProvisionalRelation find(String id, String apiKey) throws IOException
   {
-    HttpResponse response = Request.Get(Constants.BP_PROVISIONAL_RELATIONS_BASE_URL + id)
+    HttpResponse response = Request.Get(BP_API_BASE + BP_PROVISIONAL_RELATIONS + id)
       .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
         connectTimeout(connectTimeout).socketTimeout(socketTimeout).execute().returnResponse();
 
@@ -76,7 +78,7 @@ public class BpProvisionalRelationDAO
   public void delete(String id, String apiKey) throws IOException
   {
     // Send request to the BioPortal API
-    HttpResponse response = Request.Delete(Constants.BP_PROVISIONAL_RELATIONS_BASE_URL + id)
+    HttpResponse response = Request.Delete(BP_API_BASE + BP_PROVISIONAL_RELATIONS + id)
         .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
             connectTimeout(connectTimeout).socketTimeout(socketTimeout).execute().returnResponse();
 

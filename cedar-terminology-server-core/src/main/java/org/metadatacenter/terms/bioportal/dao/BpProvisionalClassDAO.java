@@ -7,13 +7,15 @@ import org.apache.http.client.fluent.Request;
 import org.apache.http.entity.ContentType;
 import org.apache.http.util.EntityUtils;
 import org.metadatacenter.terms.bioportal.domainObjects.BpProvisionalClass;
-import org.metadatacenter.terms.util.Util;
 import org.metadatacenter.terms.util.Constants;
+import org.metadatacenter.terms.util.Util;
 
 import javax.xml.ws.http.HTTPException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+
+import static org.metadatacenter.terms.util.Constants.*;
 
 public class BpProvisionalClassDAO
 {
@@ -30,7 +32,7 @@ public class BpProvisionalClassDAO
   {
     ObjectMapper mapper = new ObjectMapper();
     // Send request to the BioPortal API
-    HttpResponse response = Request.Post(Constants.BP_PROVISIONAL_CLASSES_BASE_URL)
+    HttpResponse response = Request.Post(BP_API_BASE + BP_PROVISIONAL_CLASSES)
       .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
         connectTimeout(connectTimeout).socketTimeout(socketTimeout)
       .bodyString(mapper.writeValueAsString(c), ContentType.APPLICATION_JSON).execute().returnResponse();
@@ -48,7 +50,7 @@ public class BpProvisionalClassDAO
   // TODO: Issue: not able to retrieve provisional classes from bioportal using the full id
   public BpProvisionalClass find(String id, String apiKey) throws IOException
   {
-    HttpResponse response = Request.Get(Constants.BP_PROVISIONAL_CLASSES_BASE_URL + id)
+    HttpResponse response = Request.Get(BP_API_BASE + BP_PROVISIONAL_CLASSES + id)
       .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
         connectTimeout(connectTimeout).socketTimeout(socketTimeout).execute().returnResponse();
 
@@ -69,9 +71,9 @@ public class BpProvisionalClassDAO
     String url = null;
     if (ontology != null) {
       // TODO: This URL  is returning 500 Internal Server Error
-      url = Constants.BP_ONTOLOGIES_BASE_URL + ontology + "/" + Constants.BP_PROVISIONAL_CLASSES;
+      url = BP_API_BASE + BP_ONTOLOGIES + ontology + "/" + Constants.BP_PROVISIONAL_CLASSES;
     } else {
-      url = Constants.BP_PROVISIONAL_CLASSES_BASE_URL;
+      url = BP_API_BASE + BP_PROVISIONAL_CLASSES;
     }
     HttpResponse response = Request.Get(url).addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
       connectTimeout(connectTimeout).socketTimeout(socketTimeout).execute().returnResponse();
@@ -93,7 +95,7 @@ public class BpProvisionalClassDAO
   {
     ObjectMapper mapper = new ObjectMapper();
     // Send request to the BioPortal API
-    HttpResponse response = Request.Patch(Constants.BP_PROVISIONAL_CLASSES_BASE_URL + Util.getShortIdentifier(c.getId()))
+    HttpResponse response = Request.Patch(BP_API_BASE + BP_PROVISIONAL_CLASSES + Util.getShortIdentifier(c.getId()))
         .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
             connectTimeout(connectTimeout).socketTimeout(socketTimeout)
         .bodyString(mapper.writeValueAsString(c), ContentType.APPLICATION_JSON).execute().returnResponse();
@@ -105,7 +107,7 @@ public class BpProvisionalClassDAO
   public void delete(String id, String apiKey) throws IOException
   {
     // Send request to the BioPortal API
-    HttpResponse response = Request.Delete(Constants.BP_PROVISIONAL_CLASSES_BASE_URL + id)
+    HttpResponse response = Request.Delete(BP_API_BASE + BP_PROVISIONAL_CLASSES + id)
         .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
             connectTimeout(connectTimeout).socketTimeout(socketTimeout).execute().returnResponse();
 

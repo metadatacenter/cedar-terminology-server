@@ -5,18 +5,11 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
-import com.google.common.cache.CacheBuilder;
-import com.google.common.cache.CacheLoader;
-import com.google.common.cache.CacheStats;
-import com.google.common.cache.LoadingCache;
 import com.wordnik.swagger.annotations.*;
 import org.metadatacenter.terms.TerminologyService;
 import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.terms.domainObjects.*;
 import org.metadatacenter.terms.util.Util;
-import play.Configuration;
-import play.Logger;
-import play.Play;
 import play.mvc.Controller;
 import play.mvc.Result;
 import play.mvc.Results;
@@ -27,25 +20,21 @@ import javax.xml.ws.http.HTTPException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
 
 import static org.metadatacenter.terms.util.Constants.*;
 
 @Api(value = "/bioportal", description = "BioPortal operations")
 public class TerminologyController extends Controller {
-  //private static Logger log = LoggerFactory.getLogger(TerminologyController.class);
 
   public static final TerminologyService termService;
 
   static {
-    Configuration config = Play.application().configuration();
-    termService = new TerminologyService(config.getInt("bioportal.connectTimeout"), config.getInt("bioportal" +
-        ".socketTimeout"));
-    // Initialize cache
-    Cache.init();
+    termService = new TerminologyService(
+        Application.config.getString("bioportal.apiBasePath"),
+        Application.config.getInt("bioportal.connectTimeout"),
+        Application.config.getInt("bioportal.socketTimeout"));
   }
 
   @ApiOperation(
@@ -159,18 +148,20 @@ public class TerminologyController extends Controller {
       @ApiImplicitParam(name = "id", value = "Ontology id. Examples: NCIT, OBI, FMA",
           required = true, dataType = "string", paramType = "path")})
   public static Result findOntology(String id) {
-    Logger.info("Call to findOntology");
     if (id.isEmpty() || !Utils.isValidAuthorizationHeader(request())) {
       return badRequest();
     }
     try {
       Cache.apiKeyCache = Utils.getApiKeyFromHeader(request());
+      // Retrieve ontology from ontologies cache
       Ontology o = Cache.ontologiesCache.get("ontologies").get(id);
+      if (o==null) {
+        // Not found
+        return notFound();
+      }
       return ok((JsonNode) new ObjectMapper().valueToTree(o));
     } catch (HTTPException e) {
       return Results.status(e.getStatusCode());
-    } catch (IllegalArgumentException e) {
-      return badRequest();
     } catch (ExecutionException e) {
       return internalServerError(e.getMessage());
     }
@@ -191,7 +182,7 @@ public class TerminologyController extends Controller {
           required = true, dataType = "string", paramType = "header"),
       @ApiImplicitParam(name = "ontology", value = "Ontology identifier. Example: NCIT",
           required = true, dataType = "string", paramType = "path")})
-  public static Result getRootClasses(String ontology) {
+  public static Result findRootClasses(String ontology) {
     if (ontology.isEmpty() || !Utils.isValidAuthorizationHeader(request())) {
       return badRequest();
     }
@@ -200,8 +191,6 @@ public class TerminologyController extends Controller {
       return ok((JsonNode) new ObjectMapper().valueToTree(roots));
     } catch (HTTPException e) {
       return Results.status(e.getStatusCode());
-    } catch (IllegalArgumentException e) {
-      return badRequest();
     } catch (IOException e) {
       return internalServerError(e.getMessage());
     }
@@ -275,8 +264,6 @@ public class TerminologyController extends Controller {
       return ok((JsonNode) new ObjectMapper().valueToTree(c));
     } catch (HTTPException e) {
       return Results.status(e.getStatusCode());
-    } catch (IllegalArgumentException e) {
-      return badRequest();
     } catch (IOException e) {
       return internalServerError(e.getMessage());
     }
@@ -301,7 +288,7 @@ public class TerminologyController extends Controller {
           required = true, dataType = "string", paramType = "path"),
       @ApiImplicitParam(name = "ontology", value = "Ontology. Example: NCIT",
           required = true, dataType = "string", paramType = "path")})
-  public static Result getClassTree(String id, String ontology) {
+  public static Result findClassTree(String id, String ontology) {
     if (id.isEmpty() || ontology.isEmpty() || !Utils.isValidAuthorizationHeader(request())) {
       return badRequest();
     }
@@ -312,8 +299,6 @@ public class TerminologyController extends Controller {
       return ok((JsonNode) new ObjectMapper().valueToTree(tree));
     } catch (HTTPException e) {
       return Results.status(e.getStatusCode());
-    } catch (IllegalArgumentException e) {
-      return badRequest();
     } catch (IOException e) {
       return internalServerError(e.getMessage());
     }
@@ -338,7 +323,7 @@ public class TerminologyController extends Controller {
           required = true, dataType = "string", paramType = "path"),
       @ApiImplicitParam(name = "ontology", value = "Ontology. Example: NCIT",
           required = true, dataType = "string", paramType = "path")})
-  public static Result getClassChildren(String id, String ontology) {
+  public static Result findClassChildren(String id, String ontology) {
     if (id.isEmpty() || ontology.isEmpty() || !Utils.isValidAuthorizationHeader(request())) {
       return badRequest();
     }
@@ -349,8 +334,6 @@ public class TerminologyController extends Controller {
       return ok((JsonNode) new ObjectMapper().valueToTree(children));
     } catch (HTTPException e) {
       return Results.status(e.getStatusCode());
-    } catch (IllegalArgumentException e) {
-      return badRequest();
     } catch (IOException e) {
       return internalServerError(e.getMessage());
     }
@@ -375,7 +358,7 @@ public class TerminologyController extends Controller {
           required = true, dataType = "string", paramType = "path"),
       @ApiImplicitParam(name = "ontology", value = "Ontology. Example: NCIT",
           required = true, dataType = "string", paramType = "path")})
-  public static Result getClassParents(String id, String ontology) {
+  public static Result findClassParents(String id, String ontology) {
     if (id.isEmpty() || ontology.isEmpty() || !Utils.isValidAuthorizationHeader(request())) {
       return badRequest();
     }
@@ -386,8 +369,6 @@ public class TerminologyController extends Controller {
       return ok((JsonNode) new ObjectMapper().valueToTree(parents));
     } catch (HTTPException e) {
       return Results.status(e.getStatusCode());
-    } catch (IllegalArgumentException e) {
-      return badRequest();
     } catch (IOException e) {
       return internalServerError(e.getMessage());
     }
@@ -405,7 +386,7 @@ public class TerminologyController extends Controller {
       @ApiImplicitParam(name = "Authorization", value = "Format: apikey token={your_bioportal_apikey}. "
           + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
           required = true, dataType = "string", paramType = "header")})
-  public static Result getAllProvisionalClasses() {
+  public static Result findAllProvisionalClasses() {
     if (!Utils.isValidAuthorizationHeader(request())) {
       return badRequest();
     }
@@ -439,7 +420,7 @@ public class TerminologyController extends Controller {
           required = true, dataType = "string", paramType = "header"),
       @ApiImplicitParam(name = "ontology", value = "Ontology. Example: NCIT",
           required = true, dataType = "string", paramType = "path")})
-  public static Result getAllProvisionalClassesForOntology(String ontology) {
+  public static Result findAllProvisionalClassesForOntology(String ontology) {
     if (ontology.isEmpty() || !Utils.isValidAuthorizationHeader(request())) {
       return badRequest();
     }
@@ -487,8 +468,6 @@ public class TerminologyController extends Controller {
       termService.updateProvisionalClass(c, Utils.getApiKeyFromHeader(request()));
     } catch (HTTPException e) {
       return Results.status(e.getStatusCode());
-    } catch (IllegalArgumentException e) {
-      return badRequest();
     } catch (IOException e) {
       return internalServerError(e.getMessage());
     }
@@ -518,8 +497,6 @@ public class TerminologyController extends Controller {
       termService.deleteProvisionalClass(id, Utils.getApiKeyFromHeader(request()));
     } catch (HTTPException e) {
       return Results.status(e.getStatusCode());
-    } catch (IllegalArgumentException e) {
-      return badRequest();
     } catch (IOException e) {
       return internalServerError(e.getMessage());
     }
@@ -584,8 +561,6 @@ public class TerminologyController extends Controller {
       return ok((JsonNode) new ObjectMapper().valueToTree(r));
     } catch (HTTPException e) {
       return Results.status(e.getStatusCode());
-    } catch (IllegalArgumentException e) {
-      return badRequest();
     } catch (IOException e) {
       return internalServerError(e.getMessage());
     }
@@ -649,8 +624,6 @@ public class TerminologyController extends Controller {
       termService.deleteProvisionalRelation(id, Utils.getApiKeyFromHeader(request()));
     } catch (HTTPException e) {
       return Results.status(e.getStatusCode());
-    } catch (IllegalArgumentException e) {
-      return badRequest();
     } catch (IOException e) {
       return internalServerError(e.getMessage());
     }
@@ -756,8 +729,6 @@ public class TerminologyController extends Controller {
       return ok((JsonNode) new ObjectMapper().valueToTree(c));
     } catch (HTTPException e) {
       return Results.status(e.getStatusCode());
-    } catch (IllegalArgumentException e) {
-      return badRequest();
     } catch (IOException e) {
       return internalServerError(e.getMessage());
     }
@@ -829,8 +800,6 @@ public class TerminologyController extends Controller {
       termService.updateProvisionalValueSet(vs, Utils.getApiKeyFromHeader(request()));
     } catch (HTTPException e) {
       return Results.status(e.getStatusCode());
-    } catch (IllegalArgumentException e) {
-      return badRequest();
     } catch (IOException e) {
       return internalServerError(e.getMessage());
     }
@@ -860,8 +829,6 @@ public class TerminologyController extends Controller {
       termService.deleteProvisionalValueSet(id, Utils.getApiKeyFromHeader(request()));
     } catch (HTTPException e) {
       return Results.status(e.getStatusCode());
-    } catch (IllegalArgumentException e) {
-      return badRequest();
     } catch (IOException e) {
       return internalServerError(e.getMessage());
     }
@@ -905,8 +872,6 @@ public class TerminologyController extends Controller {
       return ok(mapper.readTree(writer.writeValueAsString(values)));
     } catch (HTTPException e) {
       return Results.status(e.getStatusCode());
-    } catch (IllegalArgumentException e) {
-      return badRequest();
     } catch (IOException e) {
       return internalServerError(e.getMessage());
     }
@@ -981,8 +946,6 @@ public class TerminologyController extends Controller {
       return ok((JsonNode) new ObjectMapper().valueToTree(c));
     } catch (HTTPException e) {
       return Results.status(e.getStatusCode());
-    } catch (IllegalArgumentException e) {
-      return badRequest();
     } catch (IOException e) {
       return internalServerError(e.getMessage());
     }
@@ -1017,8 +980,6 @@ public class TerminologyController extends Controller {
       termService.updateProvisionalValue(v, Utils.getApiKeyFromHeader(request()));
     } catch (HTTPException e) {
       return Results.status(e.getStatusCode());
-    } catch (IllegalArgumentException e) {
-      return badRequest();
     } catch (IOException e) {
       return internalServerError(e.getMessage());
     }
@@ -1048,8 +1009,6 @@ public class TerminologyController extends Controller {
       termService.deleteProvisionalValue(id, Utils.getApiKeyFromHeader(request()));
     } catch (HTTPException e) {
       return Results.status(e.getStatusCode());
-    } catch (IllegalArgumentException e) {
-      return badRequest();
     } catch (IOException e) {
       return internalServerError(e.getMessage());
     }

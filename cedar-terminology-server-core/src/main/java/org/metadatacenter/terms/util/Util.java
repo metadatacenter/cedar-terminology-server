@@ -8,9 +8,7 @@ import java.net.URLEncoder;
 import java.util.Arrays;
 import java.util.List;
 
-import static org.metadatacenter.terms.util.Constants.BP_VS_COLLECTIONS_BASE_URL;
-import static org.metadatacenter.terms.util.Constants.BP_VS_COLLECTIONS;
-import static org.metadatacenter.terms.util.Constants.BP_VS_CREATION_COLLECTIONS;
+import static org.metadatacenter.terms.util.Constants.*;
 
 public class Util
 {
@@ -41,12 +39,12 @@ public class Util
       return false;
     List<String> validCollections;
     if (creation)
-      validCollections = Arrays.asList(BP_VS_CREATION_COLLECTIONS);
+      validCollections = Arrays.asList(BP_VS_COLLECTIONS_WRITE);
     else
-      validCollections = Arrays.asList(BP_VS_COLLECTIONS);
+      validCollections = Arrays.asList(BP_VS_COLLECTIONS_READ);
 
     for (String vc : validCollections) {
-      if ((vsCollection.compareTo(vc) == 0) || (vsCollection.compareTo(BP_VS_COLLECTIONS_BASE_URL + vc) == 0)) {
+      if ((vsCollection.compareTo(vc) == 0) || (vsCollection.compareTo(BP_API_BASE + BP_VS_COLLECTIONS + vc) == 0)) {
         return true;
       }
     }

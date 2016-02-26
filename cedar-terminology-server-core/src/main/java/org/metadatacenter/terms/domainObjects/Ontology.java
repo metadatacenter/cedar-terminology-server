@@ -5,7 +5,6 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.wordnik.swagger.annotations.ApiModel;
 
 import java.io.Serializable;
-import java.util.List;
 
 @ApiModel
 @JsonPropertyOrder({"id", "@id", "@type", "name", "details"})

@@ -4,14 +4,17 @@ import play.libs.F.Promise;
 import play.mvc.Action;
 import play.mvc.Http;
 import play.mvc.Result;
+import utils.Utils;
 
 import java.io.File;
+import java.lang.reflect.Method;
 
 public class Global extends GlobalSettings {
 
+  private final Logger.ALogger accessLogger = Logger.of("access");
+
   @Override
   public Configuration onLoadConfig(Configuration config, File path, ClassLoader classloader, Mode mode) {
-    Logger.info("Execution mode: " + mode.name());
     // Modifies the configuration according to the execution mode (DEV, TEST, PROD)
     if (mode.name().compareTo("TEST") == 0) {
       return new Configuration(ConfigFactory.load("application." + mode.name().toLowerCase() + ".conf"));
@@ -22,12 +25,10 @@ public class Global extends GlobalSettings {
 
   @Override
   public void onStart(Application app) {
-//    Logger.info("Application has started");
   }
 
   @Override
   public void onStop(Application app) {
-//    Logger.info("Application shutdown...");
   }
 
   /* For CORS */
@@ -46,8 +47,20 @@ public class Global extends GlobalSettings {
     }
   }
 
+  /* Log all requests */
   @Override
-  public Action<?> onRequest(Http.Request request, java.lang.reflect.Method actionMethod) {
-    return new ActionWrapper(super.onRequest(request, actionMethod));
+  @SuppressWarnings("rawtypes")
+  public Action onRequest(Http.Request request, Method method) {
+    // Log request
+    accessLogger.info("method=" + request.method() + " uri=" + request.uri()
+        + " remote-address=" + request.remoteAddress() + " apiKey=" + Utils.getApiKeyFromHeader(request));
+    // The ActionWrapper is used for CORS
+    return new ActionWrapper(super.onRequest(request, method));
   }
+
+  //  @Override
+//  public Action<?> onRequest(Http.Request request, java.lang.reflect.Method actionMethod) {
+//    return new ActionWrapper(super.onRequest(request, actionMethod));
+//  }
+
 }
