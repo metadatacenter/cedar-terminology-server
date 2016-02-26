@@ -47,7 +47,7 @@ public class TerminologyController extends Controller {
       @ApiResponse(code = 401, message = "Unauthorized"),
       @ApiResponse(code = 500, message = "Internal Server Error")})
   @ApiImplicitParams(value = {
-      @ApiImplicitParam(name = "Authorization", value = "Format: apikey token={your_bioportal_apikey}. "
+      @ApiImplicitParam(name = "Authorization", value = "Format: apikey={your_bioportal_apikey}. "
           + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
           required = true, dataType = "string", paramType = "header")})
 
@@ -109,7 +109,7 @@ public class TerminologyController extends Controller {
       @ApiResponse(code = 401, message = "Unauthorized"),
       @ApiResponse(code = 500, message = "Internal Server Error")})
   @ApiImplicitParams(value = {
-      @ApiImplicitParam(name = "Authorization", value = "Format: apikey token={your_bioportal_apikey}. "
+      @ApiImplicitParam(name = "Authorization", value = "Format: apikey={your_bioportal_apikey}. "
           + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
           required = true, dataType = "string", paramType = "header")})
   public static Result findAllOntologies() {
@@ -142,7 +142,7 @@ public class TerminologyController extends Controller {
       @ApiResponse(code = 404, message = "Not Found"),
       @ApiResponse(code = 500, message = "Internal Server Error")})
   @ApiImplicitParams(value = {
-      @ApiImplicitParam(name = "Authorization", value = "Format: apikey token={your_bioportal_apikey}. "
+      @ApiImplicitParam(name = "Authorization", value = "Format: apikey={your_bioportal_apikey}. "
           + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
           required = true, dataType = "string", paramType = "header"),
       @ApiImplicitParam(name = "id", value = "Ontology id. Examples: NCIT, OBI, FMA",
@@ -177,7 +177,7 @@ public class TerminologyController extends Controller {
       @ApiResponse(code = 404, message = "Not Found"),
       @ApiResponse(code = 500, message = "Internal Server Error")})
   @ApiImplicitParams(value = {
-      @ApiImplicitParam(name = "Authorization", value = "Format: apikey token={your_bioportal_apikey}. "
+      @ApiImplicitParam(name = "Authorization", value = "Format: apikey={your_bioportal_apikey}. "
           + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
           required = true, dataType = "string", paramType = "header"),
       @ApiImplicitParam(name = "ontology", value = "Ontology identifier. Example: NCIT",
@@ -211,7 +211,7 @@ public class TerminologyController extends Controller {
       @ApiResponse(code = 401, message = "Unauthorized"),
       @ApiResponse(code = 500, message = "Internal Server Error")})
   @ApiImplicitParams(value = {
-      @ApiImplicitParam(name = "Authorization", value = "Format: apikey token={your_bioportal_apikey}. "
+      @ApiImplicitParam(name = "Authorization", value = "Format: apikey={your_bioportal_apikey}. "
           + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
           required = true, dataType = "string", paramType = "header"),
       @ApiImplicitParam(name = "ontology", value = "Ontology identifier. Example: CEDARPC", required = true, dataType
@@ -245,7 +245,7 @@ public class TerminologyController extends Controller {
       @ApiResponse(code = 404, message = "Not Found"),
       @ApiResponse(code = 500, message = "Internal Server Error")})
   @ApiImplicitParams(value = {
-      @ApiImplicitParam(name = "Authorization", value = "Format: apikey token={your_bioportal_apikey}. "
+      @ApiImplicitParam(name = "Authorization", value = "Format: apikey={your_bioportal_apikey}. "
           + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
           required = true, dataType = "string", paramType = "header"),
       @ApiImplicitParam(name = "id", value = "Class id. It must be encoded. Example: http%3A%2F%2Fdata.bioontology" +
@@ -279,7 +279,7 @@ public class TerminologyController extends Controller {
       @ApiResponse(code = 404, message = "Not Found"),
       @ApiResponse(code = 500, message = "Internal Server Error")})
   @ApiImplicitParams(value = {
-      @ApiImplicitParam(name = "Authorization", value = "Format: apikey token={your_bioportal_apikey}. "
+      @ApiImplicitParam(name = "Authorization", value = "Format: apikey={your_bioportal_apikey}. "
           + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
           required = true, dataType = "string", paramType = "header"),
       @ApiImplicitParam(name = "id", value = "Class id. It must be encoded. Example: http%3A%2F%2Fdata.bioontology" +
@@ -314,7 +314,7 @@ public class TerminologyController extends Controller {
       @ApiResponse(code = 404, message = "Not Found"),
       @ApiResponse(code = 500, message = "Internal Server Error")})
   @ApiImplicitParams(value = {
-      @ApiImplicitParam(name = "Authorization", value = "Format: apikey token={your_bioportal_apikey}. "
+      @ApiImplicitParam(name = "Authorization", value = "Format: apikey={your_bioportal_apikey}. "
           + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
           required = true, dataType = "string", paramType = "header"),
       @ApiImplicitParam(name = "id", value = "Class id. It must be encoded. Example: http%3A%2F%2Fdata.bioontology" +
@@ -349,7 +349,7 @@ public class TerminologyController extends Controller {
       @ApiResponse(code = 404, message = "Not Found"),
       @ApiResponse(code = 500, message = "Internal Server Error")})
   @ApiImplicitParams(value = {
-      @ApiImplicitParam(name = "Authorization", value = "Format: apikey token={your_bioportal_apikey}. "
+      @ApiImplicitParam(name = "Authorization", value = "Format: apikey={your_bioportal_apikey}. "
           + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
           required = true, dataType = "string", paramType = "header"),
       @ApiImplicitParam(name = "id", value = "Class id. It must be encoded. Example: http%3A%2F%2Fdata.bioontology" +
@@ -383,7 +383,7 @@ public class TerminologyController extends Controller {
       @ApiResponse(code = 401, message = "Unauthorized"),
       @ApiResponse(code = 500, message = "Internal Server Error")})
   @ApiImplicitParams(value = {
-      @ApiImplicitParam(name = "Authorization", value = "Format: apikey token={your_bioportal_apikey}. "
+      @ApiImplicitParam(name = "Authorization", value = "Format: apikey={your_bioportal_apikey}. "
           + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
           required = true, dataType = "string", paramType = "header")})
   public static Result findAllProvisionalClasses() {
@@ -415,7 +415,7 @@ public class TerminologyController extends Controller {
       @ApiResponse(code = 401, message = "Unauthorized"),
       @ApiResponse(code = 500, message = "Internal Server Error")})
   @ApiImplicitParams(value = {
-      @ApiImplicitParam(name = "Authorization", value = "Format: apikey token={your_bioportal_apikey}. "
+      @ApiImplicitParam(name = "Authorization", value = "Format: apikey={your_bioportal_apikey}. "
           + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
           required = true, dataType = "string", paramType = "header"),
       @ApiImplicitParam(name = "ontology", value = "Ontology. Example: NCIT",
@@ -449,7 +449,7 @@ public class TerminologyController extends Controller {
       @ApiResponse(code = 404, message = "Not Found"),
       @ApiResponse(code = 500, message = "Internal Server Error")})
   @ApiImplicitParams(value = {
-      @ApiImplicitParam(name = "Authorization", value = "Format: apikey token={your_bioportal_apikey}. "
+      @ApiImplicitParam(name = "Authorization", value = "Format: apikey={your_bioportal_apikey}. "
           + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
           required = true, dataType = "string", paramType = "header"),
       @ApiImplicitParam(name = "id", value = "Provisional class id. Example: 720f50f0-ae6f-0133-848f-005056010073",
@@ -484,7 +484,7 @@ public class TerminologyController extends Controller {
       @ApiResponse(code = 404, message = "Not Found"),
       @ApiResponse(code = 500, message = "Internal Server Error")})
   @ApiImplicitParams(value = {
-      @ApiImplicitParam(name = "Authorization", value = "Format: apikey token={your_bioportal_apikey}. "
+      @ApiImplicitParam(name = "Authorization", value = "Format: apikey={your_bioportal_apikey}. "
           + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
           required = true, dataType = "string", paramType = "header"),
       @ApiImplicitParam(name = "id", value = "Provisional class id. Example: 720f50f0-ae6f-0133-848f-005056010073",
@@ -516,7 +516,7 @@ public class TerminologyController extends Controller {
       @ApiResponse(code = 401, message = "Unauthorized"),
       @ApiResponse(code = 500, message = "Internal Server Error")})
   @ApiImplicitParams(value = {
-      @ApiImplicitParam(name = "Authorization", value = "Format: apikey token={your_bioportal_apikey}. "
+      @ApiImplicitParam(name = "Authorization", value = "Format: apikey={your_bioportal_apikey}. "
           + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
           required = true, dataType = "string", paramType = "header"),
       @ApiImplicitParam(value = "Relation to be created", required = true, dataType = "org.metadatacenter.terms" +
@@ -547,7 +547,7 @@ public class TerminologyController extends Controller {
       @ApiResponse(code = 404, message = "Not Found"),
       @ApiResponse(code = 500, message = "Internal Server Error")})
   @ApiImplicitParams(value = {
-      @ApiImplicitParam(name = "Authorization", value = "Format: apikey token={your_bioportal_apikey}. "
+      @ApiImplicitParam(name = "Authorization", value = "Format: apikey={your_bioportal_apikey}. "
           + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
           required = true, dataType = "string", paramType = "header"),
       @ApiImplicitParam(name = "id", value = "Provisional relation id. Example: 720f50f0-ae6f-0133-848f-005056010073",
@@ -576,7 +576,7 @@ public class TerminologyController extends Controller {
 //      @ApiResponse(code = 404, message = "Not Found"),
 //      @ApiResponse(code = 500, message = "Internal Server Error")})
 //  @ApiImplicitParams(value = {
-//      @ApiImplicitParam(name = "Authorization", value = "Format: apikey token={your_bioportal_apikey}. "
+//      @ApiImplicitParam(name = "Authorization", value = "Format: apikey={your_bioportal_apikey}. "
 //          + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
 //          required = true, dataType = "string", paramType = "header"),
 //      @ApiImplicitParam(name = "id", value = "Provisional relation id. Example: 720f50f0-ae6f-0133-848f-005056010073",
@@ -611,7 +611,7 @@ public class TerminologyController extends Controller {
       @ApiResponse(code = 404, message = "Not Found"),
       @ApiResponse(code = 500, message = "Internal Server Error")})
   @ApiImplicitParams(value = {
-      @ApiImplicitParam(name = "Authorization", value = "Format: apikey token={your_bioportal_apikey}. "
+      @ApiImplicitParam(name = "Authorization", value = "Format: apikey={your_bioportal_apikey}. "
           + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
           required = true, dataType = "string", paramType = "header"),
       @ApiImplicitParam(name = "id", value = "Provisional relation id. Example: 720f50f0-ae6f-0133-848f-005056010073",
@@ -644,7 +644,7 @@ public class TerminologyController extends Controller {
       @ApiResponse(code = 401, message = "Unauthorized"),
       @ApiResponse(code = 500, message = "Internal Server Error")})
   @ApiImplicitParams(value = {
-      @ApiImplicitParam(name = "Authorization", value = "Format: apikey token={your_bioportal_apikey}. "
+      @ApiImplicitParam(name = "Authorization", value = "Format: apikey={your_bioportal_apikey}. "
           + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
           required = true, dataType = "string", paramType = "header")})
   public static Result findAllVSCollections(@ApiParam(value = "Includes details, such as the number of value sets " +
@@ -679,7 +679,7 @@ public class TerminologyController extends Controller {
       @ApiResponse(code = 401, message = "Unauthorized"),
       @ApiResponse(code = 500, message = "Internal Server Error")})
   @ApiImplicitParams(value = {
-      @ApiImplicitParam(name = "Authorization", value = "Format: apikey token={your_bioportal_apikey}. "
+      @ApiImplicitParam(name = "Authorization", value = "Format: apikey={your_bioportal_apikey}. "
           + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
           required = true, dataType = "string", paramType = "header"),
       @ApiImplicitParam(name = "vs_collection", value = "Value set collection. Example: CEDARVS", required = true,
@@ -713,7 +713,7 @@ public class TerminologyController extends Controller {
       @ApiResponse(code = 404, message = "Not Found"),
       @ApiResponse(code = 500, message = "Internal Server Error")})
   @ApiImplicitParams(value = {
-      @ApiImplicitParam(name = "Authorization", value = "Format: apikey token={your_bioportal_apikey}. "
+      @ApiImplicitParam(name = "Authorization", value = "Format: apikey={your_bioportal_apikey}. "
           + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
           required = true, dataType = "string", paramType = "header"),
       @ApiImplicitParam(name = "vs_collection", value = "Value set collection. Example: CEDARVS",
@@ -744,7 +744,7 @@ public class TerminologyController extends Controller {
       @ApiResponse(code = 401, message = "Unauthorized"),
       @ApiResponse(code = 500, message = "Internal Server Error")})
   @ApiImplicitParams(value = {
-      @ApiImplicitParam(name = "Authorization", value = "Format: apikey token={your_bioportal_apikey}. "
+      @ApiImplicitParam(name = "Authorization", value = "Format: apikey={your_bioportal_apikey}. "
           + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
           required = true, dataType = "string", paramType = "header"),
       @ApiImplicitParam(name = "vs_collection", value = "Value set collection. Example: CEDARVS",
@@ -781,7 +781,7 @@ public class TerminologyController extends Controller {
       @ApiResponse(code = 404, message = "Not Found"),
       @ApiResponse(code = 500, message = "Internal Server Error")})
   @ApiImplicitParams(value = {
-      @ApiImplicitParam(name = "Authorization", value = "Format: apikey token={your_bioportal_apikey}. "
+      @ApiImplicitParam(name = "Authorization", value = "Format: apikey={your_bioportal_apikey}. "
           + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
           required = true, dataType = "string", paramType = "header"),
       @ApiImplicitParam(name = "id", value = "Provisional value set id. Example: 720f50f0-ae6f-0133-848f-005056010073",
@@ -816,7 +816,7 @@ public class TerminologyController extends Controller {
       @ApiResponse(code = 404, message = "Not Found"),
       @ApiResponse(code = 500, message = "Internal Server Error")})
   @ApiImplicitParams(value = {
-      @ApiImplicitParam(name = "Authorization", value = "Format: apikey token={your_bioportal_apikey}. "
+      @ApiImplicitParam(name = "Authorization", value = "Format: apikey={your_bioportal_apikey}. "
           + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
           required = true, dataType = "string", paramType = "header"),
       @ApiImplicitParam(name = "id", value = "Provisional value set id. Example: 720f50f0-ae6f-0133-848f-005056010073",
@@ -846,7 +846,7 @@ public class TerminologyController extends Controller {
       @ApiResponse(code = 404, message = "Not Found"),
       @ApiResponse(code = 500, message = "Internal Server Error")})
   @ApiImplicitParams(value = {
-      @ApiImplicitParam(name = "Authorization", value = "Format: apikey token={your_bioportal_apikey}. "
+      @ApiImplicitParam(name = "Authorization", value = "Format: apikey={your_bioportal_apikey}. "
           + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
           required = true, dataType = "string", paramType = "header"),
       @ApiImplicitParam(name = "vs", value = "Value set identifier. Example: http%3A%2F%2Fwww.semanticweb" +
@@ -890,7 +890,7 @@ public class TerminologyController extends Controller {
       @ApiResponse(code = 401, message = "Unauthorized"),
       @ApiResponse(code = 500, message = "Internal Server Error")})
   @ApiImplicitParams(value = {
-      @ApiImplicitParam(name = "Authorization", value = "Format: apikey token={your_bioportal_apikey}. "
+      @ApiImplicitParam(name = "Authorization", value = "Format: apikey={your_bioportal_apikey}. "
           + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
           required = true, dataType = "string", paramType = "header"),
       @ApiImplicitParam(name = "vs_collection", value = "Value set collection. Example: CEDARVS",
@@ -927,7 +927,7 @@ public class TerminologyController extends Controller {
       @ApiResponse(code = 401, message = "Unauthorized"),
       @ApiResponse(code = 500, message = "Internal Server Error")})
   @ApiImplicitParams(value = {
-      @ApiImplicitParam(name = "Authorization", value = "Format: apikey token={your_bioportal_apikey}. "
+      @ApiImplicitParam(name = "Authorization", value = "Format: apikey={your_bioportal_apikey}. "
           + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
           required = true, dataType = "string", paramType = "header"),
       @ApiImplicitParam(name = "vs_collection", value = "Value set collection. Example: CEDARVS",
@@ -961,7 +961,7 @@ public class TerminologyController extends Controller {
       @ApiResponse(code = 404, message = "Not Found"),
       @ApiResponse(code = 500, message = "Internal Server Error")})
   @ApiImplicitParams(value = {
-      @ApiImplicitParam(name = "Authorization", value = "Format: apikey token={your_bioportal_apikey}. "
+      @ApiImplicitParam(name = "Authorization", value = "Format: apikey={your_bioportal_apikey}. "
           + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
           required = true, dataType = "string", paramType = "header"),
       @ApiImplicitParam(name = "id", value = "Provisional value id. Example: 720f50f0-ae6f-0133-848f-005056010073",
@@ -996,7 +996,7 @@ public class TerminologyController extends Controller {
       @ApiResponse(code = 404, message = "Not Found"),
       @ApiResponse(code = 500, message = "Internal Server Error")})
   @ApiImplicitParams(value = {
-      @ApiImplicitParam(name = "Authorization", value = "Format: apikey token={your_bioportal_apikey}. "
+      @ApiImplicitParam(name = "Authorization", value = "Format: apikey={your_bioportal_apikey}. "
           + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
           required = true, dataType = "string", paramType = "header"),
       @ApiImplicitParam(name = "id", value = "Provisional value id. Example: 720f50f0-ae6f-0133-848f-005056010073",
