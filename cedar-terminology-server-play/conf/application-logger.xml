@@ -45,10 +45,7 @@
     <appender-ref ref="ACCESS_FILE"/>
   </logger>
 
-  <logger name="swagger" level="WARN">
-    <appender-ref ref="FILE"/>
-    <appender-ref ref="STDOUT"/>
-  </logger>
+  <logger name="swagger" level="INFO"/>
 
 </configuration>
 
