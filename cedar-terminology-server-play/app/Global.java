@@ -51,9 +51,16 @@ public class Global extends GlobalSettings {
   @Override
   @SuppressWarnings("rawtypes")
   public Action onRequest(Http.Request request, Method method) {
+    String apiKey = null;
+    if (Utils.isValidAuthorizationHeader(request)) {
+      apiKey = Utils.getApiKeyFromHeader(request);
+    }
+    else {
+      apiKey = "Invalid apiKey";
+    }
     // Log request
     accessLogger.info("method=" + request.method() + " uri=" + request.uri()
-        + " remote-address=" + request.remoteAddress() + " apiKey=" + Utils.getApiKeyFromHeader(request));
+        + " remote-address=" + request.remoteAddress() + " apiKey=" + apiKey);
     // The ActionWrapper is used for CORS
     return new ActionWrapper(super.onRequest(request, method));
   }
