@@ -9,8 +9,8 @@ which allows the use Maven with the Play Framework.
 
 The project contains two subdirectories:
 
-- cedar-template-server-core: Core server functionality
-- cedar-template-server-play: Play-based interface to server
+- cedar-terminology-server-core: Core server functionality
+- cedar-terminology-server-play: Play-based interface to server
 
 ## Versions
 
