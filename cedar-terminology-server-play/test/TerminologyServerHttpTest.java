@@ -1,6 +1,7 @@
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.http.util.EntityUtils;
 import org.junit.*;
 import org.metadatacenter.terms.domainObjects.OntologyClass;
 import org.metadatacenter.terms.domainObjects.Relation;
@@ -8,6 +9,7 @@ import org.metadatacenter.terms.domainObjects.Value;
 import org.metadatacenter.terms.domainObjects.ValueSet;
 import org.metadatacenter.terms.util.Util;
 import play.Configuration;
+import play.Logger;
 import play.Play;
 import play.libs.Json;
 import play.libs.ws.WS;
@@ -116,7 +118,11 @@ public class TerminologyServerHttpTest {
    */
   @AfterClass
   public static void oneTimeTearDown() {
-
+    running(testServer(TEST_SERVER_PORT), new Runnable() {
+      public void run() {
+        //deleteCreatedClasses("cedar-test");
+      }
+    });
   }
 
   /**
@@ -919,6 +925,32 @@ public class TerminologyServerHttpTest {
       if (WS.url(findUrl).setHeader("Authorization", authHeader).get().get(TIMEOUT_MS).getStatus() == OK) {
         WS.url(deleteUrl).setHeader("Authorization", authHeader).delete().get(TIMEOUT_MS);
 //        Logger.info("Deleted class: " + c.getId());
+      }
+    }
+  }
+
+  // This method can be used to remove all classes created by a specific user
+  private static void deleteCreatedClasses(String creator) {
+    // Get all provisional classes
+    String url = SERVER_URL_BIOPORTAL + BP_PROVISIONAL_CLASSES;
+    // Find all
+    WSResponse wsResponse = WS.url(url).setHeader("Authorization", authHeader).get().get(TIMEOUT_MS);
+    // Check HTTP response
+    Assert.assertEquals(OK, wsResponse.getStatus());
+    ObjectMapper mapper = new ObjectMapper();
+    for (JsonNode n : wsResponse.asJson()) {
+      OntologyClass c = mapper.convertValue(n, OntologyClass.class);
+      if (Util.getShortIdentifier(c.getCreator()).compareTo(Util.getShortIdentifier(creator))==0) {
+        String findUrl = SERVER_URL_BIOPORTAL + BP_ONTOLOGIES + "/" + Util.getShortIdentifier(c.getOntology()) +
+            "/" + BP_CLASSES + "/" + c.getId();
+        String deleteUrl = SERVER_URL_BIOPORTAL + BP_CLASSES + "/" + c.getId();
+        if (WS.url(findUrl).setHeader("Authorization", authHeader).get().get(TIMEOUT_MS).getStatus() == OK) {
+          Logger.info("Delete URL: " + deleteUrl);
+          WSResponse deleteResponse = WS.url(deleteUrl).setHeader("Authorization", authHeader).delete().get(TIMEOUT_MS);
+          // Check HTTP response
+          Assert.assertEquals(NO_CONTENT, deleteResponse.getStatus());
+          Logger.info("Deleted class: " + c.getId());
+        }
       }
     }
   }
