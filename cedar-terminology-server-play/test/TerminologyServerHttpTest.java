@@ -3,6 +3,10 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.http.util.EntityUtils;
 import org.junit.*;
+import org.junit.rules.TestName;
+import org.junit.rules.TestRule;
+import org.junit.rules.TestWatcher;
+import org.junit.runner.Description;
 import org.metadatacenter.terms.domainObjects.OntologyClass;
 import org.metadatacenter.terms.domainObjects.Relation;
 import org.metadatacenter.terms.domainObjects.Value;
@@ -153,6 +157,13 @@ public class TerminologyServerHttpTest {
       }
     });
   }
+
+  @Rule
+  public TestRule watcher = new TestWatcher() {
+    protected void starting(Description description) {
+      System.out.println("*** Test: " + description.getMethodName() + "***");
+    }
+  };
 
   /**
    * Search tests
