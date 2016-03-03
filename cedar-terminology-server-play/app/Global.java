@@ -9,6 +9,8 @@ import utils.Utils;
 import java.io.File;
 import java.lang.reflect.Method;
 
+import static play.mvc.Results.*;
+
 public class Global extends GlobalSettings {
 
   private final Logger.ALogger accessLogger = Logger.of("access");
@@ -21,6 +23,18 @@ public class Global extends GlobalSettings {
     } else {
       return onLoadConfig(config, path, classloader); // default implementation
     }
+  }
+
+  // If the framework doesn’t find an action method for a request, the onHandlerNotFound operation will be called:
+  @Override
+  public Promise<Result> onHandlerNotFound(Http.RequestHeader request) {
+    return Promise.<Result>pure(notFound(request.uri()));
+  }
+
+  // The onBadRequest operation will be called if a route was found, but it was not possible to bind the request parameters
+  @Override
+  public Promise<Result> onBadRequest(Http.RequestHeader request, String error) {
+    return Promise.<Result>pure(badRequest(error));
   }
 
   @Override
