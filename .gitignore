@@ -15,4 +15,3 @@ dist
 /.settings
 *.cache
 application-include-bioportal-test.conf
-application-include-swagger.conf
