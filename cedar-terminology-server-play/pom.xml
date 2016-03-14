@@ -133,6 +133,9 @@
         <directory>${basedir}/conf</directory>
       </resource>
       <resource>
+        <directory>${basedir}/profiles/${cedar.profile.dir}/conf</directory>
+      </resource>
+      <resource>
         <directory>${basedir}</directory>
         <includes>
           <include>public/**</include>
