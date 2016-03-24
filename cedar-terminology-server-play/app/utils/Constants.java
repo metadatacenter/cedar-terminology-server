@@ -16,10 +16,7 @@ public class Constants {
   public static final String BP_VALUE_SETS = "value-sets";
   public static final String BP_VALUES = "values";
   public static final String BP_PROVISIONAL_CLASSES = BP_CLASSES + "/provisional";
-
-  public static final String PLAY_MODULE_FOLDER_NAME = "cedar-terminology-server-play";
-  public static final String PLAY_APP_FOLDER_NAME = "cedar-terminology-server";
-  public static final String CACHE_FOLDER_NAME = "cache-objects";
+  public static final String CACHE_FOLDER_NAME = "cache/terminology";
   public static final String ONTOLOGIES_CACHE_FILE = "ontologies.cache";
 
   // PRIVATE //

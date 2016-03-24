@@ -48,7 +48,7 @@ public class TerminologyService implements ITerminologyService {
     }
     // Get details
     if (includeDetails) {
-//      int i = 1;
+      int i = 1;
       for (Ontology o : ontologies) {
         o.setDetails(getOntologyDetails(o.getId(), apiKey));
         // Delay between calls (BioPortal requirement)
@@ -57,7 +57,7 @@ public class TerminologyService implements ITerminologyService {
         } catch (InterruptedException e) {
           e.printStackTrace();
         }
-//        System.out.println("Ontologies loaded: " + i++);
+        System.out.println("Ontologies loaded in cache: " + i++);
       }
     }
     return ontologies;

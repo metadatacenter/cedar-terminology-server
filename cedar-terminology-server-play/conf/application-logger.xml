@@ -3,10 +3,10 @@
   <conversionRule conversionWord="coloredLevel" converterClass="play.api.Logger$ColoredLevel"/>
 
   <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-    <file>${user.dir}/logs/application.log</file>
+    <file>${CEDAR_HOME}/log/terminology/application.log</file>
     <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
       <!-- Daily rollover with compression -->
-      <fileNamePattern>${user.dir}/logs/application-log-%d{yyyy-MM-dd}.gz</fileNamePattern>
+      <fileNamePattern>${CEDAR_HOME}/logs/application-log-%d{yyyy-MM-dd}.gz</fileNamePattern>
       <!-- keep 30 days worth of history -->
       <!--<maxHistory>30</maxHistory>-->
     </rollingPolicy>
@@ -16,10 +16,10 @@
   </appender>
 
   <appender name="ACCESS_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-    <file>${user.dir}/logs/access.log</file>
+    <file>${CEDAR_HOME}/log/terminology/access.log</file>
     <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
       <!-- daily rollover with compression -->
-      <fileNamePattern>${user.dir}/logs/access-log-%d{yyyy-MM-dd}.gz</fileNamePattern>
+      <fileNamePattern>${CEDAR_HOME}/log/terminology/access-log-%d{yyyy-MM-dd}.gz</fileNamePattern>
       <!-- keep 1 week worth of history -->
       <!--<maxHistory>7</maxHistory>-->
     </rollingPolicy>

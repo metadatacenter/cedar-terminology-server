@@ -124,22 +124,7 @@ public class Cache {
   }
 
   private static String getCacheObjectsPath() {
-    String path;
-    String workingDirectory = System.getProperty("user.dir");
-    // Get last fragment of working directory
-    String folder = workingDirectory.substring(workingDirectory.lastIndexOf("/") + 1, workingDirectory.length());
-    // Working directory for Maven execution (mvn play2:run)
-    if (folder.compareTo(PLAY_MODULE_FOLDER_NAME) == 0) {
-      path = CACHE_FOLDER_NAME;
-    }
-    // Working directory for execution from IntelliJ
-    else if (folder.compareTo(PLAY_APP_FOLDER_NAME)==0) {
-      path = PLAY_MODULE_FOLDER_NAME + "/" + CACHE_FOLDER_NAME;
-    }
-    // Working directory for test execution from IntelliJ (working directory: ...cedar-terminology-server/.idea/modules)
-    else {
-      path = "../../" + PLAY_MODULE_FOLDER_NAME + "/" + CACHE_FOLDER_NAME;
-    }
+    String path = System.getenv("CEDAR_HOME") + CACHE_FOLDER_NAME;
     return path;
   }
 
