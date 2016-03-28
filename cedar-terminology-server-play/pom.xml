@@ -134,6 +134,7 @@
       </resource>
       <resource>
         <directory>${basedir}/profiles/${cedar.profile.dir}/conf</directory>
+        <filtering>true</filtering>
       </resource>
       <resource>
         <directory>${basedir}</directory>
