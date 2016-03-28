@@ -155,7 +155,7 @@ public class TerminologyController extends Controller {
       Cache.apiKeyCache = Utils.getApiKeyFromHeader(request());
       // Retrieve ontology from ontologies cache
       Ontology o = Cache.ontologiesCache.get("ontologies").get(id);
-      if (o==null) {
+      if (o == null) {
         // Not found
         return notFound();
       }
@@ -749,7 +749,10 @@ public class TerminologyController extends Controller {
           required = true, dataType = "string", paramType = "header"),
       @ApiImplicitParam(name = "vs_collection", value = "Value set collection. Example: CEDARVS",
           required = true, dataType = "string", paramType = "path")})
-  public static Result findValueSetsByVsCollection(String vsCollection) {
+  public static Result findValueSetsByVsCollection(String vsCollection, @ApiParam(value = "Integer representing the " +
+      "page number. Default: 'page=1'", required = false) @QueryParam("page") int page, @ApiParam(value = "Integer " +
+      "representing the size of the returned page. Default: 'pageSize=50'", required = false) @QueryParam
+      ("page_size") int pageSize) {
     if (!Utils.isValidAuthorizationHeader(request())) {
       return badRequest();
     }
@@ -758,10 +761,41 @@ public class TerminologyController extends Controller {
     }
     try {
       PagedResults<ValueSet> valueSets = termService.
-          findValueSetsByVsCollection(vsCollection, Utils.getApiKeyFromHeader(request()));
+          findValueSetsByVsCollection(vsCollection, page, pageSize, Utils.getApiKeyFromHeader(request()));
       ObjectMapper mapper = new ObjectMapper();
       // This line ensures that @class type annotations are included for each element in the collection
       ObjectWriter writer = mapper.writerFor(new TypeReference<PagedResults<Value>>() {
+      });
+      return ok(mapper.readTree(writer.writeValueAsString(valueSets)));
+    } catch (HTTPException e) {
+      return Results.status(e.getStatusCode());
+    } catch (IOException e) {
+      return internalServerError(e.getMessage());
+    }
+  }
+
+  @ApiOperation(
+      value = "Find all value sets",
+      // notes = ...
+      httpMethod = "GET")
+  @ApiResponses(value = {
+      @ApiResponse(code = 200, message = "Success!"),
+      @ApiResponse(code = 400, message = "Bad Request"),
+      @ApiResponse(code = 401, message = "Unauthorized"),
+      @ApiResponse(code = 500, message = "Internal Server Error")})
+  @ApiImplicitParams(value = {
+      @ApiImplicitParam(name = "Authorization", value = "Format: apikey={your_bioportal_apikey}. "
+          + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
+          required = true, dataType = "string", paramType = "header")})
+  public static Result findAllValueSets() {
+    if (!Utils.isValidAuthorizationHeader(request())) {
+      return badRequest();
+    }
+    try {
+      List<ValueSet> valueSets = termService.findAllValueSets(Utils.getApiKeyFromHeader(request()));
+      ObjectMapper mapper = new ObjectMapper();
+      // This line ensures that @class type annotations are included for each element in the collection
+      ObjectWriter writer = mapper.writerFor(new TypeReference<List<ValueSet>>() {
       });
       return ok(mapper.readTree(writer.writeValueAsString(valueSets)));
     } catch (HTTPException e) {

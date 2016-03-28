@@ -16,6 +16,7 @@ import java.util.List;
 import static org.metadatacenter.terms.util.Constants.BP_API_BASE;
 import static org.metadatacenter.terms.util.Constants.BP_ONTOLOGY_TYPE_VS_COLLECTION;
 import static org.metadatacenter.terms.util.Constants.BP_API_WAIT_TIME;
+import static org.metadatacenter.terms.util.Constants.BP_VS_COLLECTIONS_READ;
 
 public class TerminologyService implements ITerminologyService {
 
@@ -276,10 +277,12 @@ public class TerminologyService implements ITerminologyService {
     bpService.deleteProvisionalClass(id, apiKey);
   }
 
-  public PagedResults<ValueSet> findValueSetsByVsCollection(String vsCollection, String apiKey) throws IOException {
+  public PagedResults<ValueSet> findValueSetsByVsCollection(String vsCollection, int page, int pageSize, String
+      apiKey) throws IOException {
     // Check that vsCollection is a valid Value Set Collection
     if (Util.validVsCollection(vsCollection, false)) {
-      BpPagedResults<BpClass> bpResults = bpService.findValueSetsByValueSetCollection(vsCollection, apiKey);
+      BpPagedResults<BpClass> bpResults = bpService.findValueSetsByValueSetCollection(vsCollection, page, pageSize,
+          apiKey);
       return ObjectConverter.toValueSetResults(bpResults);
     } else {
       // Bad request
@@ -341,6 +344,20 @@ public class TerminologyService implements ITerminologyService {
       }
     }
     return vsCollections;
+  }
+
+  public List<ValueSet> findAllValueSets(String apiKey) throws IOException {
+    List<ValueSet> valueSets = new ArrayList<>();
+    int page = 1;
+    // We need to retrieve all value sets in one call so we set a higher limit for pageSize. Higher values are not
+    // accepted by BioPortal. Bad request is returned
+    int pageSize = 5000;
+    //int pageSize = Integer.MAX_VALUE;
+    for (String vs : BP_VS_COLLECTIONS_READ) {
+      List<ValueSet> vsTmp = findValueSetsByVsCollection(vs, page, pageSize, apiKey).getCollection();
+      valueSets.addAll(vsTmp);
+    }
+    return valueSets;
   }
 
 //  public List<ValueSet> findAllValueSets(String vsCollection, String apiKey) throws IOException {

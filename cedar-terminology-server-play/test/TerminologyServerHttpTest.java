@@ -1,4 +1,5 @@
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.http.util.EntityUtils;
@@ -7,6 +8,9 @@ import org.junit.rules.TestName;
 import org.junit.rules.TestRule;
 import org.junit.rules.TestWatcher;
 import org.junit.runner.Description;
+import org.metadatacenter.terms.bioportal.customObjects.BpPagedResults;
+import org.metadatacenter.terms.bioportal.domainObjects.BpClass;
+import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.terms.domainObjects.OntologyClass;
 import org.metadatacenter.terms.domainObjects.Relation;
 import org.metadatacenter.terms.domainObjects.Value;
@@ -619,6 +623,49 @@ public class TerminologyServerHttpTest {
         Assert.assertEquals(new HashSet<>(created.getRelations()), new HashSet<>(found.getRelations()));
         Assert.assertEquals(created.isProvisional(), found.isProvisional());
         Assert.assertEquals(created.getCreated(), found.getCreated());
+      }
+    });
+  }
+
+  @Test
+  public void findValueSetsByVsCollectionTest() {
+    running(testServer(TEST_SERVER_PORT), new Runnable() {
+      public void run() {
+        // Create two provisional value sets
+        ValueSet created1 = createValueSet();
+        createValueSet();
+        // Find url
+        String url = SERVER_URL_BIOPORTAL + BP_VALUE_SET_COLLECTIONS + "/" + Util.getShortIdentifier(created1
+            .getVsCollection()) + "/" + BP_VALUE_SETS;
+        WSResponse wsResponseFind = WS.url(url).setHeader("Authorization", authHeader).get().get(TIMEOUT_MS);
+        // Check response is OK
+        Assert.assertEquals(wsResponseFind.getStatus(), OK);
+        // Check Content-Type
+        Assert.assertEquals(wsResponseFind.getHeader("Content-Type"), "application/json; charset=utf-8");
+        // Check the number of elements retrieved
+        int resultsCount = wsResponseFind.asJson().get("collection").size();
+        Assert.assertTrue("Wrong number of value sets retrieved", resultsCount > 1);
+      }
+    });
+  }
+
+  @Test
+  public void findAllValueSetsTest() {
+    running(testServer(TEST_SERVER_PORT), new Runnable() {
+      public void run() {
+        // Create two provisional value sets
+        createValueSet();
+        createValueSet();
+        // Find url
+        String url = SERVER_URL_BIOPORTAL + BP_VALUE_SETS;
+        WSResponse wsResponseFind = WS.url(url).setHeader("Authorization", authHeader).get().get(TIMEOUT_MS);
+        // Check response is OK
+        Assert.assertEquals(wsResponseFind.getStatus(), OK);
+        // Check Content-Type
+        Assert.assertEquals(wsResponseFind.getHeader("Content-Type"), "application/json; charset=utf-8");
+        // Check the number of elements retrieved
+        int resultsCount = wsResponseFind.asJson().size();
+        Assert.assertTrue("Wrong number of value sets retrieved", resultsCount > 1);
       }
     });
   }

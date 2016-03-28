@@ -203,10 +203,10 @@ public class BioPortalService implements IBioPortalService
     bpProvRelationDAO.delete(id, apiKey);
   }
 
-  public BpPagedResults<BpClass> findValueSetsByValueSetCollection(String vsCollection, String apiKey)
+  public BpPagedResults<BpClass> findValueSetsByValueSetCollection(String vsCollection, int page, int pageSize, String apiKey)
     throws IOException
   {
-    return bpClassDAO.findValueSetsByValueSetCollection(vsCollection, apiKey);
+    return bpClassDAO.findValueSetsByValueSetCollection(vsCollection, page, pageSize, apiKey);
   }
 
   public BpPagedResults<BpClass> findValuesByValueSet(String vsId, String vsCollection, String apiKey)

@@ -46,8 +46,9 @@ DELETE         /bioportal/values/:id                                            
 
 ### Value Sets ###
 POST           /bioportal/vs-collections/:vs_collection/value-sets                   controllers.TerminologyController.createValueSet(vs_collection: String)
-GET            /bioportal/vs-collections/:vs_collection/value-sets                   controllers.TerminologyController.findValueSetsByVsCollection(vs_collection : String)
 GET            /bioportal/vs-collections/:vs_collection/value-sets/:id               controllers.TerminologyController.findValueSet(id: String, vs_collection: String)
+GET            /bioportal/vs-collections/:vs_collection/value-sets                   controllers.TerminologyController.findValueSetsByVsCollection(vs_collection : String, page: Int ?= 1, page_size: Int ?= 50)
+GET            /bioportal/value-sets                                                 controllers.TerminologyController.findAllValueSets()
 PATCH          /bioportal/value-sets/:id                                             controllers.TerminologyController.updateValueSet(id: String)
 DELETE         /bioportal/value-sets/:id                                             controllers.TerminologyController.deleteValueSet(id: String)
 

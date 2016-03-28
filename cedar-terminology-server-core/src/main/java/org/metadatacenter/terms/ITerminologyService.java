@@ -75,14 +75,14 @@ public interface ITerminologyService
   void deleteProvisionalValueSet(String id, String apiKey) throws IOException;
 
   // TODO: does not support provisional classes yet
-  PagedResults<ValueSet> findValueSetsByVsCollection(String vsCollection, String apiKey) throws IOException;
+  PagedResults<ValueSet> findValueSetsByVsCollection(String vsCollection, int page, int pageSize, String apiKey) throws IOException;
+
+  List<ValueSet> findAllValueSets(String apiKey) throws IOException;
 
   // TODO: This call does not return provisional classes yet and the vs must be a regular class
   PagedResults<Value> findValuesByValueSet(String vsId, String vsCollection, String apiKey) throws IOException;
 
   List<VSCollection> findAllVSCollections(boolean includeDetails, String apiKey) throws IOException;
-
-  //List<ValueSet> findAllValueSets(String vsCollection, String apiKey) throws IOException;
 
   /**
    * Values

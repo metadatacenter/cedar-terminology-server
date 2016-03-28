@@ -105,12 +105,12 @@ public class BpClassDAO
     }
   }
 
-  public BpPagedResults<BpClass> findValueSetsByValueSetCollection(String vsCollection, String apiKey)
+  public BpPagedResults<BpClass> findValueSetsByValueSetCollection(String vsCollection, int page, int pageSize, String apiKey)
     throws IOException
   {
     HttpResponse response = Request.Get(BP_API_BASE + BP_SEARCH +
       "?also_search_provisional=true&valueset_roots_only=true&ontology_types=VALUE_SET_COLLECTION&ontologies="
-      + vsCollection).addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
+      + vsCollection + "&page=" + page + "&pagesize=" + pageSize).addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
       connectTimeout(connectTimeout).socketTimeout(socketTimeout).execute().returnResponse();
 
     int statusCode = response.getStatusLine().getStatusCode();
