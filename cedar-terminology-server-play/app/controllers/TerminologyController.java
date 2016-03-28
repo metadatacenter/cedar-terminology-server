@@ -117,7 +117,6 @@ public class TerminologyController extends Controller {
       return badRequest();
     }
     try {
-      Cache.apiKeyCache = Utils.getApiKeyFromHeader(request());
       List<Ontology> ontologies = new ArrayList<Ontology>(Cache.ontologiesCache.get("ontologies").values());
       ObjectMapper mapper = new ObjectMapper();
       ObjectWriter writer = mapper.writerFor(new TypeReference<List<Ontology>>() {
@@ -792,7 +791,7 @@ public class TerminologyController extends Controller {
       return badRequest();
     }
     try {
-      List<ValueSet> valueSets = termService.findAllValueSets(Utils.getApiKeyFromHeader(request()));
+      List<ValueSet> valueSets = new ArrayList<ValueSet>(Cache.valueSetsCache.get("value-sets").values());
       ObjectMapper mapper = new ObjectMapper();
       // This line ensures that @class type annotations are included for each element in the collection
       ObjectWriter writer = mapper.writerFor(new TypeReference<List<ValueSet>>() {
@@ -801,6 +800,8 @@ public class TerminologyController extends Controller {
     } catch (HTTPException e) {
       return Results.status(e.getStatusCode());
     } catch (IOException e) {
+      return internalServerError(e.getMessage());
+    } catch (ExecutionException e) {
       return internalServerError(e.getMessage());
     }
   }

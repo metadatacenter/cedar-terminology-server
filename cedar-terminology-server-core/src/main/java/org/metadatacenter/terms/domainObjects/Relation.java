@@ -5,9 +5,11 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.wordnik.swagger.annotations.ApiModel;
 import com.wordnik.swagger.annotations.ApiModelProperty;
 
+import java.io.Serializable;
+
 @ApiModel
 @JsonPropertyOrder({"id", "@id", "sourceClassId", "relationType", "targetClassId", "targetClassOntology", "created"})
-public class Relation
+public class Relation implements Serializable
 {
   @ApiModelProperty(hidden = true)
   String id;

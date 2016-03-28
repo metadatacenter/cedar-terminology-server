@@ -5,12 +5,13 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.wordnik.swagger.annotations.ApiModel;
 import com.wordnik.swagger.annotations.ApiModelProperty;
 
+import java.io.Serializable;
 import java.util.List;
 
 @ApiModel
 @JsonPropertyOrder({"id", "@id", "label", "creator", "ontology", "definitions", "synonyms", "subclassOf",
     "relations", "provisional", "created"})
-public class ValueSet
+public class ValueSet implements Serializable
 {
   @ApiModelProperty(hidden = true)
   private String id;
