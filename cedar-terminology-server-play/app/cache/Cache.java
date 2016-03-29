@@ -144,6 +144,12 @@ public class Cache {
   public static void saveValueSetsToFile(List<ValueSet> ontologies) {
     Logger.info("Saving value sets to file");
     try {
+      // Create dirs if they don't exist
+      File targetFile = new File(ontologiesCachePath);
+      File parent = targetFile.getParentFile();
+      if(!parent.exists() && !parent.mkdirs()){
+        throw new IllegalStateException("Couldn't create dir: " + parent);
+      }
       ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream(valueSetsCachePath));
       out.writeObject(ontologies);
       out.flush();
@@ -157,6 +163,12 @@ public class Cache {
   public static void saveOntologiesToFile(List<Ontology> ontologies) {
     Logger.info("Saving ontologies to file");
     try {
+      // Create dirs if they don't exist
+      File targetFile = new File(ontologiesCachePath);
+      File parent = targetFile.getParentFile();
+      if(!parent.exists() && !parent.mkdirs()){
+        throw new IllegalStateException("Couldn't create dir: " + parent);
+      }
       ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream(ontologiesCachePath));
       out.writeObject(ontologies);
       out.flush();
