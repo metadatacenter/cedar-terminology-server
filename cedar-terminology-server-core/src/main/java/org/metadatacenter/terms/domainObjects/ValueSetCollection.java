@@ -5,23 +5,23 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.wordnik.swagger.annotations.ApiModel;
 
 @ApiModel
-@JsonPropertyOrder({"id", "@id", "@type", "name", "details"})
-public class VSCollection {
+@JsonPropertyOrder({"id", "@id", "@type", "type", "name", "details"})
+public class ValueSetCollection {
   private String id;
   @JsonProperty("@id")
   private String ldId;
   @JsonProperty("@type")
-  private String type;
+  private String ldType = "http://data.bioontology.org/metadata/ValueSetCollection";
+  private String type = "ValueSetCollection";
   private String name;
-  private VSCollectionDetails details;
+  private ValueSetCollectionDetails details;
 
-  public VSCollection() {
+  public ValueSetCollection() {
   }
 
-  public VSCollection(String id, String ldId, String type, String name, VSCollectionDetails details) {
+  public ValueSetCollection(String id, String ldId, String name, ValueSetCollectionDetails details) {
     this.id = id;
     this.ldId = ldId;
-    this.type = type;
     this.name = name;
     this.details = details;
   }
@@ -42,6 +42,14 @@ public class VSCollection {
     this.ldId = ldId;
   }
 
+  public String getLdType() {
+    return ldType;
+  }
+
+  public void setLdType(String ldType) {
+    this.ldType = ldType;
+  }
+
   public String getType() {
     return type;
   }
@@ -58,11 +66,11 @@ public class VSCollection {
     this.name = name;
   }
 
-  public VSCollectionDetails getDetails() {
+  public ValueSetCollectionDetails getDetails() {
     return details;
   }
 
-  public void setDetails(VSCollectionDetails details) {
+  public void setDetails(ValueSetCollectionDetails details) {
     this.details = details;
   }
 }

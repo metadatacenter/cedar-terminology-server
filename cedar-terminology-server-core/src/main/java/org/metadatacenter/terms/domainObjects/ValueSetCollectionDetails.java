@@ -8,7 +8,7 @@ import java.util.List;
 @ApiModel
 @JsonPropertyOrder({"description", "numberOfClasses", "categories", "hasOntologyLanguage", "released",
     "creationDate", "homepage", "publication", "documentation", "version"})
-public class VSCollectionDetails {
+public class ValueSetCollectionDetails {
 
   private String description;
   private int numberOfClasses;
@@ -21,12 +21,12 @@ public class VSCollectionDetails {
   private String documentation;
   private String version;
 
-  public VSCollectionDetails() {
+  public ValueSetCollectionDetails() {
   }
 
-  public VSCollectionDetails(String description, int numberOfClasses, List<String> categories, String
+  public ValueSetCollectionDetails(String description, int numberOfClasses, List<String> categories, String
       hasOntologyLanguage, String released, String creationDate, String homepage, String publication, String
-                                 documentation, String version) {
+                                       documentation, String version) {
     this.description = description;
     this.numberOfClasses = numberOfClasses;
     this.categories = categories;

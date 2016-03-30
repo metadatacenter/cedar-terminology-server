@@ -8,7 +8,7 @@ import com.wordnik.swagger.annotations.ApiModelProperty;
 import java.util.List;
 
 @ApiModel
-@JsonPropertyOrder({"id", "@id", "label", "creator", "ontology", "definitions", "synonyms", "subclassOf",
+@JsonPropertyOrder({"id", "@id", "@type", "type", "label", "creator", "ontology", "definitions", "synonyms", "subclassOf",
     "relations", "provisional", "created"})
 public class OntologyClass {
   @ApiModelProperty(hidden = true)
@@ -16,6 +16,9 @@ public class OntologyClass {
   @ApiModelProperty(hidden = true)
   @JsonProperty("@id")
   private String ldId;
+  @JsonProperty("@type")
+  private String ldType = "http://data.bioontology.org/metadata/OntologyClass";
+  private String type = "OntologyClass";
   @ApiModelProperty(required = true)
   private String label;
   @ApiModelProperty(required = true)
@@ -69,6 +72,22 @@ public class OntologyClass {
 
   public void setLdId(String ldId) {
     this.ldId = ldId;
+  }
+
+  public String getLdType() {
+    return ldType;
+  }
+
+  public void setLdType(String ldType) {
+    this.ldType = ldType;
+  }
+
+  public String getType() {
+    return type;
+  }
+
+  public void setType(String type) {
+    this.type = type;
   }
 
   public String getLabel() {

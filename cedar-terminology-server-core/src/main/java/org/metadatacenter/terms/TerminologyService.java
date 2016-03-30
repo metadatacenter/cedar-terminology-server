@@ -323,9 +323,9 @@ public class TerminologyService implements ITerminologyService {
     }
   }
 
-  public List<VSCollection> findAllVSCollections(boolean includeDetails, String apiKey) throws IOException {
+  public List<ValueSetCollection> findAllVSCollections(boolean includeDetails, String apiKey) throws IOException {
     List<BpOntology> bpOntologies = bpService.findAllOntologies(apiKey);
-    List<VSCollection> vsCollections = new ArrayList<>();
+    List<ValueSetCollection> vsCollections = new ArrayList<>();
     for (BpOntology o : bpOntologies) {
       if (o.getType() != null && o.getType().compareTo(BP_API_BASE + BP_ONTOLOGY_TYPE_VS_COLLECTION) == 0) {
         vsCollections.add(ObjectConverter.toVSCollection(ObjectConverter.toOntology(o)));
@@ -333,7 +333,7 @@ public class TerminologyService implements ITerminologyService {
     }
     // Get details
     if (includeDetails) {
-      for (VSCollection c : vsCollections) {
+      for (ValueSetCollection c : vsCollections) {
         c.setDetails(ObjectConverter.toVSCollectionDetails(getOntologyDetails(c.getId(), apiKey)));
         // Delay between calls (BioPortal requirement)
         try {

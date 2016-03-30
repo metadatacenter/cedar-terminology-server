@@ -82,7 +82,7 @@ public interface ITerminologyService
   // TODO: This call does not return provisional classes yet and the vs must be a regular class
   PagedResults<Value> findValuesByValueSet(String vsId, String vsCollection, String apiKey) throws IOException;
 
-  List<VSCollection> findAllVSCollections(boolean includeDetails, String apiKey) throws IOException;
+  List<ValueSetCollection> findAllVSCollections(boolean includeDetails, String apiKey) throws IOException;
 
   /**
    * Values

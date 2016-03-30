@@ -8,7 +8,7 @@ import com.wordnik.swagger.annotations.ApiModelProperty;
 import java.util.List;
 
 @ApiModel
-@JsonPropertyOrder({"id", "@id", "label", "creator", "vsId", "vsCollection", "definitions", "synonyms",
+@JsonPropertyOrder({"id", "@id", "@type", "type", "label", "creator", "vsId", "vsCollection", "definitions", "synonyms",
     "relations", "provisional", "created"})
 public class Value
 {
@@ -17,6 +17,9 @@ public class Value
   @ApiModelProperty(hidden = true)
   @JsonProperty("@id")
   private String ldId;
+  @JsonProperty("@type")
+  private String ldType = "http://data.bioontology.org/metadata/Value";
+  private String type = "Value";
   @ApiModelProperty(required = true)
   private String label;
   @ApiModelProperty(required = true)
@@ -68,6 +71,22 @@ public class Value
 
   public void setLdId(String ldId) {
     this.ldId = ldId;
+  }
+
+  public String getLdType() {
+    return ldType;
+  }
+
+  public void setLdType(String ldType) {
+    this.ldType = ldType;
+  }
+
+  public String getType() {
+    return type;
+  }
+
+  public void setType(String type) {
+    this.type = type;
   }
 
   public String getLabel() {

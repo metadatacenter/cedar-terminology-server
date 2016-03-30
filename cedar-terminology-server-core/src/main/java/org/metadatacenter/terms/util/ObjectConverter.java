@@ -56,7 +56,7 @@ public class ObjectConverter {
    **/
 
   public static Ontology toOntology(BpOntology o) {
-    return new Ontology(o.getAcronym(), o.getId(), o.getType(), o.getName(), null);
+    return new Ontology(o.getAcronym(), o.getId(), o.getName(), null);
   }
 
   public static OntologyClass toOntologyClass(BpProvisionalClass pc) {
@@ -168,15 +168,15 @@ public class ObjectConverter {
         c.getSynonyms(), c.getRelations(), c.isProvisional(), c.getCreated());
   }
 
-  public static VSCollection toVSCollection(Ontology o) {
-    return new VSCollection(o.getId(), o.getLdId(), o.getType(), o.getName(), toVSCollectionDetails(o.getDetails()));
+  public static ValueSetCollection toVSCollection(Ontology o) {
+    return new ValueSetCollection(o.getId(), o.getLdId(), o.getName(), toVSCollectionDetails(o.getDetails()));
   }
 
-  public static VSCollectionDetails toVSCollectionDetails(OntologyDetails d) {
+  public static ValueSetCollectionDetails toVSCollectionDetails(OntologyDetails d) {
     if (d == null) {
       return null;
     }
-    return new VSCollectionDetails(d.getDescription(), d.getNumberOfClasses(), d.getCategories(), d
+    return new ValueSetCollectionDetails(d.getDescription(), d.getNumberOfClasses(), d.getCategories(), d
         .getHasOntologyLanguage(), d.getReleased(), d.getCreationDate(), d.getHomepage(), d.getPublication(), d
         .getDocumentation(), d.getVersion());
   }

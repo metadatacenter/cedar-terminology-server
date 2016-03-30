@@ -7,23 +7,23 @@ import com.wordnik.swagger.annotations.ApiModel;
 import java.io.Serializable;
 
 @ApiModel
-@JsonPropertyOrder({"id", "@id", "@type", "name", "details"})
+@JsonPropertyOrder({"id", "@id", "@type", "type", "name", "details"})
 public class Ontology implements Serializable {
   private String id;
   @JsonProperty("@id")
   private String ldId;
   @JsonProperty("@type")
-  private String type;
+  private String ldType = "http://data.bioontology.org/metadata/Ontology";
+  private String type = "Ontology";
   private String name;
   private OntologyDetails details;
 
   public Ontology() {
   }
 
-  public Ontology(String id, String ldId, String type, String name, OntologyDetails details) {
+  public Ontology(String id, String ldId, String name, OntologyDetails details) {
     this.id = id;
     this.ldId = ldId;
-    this.type = type;
     this.name = name;
     this.details = details;
   }
@@ -42,6 +42,14 @@ public class Ontology implements Serializable {
 
   public void setLdId(String ldId) {
     this.ldId = ldId;
+  }
+
+  public String getLdType() {
+    return ldType;
+  }
+
+  public void setLdType(String ldType) {
+    this.ldType = ldType;
   }
 
   public String getType() {

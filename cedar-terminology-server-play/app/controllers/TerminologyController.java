@@ -652,10 +652,10 @@ public class TerminologyController extends Controller {
       return badRequest();
     }
     try {
-      List<VSCollection> vsCollections = termService.findAllVSCollections(includeDetails, Utils.getApiKeyFromHeader
+      List<ValueSetCollection> vsCollections = termService.findAllVSCollections(includeDetails, Utils.getApiKeyFromHeader
           (request()));
       ObjectMapper mapper = new ObjectMapper();
-      ObjectWriter writer = mapper.writerFor(new TypeReference<List<VSCollection>>() {
+      ObjectWriter writer = mapper.writerFor(new TypeReference<List<ValueSetCollection>>() {
       });
       return ok(mapper.readTree(writer.writeValueAsString(vsCollections)));
     } catch (HTTPException e) {

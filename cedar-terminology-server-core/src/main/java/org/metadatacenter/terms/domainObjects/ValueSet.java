@@ -9,7 +9,7 @@ import java.io.Serializable;
 import java.util.List;
 
 @ApiModel
-@JsonPropertyOrder({"id", "@id", "label", "creator", "ontology", "definitions", "synonyms", "subclassOf",
+@JsonPropertyOrder({"id", "@id", "@type", "type", "type", "label", "creator", "ontology", "definitions", "synonyms", "subclassOf",
     "relations", "provisional", "created"})
 public class ValueSet implements Serializable
 {
@@ -18,6 +18,9 @@ public class ValueSet implements Serializable
   @ApiModelProperty(hidden = true)
   @JsonProperty("@id")
   private String ldId;
+  @JsonProperty("@type")
+  private String ldType = "http://data.bioontology.org/metadata/ValueSet";
+  private String type = "ValueSet";
   @ApiModelProperty(required = true)
   private String label;
   @ApiModelProperty(required = true)
@@ -66,6 +69,22 @@ public class ValueSet implements Serializable
 
   public void setLdId(String ldId) {
     this.ldId = ldId;
+  }
+
+  public String getLdType() {
+    return ldType;
+  }
+
+  public void setLdType(String ldType) {
+    this.ldType = ldType;
+  }
+
+  public String getType() {
+    return type;
+  }
+
+  public void setType(String type) {
+    this.type = type;
   }
 
   public String getLabel() {

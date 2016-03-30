@@ -8,7 +8,7 @@ import com.wordnik.swagger.annotations.ApiModelProperty;
 import java.io.Serializable;
 
 @ApiModel
-@JsonPropertyOrder({"id", "@id", "sourceClassId", "relationType", "targetClassId", "targetClassOntology", "created"})
+@JsonPropertyOrder({"id", "@id", "@type", "type", "sourceClassId", "relationType", "targetClassId", "targetClassOntology", "created"})
 public class Relation implements Serializable
 {
   @ApiModelProperty(hidden = true)
@@ -16,6 +16,9 @@ public class Relation implements Serializable
   @ApiModelProperty(hidden = true)
   @JsonProperty("@id")
   private String ldId;
+  @JsonProperty("@type")
+  private String ldType = "http://data.bioontology.org/metadata/Relation";
+  private String type = "Relation";
   @ApiModelProperty(required = true)
   private String sourceClassId;
   @ApiModelProperty(required = true)
@@ -55,6 +58,22 @@ public class Relation implements Serializable
 
   public void setLdId(String ldId) {
     this.ldId = ldId;
+  }
+
+  public String getLdType() {
+    return ldType;
+  }
+
+  public void setLdType(String ldType) {
+    this.ldType = ldType;
+  }
+
+  public String getType() {
+    return type;
+  }
+
+  public void setType(String type) {
+    this.type = type;
   }
 
   public String getSourceClassId() {
