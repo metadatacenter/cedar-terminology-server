@@ -9,7 +9,7 @@ import java.io.Serializable;
 import java.util.List;
 
 @ApiModel
-@JsonPropertyOrder({"id", "@id", "@type", "type", "type", "label", "creator", "ontology", "definitions", "synonyms", "subclassOf",
+@JsonPropertyOrder({"id", "@id", "@type", "type", "type", "prefLabel", "creator", "ontology", "definitions", "synonyms", "subclassOf",
     "relations", "provisional", "created"})
 public class ValueSet implements Serializable
 {
@@ -22,7 +22,7 @@ public class ValueSet implements Serializable
   private String ldType = "http://data.bioontology.org/metadata/ValueSet";
   private String type = "ValueSet";
   @ApiModelProperty(required = true)
-  private String label;
+  private String prefLabel;
   @ApiModelProperty(required = true)
   private String creator;
   @ApiModelProperty(required = true)
@@ -41,11 +41,11 @@ public class ValueSet implements Serializable
   // The default constructor is used by Jackson for deserialization
   public ValueSet() {}
 
-  public ValueSet(String id, String ldId, String label, String creator, String vsCollection, List<String>
+  public ValueSet(String id, String ldId, String prefLabel, String creator, String vsCollection, List<String>
       definitions, List<String> synonyms, List<Relation> relations, boolean provisional, String created) {
     this.id = id;
     this.ldId = ldId;
-    this.label = label;
+    this.prefLabel = prefLabel;
     this.creator = creator;
     this.vsCollection = vsCollection;
     this.definitions = definitions;
@@ -87,12 +87,12 @@ public class ValueSet implements Serializable
     this.type = type;
   }
 
-  public String getLabel() {
-    return label;
+  public String getPrefLabel() {
+    return prefLabel;
   }
 
-  public void setLabel(String label) {
-    this.label = label;
+  public void setPrefLabel(String prefLabel) {
+    this.prefLabel = prefLabel;
   }
 
   public String getCreator() {

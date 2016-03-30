@@ -1,17 +1,11 @@
 import cache.Cache;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.http.util.EntityUtils;
 import org.junit.*;
-import org.junit.rules.TestName;
 import org.junit.rules.TestRule;
 import org.junit.rules.TestWatcher;
 import org.junit.runner.Description;
-import org.metadatacenter.terms.bioportal.customObjects.BpPagedResults;
-import org.metadatacenter.terms.bioportal.domainObjects.BpClass;
-import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.terms.domainObjects.OntologyClass;
 import org.metadatacenter.terms.domainObjects.Relation;
 import org.metadatacenter.terms.domainObjects.Value;
@@ -93,7 +87,7 @@ public class TerminologyServerHttpTest {
     classSynonyms.add("classSynonym2");
     List classRelations = new ArrayList<>();
     class1 = new OntologyClass(null, null, classLabel, classCreator, classOntology, classDefinitions,
-        classSynonyms, null, classRelations, true, null);
+        classSynonyms, null, classRelations, true, null, false);
 
     // Initialize test relation - the source class id will be set later
     String relationType = "http://www.w3.org/2004/02/skos/core#closeMatch";
@@ -309,7 +303,7 @@ public class TerminologyServerHttpTest {
           Assert.assertNotNull(created.getId());
           Assert.assertNotNull(created.getLdId());
           Assert.assertNotNull(created.getCreated());
-          Assert.assertEquals(expected.getLabel(), created.getLabel());
+          Assert.assertEquals(expected.getPrefLabel(), created.getPrefLabel());
           Assert.assertEquals(expected.getCreator(), created.getCreator());
           Assert.assertEquals(expected.getOntology(), created.getOntology());
           Assert.assertEquals(expected.getDefinitions(), created.getDefinitions());
@@ -351,7 +345,7 @@ public class TerminologyServerHttpTest {
         // Check fields
         Assert.assertEquals(created.getId(), found.getId());
         Assert.assertEquals(created.getLdId(), found.getLdId());
-        Assert.assertEquals(created.getLabel(), found.getLabel());
+        Assert.assertEquals(created.getPrefLabel(), found.getPrefLabel());
         Assert.assertEquals(created.getCreator(), found.getCreator());
         Assert.assertEquals(created.getOntology(), found.getOntology());
         // Convert list to set because order is irrelevant
@@ -413,7 +407,7 @@ public class TerminologyServerHttpTest {
         OntologyClass createdClass = createClass();
         // Update the created class
         String updatedLabel = "new label";
-        JsonNode changes = Json.newObject().put("label", updatedLabel);
+        JsonNode changes = Json.newObject().put("prefLabel", updatedLabel);
         // Update
         String classUrl = url + "/" + createdClass.getId();
         WSResponse wsResponseUpdate = WS.url(classUrl).setHeader("Authorization", authHeader).patch(changes).get
@@ -432,9 +426,9 @@ public class TerminologyServerHttpTest {
           e.printStackTrace();
         }
         // Check that the modifications have been done correctly
-        Assert.assertNotNull(retrievedClass.getLabel());
+        Assert.assertNotNull(retrievedClass.getPrefLabel());
         Assert.assertTrue("The class has not been updated correctly", updatedLabel.compareTo
-            (retrievedClass.getLabel()) == 0);
+            (retrievedClass.getPrefLabel()) == 0);
       }
     });
   }
@@ -586,7 +580,7 @@ public class TerminologyServerHttpTest {
         Assert.assertNotNull(created.getId());
         Assert.assertNotNull(created.getLdId());
         Assert.assertNotNull(created.getCreated());
-        Assert.assertEquals(expected.getLabel(), created.getLabel());
+        Assert.assertEquals(expected.getPrefLabel(), created.getPrefLabel());
         Assert.assertEquals(expected.getCreator(), created.getCreator());
         Assert.assertEquals(expected.getVsCollection(), created.getVsCollection());
         Assert.assertEquals(expected.getDefinitions(), created.getDefinitions());
@@ -624,7 +618,7 @@ public class TerminologyServerHttpTest {
         // Check fields
         Assert.assertEquals(created.getId(), found.getId());
         Assert.assertEquals(created.getLdId(), found.getLdId());
-        Assert.assertEquals(created.getLabel(), found.getLabel());
+        Assert.assertEquals(created.getPrefLabel(), found.getPrefLabel());
         Assert.assertEquals(created.getCreator(), found.getCreator());
         Assert.assertEquals(created.getVsCollection(), found.getVsCollection());
         Assert.assertEquals(new HashSet<>(created.getDefinitions()), new HashSet<>(found.getDefinitions()));
@@ -688,7 +682,7 @@ public class TerminologyServerHttpTest {
         ValueSet created = createValueSet();
         // Update the created vs
         String updatedLabel = "new label";
-        JsonNode changes = Json.newObject().put("label", updatedLabel);
+        JsonNode changes = Json.newObject().put("prefLabel", updatedLabel);
         // Update
         String vsUrl = url + "/" + created.getId();
         WSResponse wsResponseUpdate = WS.url(vsUrl).setHeader("Authorization", authHeader).patch(changes).get
@@ -708,9 +702,9 @@ public class TerminologyServerHttpTest {
           e.printStackTrace();
         }
         // Check that the modifications have been done correctly
-        Assert.assertNotNull(retrievedVs.getLabel());
+        Assert.assertNotNull(retrievedVs.getPrefLabel());
         Assert.assertTrue("The value set has not been updated correctly", updatedLabel.compareTo
-            (retrievedVs.getLabel()) == 0);
+            (retrievedVs.getPrefLabel()) == 0);
       }
     });
   }
@@ -779,7 +773,7 @@ public class TerminologyServerHttpTest {
         Assert.assertNotNull(created.getId());
         Assert.assertNotNull(created.getLdId());
         Assert.assertNotNull(created.getCreated());
-        Assert.assertEquals(expected.getLabel(), created.getLabel());
+        Assert.assertEquals(expected.getPrefLabel(), created.getPrefLabel());
         Assert.assertEquals(expected.getCreator(), created.getCreator());
         Assert.assertEquals(expected.getVsId(), created.getVsId());
         Assert.assertEquals(expected.getVsCollection(), created.getVsCollection());
@@ -816,7 +810,7 @@ public class TerminologyServerHttpTest {
         }
         Assert.assertEquals(created.getId(), found.getId());
         Assert.assertEquals(created.getLdId(), found.getLdId());
-        Assert.assertEquals(created.getLabel(), found.getLabel());
+        Assert.assertEquals(created.getPrefLabel(), found.getPrefLabel());
         Assert.assertEquals(created.getCreator(), found.getCreator());
         Assert.assertEquals(created.getVsId(), found.getVsId());
         Assert.assertEquals(created.getVsCollection(), found.getVsCollection());
@@ -838,7 +832,7 @@ public class TerminologyServerHttpTest {
         Value created = createValue();
         // Update the created value
         String updatedLabel = "new label";
-        JsonNode changes = Json.newObject().put("label", updatedLabel);
+        JsonNode changes = Json.newObject().put("prefLabel", updatedLabel);
         // Update
         String valueUrl = url + "/" + created.getId();
         WSResponse wsResponseUpdate = WS.url(valueUrl).setHeader("Authorization", authHeader).patch(changes).get
@@ -857,9 +851,9 @@ public class TerminologyServerHttpTest {
           e.printStackTrace();
         }
         // Check that the modifications have been done correctly
-        Assert.assertNotNull(retrievedValue.getLabel());
+        Assert.assertNotNull(retrievedValue.getPrefLabel());
         Assert.assertTrue("The value has not been updated correctly", updatedLabel.compareTo
-            (retrievedValue.getLabel()) == 0);
+            (retrievedValue.getPrefLabel()) == 0);
       }
     });
   }

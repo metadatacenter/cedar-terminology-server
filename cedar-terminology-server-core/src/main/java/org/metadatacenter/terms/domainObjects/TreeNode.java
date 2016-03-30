@@ -7,14 +7,14 @@ import com.wordnik.swagger.annotations.ApiModel;
 import java.util.List;
 
 @ApiModel
-@JsonPropertyOrder({"id", "@id", "@type", "label", "hasChildren", "children", "obsolete"})
+@JsonPropertyOrder({"id", "@id", "@type", "prefLabel", "hasChildren", "children", "obsolete"})
 public class TreeNode {
   private String id;
   @JsonProperty("@id")
   private String ldId;
   @JsonProperty("@type")
   private String type;
-  private String label;
+  private String prefLabel;
   private boolean hasChildren;
   private List<TreeNode> children;
   private boolean obsolete;
@@ -23,12 +23,12 @@ public class TreeNode {
   public TreeNode() {
   }
 
-  public TreeNode(String id, String ldId, String type, String label, boolean hasChildren, List<TreeNode> children,
+  public TreeNode(String id, String ldId, String type, String prefLabel, boolean hasChildren, List<TreeNode> children,
                   boolean obsolete) {
     this.id = id;
     this.ldId = ldId;
     this.type = type;
-    this.label = label;
+    this.prefLabel = prefLabel;
     this.hasChildren = hasChildren;
     this.children = children;
     this.obsolete = obsolete;
@@ -58,12 +58,12 @@ public class TreeNode {
     this.type = type;
   }
 
-  public String getLabel() {
-    return label;
+  public String getPrefLabel() {
+    return prefLabel;
   }
 
-  public void setLabel(String label) {
-    this.label = label;
+  public void setPrefLabel(String prefLabel) {
+    this.prefLabel = prefLabel;
   }
 
   public boolean getHasChildren() {

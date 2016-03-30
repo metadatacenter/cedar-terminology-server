@@ -8,7 +8,7 @@ import com.wordnik.swagger.annotations.ApiModelProperty;
 import java.util.List;
 
 @ApiModel
-@JsonPropertyOrder({"id", "@id", "@type", "type", "label", "creator", "vsId", "vsCollection", "definitions", "synonyms",
+@JsonPropertyOrder({"id", "@id", "@type", "type", "prefLabel", "creator", "vsId", "vsCollection", "definitions", "synonyms",
     "relations", "provisional", "created"})
 public class Value
 {
@@ -21,7 +21,7 @@ public class Value
   private String ldType = "http://data.bioontology.org/metadata/Value";
   private String type = "Value";
   @ApiModelProperty(required = true)
-  private String label;
+  private String prefLabel;
   @ApiModelProperty(required = true)
   private String creator;
   @ApiModelProperty(required = true)
@@ -42,11 +42,11 @@ public class Value
   // The default constructor is used by Jackson for deserialization
   public Value() {}
 
-  public Value(String id, String ldId, String label, String creator, String vsId, String vsCollection, List<String>
+  public Value(String id, String ldId, String prefLabel, String creator, String vsId, String vsCollection, List<String>
       definitions, List<String> synonyms, List<Relation> relations, boolean provisional, String created) {
     this.id = id;
     this.ldId = ldId;
-    this.label = label;
+    this.prefLabel = prefLabel;
     this.creator = creator;
     this.vsId = vsId;
     this.vsCollection = vsCollection;
@@ -89,12 +89,12 @@ public class Value
     this.type = type;
   }
 
-  public String getLabel() {
-    return label;
+  public String getPrefLabel() {
+    return prefLabel;
   }
 
-  public void setLabel(String label) {
-    this.label = label;
+  public void setPrefLabel(String prefLabel) {
+    this.prefLabel = prefLabel;
   }
 
   public String getCreator() {

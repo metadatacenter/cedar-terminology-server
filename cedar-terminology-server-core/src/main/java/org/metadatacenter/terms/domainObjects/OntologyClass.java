@@ -8,7 +8,7 @@ import com.wordnik.swagger.annotations.ApiModelProperty;
 import java.util.List;
 
 @ApiModel
-@JsonPropertyOrder({"id", "@id", "@type", "type", "label", "creator", "ontology", "definitions", "synonyms", "subclassOf",
+@JsonPropertyOrder({"id", "@id", "@type", "type", "prefLabel", "creator", "ontology", "definitions", "synonyms", "subclassOf",
     "relations", "provisional", "created", "hasChildren"})
 public class OntologyClass {
   @ApiModelProperty(hidden = true)
@@ -20,7 +20,7 @@ public class OntologyClass {
   private String ldType = "http://data.bioontology.org/metadata/OntologyClass";
   private String type = "OntologyClass";
   @ApiModelProperty(required = true)
-  private String label;
+  private String prefLabel;
   @ApiModelProperty(required = true)
   private String creator;
   @ApiModelProperty(required = true)
@@ -34,22 +34,22 @@ public class OntologyClass {
   @ApiModelProperty(required = false)
   private List<Relation> relations;
   @ApiModelProperty(hidden = true)
-  private Boolean provisional;
+  private boolean provisional;
   @ApiModelProperty(hidden = true)
   private String created;
   @ApiModelProperty(required = false)
-  private boolean hasChildren;
+  private Boolean hasChildren;
 
   // The default constructor is used by Jackson for deserialization
   public OntologyClass() {
   }
 
-  public OntologyClass(String id, String ldId, String label, String creator, String ontology, List<String>
+  public OntologyClass(String id, String ldId, String prefLabel, String creator, String ontology, List<String>
       definitions, List<String> synonyms, String subclassOf, List<Relation> relations, boolean provisional, String
                            created, Boolean hasChildren) {
     this.id = id;
     this.ldId = ldId;
-    this.label = label;
+    this.prefLabel = prefLabel;
     this.creator = creator;
     this.ontology = ontology;
     this.definitions = definitions;
@@ -93,12 +93,12 @@ public class OntologyClass {
     this.type = type;
   }
 
-  public String getLabel() {
-    return label;
+  public String getPrefLabel() {
+    return prefLabel;
   }
 
-  public void setLabel(String label) {
-    this.label = label;
+  public void setPrefLabel(String prefLabel) {
+    this.prefLabel = prefLabel;
   }
 
   public String getCreator() {
@@ -165,11 +165,11 @@ public class OntologyClass {
     this.created = created;
   }
 
-  public boolean getHasChildren() {
+  public Boolean getHasChildren() {
     return hasChildren;
   }
 
-  public void setHasChildren(boolean hasChildren) {
+  public void setHasChildren(Boolean hasChildren) {
     this.hasChildren = hasChildren;
   }
 }

@@ -20,7 +20,7 @@ public class ObjectConverter {
         relations.add(toBpProvisionalRelation(r));
       }
     }
-    return new BpProvisionalClass(c.getId(), null, c.getLabel(), c.getCreator(), c.getOntology(), c.getDefinitions(),
+    return new BpProvisionalClass(c.getId(), null, c.getPrefLabel(), c.getCreator(), c.getOntology(), c.getDefinitions(),
         c.getSynonyms(), c.getSubclassOf(), relations, true, c.getCreated());
   }
 
@@ -31,7 +31,7 @@ public class ObjectConverter {
         relations.add(toBpProvisionalRelation(r));
       }
     }
-    return new BpProvisionalClass(vs.getId(), null, vs.getLabel(), vs.getCreator(), vs.getVsCollection(),
+    return new BpProvisionalClass(vs.getId(), null, vs.getPrefLabel(), vs.getCreator(), vs.getVsCollection(),
         vs.getDefinitions(), vs.getSynonyms(), null, relations, true, vs.getCreated());
   }
 
@@ -42,7 +42,7 @@ public class ObjectConverter {
         relations.add(toBpProvisionalRelation(r));
       }
     }
-    return new BpProvisionalClass(v.getId(), null, v.getLabel(), v.getCreator(), v.getVsCollection(),
+    return new BpProvisionalClass(v.getId(), null, v.getPrefLabel(), v.getCreator(), v.getVsCollection(),
         v.getDefinitions(), v.getSynonyms(), v.getVsId(), relations, true, v.getCreated());
   }
 
@@ -165,7 +165,7 @@ public class ObjectConverter {
    */
 
   public static Value toValue(OntologyClass c) {
-    return new Value(c.getId(), c.getLdId(), c.getLabel(), c.getCreator(), c.getSubclassOf(), c.getOntology(), c
+    return new Value(c.getId(), c.getLdId(), c.getPrefLabel(), c.getCreator(), c.getSubclassOf(), c.getOntology(), c
         .getDefinitions(),
         c.getSynonyms(), c.getRelations(), c.isProvisional(), c.getCreated());
   }
@@ -184,7 +184,7 @@ public class ObjectConverter {
   }
 
   public static ValueSet toValueSet(OntologyClass c) {
-    return new ValueSet(c.getId(), c.getLdId(), c.getLabel(), c.getCreator(), c.getOntology(), c.getDefinitions(), c
+    return new ValueSet(c.getId(), c.getLdId(), c.getPrefLabel(), c.getCreator(), c.getOntology(), c.getDefinitions(), c
         .getSynonyms(), c.getRelations(), c.isProvisional(), c.getCreated());
   }
 
