@@ -1,3 +1,4 @@
+import cache.Cache;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -65,6 +66,14 @@ public class TerminologyServerHttpTest {
     running(testServer(TEST_SERVER_PORT), new Runnable() {
       public void run() {
         Configuration config = Play.application().configuration();
+        // Wait while cache is being generated
+        while ((Cache.ontologiesCache.size() == 0) || Cache.valueSetsCache.size() == 0) {
+          try {
+            Thread.sleep(5000);
+          } catch (InterruptedException e) {
+            e.printStackTrace();
+          }
+        }
         // Authorization header
         authHeader = "apikey token=" + config.getString("bioportal.apiKeys.test");
       }
