@@ -67,15 +67,17 @@ public class ObjectConverter {
         relations.add(toRelation(pr));
       }
     }
+    // We don't know if the provisional class has any children
+    Boolean hasChildren = null;
     return new OntologyClass(Util.getShortIdentifier(pc.getId()), pc.getId(), pc.getLabel(), pc.getCreator(), pc
         .getOntology(), pc.getDefinition(),
-        pc.getSynonym(), pc.getSubclassOf(), relations, provisional, pc.getCreated());
+        pc.getSynonym(), pc.getSubclassOf(), relations, provisional, pc.getCreated(), hasChildren);
   }
 
   public static OntologyClass toOntologyClass(BpClass pc) {
     return new OntologyClass(Util.getShortIdentifier(pc.getId()), pc.getId(), pc.getPrefLabel(), null, pc.getLinks()
         .getOntology(), pc.getDefinition(),
-        pc.getSynonym(), null, null, pc.isProvisional(), null);
+        pc.getSynonym(), null, null, pc.isProvisional(), null, pc.getHasChildren());
   }
 
   public static ValueSet toValueSet(BpProvisionalClass pc) {

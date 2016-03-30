@@ -116,7 +116,7 @@ public class BpOntologyDAO {
   }
 
   public List<BpClass> getRootClasses(String id, String apiKey) throws IOException {
-    String url = BP_API_BASE + BP_ONTOLOGIES + id + "/" + Constants.BP_CLASSES + "roots";
+    String url = BP_API_BASE + BP_ONTOLOGIES + id + "/" + Constants.BP_CLASSES + "roots?include=prefLabel,hasChildren,created,synonym,definition";
     HttpResponse response = Request.Get(url)
         .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
             connectTimeout(connectTimeout).socketTimeout(socketTimeout).execute().returnResponse();

@@ -17,11 +17,12 @@ public class BpClass
   private List<String> synonym;
   private boolean provisional;
   private BpLinks links;
+  private boolean hasChildren;
 
   public BpClass() {}
 
   public BpClass(String id, String type, String prefLabel, List<String> definition, List<String> synonym,
-    boolean provisional, BpLinks links)
+    boolean provisional, BpLinks links, boolean hasChildren)
   {
     this.id = id;
     this.type = type;
@@ -30,6 +31,7 @@ public class BpClass
     this.synonym = synonym;
     this.provisional = provisional;
     this.links = links;
+    this.hasChildren = hasChildren;
   }
 
   public String getId()
@@ -100,5 +102,13 @@ public class BpClass
   public void setLinks(BpLinks links)
   {
     this.links = links;
+  }
+
+  public boolean getHasChildren() {
+    return hasChildren;
+  }
+
+  public void setHasChildren(boolean hasChildren) {
+    this.hasChildren = hasChildren;
   }
 }

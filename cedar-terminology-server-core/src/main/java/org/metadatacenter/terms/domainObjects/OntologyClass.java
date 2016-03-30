@@ -9,7 +9,7 @@ import java.util.List;
 
 @ApiModel
 @JsonPropertyOrder({"id", "@id", "@type", "type", "label", "creator", "ontology", "definitions", "synonyms", "subclassOf",
-    "relations", "provisional", "created"})
+    "relations", "provisional", "created", "hasChildren"})
 public class OntologyClass {
   @ApiModelProperty(hidden = true)
   private String id;
@@ -34,9 +34,11 @@ public class OntologyClass {
   @ApiModelProperty(required = false)
   private List<Relation> relations;
   @ApiModelProperty(hidden = true)
-  private boolean provisional;
+  private Boolean provisional;
   @ApiModelProperty(hidden = true)
   private String created;
+  @ApiModelProperty(required = false)
+  private boolean hasChildren;
 
   // The default constructor is used by Jackson for deserialization
   public OntologyClass() {
@@ -44,7 +46,7 @@ public class OntologyClass {
 
   public OntologyClass(String id, String ldId, String label, String creator, String ontology, List<String>
       definitions, List<String> synonyms, String subclassOf, List<Relation> relations, boolean provisional, String
-                           created) {
+                           created, Boolean hasChildren) {
     this.id = id;
     this.ldId = ldId;
     this.label = label;
@@ -56,6 +58,7 @@ public class OntologyClass {
     this.relations = relations;
     this.provisional = provisional;
     this.created = created;
+    this.hasChildren = hasChildren;
   }
 
   public String getId() {
@@ -160,5 +163,13 @@ public class OntologyClass {
 
   public void setCreated(String created) {
     this.created = created;
+  }
+
+  public boolean getHasChildren() {
+    return hasChildren;
+  }
+
+  public void setHasChildren(boolean hasChildren) {
+    this.hasChildren = hasChildren;
   }
 }
