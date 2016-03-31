@@ -292,7 +292,7 @@ public class TerminologyService implements ITerminologyService {
 
   public PagedResults<Value> findValuesByValueSet(String vsId, String vsCollection, String apiKey) throws IOException {
     // Check that vsCollection is a valid Value Set Collection
-    if (Util.validVsCollection(vsCollection, true)) {
+    if (Util.validVsCollection(vsCollection, false)) {
       PagedResults<Value> results = null;
       // Find the value set and check if it is regular or provisional
       ValueSet vs = findValueSet(vsId, vsCollection, apiKey);
