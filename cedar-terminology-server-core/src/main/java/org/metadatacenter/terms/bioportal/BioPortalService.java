@@ -209,14 +209,14 @@ public class BioPortalService implements IBioPortalService
     return bpClassDAO.findValueSetsByValueSetCollection(vsCollection, page, pageSize, apiKey);
   }
 
-  public BpPagedResults<BpClass> findValuesByValueSet(String vsId, String vsCollection, String apiKey)
+  public BpPagedResults<BpClass> findValuesByValueSet(String vsId, String vsCollection, int page, int pageSize, String apiKey)
     throws IOException
   {
-    return bpClassDAO.findValuesByValueSet(vsId, vsCollection, apiKey);
+    return bpClassDAO.findValuesByValueSet(vsId, vsCollection, page, pageSize, apiKey);
   }
 
-  public BpPagedResults<BpClass> getClassChildren(String id, String ontology, String apiKey) throws IOException {
-    return bpClassDAO.getChildren(id, ontology, apiKey);
+  public BpPagedResults<BpClass> getClassChildren(String id, String ontology, int page, int pageSize, String apiKey) throws IOException {
+    return bpClassDAO.getChildren(id, ontology, page, pageSize, apiKey);
   }
 
   public List<BpClass> getClassParents(String id, String ontology, String apiKey) throws IOException {

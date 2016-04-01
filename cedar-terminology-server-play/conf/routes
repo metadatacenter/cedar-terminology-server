@@ -25,7 +25,7 @@ GET            /bioportal/ontologies/:ontology/classes/:id                      
 PATCH          /bioportal/classes/:id                                                controllers.TerminologyController.updateClass(id: String)
 DELETE         /bioportal/classes/:id                                                controllers.TerminologyController.deleteClass(id: String)
 GET            /bioportal/ontologies/:ontology/classes/:id/tree                      controllers.TerminologyController.findClassTree(id: String, ontology: String)
-GET            /bioportal/ontologies/:ontology/classes/:id/children                  controllers.TerminologyController.findClassChildren(id: String, ontology: String)
+GET            /bioportal/ontologies/:ontology/classes/:id/children                  controllers.TerminologyController.findClassChildren(id: String, ontology: String, page: Int ?= 1, page_size: Int ?= 50)
 GET            /bioportal/ontologies/:ontology/classes/:id/parents                   controllers.TerminologyController.findClassParents(id: String, ontology: String)
 
 ### Relations ###
@@ -39,7 +39,7 @@ GET            /bioportal/vs-collections                                        
 
 ### Values ###
 POST           /bioportal/vs-collections/:vs_collection/value-sets/:vs/values        controllers.TerminologyController.createValue(vs_collection: String, vs: String)
-GET            /bioportal/vs-collections/:vs_collection/value-sets/:vs/values        controllers.TerminologyController.findValuesByValueSet(vs: String, vs_collection: String)
+GET            /bioportal/vs-collections/:vs_collection/value-sets/:vs/values        controllers.TerminologyController.findValuesByValueSet(vs: String, vs_collection: String, page: Int ?= 1, page_size: Int ?= 50)
 GET            /bioportal/vs-collections/:vs_collection/values/:id                   controllers.TerminologyController.findValue(id: String, vs_collection: String)
 PATCH          /bioportal/values/:id                                                 controllers.TerminologyController.updateValue(id: String)
 DELETE         /bioportal/values/:id                                                 controllers.TerminologyController.deleteValue(id: String)

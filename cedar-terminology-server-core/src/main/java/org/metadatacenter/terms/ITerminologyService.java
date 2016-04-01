@@ -42,7 +42,7 @@ public interface ITerminologyService
 
   List<TreeNode> getClassTree(String id, String ontology, String apiKey) throws IOException;
 
-  PagedResults<OntologyClass> getClassChildren(String id, String ontology, String apiKey) throws IOException;
+  PagedResults<OntologyClass> getClassChildren(String id, String ontology, int page, int pageSize, String apiKey) throws IOException;
 
   List<OntologyClass> getClassParents(String id, String ontology, String apiKey) throws IOException;
 
@@ -80,7 +80,7 @@ public interface ITerminologyService
   List<ValueSet> findAllValueSets(String apiKey) throws IOException;
 
   // TODO: This call does not return provisional classes yet and the vs must be a regular class
-  PagedResults<Value> findValuesByValueSet(String vsId, String vsCollection, String apiKey) throws IOException;
+  PagedResults<Value> findValuesByValueSet(String vsId, String vsCollection, int page, int pageSize, String apiKey) throws IOException;
 
   List<ValueSetCollection> findAllVSCollections(boolean includeDetails, String apiKey) throws IOException;
 

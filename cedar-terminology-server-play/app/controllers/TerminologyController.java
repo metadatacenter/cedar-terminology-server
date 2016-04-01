@@ -167,7 +167,7 @@ public class TerminologyController extends Controller {
   }
 
   @ApiOperation(
-      value = "Get the root classes for a given ontology",
+      value = "Get the root classes for a given ontology. If the ontology is CEDARPC, all provisional classes in this ontology will be returned",
       httpMethod = "GET")
   @ApiResponses(value = {
       @ApiResponse(code = 200, message = "Success!"),
@@ -322,13 +322,16 @@ public class TerminologyController extends Controller {
           required = true, dataType = "string", paramType = "path"),
       @ApiImplicitParam(name = "ontology", value = "Ontology. Example: NCIT",
           required = true, dataType = "string", paramType = "path")})
-  public static Result findClassChildren(String id, String ontology) {
+  public static Result findClassChildren(String id, String ontology, @ApiParam(value = "Integer representing the " +
+      "page number. Default: 'page=1'", required = false) @QueryParam("page") int page, @ApiParam(value = "Integer " +
+      "representing the size of the returned page. Default: 'pageSize=50'", required = false) @QueryParam
+      ("page_size") int pageSize) {
     if (id.isEmpty() || ontology.isEmpty() || !Utils.isValidAuthorizationHeader(request())) {
       return badRequest();
     }
     try {
       id = Util.encodeIfNeeded(id);
-      PagedResults<OntologyClass> children = termService.getClassChildren(Util.encodeIfNeeded(id), ontology, Utils
+      PagedResults<OntologyClass> children = termService.getClassChildren(Util.encodeIfNeeded(id), ontology, page, pageSize, Utils
           .getApiKeyFromHeader(request()));
       return ok((JsonNode) new ObjectMapper().valueToTree(children));
     } catch (HTTPException e) {
@@ -889,7 +892,10 @@ public class TerminologyController extends Controller {
           required = true, dataType = "string", paramType = "path"),
       @ApiImplicitParam(name = "vs_collection", value = "Value set collection. Example: CEDARVS",
           required = true, dataType = "string", paramType = "path")})
-  public static Result findValuesByValueSet(String vsId, String vsCollection) {
+  public static Result findValuesByValueSet(String vsId, String vsCollection, @ApiParam(value = "Integer representing the " +
+      "page number. Default: 'page=1'", required = false) @QueryParam("page") int page, @ApiParam(value = "Integer " +
+      "representing the size of the returned page. Default: 'pageSize=50'", required = false) @QueryParam
+      ("page_size") int pageSize) {
     if (!Utils.isValidAuthorizationHeader(request())) {
       return badRequest();
     }
@@ -898,7 +904,7 @@ public class TerminologyController extends Controller {
     }
     try {
       vsId = Utils.encodeIfNeeded(vsId);
-      PagedResults<Value> values = termService.findValuesByValueSet(vsId, vsCollection, Utils.getApiKeyFromHeader
+      PagedResults<Value> values = termService.findValuesByValueSet(vsId, vsCollection, page, pageSize, Utils.getApiKeyFromHeader
           (request()));
       ObjectMapper mapper = new ObjectMapper();
       // This line ensures that @class type annotations are included for each element in the collection

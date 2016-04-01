@@ -67,9 +67,9 @@ public class BpClassDAO
     }
   }
 
-  public BpPagedResults<BpClass> getChildren(String id, String ontology, String apiKey) throws IOException
+  public BpPagedResults<BpClass> getChildren(String id, String ontology, int page, int pageSize, String apiKey) throws IOException
   {
-    String url = BP_API_BASE + BP_ONTOLOGIES + ontology + "/" + BP_CLASSES + id + "/children";
+    String url = BP_API_BASE + BP_ONTOLOGIES + ontology + "/" + BP_CLASSES + id + "/children?" + "&page=" + page + "&pagesize=" + pageSize;
     HttpResponse response = Request.Get(url)
         .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
             connectTimeout(connectTimeout).socketTimeout(socketTimeout).execute().returnResponse();
@@ -125,10 +125,10 @@ public class BpClassDAO
     }
   }
 
-  public BpPagedResults<BpClass> findValuesByValueSet(String vsId, String vsCollection, String apiKey)
+  public BpPagedResults<BpClass> findValuesByValueSet(String vsId, String vsCollection, int page, int pageSize, String apiKey)
     throws IOException
   {
-    String url = BP_API_BASE + BP_ONTOLOGIES + vsCollection + "/classes/" + vsId + "/children";
+    String url = BP_API_BASE + BP_ONTOLOGIES + vsCollection + "/classes/" + vsId + "/children?" + "page=" + page + "&pagesize=" + pageSize;
     HttpResponse response = Request.Get(url).addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
       connectTimeout(connectTimeout).socketTimeout(socketTimeout).execute().returnResponse();
 

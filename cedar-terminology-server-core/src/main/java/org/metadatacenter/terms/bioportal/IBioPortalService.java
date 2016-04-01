@@ -41,9 +41,9 @@ public interface IBioPortalService
 
   BpPagedResults<BpClass> findValueSetsByValueSetCollection(String vsCollection, int page, int pageSize, String apiKey) throws IOException;
 
-  BpPagedResults<BpClass> findValuesByValueSet(String vsId, String vsCollection, String apiKey) throws IOException;
+  BpPagedResults<BpClass> findValuesByValueSet(String vsId, String vsCollection, int page, int pageSize, String apiKey) throws IOException;
 
-  BpPagedResults<BpClass> getClassChildren(String id, String ontology, String apiKey) throws IOException;
+  BpPagedResults<BpClass> getClassChildren(String id, String ontology, int page, int pageSize, String apiKey) throws IOException;
 
   List<BpClass> getClassParents(String id, String ontology, String apiKey) throws IOException;
 

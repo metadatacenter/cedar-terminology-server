@@ -17,6 +17,7 @@ import static org.metadatacenter.terms.util.Constants.BP_API_BASE;
 import static org.metadatacenter.terms.util.Constants.BP_ONTOLOGY_TYPE_VS_COLLECTION;
 import static org.metadatacenter.terms.util.Constants.BP_API_WAIT_TIME;
 import static org.metadatacenter.terms.util.Constants.BP_VS_COLLECTIONS_READ;
+import static org.metadatacenter.terms.util.Constants.CEDAR_PROVISIONAL_CLASSES_ONTOLOGY;
 
 public class TerminologyService implements ITerminologyService {
 
@@ -124,10 +125,28 @@ public class TerminologyService implements ITerminologyService {
   }
 
   public List<OntologyClass> getRootClasses(String ontologyId, String apiKey) throws IOException {
-    List<BpClass> bpRoots = bpService.getRootClasses(ontologyId, apiKey);
     List<OntologyClass> roots = new ArrayList<>();
-    for (BpClass c : bpRoots) {
-      roots.add(ObjectConverter.toOntologyClass(c));
+    if (ontologyId.compareTo(CEDAR_PROVISIONAL_CLASSES_ONTOLOGY)==0) {
+      // Retrieve all provisional classes in that ontology
+      // TODO: This call is broken. Use it after it is fixed instead of retrieving all provisional classes and then filtering them
+      //List<BpProvisionalClass> bpRoots = bpService.findAllProvisionalClasses(CEDAR_PROVISIONAL_CLASSES_ONTOLOGY, apiKey);
+      //      for (BpProvisionalClass c : bpRoots) {
+      //        roots.add(ObjectConverter.toOntologyClass(c));
+      //      }
+      List<BpProvisionalClass> bpRoots = bpService.findAllProvisionalClasses(null, apiKey);
+      for (BpProvisionalClass c : bpRoots) {
+        if (c.getOntology() != null && Util.getShortIdentifier(c.getOntology()).compareTo(CEDAR_PROVISIONAL_CLASSES_ONTOLOGY)==0) {
+          OntologyClass oc = ObjectConverter.toOntologyClass(c);
+          oc.setHasChildren(false);
+          roots.add(oc);
+        }
+      }
+    }
+    else {
+      List<BpClass> bpRoots = bpService.getRootClasses(ontologyId, apiKey);
+      for (BpClass c : bpRoots) {
+        roots.add(ObjectConverter.toOntologyClass(c));
+      }
     }
     return roots;
   }
@@ -191,8 +210,8 @@ public class TerminologyService implements ITerminologyService {
     return nodes;
   }
 
-  public PagedResults<OntologyClass> getClassChildren(String id, String ontology, String apiKey) throws IOException {
-    BpPagedResults<BpClass> bpChildren = bpService.getClassChildren(id, ontology, apiKey);
+  public PagedResults<OntologyClass> getClassChildren(String id, String ontology, int page, int pageSize, String apiKey) throws IOException {
+    BpPagedResults<BpClass> bpChildren = bpService.getClassChildren(id, ontology, page, pageSize, apiKey);
     return ObjectConverter.toClassResults(bpChildren);
   }
 
@@ -290,14 +309,14 @@ public class TerminologyService implements ITerminologyService {
     }
   }
 
-  public PagedResults<Value> findValuesByValueSet(String vsId, String vsCollection, String apiKey) throws IOException {
+  public PagedResults<Value> findValuesByValueSet(String vsId, String vsCollection, int page, int pageSize, String apiKey) throws IOException {
     // Check that vsCollection is a valid Value Set Collection
     if (Util.validVsCollection(vsCollection, false)) {
       PagedResults<Value> results = null;
       // Find the value set and check if it is regular or provisional
       ValueSet vs = findValueSet(vsId, vsCollection, apiKey);
       if (!vs.isProvisional()) {
-        BpPagedResults<BpClass> bpResults = bpService.findValuesByValueSet(vsId, vsCollection, apiKey);
+        BpPagedResults<BpClass> bpResults = bpService.findValuesByValueSet(vsId, vsCollection, page, pageSize, apiKey);
         results = ObjectConverter.toValueResults(bpResults);
       } else {
         List<Value> values = new ArrayList<>();
