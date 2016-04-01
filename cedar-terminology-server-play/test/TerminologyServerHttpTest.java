@@ -331,7 +331,7 @@ public class TerminologyServerHttpTest {
             "/" + BP_CLASSES + "/" + created.getId();
         WSResponse wsResponseFind = WS.url(classUrl).setHeader("Authorization", authHeader).get().get(TIMEOUT_MS);
         // Check response is OK
-        Assert.assertEquals(wsResponseFind.getStatus(), OK);
+        Assert.assertEquals(OK, wsResponseFind.getStatus());
         // Check Content-Type
         Assert.assertEquals(wsResponseFind.getHeader("Content-Type"), "application/json; charset=utf-8");
         // Check the element retrieved
@@ -448,7 +448,7 @@ public class TerminologyServerHttpTest {
         // Try to retrieve the class to check that it has been deleted correctly
         WSResponse wsResponseFind = WS.url(classUrl).setHeader("Authorization", authHeader).get().get(TIMEOUT_MS);
         // Check not found
-        Assert.assertEquals(wsResponseFind.getStatus(), NOT_FOUND);
+        Assert.assertEquals(NOT_FOUND, wsResponseFind.getStatus());
       }
     });
   }
@@ -505,7 +505,7 @@ public class TerminologyServerHttpTest {
         String relationUrl = url + "/" + created.getId();
         WSResponse wsResponseFind = WS.url(relationUrl).setHeader("Authorization", authHeader).get().get(TIMEOUT_MS);
         // Check response is OK
-        Assert.assertEquals(wsResponseFind.getStatus(), OK);
+        Assert.assertEquals(OK, wsResponseFind.getStatus());
         // Check Content-Type
         Assert.assertEquals(wsResponseFind.getHeader("Content-Type"), "application/json; charset=utf-8");
         // Check the element retrieved
@@ -543,7 +543,7 @@ public class TerminologyServerHttpTest {
         // Try to retrieve the relation to check that it has been deleted correctly
         WSResponse wsResponseFind = WS.url(relationUrl).setHeader("Authorization", authHeader).get().get(TIMEOUT_MS);
         // Check not found
-        Assert.assertEquals(wsResponseFind.getStatus(), NOT_FOUND);
+        Assert.assertEquals(NOT_FOUND, wsResponseFind.getStatus());
       }
     });
   }
@@ -604,7 +604,7 @@ public class TerminologyServerHttpTest {
         String vsUrl = url + "/" + created.getId();
         WSResponse wsResponseFind = WS.url(vsUrl).setHeader("Authorization", authHeader).get().get(TIMEOUT_MS);
         // Check response is OK
-        Assert.assertEquals(wsResponseFind.getStatus(), OK);
+        Assert.assertEquals(OK, wsResponseFind.getStatus());
         // Check Content-Type
         Assert.assertEquals(wsResponseFind.getHeader("Content-Type"), "application/json; charset=utf-8");
         // Check the element retrieved
@@ -642,7 +642,7 @@ public class TerminologyServerHttpTest {
             .getVsCollection()) + "/" + BP_VALUE_SETS;
         WSResponse wsResponseFind = WS.url(url).setHeader("Authorization", authHeader).get().get(TIMEOUT_MS);
         // Check response is OK
-        Assert.assertEquals(wsResponseFind.getStatus(), OK);
+        Assert.assertEquals(OK, wsResponseFind.getStatus());
         // Check Content-Type
         Assert.assertEquals(wsResponseFind.getHeader("Content-Type"), "application/json; charset=utf-8");
         // Check the number of elements retrieved
@@ -663,7 +663,7 @@ public class TerminologyServerHttpTest {
         String url = SERVER_URL_BIOPORTAL + BP_VALUE_SETS;
         WSResponse wsResponseFind = WS.url(url).setHeader("Authorization", authHeader).get().get(TIMEOUT_MS);
         // Check response is OK
-        Assert.assertEquals(wsResponseFind.getStatus(), OK);
+        Assert.assertEquals(OK, wsResponseFind.getStatus());
         // Check Content-Type
         Assert.assertEquals(wsResponseFind.getHeader("Content-Type"), "application/json; charset=utf-8");
         // Check the number of elements retrieved
@@ -727,7 +727,7 @@ public class TerminologyServerHttpTest {
             "/" + BP_VALUE_SETS + "/" + created.getId();
         WSResponse wsResponseFind = WS.url(findUrl).setHeader("Authorization", authHeader).get().get(TIMEOUT_MS);
         // Check not found
-        Assert.assertEquals(wsResponseFind.getStatus(), NOT_FOUND);
+        Assert.assertEquals(NOT_FOUND, wsResponseFind.getStatus());
       }
     });
   }
@@ -797,7 +797,7 @@ public class TerminologyServerHttpTest {
         String valueUrl = url + "/" + created.getId();
         WSResponse wsResponseFind = WS.url(valueUrl).setHeader("Authorization", authHeader).get().get(TIMEOUT_MS);
         // Check response is OK
-        Assert.assertEquals(wsResponseFind.getStatus(), OK);
+        Assert.assertEquals(OK, wsResponseFind.getStatus());
         // Check Content-Type
         Assert.assertEquals(wsResponseFind.getHeader("Content-Type"), "application/json; charset=utf-8");
         // Check the element retrieved
@@ -874,7 +874,7 @@ public class TerminologyServerHttpTest {
         // Try to retrieve the relation to check that it has been deleted correctly
         WSResponse wsResponseFind = WS.url(valueUrl).setHeader("Authorization", authHeader).get().get(TIMEOUT_MS);
         // Check not found
-        Assert.assertEquals(wsResponseFind.getStatus(), NOT_FOUND);
+        Assert.assertEquals(NOT_FOUND, wsResponseFind.getStatus());
       }
     });
   }
