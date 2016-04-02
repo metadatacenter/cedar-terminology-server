@@ -10,8 +10,8 @@ public interface ITerminologyService
 {
   // TODO: Adapt BioPortal to return provisional classes too
   // TODO: Add attribute with result type on the BioPortal side
-    PagedResults<OntologyClass> search(String q, List<String> scope, List<String> sources, int page, int pageSize, boolean displayContext,
-      boolean displayLinks, String apiKey) throws IOException;
+    PagedResults<SearchResult> search(String q, List<String> scope, List<String> sources, int page, int pageSize, boolean displayContext,
+      boolean displayLinks, String apiKey, List<String> valueSetsIds) throws IOException;
 
   /**
    * Ontologies

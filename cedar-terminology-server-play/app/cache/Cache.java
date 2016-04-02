@@ -49,9 +49,9 @@ public class Cache {
         }, refreshInitialDelay, refreshDelay, delayUnit);
   }
 
-  // Google Guava cache for all value set. It has been implemented as a single-object cache that will contain a
+  // Google Guava cache for all value sets. It has been implemented as a single-object cache that will contain a
   // LinkedHashMap with all value sets, so that it is possible both getting them as an ordered list and quickly
-  // access to specific ontologies by id.
+  // access to specific value sets by id.
   public static LoadingCache<String, LinkedHashMap<String, ValueSet>> valueSetsCache = CacheBuilder.newBuilder()
       .maximumSize(1)
       .build(new CacheLoader<String, LinkedHashMap<String, ValueSet>>() {

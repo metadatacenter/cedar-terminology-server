@@ -84,13 +84,19 @@ public class TerminologyController extends Controller {
       if (sources != null && sources.length() > 0) {
         sourcesList = Arrays.asList(sources.split("\\s*,\\s*"));
       }
+      List<String> valueSetsIds = new ArrayList<>(Cache.valueSetsCache.get("value-sets").keySet());
+      // TODO: The valueSetsIds parameter is passed to the service to avoid making additional calls to BioPortal. These ids
+      // are used to know if a particular result returned by BioPortal is a value or a value set. BioPortal should
+      // provide this information and this parameter should be removed
       PagedResults results = termService.search(q, scopeList, sourcesList, page, pageSize, false, true,
-          Utils.getApiKeyFromHeader(request()));
+          Utils.getApiKeyFromHeader(request()), valueSetsIds);
       return ok((JsonNode) new ObjectMapper().valueToTree(results));
 
     } catch (HTTPException e) {
       return Results.status(e.getStatusCode());
     } catch (IOException e) {
+      return internalServerError(e.getMessage());
+    } catch (ExecutionException e) {
       return internalServerError(e.getMessage());
     }
   }
@@ -117,7 +123,7 @@ public class TerminologyController extends Controller {
       return badRequest();
     }
     try {
-      List<Ontology> ontologies = new ArrayList<Ontology>(Cache.ontologiesCache.get("ontologies").values());
+      List<Ontology> ontologies = new ArrayList<>(Cache.ontologiesCache.get("ontologies").values());
       ObjectMapper mapper = new ObjectMapper();
       ObjectWriter writer = mapper.writerFor(new TypeReference<List<Ontology>>() {
       });

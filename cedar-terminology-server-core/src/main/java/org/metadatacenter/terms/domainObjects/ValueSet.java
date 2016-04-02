@@ -5,6 +5,9 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.wordnik.swagger.annotations.ApiModel;
 import com.wordnik.swagger.annotations.ApiModelProperty;
 
+import static org.metadatacenter.terms.util.Constants.BP_TYPE_BASE;
+import static org.metadatacenter.terms.util.Constants.BP_TYPE_VS;
+
 import java.io.Serializable;
 import java.util.List;
 
@@ -19,8 +22,8 @@ public class ValueSet implements Serializable
   @JsonProperty("@id")
   private String ldId;
   @JsonProperty("@type")
-  private String ldType = "http://data.bioontology.org/metadata/ValueSet";
-  private String type = "ValueSet";
+  private String ldType = BP_TYPE_BASE + BP_TYPE_VS;
+  private String type = BP_TYPE_VS;
   @ApiModelProperty(required = true)
   private String prefLabel;
   @ApiModelProperty(required = true)

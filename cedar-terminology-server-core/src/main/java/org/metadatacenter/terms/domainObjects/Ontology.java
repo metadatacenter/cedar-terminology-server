@@ -4,6 +4,9 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.wordnik.swagger.annotations.ApiModel;
 
+import static org.metadatacenter.terms.util.Constants.BP_TYPE_BASE;
+import static org.metadatacenter.terms.util.Constants.BP_TYPE_ONTOLOGY;
+
 import java.io.Serializable;
 
 @ApiModel
@@ -13,8 +16,8 @@ public class Ontology implements Serializable {
   @JsonProperty("@id")
   private String ldId;
   @JsonProperty("@type")
-  private String ldType = "http://data.bioontology.org/metadata/Ontology";
-  private String type = "Ontology";
+  private String ldType = BP_TYPE_BASE + BP_TYPE_ONTOLOGY;
+  private String type = BP_TYPE_ONTOLOGY;
   private String name;
   private OntologyDetails details;
 

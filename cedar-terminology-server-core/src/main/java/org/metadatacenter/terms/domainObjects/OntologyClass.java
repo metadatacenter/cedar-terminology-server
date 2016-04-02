@@ -5,6 +5,9 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.wordnik.swagger.annotations.ApiModel;
 import com.wordnik.swagger.annotations.ApiModelProperty;
 
+import static org.metadatacenter.terms.util.Constants.BP_TYPE_BASE;
+import static org.metadatacenter.terms.util.Constants.BP_TYPE_CLASS;
+
 import java.util.List;
 
 @ApiModel
@@ -17,8 +20,8 @@ public class OntologyClass {
   @JsonProperty("@id")
   private String ldId;
   @JsonProperty("@type")
-  private String ldType = "http://data.bioontology.org/metadata/OntologyClass";
-  private String type = "OntologyClass";
+  private String ldType = BP_TYPE_BASE + BP_TYPE_CLASS;
+  private String type = BP_TYPE_CLASS;
   @ApiModelProperty(required = true)
   private String prefLabel;
   @ApiModelProperty(required = true)

@@ -33,8 +33,15 @@ public class Constants
   // Creation of value sets is restricted to this VS collections
   public static final String[] BP_VS_COLLECTIONS_WRITE = {CEDAR_VALUE_SETS_ONTOLOGY};
 
+  /** Resource types **/
   //public static final String BP_ONTOLOGY_TYPE_ONTOLOGY = "ontology_types/ONTOLOGY";
   public static final String BP_ONTOLOGY_TYPE_VS_COLLECTION = "ontology_types/VALUE_SET_COLLECTION";
+  public static final String BP_TYPE_BASE = "http://data.bioontology.org/metadata/";
+  public static final String BP_TYPE_CLASS = "OntologyClass";
+  public static final String BP_TYPE_VS = "ValueSet";
+  public static final String BP_TYPE_VALUE = "Value";
+  public static final String BP_TYPE_ONTOLOGY = "Ontology";
+  public static final String BP_TYPE_VS_COLLECTION = "ValueSetCollection";
 
   // PRIVATE //
 

@@ -32,11 +32,11 @@ public class TerminologyService implements ITerminologyService {
     this.bpService = new BioPortalService(connectTimeout, socketTimeout);
   }
 
-  public PagedResults<OntologyClass> search(String q, List<String> scope, List<String> sources, int page, int pageSize,
-                                            boolean displayContext, boolean displayLinks, String apiKey) throws
+  public PagedResults<SearchResult> search(String q, List<String> scope, List<String> sources, int page, int pageSize,
+                                            boolean displayContext, boolean displayLinks, String apiKey, List<String> valueSetsIds) throws
       IOException {
     BpPagedResults results = bpService.search(q, scope, sources, page, pageSize, displayContext, displayLinks, apiKey);
-    return ObjectConverter.toClassResults(results);
+    return ObjectConverter.toSearchResults(results, valueSetsIds);
   }
 
   public List<Ontology> findAllOntologies(boolean includeDetails, String apiKey) throws IOException {

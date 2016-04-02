@@ -6,7 +6,14 @@ import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.terms.domainObjects.*;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+
+import static org.metadatacenter.terms.util.Constants.BP_VS_COLLECTIONS_READ;
+import static org.metadatacenter.terms.util.Constants.BP_TYPE_BASE;
+import static org.metadatacenter.terms.util.Constants.BP_TYPE_CLASS;
+import static org.metadatacenter.terms.util.Constants.BP_TYPE_VALUE;
+import static org.metadatacenter.terms.util.Constants.BP_TYPE_VS;
 
 public class ObjectConverter {
   /**
@@ -149,6 +156,37 @@ public class ObjectConverter {
     }
     return new PagedResults<>(bpr.getPage(), bpr.getPageCount(), bpr.getCollection().size(), bpr.getPrevPage(),
         bpr.getNextPage(), classes);
+  }
+
+  public static PagedResults<SearchResult> toSearchResults(BpPagedResults<BpClass> bpr, List<String> valueSetsIds) {
+    List<SearchResult> results = new ArrayList<>();
+    for (BpClass c : bpr.getCollection()) {
+      // Assign information depending on the result type
+      String type = null;
+      String ontology = Util.getShortIdentifier(c.getLinks().getOntology());
+      // If the ontology is a value set collection
+      if (Arrays.asList(BP_VS_COLLECTIONS_READ).contains(ontology)) {
+        // It is a Value Set
+        String shortId = c.getId().substring(c.getId().lastIndexOf('/') + 1);
+        if (valueSetsIds.contains(shortId)) {
+          type = BP_TYPE_VS;
+        }
+        // It is a Value
+        else {
+          type = BP_TYPE_VALUE;
+        }
+      }
+      // It is a class
+      else {
+        type = BP_TYPE_CLASS;
+      }
+
+      String source = c.getLinks().getOntology();
+      SearchResult r = new SearchResult(c.getId(), c.getId(), BP_TYPE_BASE + type, type, c.getPrefLabel(), source);
+      results.add(r);
+    }
+    return new PagedResults<>(bpr.getPage(), bpr.getPageCount(), bpr.getCollection().size(), bpr.getPrevPage(),
+        bpr.getNextPage(), results);
   }
 
   public static TreeNode toTreeNode(BpTreeNode bpTreeNode) {

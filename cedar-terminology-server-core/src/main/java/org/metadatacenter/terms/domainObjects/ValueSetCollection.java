@@ -4,6 +4,9 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.wordnik.swagger.annotations.ApiModel;
 
+import static org.metadatacenter.terms.util.Constants.BP_TYPE_BASE;
+import static org.metadatacenter.terms.util.Constants.BP_TYPE_VS_COLLECTION;
+
 @ApiModel
 @JsonPropertyOrder({"id", "@id", "@type", "type", "name", "details"})
 public class ValueSetCollection {
@@ -11,8 +14,8 @@ public class ValueSetCollection {
   @JsonProperty("@id")
   private String ldId;
   @JsonProperty("@type")
-  private String ldType = "http://data.bioontology.org/metadata/ValueSetCollection";
-  private String type = "ValueSetCollection";
+  private String ldType = BP_TYPE_BASE + BP_TYPE_VS_COLLECTION;
+  private String type = BP_TYPE_VS_COLLECTION;
   private String name;
   private ValueSetCollectionDetails details;
 

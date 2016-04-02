@@ -5,6 +5,9 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.wordnik.swagger.annotations.ApiModel;
 import com.wordnik.swagger.annotations.ApiModelProperty;
 
+import static org.metadatacenter.terms.util.Constants.BP_TYPE_BASE;
+import static org.metadatacenter.terms.util.Constants.BP_TYPE_VALUE;
+
 import java.util.List;
 
 @ApiModel
@@ -18,8 +21,8 @@ public class Value
   @JsonProperty("@id")
   private String ldId;
   @JsonProperty("@type")
-  private String ldType = "http://data.bioontology.org/metadata/Value";
-  private String type = "Value";
+  private String ldType = BP_TYPE_BASE + BP_TYPE_VALUE;
+  private String type = BP_TYPE_VALUE;
   @ApiModelProperty(required = true)
   private String prefLabel;
   @ApiModelProperty(required = true)
