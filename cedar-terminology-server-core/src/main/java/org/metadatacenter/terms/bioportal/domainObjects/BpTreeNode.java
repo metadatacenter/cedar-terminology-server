@@ -15,17 +15,19 @@ public class BpTreeNode {
   private String prefLabel;
   private boolean hasChildren;
   private List<BpTreeNode> children;
+  private BpLinks links;
   private boolean obsolete;
 
   public BpTreeNode() {}
 
-  public BpTreeNode(String id, String type, String prefLabel, boolean hasChildren, List<BpTreeNode> children, boolean
-      obsolete) {
+  public BpTreeNode(String id, String type, String prefLabel, boolean hasChildren, List<BpTreeNode> children, BpLinks
+      links, boolean obsolete) {
     this.id = id;
     this.type = type;
     this.prefLabel = prefLabel;
     this.hasChildren = hasChildren;
     this.children = children;
+    this.links = links;
     this.obsolete = obsolete;
   }
 
@@ -67,6 +69,14 @@ public class BpTreeNode {
 
   public void setChildren(List<BpTreeNode> children) {
     this.children = children;
+  }
+
+  public BpLinks getLinks() {
+    return links;
+  }
+
+  public void setLinks(BpLinks links) {
+    this.links = links;
   }
 
   public boolean isObsolete() {
