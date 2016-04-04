@@ -62,7 +62,7 @@ public class Cache {
         }
 
         public ListenableFuture<LinkedHashMap<String, ValueSet>> reload(final String key, LinkedHashMap<String,
-            Ontology> prevOntologies) {
+            ValueSet> prevValueSets) {
           // asynchronous!
           Logger.info("Reloading 'value sets' cache asynchronously");
           ListenableFutureTask<LinkedHashMap<String, ValueSet>> task = ListenableFutureTask.create(new Callable<LinkedHashMap<String, ValueSet>>() {
@@ -103,7 +103,7 @@ public class Cache {
         }
       });
 
-  public static LinkedHashMap<String, ValueSet> getAllValueSetsAsMap() throws IOException {
+  private static LinkedHashMap<String, ValueSet> getAllValueSetsAsMap() throws IOException {
     List<ValueSet> valueSets = null;
     if (firstLoadValueSets && new File(valueSetsCachePath).isFile()) {
       Logger.info("Loading value sets from file");
@@ -122,7 +122,7 @@ public class Cache {
     return lhm;
   }
 
-  public static LinkedHashMap<String, Ontology> getAllOntologiesAsMap() throws IOException {
+  private static LinkedHashMap<String, Ontology> getAllOntologiesAsMap() throws IOException {
     List<Ontology> ontologies = null;
     if (firstLoadOntologies && new File(ontologiesCachePath).isFile()) {
       Logger.info("Loading ontologies from file");
@@ -141,7 +141,7 @@ public class Cache {
     return lhm;
   }
 
-  public static void saveValueSetsToFile(List<ValueSet> ontologies) {
+  private static void saveValueSetsToFile(List<ValueSet> ontologies) {
     Logger.info("Saving value sets to file");
     try {
       // Create dirs if they don't exist
@@ -160,7 +160,7 @@ public class Cache {
     Logger.info("Value sets saved to file");
   }
 
-  public static void saveOntologiesToFile(List<Ontology> ontologies) {
+  private static void saveOntologiesToFile(List<Ontology> ontologies) {
     Logger.info("Saving ontologies to file");
     try {
       // Create dirs if they don't exist
@@ -179,7 +179,7 @@ public class Cache {
     Logger.info("Ontologies saved to file");
   }
 
-  public static List<ValueSet> readValueSetsFromFile() {
+  private static List<ValueSet> readValueSetsFromFile() {
     List<ValueSet> valueSets = null;
     // Check if the file exists
     if (!new File(valueSetsCachePath).isFile()) {
@@ -198,7 +198,7 @@ public class Cache {
     }
   }
 
-  public static List<Ontology> readOntologiesFromFile() {
+  private static List<Ontology> readOntologiesFromFile() {
     List<Ontology> ontologies = null;
     // Check if the file exists
     if (!new File(ontologiesCachePath).isFile()) {

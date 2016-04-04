@@ -15,7 +15,7 @@ import java.util.List;
 
 import static org.metadatacenter.terms.util.Constants.BP_API_BASE;
 import static org.metadatacenter.terms.util.Constants.BP_ONTOLOGY_TYPE_VS_COLLECTION;
-import static org.metadatacenter.terms.util.Constants.BP_API_WAIT_TIME;
+//import static org.metadatacenter.terms.util.Constants.BP_API_WAIT_TIME;
 import static org.metadatacenter.terms.util.Constants.BP_VS_COLLECTIONS_READ;
 import static org.metadatacenter.terms.util.Constants.CEDAR_PROVISIONAL_CLASSES_ONTOLOGY;
 
@@ -54,11 +54,11 @@ public class TerminologyService implements ITerminologyService {
       for (Ontology o : ontologies) {
         o.setDetails(getOntologyDetails(o.getId(), apiKey));
         // Delay between calls (BioPortal requirement)
-        try {
-          Thread.sleep(BP_API_WAIT_TIME);
-        } catch (InterruptedException e) {
-          e.printStackTrace();
-        }
+//        try {
+//          Thread.sleep(BP_API_WAIT_TIME);
+//        } catch (InterruptedException e) {
+//          e.printStackTrace();
+//        }
         System.out.println("Ontologies loaded in cache: " + i++);
       }
     }
@@ -87,11 +87,11 @@ public class TerminologyService implements ITerminologyService {
       }
     }
     // Delay between calls (BioPortal requirement)
-    try {
-      Thread.sleep(BP_API_WAIT_TIME);
-    } catch (InterruptedException e) {
-      e.printStackTrace();
-    }
+//    try {
+//      Thread.sleep(BP_API_WAIT_TIME);
+//    } catch (InterruptedException e) {
+//      e.printStackTrace();
+//    }
     // Get categories
     try {
       List<String> categories = new ArrayList<>();
@@ -355,11 +355,11 @@ public class TerminologyService implements ITerminologyService {
       for (ValueSetCollection c : vsCollections) {
         c.setDetails(ObjectConverter.toVSCollectionDetails(getOntologyDetails(c.getId(), apiKey)));
         // Delay between calls (BioPortal requirement)
-        try {
-          Thread.sleep(BP_API_WAIT_TIME);
-        } catch (InterruptedException e) {
-          e.printStackTrace();
-        }
+//        try {
+//          Thread.sleep(BP_API_WAIT_TIME);
+//        } catch (InterruptedException e) {
+//          e.printStackTrace();
+//        }
       }
     }
     return vsCollections;

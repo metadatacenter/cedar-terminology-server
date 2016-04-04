@@ -703,6 +703,8 @@ public class TerminologyController extends Controller {
     vs.setVsCollection(vsCollection);
     try {
       ValueSet createdVs = termService.createProvisionalValueSet(vs, Utils.getApiKeyFromHeader(request()));
+      // Refresh value sets cache
+      Cache.valueSetsCache.refresh("value-sets");
       return created((JsonNode) mapper.valueToTree(createdVs));
     } catch (HTTPException e) {
       return Results.status(e.getStatusCode());
@@ -843,6 +845,10 @@ public class TerminologyController extends Controller {
     try {
       termService.updateProvisionalValueSet(vs, Utils.getApiKeyFromHeader(request()));
     } catch (HTTPException e) {
+      if (e.getStatusCode() == 204) {
+        // Refresh value sets cache
+        Cache.valueSetsCache.refresh("value-sets");
+      }
       return Results.status(e.getStatusCode());
     } catch (IOException e) {
       return internalServerError(e.getMessage());
@@ -872,6 +878,10 @@ public class TerminologyController extends Controller {
     try {
       termService.deleteProvisionalValueSet(id, Utils.getApiKeyFromHeader(request()));
     } catch (HTTPException e) {
+      if (e.getStatusCode() == 204) {
+        // Refresh value sets cache
+        Cache.valueSetsCache.refresh("value-sets");
+      }
       return Results.status(e.getStatusCode());
     } catch (IOException e) {
       return internalServerError(e.getMessage());
