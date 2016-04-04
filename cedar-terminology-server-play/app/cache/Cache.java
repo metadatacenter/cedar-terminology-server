@@ -61,18 +61,18 @@ public class Cache {
           return getAllValueSetsAsMap();
         }
 
-        public ListenableFuture<LinkedHashMap<String, ValueSet>> reload(final String key, LinkedHashMap<String,
-            ValueSet> prevValueSets) {
-          // asynchronous!
-          Logger.info("Reloading 'value sets' cache asynchronously");
-          ListenableFutureTask<LinkedHashMap<String, ValueSet>> task = ListenableFutureTask.create(new Callable<LinkedHashMap<String, ValueSet>>() {
-            public LinkedHashMap<String, ValueSet> call() throws IOException {
-              return getAllValueSetsAsMap();
-            }
-          });
-          executor.execute(task);
-          return task;
-        }
+//        public ListenableFuture<LinkedHashMap<String, ValueSet>> reload(final String key, LinkedHashMap<String,
+//            ValueSet> prevValueSets) {
+//          // asynchronous!
+//          Logger.info("Reloading 'value sets' cache asynchronously");
+//          ListenableFutureTask<LinkedHashMap<String, ValueSet>> task = ListenableFutureTask.create(new Callable<LinkedHashMap<String, ValueSet>>() {
+//            public LinkedHashMap<String, ValueSet> call() throws IOException {
+//              return getAllValueSetsAsMap();
+//            }
+//          });
+//          executor.execute(task);
+//          return task;
+//        }
       });
 
   // Google Guava cache for all ontologies. It has been implemented as a single-object cache that will contain a
