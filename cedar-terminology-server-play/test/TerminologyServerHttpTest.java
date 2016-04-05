@@ -69,7 +69,7 @@ public class TerminologyServerHttpTest {
           }
         }
         // Authorization header
-        authHeader = "apikey token=" + config.getString("bioportal.apiKeys.test");
+        authHeader = "apikey token=" + config.getString("bioportal.apiKeys.cedar");
       }
     });
 

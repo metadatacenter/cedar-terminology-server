@@ -29,12 +29,14 @@ import static org.metadatacenter.terms.util.Constants.*;
 public class TerminologyController extends Controller {
 
   public static final TerminologyService termService;
+  public static String apiKey;
 
   static {
     termService = new TerminologyService(
         Application.config.getString("bioportal.apiBasePath"),
         Application.config.getInt("bioportal.connectTimeout"),
         Application.config.getInt("bioportal.socketTimeout"));
+    apiKey = Application.config.getString("bioportal.apiKeys.cedar");
   }
 
   @ApiOperation(
@@ -46,11 +48,6 @@ public class TerminologyController extends Controller {
       @ApiResponse(code = 400, message = "Bad Request"),
       @ApiResponse(code = 401, message = "Unauthorized"),
       @ApiResponse(code = 500, message = "Internal Server Error")})
-  @ApiImplicitParams(value = {
-      @ApiImplicitParam(name = "Authorization", value = "Format: apikey={your_bioportal_apikey}. "
-          + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
-          required = true, dataType = "string", paramType = "header")})
-
   public static Result search(
       @ApiParam(value = "Search query. Example: 'melanoma'", required = true) @QueryParam("q") String q,
       @ApiParam(value = "Comma-separated list of search scopes. Accepted values={all,classes,value_sets,values}. "
@@ -74,7 +71,7 @@ public class TerminologyController extends Controller {
           false) @QueryParam("page_size") int pageSize) {
     //log.info("Received BioPortal search request");
     try {
-      if (q.isEmpty() || !Utils.isValidAuthorizationHeader(request())) {
+      if (q.isEmpty()) {
         return badRequest();
       }
       if (subtreeRootId.isEmpty()) {
@@ -109,8 +106,7 @@ public class TerminologyController extends Controller {
       // are used to know if a particular result returned by BioPortal is a value or a value set. BioPortal should
       // provide this information and this parameter should be removed
       PagedResults results = termService.search(q, scopeList, sourcesList, suggest, source, subtreeRootId, maxDepth,
-          page, pageSize, false, true,
-          Utils.getApiKeyFromHeader(request()), valueSetsIds);
+          page, pageSize, false, true, apiKey, valueSetsIds);
       return ok((JsonNode) new ObjectMapper().valueToTree(results));
 
     } catch (HTTPException e) {
@@ -135,14 +131,7 @@ public class TerminologyController extends Controller {
       @ApiResponse(code = 400, message = "Bad Request"),
       @ApiResponse(code = 401, message = "Unauthorized"),
       @ApiResponse(code = 500, message = "Internal Server Error")})
-  @ApiImplicitParams(value = {
-      @ApiImplicitParam(name = "Authorization", value = "Format: apikey={your_bioportal_apikey}. "
-          + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
-          required = true, dataType = "string", paramType = "header")})
   public static Result findAllOntologies() {
-    if (!Utils.isValidAuthorizationHeader(request())) {
-      return badRequest();
-    }
     try {
       List<Ontology> ontologies = new ArrayList<>(Cache.ontologiesCache.get("ontologies").values());
       ObjectMapper mapper = new ObjectMapper();
@@ -168,17 +157,14 @@ public class TerminologyController extends Controller {
       @ApiResponse(code = 404, message = "Not Found"),
       @ApiResponse(code = 500, message = "Internal Server Error")})
   @ApiImplicitParams(value = {
-      @ApiImplicitParam(name = "Authorization", value = "Format: apikey={your_bioportal_apikey}. "
-          + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
-          required = true, dataType = "string", paramType = "header"),
       @ApiImplicitParam(name = "id", value = "Ontology id. Examples: NCIT, OBI, FMA",
           required = true, dataType = "string", paramType = "path")})
   public static Result findOntology(String id) {
-    if (id.isEmpty() || !Utils.isValidAuthorizationHeader(request())) {
+    if (id.isEmpty()) {
       return badRequest();
     }
     try {
-      Cache.apiKeyCache = Utils.getApiKeyFromHeader(request());
+      Cache.apiKeyCache = apiKey;
       // Retrieve ontology from ontologies cache
       Ontology o = Cache.ontologiesCache.get("ontologies").get(id);
       if (o == null) {
@@ -204,17 +190,14 @@ public class TerminologyController extends Controller {
       @ApiResponse(code = 404, message = "Not Found"),
       @ApiResponse(code = 500, message = "Internal Server Error")})
   @ApiImplicitParams(value = {
-      @ApiImplicitParam(name = "Authorization", value = "Format: apikey={your_bioportal_apikey}. "
-          + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
-          required = true, dataType = "string", paramType = "header"),
       @ApiImplicitParam(name = "ontology", value = "Ontology identifier. Example: NCIT",
           required = true, dataType = "string", paramType = "path")})
   public static Result findRootClasses(String ontology) {
-    if (ontology.isEmpty() || !Utils.isValidAuthorizationHeader(request())) {
+    if (ontology.isEmpty()) {
       return badRequest();
     }
     try {
-      List<OntologyClass> roots = termService.getRootClasses(ontology, Utils.getApiKeyFromHeader(request()));
+      List<OntologyClass> roots = termService.getRootClasses(ontology, apiKey);
       return ok((JsonNode) new ObjectMapper().valueToTree(roots));
     } catch (HTTPException e) {
       return Results.status(e.getStatusCode());
@@ -238,22 +221,19 @@ public class TerminologyController extends Controller {
       @ApiResponse(code = 401, message = "Unauthorized"),
       @ApiResponse(code = 500, message = "Internal Server Error")})
   @ApiImplicitParams(value = {
-      @ApiImplicitParam(name = "Authorization", value = "Format: apikey={your_bioportal_apikey}. "
-          + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
-          required = true, dataType = "string", paramType = "header"),
       @ApiImplicitParam(name = "ontology", value = "Ontology identifier. Example: CEDARPC", required = true, dataType
           = "string", paramType = "path"),
       @ApiImplicitParam(value = "Class to be created", required = true, dataType = "org.metadatacenter.terms" +
           ".domainObjects.OntologyClass", paramType = "body")})
   public static Result createClass(String ontology) {
-    if (ontology.isEmpty() || !Utils.isValidAuthorizationHeader(request())) {
+    if (ontology.isEmpty()) {
       return badRequest();
     }
     ObjectMapper mapper = new ObjectMapper();
     OntologyClass c = mapper.convertValue(request().body().asJson(), OntologyClass.class);
     c.setOntology(ontology);
     try {
-      OntologyClass createdClass = termService.createProvisionalClass(c, Utils.getApiKeyFromHeader(request()));
+      OntologyClass createdClass = termService.createProvisionalClass(c, apiKey);
       return created((JsonNode) mapper.valueToTree(createdClass));
     } catch (HTTPException e) {
       return Results.status(e.getStatusCode());
@@ -272,9 +252,6 @@ public class TerminologyController extends Controller {
       @ApiResponse(code = 404, message = "Not Found"),
       @ApiResponse(code = 500, message = "Internal Server Error")})
   @ApiImplicitParams(value = {
-      @ApiImplicitParam(name = "Authorization", value = "Format: apikey={your_bioportal_apikey}. "
-          + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
-          required = true, dataType = "string", paramType = "header"),
       @ApiImplicitParam(name = "id", value = "Class id. It must be encoded. Example: http%3A%2F%2Fdata.bioontology" +
           ".org%2Fprovisional_classes%2F4f82a7f0-bbba-0133-b23e-005056010074 (provisional), " +
           "http%3A%2F%2Fncicb.nci.nih.gov%2Fxml%2Fowl%2FEVS%2FThesaurus.owl%23C3224 (regular) ",
@@ -282,12 +259,12 @@ public class TerminologyController extends Controller {
       @ApiImplicitParam(name = "ontology", value = "Ontology. Example: NCIT",
           required = true, dataType = "string", paramType = "path")})
   public static Result findClass(String id, String ontology) {
-    if (id.isEmpty() || ontology.isEmpty() || !Utils.isValidAuthorizationHeader(request())) {
+    if (id.isEmpty() || ontology.isEmpty()) {
       return badRequest();
     }
     try {
       id = Util.encodeIfNeeded(id);
-      OntologyClass c = termService.findClass(Util.encodeIfNeeded(id), ontology, Utils.getApiKeyFromHeader(request()));
+      OntologyClass c = termService.findClass(Util.encodeIfNeeded(id), ontology, apiKey);
       return ok((JsonNode) new ObjectMapper().valueToTree(c));
     } catch (HTTPException e) {
       return Results.status(e.getStatusCode());
@@ -306,9 +283,6 @@ public class TerminologyController extends Controller {
       @ApiResponse(code = 404, message = "Not Found"),
       @ApiResponse(code = 500, message = "Internal Server Error")})
   @ApiImplicitParams(value = {
-      @ApiImplicitParam(name = "Authorization", value = "Format: apikey={your_bioportal_apikey}. "
-          + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
-          required = true, dataType = "string", paramType = "header"),
       @ApiImplicitParam(name = "id", value = "Class id. It must be encoded. Example: http%3A%2F%2Fdata.bioontology" +
           ".org%2Fprovisional_classes%2F4f82a7f0-bbba-0133-b23e-005056010074 (provisional), " +
           "http%3A%2F%2Fncicb.nci.nih.gov%2Fxml%2Fowl%2FEVS%2FThesaurus.owl%23C3224 (regular) ",
@@ -316,13 +290,12 @@ public class TerminologyController extends Controller {
       @ApiImplicitParam(name = "ontology", value = "Ontology. Example: NCIT",
           required = true, dataType = "string", paramType = "path")})
   public static Result findClassTree(String id, String ontology) {
-    if (id.isEmpty() || ontology.isEmpty() || !Utils.isValidAuthorizationHeader(request())) {
+    if (id.isEmpty() || ontology.isEmpty()) {
       return badRequest();
     }
     try {
       id = Util.encodeIfNeeded(id);
-      List<TreeNode> tree = termService.getClassTree(Util.encodeIfNeeded(id), ontology, Utils.getApiKeyFromHeader
-          (request()));
+      List<TreeNode> tree = termService.getClassTree(Util.encodeIfNeeded(id), ontology, apiKey);
       return ok((JsonNode) new ObjectMapper().valueToTree(tree));
     } catch (HTTPException e) {
       return Results.status(e.getStatusCode());
@@ -341,9 +314,6 @@ public class TerminologyController extends Controller {
       @ApiResponse(code = 404, message = "Not Found"),
       @ApiResponse(code = 500, message = "Internal Server Error")})
   @ApiImplicitParams(value = {
-      @ApiImplicitParam(name = "Authorization", value = "Format: apikey={your_bioportal_apikey}. "
-          + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
-          required = true, dataType = "string", paramType = "header"),
       @ApiImplicitParam(name = "id", value = "Class id. It must be encoded. Example: http%3A%2F%2Fdata.bioontology" +
           ".org%2Fprovisional_classes%2F4f82a7f0-bbba-0133-b23e-005056010074 (provisional), " +
           "http%3A%2F%2Fncicb.nci.nih.gov%2Fxml%2Fowl%2FEVS%2FThesaurus.owl%23C3224 (regular) ",
@@ -354,14 +324,13 @@ public class TerminologyController extends Controller {
       "page number. Default: 'page=1'", required = false) @QueryParam("page") int page, @ApiParam(value = "Integer " +
       "representing the size of the returned page. Default: 'pageSize=50'", required = false) @QueryParam
       ("page_size") int pageSize) {
-    if (id.isEmpty() || ontology.isEmpty() || !Utils.isValidAuthorizationHeader(request())) {
+    if (id.isEmpty() || ontology.isEmpty()) {
       return badRequest();
     }
     try {
       id = Util.encodeIfNeeded(id);
       PagedResults<OntologyClass> children = termService.getClassChildren(Util.encodeIfNeeded(id), ontology, page,
-          pageSize, Utils
-          .getApiKeyFromHeader(request()));
+          pageSize, apiKey);
       return ok((JsonNode) new ObjectMapper().valueToTree(children));
     } catch (HTTPException e) {
       return Results.status(e.getStatusCode());
@@ -380,9 +349,6 @@ public class TerminologyController extends Controller {
       @ApiResponse(code = 404, message = "Not Found"),
       @ApiResponse(code = 500, message = "Internal Server Error")})
   @ApiImplicitParams(value = {
-      @ApiImplicitParam(name = "Authorization", value = "Format: apikey={your_bioportal_apikey}. "
-          + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
-          required = true, dataType = "string", paramType = "header"),
       @ApiImplicitParam(name = "id", value = "Class id. It must be encoded. Example: http%3A%2F%2Fdata.bioontology" +
           ".org%2Fprovisional_classes%2F4f82a7f0-bbba-0133-b23e-005056010074 (provisional), " +
           "http%3A%2F%2Fncicb.nci.nih.gov%2Fxml%2Fowl%2FEVS%2FThesaurus.owl%23C3224 (regular) ",
@@ -393,14 +359,13 @@ public class TerminologyController extends Controller {
       "page number. Default: 'page=1'", required = false) @QueryParam("page") int page, @ApiParam(value = "Integer " +
       "representing the size of the returned page. Default: 'pageSize=50'", required = false) @QueryParam
       ("page_size") int pageSize) {
-    if (id.isEmpty() || ontology.isEmpty() || !Utils.isValidAuthorizationHeader(request())) {
+    if (id.isEmpty() || ontology.isEmpty()) {
       return badRequest();
     }
     try {
       id = Util.encodeIfNeeded(id);
       PagedResults<OntologyClass> descendants = termService.getClassDescendants(Util.encodeIfNeeded(id), ontology,
-          page, pageSize, Utils
-          .getApiKeyFromHeader(request()));
+          page, pageSize, apiKey);
       return ok((JsonNode) new ObjectMapper().valueToTree(descendants));
     } catch (HTTPException e) {
       return Results.status(e.getStatusCode());
@@ -419,9 +384,6 @@ public class TerminologyController extends Controller {
       @ApiResponse(code = 404, message = "Not Found"),
       @ApiResponse(code = 500, message = "Internal Server Error")})
   @ApiImplicitParams(value = {
-      @ApiImplicitParam(name = "Authorization", value = "Format: apikey={your_bioportal_apikey}. "
-          + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
-          required = true, dataType = "string", paramType = "header"),
       @ApiImplicitParam(name = "id", value = "Class id. It must be encoded. Example: http%3A%2F%2Fdata.bioontology" +
           ".org%2Fprovisional_classes%2F4f82a7f0-bbba-0133-b23e-005056010074 (provisional), " +
           "http%3A%2F%2Fncicb.nci.nih.gov%2Fxml%2Fowl%2FEVS%2FThesaurus.owl%23C3224 (regular) ",
@@ -429,13 +391,12 @@ public class TerminologyController extends Controller {
       @ApiImplicitParam(name = "ontology", value = "Ontology. Example: NCIT",
           required = true, dataType = "string", paramType = "path")})
   public static Result findClassParents(String id, String ontology) {
-    if (id.isEmpty() || ontology.isEmpty() || !Utils.isValidAuthorizationHeader(request())) {
+    if (id.isEmpty() || ontology.isEmpty()) {
       return badRequest();
     }
     try {
       id = Util.encodeIfNeeded(id);
-      List<OntologyClass> parents = termService.getClassParents(Util.encodeIfNeeded(id), ontology, Utils
-          .getApiKeyFromHeader(request()));
+      List<OntologyClass> parents = termService.getClassParents(Util.encodeIfNeeded(id), ontology, apiKey);
       return ok((JsonNode) new ObjectMapper().valueToTree(parents));
     } catch (HTTPException e) {
       return Results.status(e.getStatusCode());
@@ -452,17 +413,10 @@ public class TerminologyController extends Controller {
       @ApiResponse(code = 400, message = "Bad Request"),
       @ApiResponse(code = 401, message = "Unauthorized"),
       @ApiResponse(code = 500, message = "Internal Server Error")})
-  @ApiImplicitParams(value = {
-      @ApiImplicitParam(name = "Authorization", value = "Format: apikey={your_bioportal_apikey}. "
-          + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
-          required = true, dataType = "string", paramType = "header")})
   public static Result findAllProvisionalClasses() {
-    if (!Utils.isValidAuthorizationHeader(request())) {
-      return badRequest();
-    }
     try {
       List<OntologyClass> classes = termService
-          .findAllProvisionalClasses(null, Utils.getApiKeyFromHeader(request()));
+          .findAllProvisionalClasses(null, apiKey);
       ObjectMapper mapper = new ObjectMapper();
       // This line ensures that @class type annotations are included for each element in the list
       ObjectWriter writer = mapper.writerFor(new TypeReference<List<OntologyClass>>() {
@@ -485,18 +439,15 @@ public class TerminologyController extends Controller {
       @ApiResponse(code = 401, message = "Unauthorized"),
       @ApiResponse(code = 500, message = "Internal Server Error")})
   @ApiImplicitParams(value = {
-      @ApiImplicitParam(name = "Authorization", value = "Format: apikey={your_bioportal_apikey}. "
-          + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
-          required = true, dataType = "string", paramType = "header"),
       @ApiImplicitParam(name = "ontology", value = "Ontology. Example: NCIT",
           required = true, dataType = "string", paramType = "path")})
   public static Result findAllProvisionalClassesForOntology(String ontology) {
-    if (ontology.isEmpty() || !Utils.isValidAuthorizationHeader(request())) {
+    if (ontology.isEmpty()) {
       return badRequest();
     }
     try {
       List<OntologyClass> classes = termService
-          .findAllProvisionalClasses(ontology, Utils.getApiKeyFromHeader(request()));
+          .findAllProvisionalClasses(ontology, apiKey);
       ObjectMapper mapper = new ObjectMapper();
       // This line ensures that @class type annotations are included for each element in the list
       ObjectWriter writer = mapper.writerFor(new TypeReference<List<OntologyClass>>() {
@@ -519,23 +470,20 @@ public class TerminologyController extends Controller {
       @ApiResponse(code = 404, message = "Not Found"),
       @ApiResponse(code = 500, message = "Internal Server Error")})
   @ApiImplicitParams(value = {
-      @ApiImplicitParam(name = "Authorization", value = "Format: apikey={your_bioportal_apikey}. "
-          + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
-          required = true, dataType = "string", paramType = "header"),
       @ApiImplicitParam(name = "id", value = "Provisional class id. Example: 720f50f0-ae6f-0133-848f-005056010073",
           required = true, dataType = "string", paramType = "path"),
       @ApiImplicitParam(value = "Updated information for the class", required = true, dataType = "org.metadatacenter" +
           ".terms" +
           ".domainObjects.OntologyClass", paramType = "body")})
   public static Result updateClass(String id) {
-    if (id.isEmpty() || !Utils.isValidAuthorizationHeader(request())) {
+    if (id.isEmpty()) {
       return badRequest();
     }
     ObjectMapper mapper = new ObjectMapper();
     OntologyClass c = mapper.convertValue(request().body().asJson(), OntologyClass.class);
     c.setId(id);
     try {
-      termService.updateProvisionalClass(c, Utils.getApiKeyFromHeader(request()));
+      termService.updateProvisionalClass(c, apiKey);
     } catch (HTTPException e) {
       return Results.status(e.getStatusCode());
     } catch (IOException e) {
@@ -554,17 +502,14 @@ public class TerminologyController extends Controller {
       @ApiResponse(code = 404, message = "Not Found"),
       @ApiResponse(code = 500, message = "Internal Server Error")})
   @ApiImplicitParams(value = {
-      @ApiImplicitParam(name = "Authorization", value = "Format: apikey={your_bioportal_apikey}. "
-          + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
-          required = true, dataType = "string", paramType = "header"),
       @ApiImplicitParam(name = "id", value = "Provisional class id. Example: 720f50f0-ae6f-0133-848f-005056010073",
           required = true, dataType = "string", paramType = "path")})
   public static Result deleteClass(String id) {
-    if (id.isEmpty() || !Utils.isValidAuthorizationHeader(request())) {
+    if (id.isEmpty()) {
       return badRequest();
     }
     try {
-      termService.deleteProvisionalClass(id, Utils.getApiKeyFromHeader(request()));
+      termService.deleteProvisionalClass(id, apiKey);
     } catch (HTTPException e) {
       return Results.status(e.getStatusCode());
     } catch (IOException e) {
@@ -586,19 +531,13 @@ public class TerminologyController extends Controller {
       @ApiResponse(code = 401, message = "Unauthorized"),
       @ApiResponse(code = 500, message = "Internal Server Error")})
   @ApiImplicitParams(value = {
-      @ApiImplicitParam(name = "Authorization", value = "Format: apikey={your_bioportal_apikey}. "
-          + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
-          required = true, dataType = "string", paramType = "header"),
       @ApiImplicitParam(value = "Relation to be created", required = true, dataType = "org.metadatacenter.terms" +
           ".domainObjects.Relation", paramType = "body")})
   public static Result createRelation() {
-    if (!Utils.isValidAuthorizationHeader(request())) {
-      return badRequest();
-    }
     ObjectMapper mapper = new ObjectMapper();
     Relation r = mapper.convertValue(request().body().asJson(), Relation.class);
     try {
-      Relation createdRelation = termService.createProvisionalRelation(r, Utils.getApiKeyFromHeader(request()));
+      Relation createdRelation = termService.createProvisionalRelation(r, apiKey);
       return created((JsonNode) mapper.valueToTree(createdRelation));
     } catch (HTTPException e) {
       return Results.status(e.getStatusCode());
@@ -617,17 +556,14 @@ public class TerminologyController extends Controller {
       @ApiResponse(code = 404, message = "Not Found"),
       @ApiResponse(code = 500, message = "Internal Server Error")})
   @ApiImplicitParams(value = {
-      @ApiImplicitParam(name = "Authorization", value = "Format: apikey={your_bioportal_apikey}. "
-          + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
-          required = true, dataType = "string", paramType = "header"),
       @ApiImplicitParam(name = "id", value = "Provisional relation id. Example: 720f50f0-ae6f-0133-848f-005056010073",
           required = true, dataType = "string", paramType = "path")})
   public static Result findRelation(String id) {
-    if (id.isEmpty() || !Utils.isValidAuthorizationHeader(request())) {
+    if (id.isEmpty()) {
       return badRequest();
     }
     try {
-      Relation r = termService.findProvisionalRelation(id, Utils.getApiKeyFromHeader(request()));
+      Relation r = termService.findProvisionalRelation(id, apiKey);
       return ok((JsonNode) new ObjectMapper().valueToTree(r));
     } catch (HTTPException e) {
       return Results.status(e.getStatusCode());
@@ -656,13 +592,13 @@ public class TerminologyController extends Controller {
 //          ".domainObjects.Relation", paramType = "body")})
 //  public static Result updateProvisionalRelation(String id)
 //  {
-//    if (id.isEmpty() || !Utils.isValidAuthorizationHeader(request()))
+//    if (id.isEmpty())
 //      return badRequest();
 //    ObjectMapper mapper = new ObjectMapper();
 //    Relation r = mapper.convertValue(request().body().asJson(), Relation.class);
 //    r.setId(id);
 //    try {
-//      termService.updateProvisionalRelation(r, Utils.getApiKeyFromHeader(request()));
+//      termService.updateProvisionalRelation(r, apiKey);
 //    } catch (HTTPException e) {
 //      return Results.status(e.getStatusCode());
 //    } catch (IOException e) {
@@ -681,17 +617,14 @@ public class TerminologyController extends Controller {
       @ApiResponse(code = 404, message = "Not Found"),
       @ApiResponse(code = 500, message = "Internal Server Error")})
   @ApiImplicitParams(value = {
-      @ApiImplicitParam(name = "Authorization", value = "Format: apikey={your_bioportal_apikey}. "
-          + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
-          required = true, dataType = "string", paramType = "header"),
       @ApiImplicitParam(name = "id", value = "Provisional relation id. Example: 720f50f0-ae6f-0133-848f-005056010073",
           required = true, dataType = "string", paramType = "path")})
   public static Result deleteRelation(String id) {
-    if (id.isEmpty() || !Utils.isValidAuthorizationHeader(request())) {
+    if (id.isEmpty()) {
       return badRequest();
     }
     try {
-      termService.deleteProvisionalRelation(id, Utils.getApiKeyFromHeader(request()));
+      termService.deleteProvisionalRelation(id, apiKey);
     } catch (HTTPException e) {
       return Results.status(e.getStatusCode());
     } catch (IOException e) {
@@ -713,19 +646,10 @@ public class TerminologyController extends Controller {
       @ApiResponse(code = 400, message = "Bad Request"),
       @ApiResponse(code = 401, message = "Unauthorized"),
       @ApiResponse(code = 500, message = "Internal Server Error")})
-  @ApiImplicitParams(value = {
-      @ApiImplicitParam(name = "Authorization", value = "Format: apikey={your_bioportal_apikey}. "
-          + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
-          required = true, dataType = "string", paramType = "header")})
   public static Result findAllVSCollections(@ApiParam(value = "Includes details, such as the number of value sets " +
       "and categories", required = true) @QueryParam("include_details") boolean includeDetails) {
-    if (!Utils.isValidAuthorizationHeader(request())) {
-      return badRequest();
-    }
     try {
-      List<ValueSetCollection> vsCollections = termService.findAllVSCollections(includeDetails, Utils
-          .getApiKeyFromHeader
-          (request()));
+      List<ValueSetCollection> vsCollections = termService.findAllVSCollections(includeDetails, apiKey);
       ObjectMapper mapper = new ObjectMapper();
       ObjectWriter writer = mapper.writerFor(new TypeReference<List<ValueSetCollection>>() {
       });
@@ -750,22 +674,19 @@ public class TerminologyController extends Controller {
       @ApiResponse(code = 401, message = "Unauthorized"),
       @ApiResponse(code = 500, message = "Internal Server Error")})
   @ApiImplicitParams(value = {
-      @ApiImplicitParam(name = "Authorization", value = "Format: apikey={your_bioportal_apikey}. "
-          + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
-          required = true, dataType = "string", paramType = "header"),
       @ApiImplicitParam(name = "vs_collection", value = "Value set collection. Example: CEDARVS", required = true,
           dataType = "string", paramType = "path"),
       @ApiImplicitParam(value = "Value set to be created", required = true, dataType = "org.metadatacenter.terms" +
           ".domainObjects.ValueSet", paramType = "body")})
   public static Result createValueSet(String vsCollection) {
-    if (vsCollection.isEmpty() || !Utils.isValidAuthorizationHeader(request())) {
+    if (vsCollection.isEmpty()) {
       return badRequest();
     }
     ObjectMapper mapper = new ObjectMapper();
     ValueSet vs = mapper.convertValue(request().body().asJson(), ValueSet.class);
     vs.setVsCollection(vsCollection);
     try {
-      ValueSet createdVs = termService.createProvisionalValueSet(vs, Utils.getApiKeyFromHeader(request()));
+      ValueSet createdVs = termService.createProvisionalValueSet(vs, apiKey);
       // Refresh value sets cache
       Cache.valueSetsCache.refresh("value-sets");
       return created((JsonNode) mapper.valueToTree(createdVs));
@@ -786,19 +707,16 @@ public class TerminologyController extends Controller {
       @ApiResponse(code = 404, message = "Not Found"),
       @ApiResponse(code = 500, message = "Internal Server Error")})
   @ApiImplicitParams(value = {
-      @ApiImplicitParam(name = "Authorization", value = "Format: apikey={your_bioportal_apikey}. "
-          + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
-          required = true, dataType = "string", paramType = "header"),
       @ApiImplicitParam(name = "vs_collection", value = "Value set collection. Example: CEDARVS",
           required = true, dataType = "string", paramType = "path"),
       @ApiImplicitParam(name = "id", value = "Provisional value set id. Example: af033050-b04b-0133-981f-005056010074",
           required = true, dataType = "string", paramType = "path")})
   public static Result findValueSet(String id, String vsCollection) {
-    if (vsCollection.isEmpty() || id.isEmpty() || !Utils.isValidAuthorizationHeader(request())) {
+    if (vsCollection.isEmpty() || id.isEmpty()) {
       return badRequest();
     }
     try {
-      ValueSet c = termService.findValueSet(id, vsCollection, Utils.getApiKeyFromHeader(request()));
+      ValueSet c = termService.findValueSet(id, vsCollection, apiKey);
       return ok((JsonNode) new ObjectMapper().valueToTree(c));
     } catch (HTTPException e) {
       return Results.status(e.getStatusCode());
@@ -817,24 +735,18 @@ public class TerminologyController extends Controller {
       @ApiResponse(code = 401, message = "Unauthorized"),
       @ApiResponse(code = 500, message = "Internal Server Error")})
   @ApiImplicitParams(value = {
-      @ApiImplicitParam(name = "Authorization", value = "Format: apikey={your_bioportal_apikey}. "
-          + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
-          required = true, dataType = "string", paramType = "header"),
       @ApiImplicitParam(name = "vs_collection", value = "Value set collection. Example: CEDARVS",
           required = true, dataType = "string", paramType = "path")})
   public static Result findValueSetsByVsCollection(String vsCollection, @ApiParam(value = "Integer representing the " +
       "page number. Default: 'page=1'", required = false) @QueryParam("page") int page, @ApiParam(value = "Integer " +
       "representing the size of the returned page. Default: 'pageSize=50'", required = false) @QueryParam
       ("page_size") int pageSize) {
-    if (!Utils.isValidAuthorizationHeader(request())) {
-      return badRequest();
-    }
     if ((vsCollection == null) || (vsCollection.length() == 0)) {
       return badRequest();
     }
     try {
       PagedResults<ValueSet> valueSets = termService.
-          findValueSetsByVsCollection(vsCollection, page, pageSize, Utils.getApiKeyFromHeader(request()));
+          findValueSetsByVsCollection(vsCollection, page, pageSize, apiKey);
       ObjectMapper mapper = new ObjectMapper();
       // This line ensures that @class type annotations are included for each element in the collection
       ObjectWriter writer = mapper.writerFor(new TypeReference<PagedResults<Value>>() {
@@ -856,14 +768,7 @@ public class TerminologyController extends Controller {
       @ApiResponse(code = 400, message = "Bad Request"),
       @ApiResponse(code = 401, message = "Unauthorized"),
       @ApiResponse(code = 500, message = "Internal Server Error")})
-  @ApiImplicitParams(value = {
-      @ApiImplicitParam(name = "Authorization", value = "Format: apikey={your_bioportal_apikey}. "
-          + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
-          required = true, dataType = "string", paramType = "header")})
   public static Result findAllValueSets() {
-    if (!Utils.isValidAuthorizationHeader(request())) {
-      return badRequest();
-    }
     try {
       List<ValueSet> valueSets = new ArrayList<ValueSet>(Cache.valueSetsCache.get("value-sets").values());
       ObjectMapper mapper = new ObjectMapper();
@@ -890,23 +795,20 @@ public class TerminologyController extends Controller {
       @ApiResponse(code = 404, message = "Not Found"),
       @ApiResponse(code = 500, message = "Internal Server Error")})
   @ApiImplicitParams(value = {
-      @ApiImplicitParam(name = "Authorization", value = "Format: apikey={your_bioportal_apikey}. "
-          + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
-          required = true, dataType = "string", paramType = "header"),
       @ApiImplicitParam(name = "id", value = "Provisional value set id. Example: 720f50f0-ae6f-0133-848f-005056010073",
           required = true, dataType = "string", paramType = "path"),
       @ApiImplicitParam(value = "Updated information for the value set", required = true, dataType = "org" +
           ".metadatacenter.terms" +
           ".domainObjects.ValueSet", paramType = "body")})
   public static Result updateValueSet(String id) {
-    if (id.isEmpty() || !Utils.isValidAuthorizationHeader(request())) {
+    if (id.isEmpty()) {
       return badRequest();
     }
     ObjectMapper mapper = new ObjectMapper();
     ValueSet vs = mapper.convertValue(request().body().asJson(), ValueSet.class);
     vs.setId(id);
     try {
-      termService.updateProvisionalValueSet(vs, Utils.getApiKeyFromHeader(request()));
+      termService.updateProvisionalValueSet(vs, apiKey);
     } catch (HTTPException e) {
       if (e.getStatusCode() == 204) {
         // Refresh value sets cache
@@ -929,17 +831,14 @@ public class TerminologyController extends Controller {
       @ApiResponse(code = 404, message = "Not Found"),
       @ApiResponse(code = 500, message = "Internal Server Error")})
   @ApiImplicitParams(value = {
-      @ApiImplicitParam(name = "Authorization", value = "Format: apikey={your_bioportal_apikey}. "
-          + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
-          required = true, dataType = "string", paramType = "header"),
       @ApiImplicitParam(name = "id", value = "Provisional value set id. Example: 720f50f0-ae6f-0133-848f-005056010073",
           required = true, dataType = "string", paramType = "path")})
   public static Result deleteValueSet(String id) {
-    if (id.isEmpty() || !Utils.isValidAuthorizationHeader(request())) {
+    if (id.isEmpty()) {
       return badRequest();
     }
     try {
-      termService.deleteProvisionalValueSet(id, Utils.getApiKeyFromHeader(request()));
+      termService.deleteProvisionalValueSet(id, apiKey);
     } catch (HTTPException e) {
       if (e.getStatusCode() == 204) {
         // Refresh value sets cache
@@ -963,9 +862,6 @@ public class TerminologyController extends Controller {
       @ApiResponse(code = 404, message = "Not Found"),
       @ApiResponse(code = 500, message = "Internal Server Error")})
   @ApiImplicitParams(value = {
-      @ApiImplicitParam(name = "Authorization", value = "Format: apikey={your_bioportal_apikey}. "
-          + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
-          required = true, dataType = "string", paramType = "header"),
       @ApiImplicitParam(name = "vs", value = "Value set identifier. Example: http%3A%2F%2Fwww.semanticweb" +
           ".org%2Fjgraybeal%2Fontologies%2F2015%2F7%2Fcedarvaluesets%23Study_File_Type",
           required = true, dataType = "string", paramType = "path"),
@@ -976,17 +872,12 @@ public class TerminologyController extends Controller {
       "page number. Default: 'page=1'", required = false) @QueryParam("page") int page, @ApiParam(value = "Integer " +
       "representing the size of the returned page. Default: 'pageSize=50'", required = false) @QueryParam
       ("page_size") int pageSize) {
-    if (!Utils.isValidAuthorizationHeader(request())) {
-      return badRequest();
-    }
     if ((vsId == null) || (vsId.length() == 0) || (vsCollection == null) || (vsCollection.length() == 0)) {
       return badRequest();
     }
     try {
       vsId = Utils.encodeIfNeeded(vsId);
-      PagedResults<Value> values = termService.findValuesByValueSet(vsId, vsCollection, page, pageSize, Utils
-          .getApiKeyFromHeader
-          (request()));
+      PagedResults<Value> values = termService.findValuesByValueSet(vsId, vsCollection, page, pageSize, apiKey);
       ObjectMapper mapper = new ObjectMapper();
       // This line ensures that @class type annotations are included for each element in the collection
       ObjectWriter writer = mapper.writerFor(new TypeReference<PagedResults<Value>>() {
@@ -1012,9 +903,6 @@ public class TerminologyController extends Controller {
       @ApiResponse(code = 401, message = "Unauthorized"),
       @ApiResponse(code = 500, message = "Internal Server Error")})
   @ApiImplicitParams(value = {
-      @ApiImplicitParam(name = "Authorization", value = "Format: apikey={your_bioportal_apikey}. "
-          + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
-          required = true, dataType = "string", paramType = "header"),
       @ApiImplicitParam(name = "vs_collection", value = "Value set collection. Example: CEDARVS",
           required = true, dataType = "string", paramType = "path"),
       @ApiImplicitParam(name = "vs", value = "Value set identifier. Example: http%3A%2F%2Fwww.semanticweb" +
@@ -1023,7 +911,7 @@ public class TerminologyController extends Controller {
       @ApiImplicitParam(value = "Value to be created", required = true, dataType = "org.metadatacenter.terms" +
           ".domainObjects.Value", paramType = "body")})
   public static Result createValue(String vsCollection, String vs) {
-    if (vsCollection.isEmpty() || vs.isEmpty() || !Utils.isValidAuthorizationHeader(request())) {
+    if (vsCollection.isEmpty() || vs.isEmpty()) {
       return badRequest();
     }
     try {
@@ -1031,7 +919,7 @@ public class TerminologyController extends Controller {
       Value v = mapper.convertValue(request().body().asJson(), Value.class);
       v.setVsCollection(vsCollection);
       v.setVsId(vs);
-      Value createdValue = termService.createProvisionalValue(v, Utils.getApiKeyFromHeader(request()));
+      Value createdValue = termService.createProvisionalValue(v, apiKey);
       return created((JsonNode) mapper.valueToTree(createdValue));
     } catch (HTTPException e) {
       return Results.status(e.getStatusCode());
@@ -1049,9 +937,6 @@ public class TerminologyController extends Controller {
       @ApiResponse(code = 401, message = "Unauthorized"),
       @ApiResponse(code = 500, message = "Internal Server Error")})
   @ApiImplicitParams(value = {
-      @ApiImplicitParam(name = "Authorization", value = "Format: apikey={your_bioportal_apikey}. "
-          + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
-          required = true, dataType = "string", paramType = "header"),
       @ApiImplicitParam(name = "vs_collection", value = "Value set collection. Example: CEDARVS",
           required = true, dataType = "string", paramType = "path"),
       @ApiImplicitParam(name = "vs", value = "Value set identifier. Example: http%3A%2F%2Fwww.semanticweb" +
@@ -1060,11 +945,11 @@ public class TerminologyController extends Controller {
       @ApiImplicitParam(name = "id", value = "Value id. Example: 42f22880-b04b-0133-848f-005056010073",
           required = true, dataType = "string", paramType = "path")})
   public static Result findValue(String id, String vsCollection) {
-    if (id.isEmpty() || vsCollection.isEmpty() || !Utils.isValidAuthorizationHeader(request())) {
+    if (id.isEmpty() || vsCollection.isEmpty()) {
       return badRequest();
     }
     try {
-      Value c = termService.findValue(id, vsCollection, Utils.getApiKeyFromHeader(request()));
+      Value c = termService.findValue(id, vsCollection, apiKey);
       return ok((JsonNode) new ObjectMapper().valueToTree(c));
     } catch (HTTPException e) {
       return Results.status(e.getStatusCode());
@@ -1083,23 +968,20 @@ public class TerminologyController extends Controller {
       @ApiResponse(code = 404, message = "Not Found"),
       @ApiResponse(code = 500, message = "Internal Server Error")})
   @ApiImplicitParams(value = {
-      @ApiImplicitParam(name = "Authorization", value = "Format: apikey={your_bioportal_apikey}. "
-          + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
-          required = true, dataType = "string", paramType = "header"),
       @ApiImplicitParam(name = "id", value = "Provisional value id. Example: 720f50f0-ae6f-0133-848f-005056010073",
           required = true, dataType = "string", paramType = "path"),
       @ApiImplicitParam(value = "Updated information for the value", required = true, dataType = "org.metadatacenter" +
           ".terms" +
           ".domainObjects.OntologyClass", paramType = "body")})
   public static Result updateValue(String id) {
-    if (id.isEmpty() || !Utils.isValidAuthorizationHeader(request())) {
+    if (id.isEmpty()) {
       return badRequest();
     }
     ObjectMapper mapper = new ObjectMapper();
     Value v = mapper.convertValue(request().body().asJson(), Value.class);
     v.setId(id);
     try {
-      termService.updateProvisionalValue(v, Utils.getApiKeyFromHeader(request()));
+      termService.updateProvisionalValue(v, apiKey);
     } catch (HTTPException e) {
       return Results.status(e.getStatusCode());
     } catch (IOException e) {
@@ -1118,17 +1000,14 @@ public class TerminologyController extends Controller {
       @ApiResponse(code = 404, message = "Not Found"),
       @ApiResponse(code = 500, message = "Internal Server Error")})
   @ApiImplicitParams(value = {
-      @ApiImplicitParam(name = "Authorization", value = "Format: apikey={your_bioportal_apikey}. "
-          + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
-          required = true, dataType = "string", paramType = "header"),
       @ApiImplicitParam(name = "id", value = "Provisional value id. Example: 720f50f0-ae6f-0133-848f-005056010073",
           required = true, dataType = "string", paramType = "path")})
   public static Result deleteValue(String id) {
-    if (id.isEmpty() || !Utils.isValidAuthorizationHeader(request())) {
+    if (id.isEmpty()) {
       return badRequest();
     }
     try {
-      termService.deleteProvisionalValue(id, Utils.getApiKeyFromHeader(request()));
+      termService.deleteProvisionalValue(id, apiKey);
     } catch (HTTPException e) {
       return Results.status(e.getStatusCode());
     } catch (IOException e) {
