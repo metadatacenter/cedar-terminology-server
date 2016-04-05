@@ -86,4 +86,17 @@ public class BpTreeNode {
   public void setObsolete(boolean obsolete) {
     this.obsolete = obsolete;
   }
+
+  @Override
+  public String toString() {
+    return "BpTreeNode{" +
+        "id='" + id + '\'' +
+        ", type='" + type + '\'' +
+        ", prefLabel='" + prefLabel + '\'' +
+        ", hasChildren=" + hasChildren +
+        ", children=" + children +
+        ", links=" + links +
+        ", obsolete=" + obsolete +
+        '}';
+  }
 }

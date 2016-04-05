@@ -194,8 +194,10 @@ public class ObjectConverter {
 
   public static TreeNode toTreeNode(BpTreeNode bpTreeNode) {
     List<TreeNode> children = new ArrayList<>();
-    for (BpTreeNode child : bpTreeNode.getChildren()) {
-      children.add(toTreeNode(child));
+    if (bpTreeNode.getHasChildren()) {
+      for (BpTreeNode child : bpTreeNode.getChildren()) {
+        children.add(toTreeNode(child));
+      }
     }
     return new TreeNode(bpTreeNode.getId(), bpTreeNode.getId(), bpTreeNode.getType(), bpTreeNode.getPrefLabel(), bpTreeNode.getLinks().getOntology(), bpTreeNode.getHasChildren(), children, bpTreeNode.isObsolete());
   }
