@@ -65,12 +65,10 @@ public class BpProvisionalClassDAO
     }
   }
 
-  // TODO: the result from BioPortal is not paged. Page it in the above layer?
   public List<BpProvisionalClass> findAll(String ontology, String apiKey) throws IOException
   {
     String url = null;
     if (ontology != null) {
-      // TODO: This URL  is returning 500 Internal Server Error
       url = BP_API_BASE + BP_ONTOLOGIES + ontology + "/" + Constants.BP_PROVISIONAL_CLASSES;
     } else {
       url = BP_API_BASE + BP_PROVISIONAL_CLASSES;
