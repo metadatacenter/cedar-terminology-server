@@ -45,6 +45,8 @@ public interface IBioPortalService
 
   BpPagedResults<BpClass> getClassChildren(String id, String ontology, int page, int pageSize, String apiKey) throws IOException;
 
+  BpPagedResults<BpClass> getClassDescendants(String id, String ontology, int page, int pageSize, String apiKey) throws IOException;
+
   List<BpClass> getClassParents(String id, String ontology, String apiKey) throws IOException;
 
   /**

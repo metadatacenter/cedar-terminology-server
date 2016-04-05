@@ -45,6 +45,9 @@ public interface ITerminologyService {
   PagedResults<OntologyClass> getClassChildren(String id, String ontology, int page, int pageSize, String apiKey)
       throws IOException;
 
+  PagedResults<OntologyClass> getClassDescendants(String id, String ontology, int page, int pageSize, String apiKey)
+      throws IOException;
+
   List<OntologyClass> getClassParents(String id, String ontology, String apiKey) throws IOException;
 
   /**

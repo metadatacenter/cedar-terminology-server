@@ -59,7 +59,8 @@ public class TerminologyController extends Controller {
           + "Example: 'ontologies=CEDARVS,NCIT'. By default, all BioPortal ontologies and value sets are considered. "
           + "The value of 'scope' overrides the list of sources specified using this parameter",
           required = false) @QueryParam("sources") String sources,
-      @ApiParam(value = "Will perform a search specifically geared towards type-ahead suggestions. Default: false", required = false) @QueryParam
+      @ApiParam(value = "Will perform a search specifically geared towards type-ahead suggestions. Default: false",
+          required = false) @QueryParam
           ("page") boolean suggest,
       @ApiParam(value = "Ontology for which the subtree search will be performed", required = false) @QueryParam
           ("source") String source,
@@ -81,8 +82,7 @@ public class TerminologyController extends Controller {
       }
       if (source.isEmpty()) {
         source = null;
-      }
-      else {
+      } else {
         if (subtreeRootId == null) {
           return badRequest();
         }
@@ -104,10 +104,12 @@ public class TerminologyController extends Controller {
         sourcesList = Arrays.asList(sources.split("\\s*,\\s*"));
       }
       List<String> valueSetsIds = new ArrayList<>(Cache.valueSetsCache.get("value-sets").keySet());
-      // TODO: The valueSetsIds parameter is passed to the service to avoid making additional calls to BioPortal. These ids
+      // TODO: The valueSetsIds parameter is passed to the service to avoid making additional calls to BioPortal.
+      // These ids
       // are used to know if a particular result returned by BioPortal is a value or a value set. BioPortal should
       // provide this information and this parameter should be removed
-      PagedResults results = termService.search(q, scopeList, sourcesList, suggest, source, subtreeRootId, maxDepth, page, pageSize, false, true,
+      PagedResults results = termService.search(q, scopeList, sourcesList, suggest, source, subtreeRootId, maxDepth,
+          page, pageSize, false, true,
           Utils.getApiKeyFromHeader(request()), valueSetsIds);
       return ok((JsonNode) new ObjectMapper().valueToTree(results));
 
@@ -192,7 +194,8 @@ public class TerminologyController extends Controller {
   }
 
   @ApiOperation(
-      value = "Get the root classes for a given ontology. If the ontology is CEDARPC, all provisional classes in this ontology will be returned",
+      value = "Get the root classes for a given ontology. If the ontology is CEDARPC, all provisional classes in this" +
+          " ontology will be returned",
       httpMethod = "GET")
   @ApiResponses(value = {
       @ApiResponse(code = 200, message = "Success!"),
@@ -356,9 +359,49 @@ public class TerminologyController extends Controller {
     }
     try {
       id = Util.encodeIfNeeded(id);
-      PagedResults<OntologyClass> children = termService.getClassChildren(Util.encodeIfNeeded(id), ontology, page, pageSize, Utils
+      PagedResults<OntologyClass> children = termService.getClassChildren(Util.encodeIfNeeded(id), ontology, page,
+          pageSize, Utils
           .getApiKeyFromHeader(request()));
       return ok((JsonNode) new ObjectMapper().valueToTree(children));
+    } catch (HTTPException e) {
+      return Results.status(e.getStatusCode());
+    } catch (IOException e) {
+      return internalServerError(e.getMessage());
+    }
+  }
+
+  @ApiOperation(
+      value = "Find descendants of a given class",
+      httpMethod = "GET")
+  @ApiResponses(value = {
+      @ApiResponse(code = 200, message = "Success!"),
+      @ApiResponse(code = 400, message = "Bad Request"),
+      @ApiResponse(code = 401, message = "Unauthorized"),
+      @ApiResponse(code = 404, message = "Not Found"),
+      @ApiResponse(code = 500, message = "Internal Server Error")})
+  @ApiImplicitParams(value = {
+      @ApiImplicitParam(name = "Authorization", value = "Format: apikey={your_bioportal_apikey}. "
+          + "To obtain an API key, login to BioPortal and go to \"Account\" where your API key will be displayed",
+          required = true, dataType = "string", paramType = "header"),
+      @ApiImplicitParam(name = "id", value = "Class id. It must be encoded. Example: http%3A%2F%2Fdata.bioontology" +
+          ".org%2Fprovisional_classes%2F4f82a7f0-bbba-0133-b23e-005056010074 (provisional), " +
+          "http%3A%2F%2Fncicb.nci.nih.gov%2Fxml%2Fowl%2FEVS%2FThesaurus.owl%23C3224 (regular) ",
+          required = true, dataType = "string", paramType = "path"),
+      @ApiImplicitParam(name = "ontology", value = "Ontology. Example: NCIT",
+          required = true, dataType = "string", paramType = "path")})
+  public static Result findClassDescendants(String id, String ontology, @ApiParam(value = "Integer representing the " +
+      "page number. Default: 'page=1'", required = false) @QueryParam("page") int page, @ApiParam(value = "Integer " +
+      "representing the size of the returned page. Default: 'pageSize=50'", required = false) @QueryParam
+      ("page_size") int pageSize) {
+    if (id.isEmpty() || ontology.isEmpty() || !Utils.isValidAuthorizationHeader(request())) {
+      return badRequest();
+    }
+    try {
+      id = Util.encodeIfNeeded(id);
+      PagedResults<OntologyClass> descendants = termService.getClassDescendants(Util.encodeIfNeeded(id), ontology,
+          page, pageSize, Utils
+          .getApiKeyFromHeader(request()));
+      return ok((JsonNode) new ObjectMapper().valueToTree(descendants));
     } catch (HTTPException e) {
       return Results.status(e.getStatusCode());
     } catch (IOException e) {
@@ -680,7 +723,8 @@ public class TerminologyController extends Controller {
       return badRequest();
     }
     try {
-      List<ValueSetCollection> vsCollections = termService.findAllVSCollections(includeDetails, Utils.getApiKeyFromHeader
+      List<ValueSetCollection> vsCollections = termService.findAllVSCollections(includeDetails, Utils
+          .getApiKeyFromHeader
           (request()));
       ObjectMapper mapper = new ObjectMapper();
       ObjectWriter writer = mapper.writerFor(new TypeReference<List<ValueSetCollection>>() {
@@ -927,7 +971,8 @@ public class TerminologyController extends Controller {
           required = true, dataType = "string", paramType = "path"),
       @ApiImplicitParam(name = "vs_collection", value = "Value set collection. Example: CEDARVS",
           required = true, dataType = "string", paramType = "path")})
-  public static Result findValuesByValueSet(String vsId, String vsCollection, @ApiParam(value = "Integer representing the " +
+  public static Result findValuesByValueSet(String vsId, String vsCollection, @ApiParam(value = "Integer representing" +
+      " the " +
       "page number. Default: 'page=1'", required = false) @QueryParam("page") int page, @ApiParam(value = "Integer " +
       "representing the size of the returned page. Default: 'pageSize=50'", required = false) @QueryParam
       ("page_size") int pageSize) {
@@ -939,7 +984,8 @@ public class TerminologyController extends Controller {
     }
     try {
       vsId = Utils.encodeIfNeeded(vsId);
-      PagedResults<Value> values = termService.findValuesByValueSet(vsId, vsCollection, page, pageSize, Utils.getApiKeyFromHeader
+      PagedResults<Value> values = termService.findValuesByValueSet(vsId, vsCollection, page, pageSize, Utils
+          .getApiKeyFromHeader
           (request()));
       ObjectMapper mapper = new ObjectMapper();
       // This line ensures that @class type annotations are included for each element in the collection

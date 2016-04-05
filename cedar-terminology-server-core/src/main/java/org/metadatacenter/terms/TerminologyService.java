@@ -215,6 +215,11 @@ public class TerminologyService implements ITerminologyService {
     return ObjectConverter.toClassResults(bpChildren);
   }
 
+  public PagedResults<OntologyClass> getClassDescendants(String id, String ontology, int page, int pageSize, String apiKey) throws IOException {
+    BpPagedResults<BpClass> bpDescendants = bpService.getClassDescendants(id, ontology, page, pageSize, apiKey);
+    return ObjectConverter.toClassResults(bpDescendants);
+  }
+
   public List<OntologyClass> getClassParents(String id, String ontology, String apiKey) throws IOException {
     List<BpClass> bpParents = bpService.getClassParents(id, ontology, apiKey);
     List<OntologyClass> parents = new ArrayList<>();

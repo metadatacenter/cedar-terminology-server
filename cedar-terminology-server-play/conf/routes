@@ -26,6 +26,7 @@ PATCH          /bioportal/classes/:id                                           
 DELETE         /bioportal/classes/:id                                                controllers.TerminologyController.deleteClass(id: String)
 GET            /bioportal/ontologies/:ontology/classes/:id/tree                      controllers.TerminologyController.findClassTree(id: String, ontology: String)
 GET            /bioportal/ontologies/:ontology/classes/:id/children                  controllers.TerminologyController.findClassChildren(id: String, ontology: String, page: Int ?= 1, page_size: Int ?= 50)
+GET            /bioportal/ontologies/:ontology/classes/:id/descendants               controllers.TerminologyController.findClassDescendants(id: String, ontology: String, page: Int ?= 1, page_size: Int ?= 50)
 GET            /bioportal/ontologies/:ontology/classes/:id/parents                   controllers.TerminologyController.findClassParents(id: String, ontology: String)
 
 ### Relations ###

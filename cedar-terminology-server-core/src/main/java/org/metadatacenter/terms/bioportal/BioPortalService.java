@@ -225,6 +225,10 @@ public class BioPortalService implements IBioPortalService
     return bpClassDAO.getChildren(id, ontology, page, pageSize, apiKey);
   }
 
+  public BpPagedResults<BpClass> getClassDescendants(String id, String ontology, int page, int pageSize, String apiKey) throws IOException {
+    return bpClassDAO.getDescendants(id, ontology, page, pageSize, apiKey);
+  }
+
   public List<BpClass> getClassParents(String id, String ontology, String apiKey) throws IOException {
     return bpClassDAO.getParents(id, ontology, apiKey);
   }

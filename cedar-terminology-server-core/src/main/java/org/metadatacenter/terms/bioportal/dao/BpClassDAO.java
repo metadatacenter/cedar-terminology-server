@@ -85,6 +85,24 @@ public class BpClassDAO
     }
   }
 
+  public BpPagedResults<BpClass> getDescendants(String id, String ontology, int page, int pageSize, String apiKey) throws HTTPException, IOException {
+    String url = BP_API_BASE + BP_ONTOLOGIES + ontology + "/" + BP_CLASSES + id + "/descendants?"
+    + "&page=" + page + "&pagesize=" + pageSize + "&include=prefLabel,hasChildren,created,synonym,definition";
+    HttpResponse response = Request.Get(url)
+        .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
+            connectTimeout(connectTimeout).socketTimeout(socketTimeout).execute().returnResponse();
+
+    int statusCode = response.getStatusLine().getStatusCode();
+    // The class was successfully retrieved
+    if (statusCode == 200) {
+      ObjectMapper mapper = new ObjectMapper();
+      JsonNode bpResult = mapper.readTree(new String(EntityUtils.toByteArray(response.getEntity())));
+      return mapper.readValue(mapper.treeAsTokens(bpResult), new TypeReference<BpPagedResults<BpClass>>() {});
+    } else {
+      throw new HTTPException(statusCode);
+    }
+  }
+
   public List<BpClass> getParents(String id, String ontology, String apiKey) throws IOException
   {
     String url = BP_API_BASE + BP_ONTOLOGIES + ontology + "/" + BP_CLASSES
