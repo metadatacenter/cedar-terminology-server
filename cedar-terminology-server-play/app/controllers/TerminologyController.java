@@ -61,6 +61,12 @@ public class TerminologyController extends Controller {
           required = false) @QueryParam("sources") String sources,
       @ApiParam(value = "Will perform a search specifically geared towards type-ahead suggestions. Default: false", required = false) @QueryParam
           ("page") boolean suggest,
+      @ApiParam(value = "Ontology for which the subtree search will be performed", required = false) @QueryParam
+          ("source") String source,
+      @ApiParam(value = "Limits the search to a specific ontology branch", required = false) @QueryParam
+          ("subtree_root_id") String subtreeRootId,
+      @ApiParam(value = "Max depth of subtree. Default: 1", required = false) @QueryParam
+          ("max_depth") int maxDepth,
       @ApiParam(value = "Integer representing the page number. Default: 'page=1'", required = false) @QueryParam
           ("page") int page,
       @ApiParam(value = "Integer representing the size of the returned page. Default: 'pageSize=50'", required =
@@ -69,6 +75,17 @@ public class TerminologyController extends Controller {
     try {
       if (q.isEmpty() || !Utils.isValidAuthorizationHeader(request())) {
         return badRequest();
+      }
+      if (subtreeRootId.isEmpty()) {
+        subtreeRootId = null;
+      }
+      if (source.isEmpty()) {
+        source = null;
+      }
+      else {
+        if (subtreeRootId == null) {
+          return badRequest();
+        }
       }
       // Review and clean scope
       List<String> scopeList = new ArrayList<String>();
@@ -90,7 +107,7 @@ public class TerminologyController extends Controller {
       // TODO: The valueSetsIds parameter is passed to the service to avoid making additional calls to BioPortal. These ids
       // are used to know if a particular result returned by BioPortal is a value or a value set. BioPortal should
       // provide this information and this parameter should be removed
-      PagedResults results = termService.search(q, scopeList, sourcesList, suggest, page, pageSize, false, true,
+      PagedResults results = termService.search(q, scopeList, sourcesList, suggest, source, subtreeRootId, maxDepth, page, pageSize, false, true,
           Utils.getApiKeyFromHeader(request()), valueSetsIds);
       return ok((JsonNode) new ObjectMapper().valueToTree(results));
 

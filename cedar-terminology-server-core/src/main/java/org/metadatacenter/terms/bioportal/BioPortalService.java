@@ -48,7 +48,7 @@ public class BioPortalService implements IBioPortalService
   /**
    * Search for ontology classes and value set items. Provisional classes are included.
    */
-  public BpPagedResults<BpClass> search(String q, List<String> scope, List<String> sources, boolean suggest, int page, int pageSize,
+  public BpPagedResults<BpClass> search(String q, List<String> scope, List<String> sources, boolean suggest, String source, String subtreeRootId, int maxDepth, int page, int pageSize,
     boolean displayContext, boolean displayLinks, String apiKey) throws IOException
   {
     // Encode query
@@ -98,6 +98,17 @@ public class BioPortalService implements IBioPortalService
     /** Add suggest **/
     if (suggest == true) {
       url += "&suggest=true";
+    }
+
+    /** Add source (only for subtree search) **/
+    if (source != null) {
+      url += "&ontology=" + source;
+      /** Add subtreeRootId **/
+      if (subtreeRootId != null) {
+        url += "&subtree_root_id=" + Util.encodeIfNeeded(subtreeRootId);
+        /** Add maxDepth **/
+        url += "&max_depth=" + maxDepth;
+      }
     }
 
     /** Add page and pageSize **/

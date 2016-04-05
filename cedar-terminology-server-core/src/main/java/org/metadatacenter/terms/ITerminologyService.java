@@ -6,12 +6,12 @@ import org.metadatacenter.terms.domainObjects.*;
 import java.io.IOException;
 import java.util.List;
 
-public interface ITerminologyService
-{
+public interface ITerminologyService {
   // TODO: Adapt BioPortal to return provisional classes too
   // TODO: Add attribute with result type on the BioPortal side
-    PagedResults<SearchResult> search(String q, List<String> scope, List<String> sources, boolean suggest, int page, int pageSize, boolean displayContext,
-      boolean displayLinks, String apiKey, List<String> valueSetsIds) throws IOException;
+  PagedResults<SearchResult> search(String q, List<String> scope, List<String> sources, boolean suggest, String source, String
+      subtreeRootId, int maxDepth, int page, int pageSize, boolean displayContext,
+                                    boolean displayLinks, String apiKey, List<String> valueSetsIds) throws IOException;
 
   /**
    * Ontologies
@@ -42,7 +42,8 @@ public interface ITerminologyService
 
   List<TreeNode> getClassTree(String id, String ontology, String apiKey) throws IOException;
 
-  PagedResults<OntologyClass> getClassChildren(String id, String ontology, int page, int pageSize, String apiKey) throws IOException;
+  PagedResults<OntologyClass> getClassChildren(String id, String ontology, int page, int pageSize, String apiKey)
+      throws IOException;
 
   List<OntologyClass> getClassParents(String id, String ontology, String apiKey) throws IOException;
 
@@ -75,12 +76,14 @@ public interface ITerminologyService
   void deleteProvisionalValueSet(String id, String apiKey) throws IOException;
 
   // TODO: does not support provisional classes yet
-  PagedResults<ValueSet> findValueSetsByVsCollection(String vsCollection, int page, int pageSize, String apiKey) throws IOException;
+  PagedResults<ValueSet> findValueSetsByVsCollection(String vsCollection, int page, int pageSize, String apiKey)
+      throws IOException;
 
   List<ValueSet> findAllValueSets(String apiKey) throws IOException;
 
   // TODO: This call does not return provisional classes yet and the vs must be a regular class
-  PagedResults<Value> findValuesByValueSet(String vsId, String vsCollection, int page, int pageSize, String apiKey) throws IOException;
+  PagedResults<Value> findValuesByValueSet(String vsId, String vsCollection, int page, int pageSize, String apiKey)
+      throws IOException;
 
   List<ValueSetCollection> findAllVSCollections(boolean includeDetails, String apiKey) throws IOException;
 

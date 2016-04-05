@@ -12,7 +12,7 @@ public interface IBioPortalService
    * Search
    **/
 
-  BpPagedResults<BpClass> search(String q, List<String> scope, List<String> sources, boolean suggest, int page, int pageSize, boolean displayContext,
+  BpPagedResults<BpClass> search(String q, List<String> scope, List<String> sources, boolean suggest, String source, String subtreeRootId, int maxDepth, int page, int pageSize, boolean displayContext,
     boolean displayLinks, String apiKey) throws IOException;
 
   /**
