@@ -91,9 +91,10 @@ public class TerminologyServerHttpTest {
 
     // Initialize test relation - the source class id will be set later
     String relationType = "http://www.w3.org/2004/02/skos/core#closeMatch";
+    String relationCreator = "http://data.bioontology.org/users/cedar-test";
     String targetClassId = "http://www.owl-ontologies.com/Ontology1447432460.owl#RID1559";
     String targetClassOntology = "http://data.bioontology.org/ontologies/RADLEX";
-    relation1 = new Relation(null, null, null, relationType, targetClassId, targetClassOntology, null);
+    relation1 = new Relation(null, null, null, relationType, targetClassId, targetClassOntology, null, relationCreator);
 
     // Initialize test value set
     String vsLabel = "vs1_test";

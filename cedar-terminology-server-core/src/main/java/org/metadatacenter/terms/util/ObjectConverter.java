@@ -24,6 +24,9 @@ public class ObjectConverter {
     List<BpProvisionalRelation> relations = new ArrayList<>();
     if (c.getRelations() != null) {
       for (Relation r : c.getRelations()) {
+        if (r.getCreator() == null) {
+          r.setCreator(c.getCreator());
+        }
         relations.add(toBpProvisionalRelation(r));
       }
     }
@@ -55,7 +58,7 @@ public class ObjectConverter {
 
   public static BpProvisionalRelation toBpProvisionalRelation(Relation r) {
     return new BpProvisionalRelation(r.getId(), r.getSourceClassId(), r.getRelationType(), r.getTargetClassId(),
-        r.getTargetClassOntology(), r.getCreated());
+        r.getTargetClassOntology(), r.getCreated(), r.getCreator());
   }
 
   /**
@@ -103,7 +106,7 @@ public class ObjectConverter {
   public static Relation toRelation(BpProvisionalRelation pr) {
     return new Relation(Util.getShortIdentifier(pr.getId()), pr.getId(), pr.getSource(), pr.getRelationType(), pr
         .getTargetClassId(),
-        pr.getTargetClassOntology(), pr.getCreated());
+        pr.getTargetClassOntology(), pr.getCreated(), pr.getCreator());
   }
 
   public static ValueSet toValueSet(BpClass c) {

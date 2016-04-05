@@ -29,12 +29,14 @@ public class Relation implements Serializable
   private String targetClassOntology;
   @ApiModelProperty(hidden = true)
   private String created;
+  @ApiModelProperty(required = true)
+  private String creator;
 
   // The default constructor is used by Jackson for deserialization
   public Relation() {}
 
-  public Relation(String id, String ldId, String sourceClassId, String relationType, String targetClassId, String
-      targetClassOntology, String created) {
+  public Relation(String id, String ldId, String sourceClassId, String relationType,
+                  String targetClassId, String targetClassOntology, String created, String creator) {
     this.id = id;
     this.ldId = ldId;
     this.sourceClassId = sourceClassId;
@@ -42,6 +44,7 @@ public class Relation implements Serializable
     this.targetClassId = targetClassId;
     this.targetClassOntology = targetClassOntology;
     this.created = created;
+    this.creator = creator;
   }
 
   public String getId() {
@@ -56,16 +59,8 @@ public class Relation implements Serializable
     return ldId;
   }
 
-  public void setLdId(String ldId) {
-    this.ldId = ldId;
-  }
-
   public String getLdType() {
     return ldType;
-  }
-
-  public void setLdType(String ldType) {
-    this.ldType = ldType;
   }
 
   public String getType() {
@@ -114,5 +109,13 @@ public class Relation implements Serializable
 
   public void setCreated(String created) {
     this.created = created;
+  }
+
+  public String getCreator() {
+    return creator;
+  }
+
+  public void setCreator(String creator) {
+    this.creator = creator;
   }
 }
