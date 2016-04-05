@@ -47,18 +47,8 @@ public class BioPortalService implements IBioPortalService
 
   /**
    * Search for ontology classes and value set items. Provisional classes are included.
-   *
-   * @param q
-   * @param scope          Search scope
-   * @param displayContext Turn off the JSON-LD context serialization. This will reduce the response size
-   *                       significantly for some calls, speeding up transmission and parse time.
-   * @param displayLinks   Turn off the hypermedia link serialization. This will reduce the response size
-   *                       significantly for some calls, speeding up transmission and parse time.
-   * @param apiKey
-   * @return
-   * @throws IOException
    */
-  public BpPagedResults<BpClass> search(String q, List<String> scope, List<String> sources, int page, int pageSize,
+  public BpPagedResults<BpClass> search(String q, List<String> scope, List<String> sources, boolean suggest, int page, int pageSize,
     boolean displayContext, boolean displayLinks, String apiKey) throws IOException
   {
     // Encode query
@@ -103,6 +93,11 @@ public class BioPortalService implements IBioPortalService
     /** Add sources **/
     if (sources.size() > 0) {
       url += "&ontologies=" + (sources.stream().map(number -> String.valueOf(number)).collect(Collectors.joining(",")));
+    }
+
+    /** Add suggest **/
+    if (suggest == true) {
+      url += "&suggest=true";
     }
 
     /** Add page and pageSize **/

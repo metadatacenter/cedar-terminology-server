@@ -59,6 +59,8 @@ public class TerminologyController extends Controller {
           + "Example: 'ontologies=CEDARVS,NCIT'. By default, all BioPortal ontologies and value sets are considered. "
           + "The value of 'scope' overrides the list of sources specified using this parameter",
           required = false) @QueryParam("sources") String sources,
+      @ApiParam(value = "Will perform a search specifically geared towards type-ahead suggestions. Default: false", required = false) @QueryParam
+          ("page") boolean suggest,
       @ApiParam(value = "Integer representing the page number. Default: 'page=1'", required = false) @QueryParam
           ("page") int page,
       @ApiParam(value = "Integer representing the size of the returned page. Default: 'pageSize=50'", required =
@@ -88,7 +90,7 @@ public class TerminologyController extends Controller {
       // TODO: The valueSetsIds parameter is passed to the service to avoid making additional calls to BioPortal. These ids
       // are used to know if a particular result returned by BioPortal is a value or a value set. BioPortal should
       // provide this information and this parameter should be removed
-      PagedResults results = termService.search(q, scopeList, sourcesList, page, pageSize, false, true,
+      PagedResults results = termService.search(q, scopeList, sourcesList, suggest, page, pageSize, false, true,
           Utils.getApiKeyFromHeader(request()), valueSetsIds);
       return ok((JsonNode) new ObjectMapper().valueToTree(results));
 
