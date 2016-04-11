@@ -6,6 +6,8 @@ import com.wordnik.swagger.annotations.ApiModel;
 
 import java.util.List;
 
+import static org.metadatacenter.terms.util.Constants.BP_TYPE_CLASS;
+
 @ApiModel
 @JsonPropertyOrder({"id", "@id", "@type", "prefLabel", "ontology", "hasChildren", "children", "obsolete"})
 public class TreeNode {
@@ -13,7 +15,8 @@ public class TreeNode {
   @JsonProperty("@id")
   private String ldId;
   @JsonProperty("@type")
-  private String type;
+  private String ldtype;
+  private String type = BP_TYPE_CLASS;
   private String prefLabel;
   private String ontology;
   private boolean hasChildren;
@@ -24,11 +27,11 @@ public class TreeNode {
   public TreeNode() {
   }
 
-  public TreeNode(String id, String ldId, String type, String prefLabel, String ontology, boolean hasChildren,
+  public TreeNode(String id, String ldId, String ldtype, String prefLabel, String ontology, boolean hasChildren,
                   List<TreeNode> children, boolean obsolete) {
     this.id = id;
     this.ldId = ldId;
-    this.type = type;
+    this.ldtype = ldtype;
     this.prefLabel = prefLabel;
     this.ontology = ontology;
     this.hasChildren = hasChildren;
@@ -52,12 +55,16 @@ public class TreeNode {
     this.ldId = ldId;
   }
 
-  public String getType() {
-    return type;
+  public String getLdtype() {
+    return ldtype;
   }
 
-  public void setType(String type) {
-    this.type = type;
+  public void setLdtype(String ldtype) {
+    this.ldtype = ldtype;
+  }
+
+  public String getType() {
+    return type;
   }
 
   public String getPrefLabel() {
@@ -76,7 +83,7 @@ public class TreeNode {
     this.ontology = ontology;
   }
 
-  public boolean getHasChildren() {
+  public boolean isHasChildren() {
     return hasChildren;
   }
 
