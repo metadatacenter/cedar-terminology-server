@@ -117,6 +117,8 @@ public class BioPortalService implements IBioPortalService
     /** Add displayContext and DisplayLinks **/
     url += "&display_context=" + displayContext + "&display_links=" + displayLinks;
 
+    System.out.println("Search url: " + url);
+
     // Send request to the BioPortal API
     HttpResponse response = Request.Get(url).addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
       connectTimeout(connectTimeout).socketTimeout(socketTimeout).execute().returnResponse();

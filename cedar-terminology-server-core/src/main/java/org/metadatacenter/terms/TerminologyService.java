@@ -15,7 +15,7 @@ import java.util.List;
 
 import static org.metadatacenter.terms.util.Constants.BP_API_BASE;
 import static org.metadatacenter.terms.util.Constants.BP_ONTOLOGY_TYPE_VS_COLLECTION;
-//import static org.metadatacenter.terms.util.Constants.BP_API_WAIT_TIME;
+import static org.metadatacenter.terms.util.Constants.BP_API_WAIT_TIME;
 import static org.metadatacenter.terms.util.Constants.BP_VS_COLLECTIONS_READ;
 import static org.metadatacenter.terms.util.Constants.CEDAR_PROVISIONAL_CLASSES_ONTOLOGY;
 
@@ -42,24 +42,22 @@ public class TerminologyService implements ITerminologyService {
   public List<Ontology> findAllOntologies(boolean includeDetails, String apiKey) throws IOException {
     List<BpOntology> bpOntologies = bpService.findAllOntologies(apiKey);
     List<Ontology> ontologies = new ArrayList<>();
+    int i = 1;
     for (BpOntology o : bpOntologies) {
       // Only keep ontologies. Value set collections will be excluded
       if (o.getType() == null || o.getType().compareTo(BP_API_BASE + BP_ONTOLOGY_TYPE_VS_COLLECTION) != 0) {
-        ontologies.add(ObjectConverter.toOntology(o));
-      }
-    }
-    // Get details
-    if (includeDetails) {
-      int i = 1;
-      for (Ontology o : ontologies) {
-        o.setDetails(getOntologyDetails(o.getId(), apiKey));
-        // Delay between calls (BioPortal requirement)
-//        try {
-//          Thread.sleep(BP_API_WAIT_TIME);
-//        } catch (InterruptedException e) {
-//          e.printStackTrace();
-//        }
-        System.out.println("Ontologies loaded in cache: " + i++);
+        Ontology ont = ObjectConverter.toOntology(o);
+        if (includeDetails) {
+          ont.setDetails(getOntologyDetails(ont.getId(), apiKey));
+          //Delay between calls (BioPortal requirement)
+          try {
+            Thread.sleep(BP_API_WAIT_TIME);
+          } catch (InterruptedException e) {
+            e.printStackTrace();
+          }
+        }
+        ontologies.add(ont);
+        System.out.println(ont.getId() + " loaded (" + i++ + ")");
       }
     }
     return ontologies;
@@ -86,12 +84,6 @@ public class TerminologyService implements ITerminologyService {
         // Do nothing
       }
     }
-    // Delay between calls (BioPortal requirement)
-//    try {
-//      Thread.sleep(BP_API_WAIT_TIME);
-//    } catch (InterruptedException e) {
-//      e.printStackTrace();
-//    }
     // Get categories
     try {
       List<String> categories = new ArrayList<>();

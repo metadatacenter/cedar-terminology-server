@@ -132,7 +132,7 @@ public class TerminologyServerHttpTest {
   public static void oneTimeTearDown() {
     running(testServer(TEST_SERVER_PORT), new Runnable() {
       public void run() {
-        //deleteCreatedClasses("cedar-test");
+        //deleteCreatedClasses("cedar-mjd");
       }
     });
   }
