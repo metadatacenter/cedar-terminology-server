@@ -7,6 +7,7 @@ import org.apache.http.client.fluent.Request;
 import org.apache.http.util.EntityUtils;
 import org.metadatacenter.terms.bioportal.domainObjects.*;
 import org.metadatacenter.terms.util.Constants;
+import org.metadatacenter.terms.util.HttpUtil;
 import org.metadatacenter.terms.util.Util;
 
 import javax.xml.ws.http.HTTPException;
@@ -29,9 +30,11 @@ public class BpOntologyDAO {
 
   public BpOntology find(String id, String apiKey) throws HTTPException, IOException {
     String url = BP_API_BASE + BP_ONTOLOGIES + id;
-    HttpResponse response = Request.Get(url)
+
+    HttpResponse response = HttpUtil.makeHttpRequest(Request.Get(url)
         .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
-            connectTimeout(connectTimeout).socketTimeout(socketTimeout).execute().returnResponse();
+            connectTimeout(connectTimeout).socketTimeout(socketTimeout));
+
     int statusCode = response.getStatusLine().getStatusCode();
     // The ontology was successfully retrieved
     if (statusCode == 200) {
@@ -45,9 +48,11 @@ public class BpOntologyDAO {
 
   public BpOntologySubmission getLatestSubmission(String id, String apiKey) throws HTTPException, IOException {
     String url = BP_API_BASE + BP_ONTOLOGIES + id + "/latest_submission";
-    HttpResponse response = Request.Get(url)
+
+    HttpResponse response = HttpUtil.makeHttpRequest(Request.Get(url)
         .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
-            connectTimeout(connectTimeout).socketTimeout(socketTimeout).execute().returnResponse();
+            connectTimeout(connectTimeout).socketTimeout(socketTimeout));
+
     int statusCode = response.getStatusLine().getStatusCode();
     // The ontology was successfully retrieved
     if (statusCode == 200) {
@@ -61,9 +66,11 @@ public class BpOntologyDAO {
 
   public List<BpOntology> findAll(String apiKey) throws HTTPException, IOException {
     String url = BP_API_BASE + BP_ONTOLOGIES;
-    HttpResponse response = Request.Get(url)
+
+    HttpResponse response = HttpUtil.makeHttpRequest(Request.Get(url)
         .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
-            connectTimeout(connectTimeout).socketTimeout(socketTimeout).execute().returnResponse();
+            connectTimeout(connectTimeout).socketTimeout(socketTimeout));
+
     int statusCode = response.getStatusLine().getStatusCode();
     // The ontologies were successfully retrieved
     if (statusCode == 200) {
@@ -81,9 +88,11 @@ public class BpOntologyDAO {
 
   public BpOntologyMetrics getOntologyMetrics(String id, String apiKey) throws IOException {
     String url = BP_API_BASE + BP_ONTOLOGIES + id + "/metrics";
-    HttpResponse response = Request.Get(url)
+
+    HttpResponse response = HttpUtil.makeHttpRequest(Request.Get(url)
         .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
-            connectTimeout(connectTimeout).socketTimeout(socketTimeout).execute().returnResponse();
+            connectTimeout(connectTimeout).socketTimeout(socketTimeout));
+
     int statusCode = response.getStatusLine().getStatusCode();
     // The ontology was successfully retrieved
     if (statusCode == 200) {
@@ -97,9 +106,11 @@ public class BpOntologyDAO {
 
   public List<BpOntologyCategory> getOntologyCategories(String id, String apiKey) throws IOException {
     String url = BP_API_BASE + BP_ONTOLOGIES + id + "/categories";
-    HttpResponse response = Request.Get(url)
+
+    HttpResponse response = HttpUtil.makeHttpRequest(Request.Get(url)
         .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
-            connectTimeout(connectTimeout).socketTimeout(socketTimeout).execute().returnResponse();
+            connectTimeout(connectTimeout).socketTimeout(socketTimeout));
+
     int statusCode = response.getStatusLine().getStatusCode();
     // The ontology was successfully retrieved
     if (statusCode == 200) {
@@ -117,9 +128,11 @@ public class BpOntologyDAO {
 
   public List<BpClass> getRootClasses(String id, String apiKey) throws IOException {
     String url = BP_API_BASE + BP_ONTOLOGIES + id + "/" + Constants.BP_CLASSES + "roots?include=prefLabel,hasChildren,created,synonym,definition";
-    HttpResponse response = Request.Get(url)
+
+    HttpResponse response = HttpUtil.makeHttpRequest(Request.Get(url)
         .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
-            connectTimeout(connectTimeout).socketTimeout(socketTimeout).execute().returnResponse();
+            connectTimeout(connectTimeout).socketTimeout(socketTimeout));
+
     int statusCode = response.getStatusLine().getStatusCode();
     // Success
     if (statusCode == 200) {

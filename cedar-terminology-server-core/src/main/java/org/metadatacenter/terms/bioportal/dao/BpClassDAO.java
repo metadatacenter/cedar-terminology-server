@@ -9,6 +9,7 @@ import org.apache.http.util.EntityUtils;
 import org.metadatacenter.terms.bioportal.customObjects.BpPagedResults;
 import org.metadatacenter.terms.bioportal.domainObjects.BpClass;
 import org.metadatacenter.terms.bioportal.domainObjects.BpTreeNode;
+import org.metadatacenter.terms.util.HttpUtil;
 import org.metadatacenter.terms.util.Util;
 
 import javax.xml.ws.http.HTTPException;
@@ -31,9 +32,10 @@ public class BpClassDAO
 
   public BpClass find(String id, String ontology, String apiKey) throws HTTPException, IOException {
     String url = BP_API_BASE + BP_ONTOLOGIES + ontology + "/" + BP_CLASSES + id + "?include=prefLabel,hasChildren,created,synonym,definition";
-    HttpResponse response = Request.Get(url)
+
+    HttpResponse response = HttpUtil.makeHttpRequest(Request.Get(url)
         .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
-            connectTimeout(connectTimeout).socketTimeout(socketTimeout).execute().returnResponse();
+            connectTimeout(connectTimeout).socketTimeout(socketTimeout));
 
     int statusCode = response.getStatusLine().getStatusCode();
     // The class was successfully retrieved
@@ -48,9 +50,10 @@ public class BpClassDAO
 
   public List<BpTreeNode> getTree(String id, String ontology, String apiKey) throws IOException {
     String url = BP_API_BASE + BP_ONTOLOGIES + ontology + "/" + BP_CLASSES + id + "/tree";
-    HttpResponse response = Request.Get(url)
+
+    HttpResponse response = HttpUtil.makeHttpRequest(Request.Get(url)
         .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
-            connectTimeout(connectTimeout).socketTimeout(socketTimeout).execute().returnResponse();
+            connectTimeout(connectTimeout).socketTimeout(socketTimeout));
 
     int statusCode = response.getStatusLine().getStatusCode();
     // The tree was successfully retrieved
@@ -71,9 +74,11 @@ public class BpClassDAO
   {
     String url = BP_API_BASE + BP_ONTOLOGIES + ontology + "/" + BP_CLASSES + id + "/children?"
         + "&page=" + page + "&pagesize=" + pageSize + "&include=prefLabel,hasChildren,created,synonym,definition";
-    HttpResponse response = Request.Get(url)
+
+    HttpResponse response = HttpUtil.makeHttpRequest(Request.Get(url)
         .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
-            connectTimeout(connectTimeout).socketTimeout(socketTimeout).execute().returnResponse();
+            connectTimeout(connectTimeout).socketTimeout(socketTimeout));
+
     int statusCode = response.getStatusLine().getStatusCode();
     // Success
     if (statusCode == 200) {
@@ -88,9 +93,10 @@ public class BpClassDAO
   public BpPagedResults<BpClass> getDescendants(String id, String ontology, int page, int pageSize, String apiKey) throws HTTPException, IOException {
     String url = BP_API_BASE + BP_ONTOLOGIES + ontology + "/" + BP_CLASSES + id + "/descendants?"
     + "&page=" + page + "&pagesize=" + pageSize + "&include=prefLabel,hasChildren,created,synonym,definition";
-    HttpResponse response = Request.Get(url)
+
+    HttpResponse response = HttpUtil.makeHttpRequest(Request.Get(url)
         .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
-            connectTimeout(connectTimeout).socketTimeout(socketTimeout).execute().returnResponse();
+            connectTimeout(connectTimeout).socketTimeout(socketTimeout));
 
     int statusCode = response.getStatusLine().getStatusCode();
     // The class was successfully retrieved
@@ -107,9 +113,11 @@ public class BpClassDAO
   {
     String url = BP_API_BASE + BP_ONTOLOGIES + ontology + "/" + BP_CLASSES
         + id + "/parents" + "?include=prefLabel,hasChildren,created,synonym,definition";
-    HttpResponse response = Request.Get(url)
+
+    HttpResponse response = HttpUtil.makeHttpRequest(Request.Get(url)
         .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
-            connectTimeout(connectTimeout).socketTimeout(socketTimeout).execute().returnResponse();
+            connectTimeout(connectTimeout).socketTimeout(socketTimeout));
+
     int statusCode = response.getStatusLine().getStatusCode();
     // Success
     if (statusCode == 200) {
@@ -131,8 +139,10 @@ public class BpClassDAO
     String url = BP_API_BASE + BP_SEARCH +
         "?also_search_provisional=true&valueset_roots_only=true&ontology_types=VALUE_SET_COLLECTION&ontologies="
         + vsCollection + "&page=" + page + "&pagesize=" + pageSize;
-    HttpResponse response = Request.Get(url).addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
-      connectTimeout(connectTimeout).socketTimeout(socketTimeout).execute().returnResponse();
+
+    HttpResponse response = HttpUtil.makeHttpRequest(Request.Get(url)
+        .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
+            connectTimeout(connectTimeout).socketTimeout(socketTimeout));
 
     int statusCode = response.getStatusLine().getStatusCode();
     // Success
@@ -150,8 +160,10 @@ public class BpClassDAO
   {
     String url = BP_API_BASE + BP_ONTOLOGIES + vsCollection + "/classes/" + vsId + "/children?"
         + "page=" + page + "&pagesize=" + pageSize + "&include=prefLabel,hasChildren,created,synonym,definition";
-    HttpResponse response = Request.Get(url).addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
-      connectTimeout(connectTimeout).socketTimeout(socketTimeout).execute().returnResponse();
+
+    HttpResponse response = HttpUtil.makeHttpRequest(Request.Get(url)
+        .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
+            connectTimeout(connectTimeout).socketTimeout(socketTimeout));
 
     int statusCode = response.getStatusLine().getStatusCode();
     // Success

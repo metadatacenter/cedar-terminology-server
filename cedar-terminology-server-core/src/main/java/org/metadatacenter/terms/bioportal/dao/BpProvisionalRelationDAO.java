@@ -7,6 +7,7 @@ import org.apache.http.client.fluent.Request;
 import org.apache.http.entity.ContentType;
 import org.apache.http.util.EntityUtils;
 import org.metadatacenter.terms.bioportal.domainObjects.BpProvisionalRelation;
+import org.metadatacenter.terms.util.HttpUtil;
 import org.metadatacenter.terms.util.Util;
 
 import javax.xml.ws.http.HTTPException;
@@ -15,25 +16,23 @@ import java.io.IOException;
 import static org.metadatacenter.terms.util.Constants.BP_API_BASE;
 import static org.metadatacenter.terms.util.Constants.BP_PROVISIONAL_RELATIONS;
 
-public class BpProvisionalRelationDAO
-{
+public class BpProvisionalRelationDAO {
   private final int connectTimeout;
   private final int socketTimeout;
 
-  public BpProvisionalRelationDAO(int connectTimeout, int socketTimeout)
-  {
+  public BpProvisionalRelationDAO(int connectTimeout, int socketTimeout) {
     this.connectTimeout = connectTimeout;
     this.socketTimeout = socketTimeout;
   }
 
-  public BpProvisionalRelation create(BpProvisionalRelation relation, String apiKey) throws IOException
-  {
+  public BpProvisionalRelation create(BpProvisionalRelation relation, String apiKey) throws IOException {
     ObjectMapper mapper = new ObjectMapper();
+    String url = BP_API_BASE + BP_PROVISIONAL_RELATIONS;
     // Send request to the BioPortal API
-    HttpResponse response = Request.Post(BP_API_BASE + BP_PROVISIONAL_RELATIONS)
-      .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
-        connectTimeout(connectTimeout).socketTimeout(socketTimeout)
-      .bodyString(mapper.writeValueAsString(relation), ContentType.APPLICATION_JSON).execute().returnResponse();
+    HttpResponse response = HttpUtil.makeHttpRequest(Request.Post(url)
+        .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
+            connectTimeout(connectTimeout).socketTimeout(socketTimeout)
+        .bodyString(mapper.writeValueAsString(relation), ContentType.APPLICATION_JSON));
 
     int statusCode = response.getStatusLine().getStatusCode();
     // The relation was successfully created
@@ -45,11 +44,12 @@ public class BpProvisionalRelationDAO
     }
   }
 
-  public BpProvisionalRelation find(String id, String apiKey) throws IOException
-  {
-    HttpResponse response = Request.Get(BP_API_BASE + BP_PROVISIONAL_RELATIONS + id)
-      .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
-        connectTimeout(connectTimeout).socketTimeout(socketTimeout).execute().returnResponse();
+  public BpProvisionalRelation find(String id, String apiKey) throws IOException {
+    String url = BP_API_BASE + BP_PROVISIONAL_RELATIONS + id;
+
+    HttpResponse response = HttpUtil.makeHttpRequest(Request.Get(url)
+        .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
+            connectTimeout(connectTimeout).socketTimeout(socketTimeout));
 
     int statusCode = response.getStatusLine().getStatusCode();
     // The relation was successfully retrieved
@@ -66,7 +66,8 @@ public class BpProvisionalRelationDAO
 //  {
 //    ObjectMapper mapper = new ObjectMapper();
 //    // Send request to the BioPortal API
-//    HttpResponse response = Request.Patch(Constants.BP_PROVISIONAL_RELATIONS_BASE_URL + Util.getShortIdentifier(relation.getId()))
+//    HttpResponse response = Request.Patch(Constants.BP_PROVISIONAL_RELATIONS_BASE_URL + Util.getShortIdentifier
+// (relation.getId()))
 //        .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
 //            connectTimeout(connectTimeout).socketTimeout(socketTimeout)
 //        .bodyString(mapper.writeValueAsString(relation), ContentType.APPLICATION_JSON).execute().returnResponse();
@@ -75,12 +76,12 @@ public class BpProvisionalRelationDAO
 //    throw new HTTPException(statusCode);
 //  }
 
-  public void delete(String id, String apiKey) throws IOException
-  {
+  public void delete(String id, String apiKey) throws IOException {
+    String url = BP_API_BASE + BP_PROVISIONAL_RELATIONS + id;
     // Send request to the BioPortal API
-    HttpResponse response = Request.Delete(BP_API_BASE + BP_PROVISIONAL_RELATIONS + id)
+    HttpResponse response = HttpUtil.makeHttpRequest(Request.Delete(url)
         .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
-            connectTimeout(connectTimeout).socketTimeout(socketTimeout).execute().returnResponse();
+            connectTimeout(connectTimeout).socketTimeout(socketTimeout));
 
     int statusCode = response.getStatusLine().getStatusCode();
     throw new HTTPException(statusCode);

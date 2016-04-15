@@ -15,7 +15,6 @@ import java.util.List;
 
 import static org.metadatacenter.terms.util.Constants.BP_API_BASE;
 import static org.metadatacenter.terms.util.Constants.BP_ONTOLOGY_TYPE_VS_COLLECTION;
-import static org.metadatacenter.terms.util.Constants.BP_API_WAIT_TIME;
 import static org.metadatacenter.terms.util.Constants.BP_VS_COLLECTIONS_READ;
 import static org.metadatacenter.terms.util.Constants.CEDAR_PROVISIONAL_CLASSES_ONTOLOGY;
 
@@ -49,12 +48,6 @@ public class TerminologyService implements ITerminologyService {
         Ontology ont = ObjectConverter.toOntology(o);
         if (includeDetails) {
           ont.setDetails(getOntologyDetails(ont.getId(), apiKey));
-          //Delay between calls (BioPortal requirement)
-          try {
-            Thread.sleep(BP_API_WAIT_TIME);
-          } catch (InterruptedException e) {
-            e.printStackTrace();
-          }
         }
         ontologies.add(ont);
         System.out.println(ont.getId() + " loaded (" + i++ + ")");
@@ -351,12 +344,6 @@ public class TerminologyService implements ITerminologyService {
     if (includeDetails) {
       for (ValueSetCollection c : vsCollections) {
         c.setDetails(ObjectConverter.toVSCollectionDetails(getOntologyDetails(c.getId(), apiKey)));
-        // Delay between calls (BioPortal requirement)
-//        try {
-//          Thread.sleep(BP_API_WAIT_TIME);
-//        } catch (InterruptedException e) {
-//          e.printStackTrace();
-//        }
       }
     }
     return vsCollections;
