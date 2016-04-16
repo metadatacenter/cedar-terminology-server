@@ -14,12 +14,12 @@ public class HttpUtil {
     int statusCode = response.getStatusLine().getStatusCode();
     int count = 0;
     int maxAttempts = 20;
-    // If too many requests try again...
-    while (statusCode == 429 && count++ < maxAttempts) {
-      System.out.println("BioPortal returned HTTP 429: too many requests. Trying it again...");
+    // Repeat some requests for safety
+    while ((statusCode == 429 || statusCode == 500) && count++ < maxAttempts) {
+      System.out.println("BioPortal returned error " + statusCode + ". Trying it again...");
       //Delay between calls
       try {
-        Thread.sleep(BP_API_WAIT_TIME * 20);
+        Thread.sleep(BP_API_WAIT_TIME * 5);
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
