@@ -71,7 +71,13 @@ public class TerminologyService implements ITerminologyService {
     // Get number of classes
     try {
       BpOntologyMetrics metrics = bpService.findOntologyMetrics(ontologyId, apiKey);
-      details.setNumberOfClasses(metrics.getClasses());
+      if (metrics.getClasses() != null) {
+        details.setNumberOfClasses(Integer.parseInt(metrics.getClasses()));
+      }
+      else {
+        System.out.println("Number of classes is 'null' for " + ontologyId + ". It has been set to 0");
+        details.setNumberOfClasses(0);
+      }
     } catch (HTTPException e) {
       if (e.getStatusCode() == 404) {
         // Do nothing

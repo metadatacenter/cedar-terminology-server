@@ -7,22 +7,22 @@ public class BpOntologyMetrics {
 
   private String id;
   private String created;
-  private int classes;
-  private int individuals;
-  private int properties;
-  private int maxDepth;
-  private int maxChildCount;
-  private int averageChildCount;
-  private int classesWithOneChild;
-  private int classesWithMoreThan25Children;
-  private int classesWithNoDefinition;
+  private String classes;
+  private String individuals;
+  private String properties;
+  private String maxDepth;
+  private String maxChildCount;
+  private String averageChildCount;
+  private String classesWithOneChild;
+  private String classesWithMoreThan25Children;
+  private String classesWithNoDefinition;
 
   public BpOntologyMetrics() {
   }
 
-  public BpOntologyMetrics(String id, String created, int classes, int individuals, int properties, int maxDepth, int
-      maxChildCount, int averageChildCount, int classesWithOneChild, int classesWithMoreThan25Children, int
-                               classesWithNoDefinition) {
+  public BpOntologyMetrics(String id, String created, String classes, String individuals, String properties, String
+      maxDepth, String maxChildCount, String averageChildCount, String classesWithOneChild, String
+      classesWithMoreThan25Children, String classesWithNoDefinition) {
     this.id = id;
     this.created = created;
     this.classes = classes;
@@ -52,75 +52,75 @@ public class BpOntologyMetrics {
     this.created = created;
   }
 
-  public int getClasses() {
+  public String getClasses() {
     return classes;
   }
 
-  public void setClasses(int classes) {
+  public void setClasses(String classes) {
     this.classes = classes;
   }
 
-  public int getIndividuals() {
+  public String getIndividuals() {
     return individuals;
   }
 
-  public void setIndividuals(int individuals) {
+  public void setIndividuals(String individuals) {
     this.individuals = individuals;
   }
 
-  public int getProperties() {
+  public String getProperties() {
     return properties;
   }
 
-  public void setProperties(int properties) {
+  public void setProperties(String properties) {
     this.properties = properties;
   }
 
-  public int getMaxDepth() {
+  public String getMaxDepth() {
     return maxDepth;
   }
 
-  public void setMaxDepth(int maxDepth) {
+  public void setMaxDepth(String maxDepth) {
     this.maxDepth = maxDepth;
   }
 
-  public int getMaxChildCount() {
+  public String getMaxChildCount() {
     return maxChildCount;
   }
 
-  public void setMaxChildCount(int maxChildCount) {
+  public void setMaxChildCount(String maxChildCount) {
     this.maxChildCount = maxChildCount;
   }
 
-  public int getAverageChildCount() {
+  public String getAverageChildCount() {
     return averageChildCount;
   }
 
-  public void setAverageChildCount(int averageChildCount) {
+  public void setAverageChildCount(String averageChildCount) {
     this.averageChildCount = averageChildCount;
   }
 
-  public int getClassesWithOneChild() {
+  public String getClassesWithOneChild() {
     return classesWithOneChild;
   }
 
-  public void setClassesWithOneChild(int classesWithOneChild) {
+  public void setClassesWithOneChild(String classesWithOneChild) {
     this.classesWithOneChild = classesWithOneChild;
   }
 
-  public int getClassesWithMoreThan25Children() {
+  public String getClassesWithMoreThan25Children() {
     return classesWithMoreThan25Children;
   }
 
-  public void setClassesWithMoreThan25Children(int classesWithMoreThan25Children) {
+  public void setClassesWithMoreThan25Children(String classesWithMoreThan25Children) {
     this.classesWithMoreThan25Children = classesWithMoreThan25Children;
   }
 
-  public int getClassesWithNoDefinition() {
+  public String getClassesWithNoDefinition() {
     return classesWithNoDefinition;
   }
 
-  public void setClassesWithNoDefinition(int classesWithNoDefinition) {
+  public void setClassesWithNoDefinition(String classesWithNoDefinition) {
     this.classesWithNoDefinition = classesWithNoDefinition;
   }
 }
