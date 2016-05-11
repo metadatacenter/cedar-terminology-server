@@ -25,7 +25,7 @@ public class Cache {
   public static String apiKeyCache = "8c478417-cae7-473d-bcd7-a03cf229bb5d"; // cedar-public user api key
   private static ScheduledExecutorService executor;
   private static final int refreshInitialDelay = 0;
-  private static final int refreshDelay = 48;
+  private static final int refreshDelay = 13;
   private static final TimeUnit delayUnit = TimeUnit.HOURS;
   private static String valueSetsCachePath;
   private static String ontologiesCachePath;

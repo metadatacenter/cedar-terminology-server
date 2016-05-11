@@ -169,7 +169,7 @@ public class TerminologyServerHttpTest {
   @Rule
   public TestRule watcher = new TestWatcher() {
     protected void starting(Description description) {
-      System.out.println("*** Test: " + description.getMethodName() + "***");
+      System.out.println("\n*** Test: " + description.getMethodName() + " ***");
     }
   };
 
