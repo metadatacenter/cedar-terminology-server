@@ -14,4 +14,3 @@ dist
 */RUNNING_PID
 /.settings
 *.cache
-application-include-bioportal-test.conf
