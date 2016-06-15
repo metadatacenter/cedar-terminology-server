@@ -227,6 +227,56 @@ public class TerminologyServerHttpTest {
   }
 
   @Test
+  public void searchClassesBySourceTest() {
+    running(testServer(TEST_SERVER_PORT), new Runnable() {
+      public void run() {
+        String url = SERVER_URL_BIOPORTAL + BP_SEARCH;
+        // Query parameters
+        String q = "cell";
+        String scope = "classes";
+        String source = "OBI";
+        // Service invocation - Search all
+        WSResponse wsResponse = WS.url(url).setHeader("Authorization", authHeader).setQueryParameter("q", q)
+            .setQueryParameter("scope", scope)
+            .setQueryParameter("sources", source)
+            .get().get(TIMEOUT_MS);
+        // Check HTTP response
+        Assert.assertEquals(OK, wsResponse.getStatus());
+        // Check Content-Type
+        Assert.assertEquals("application/json; charset=utf-8", wsResponse.getHeader("Content-Type"));
+        JsonNode jsonResponse = wsResponse.asJson();
+        JsonNode results = jsonResponse.get("collection");
+        // Check that there are some results
+        Assert.assertTrue("The number of search results for '" + q + "' is lower than expected", results.size() > 1);
+        // Check that the retrieved classes are from the right source
+        for (JsonNode r : results) {
+          String resultSource = r.get("source").asText();
+          String shortResultSource = resultSource.substring(resultSource.lastIndexOf("/") + 1);
+          Assert.assertTrue("Class source does not match the expected source", source.compareTo(shortResultSource) == 0);
+        }
+      }
+    });
+  }
+
+  @Test
+  public void searchClassesByWrongSourceTest() {
+    running(testServer(TEST_SERVER_PORT), new Runnable() {
+      public void run() {
+        String url = SERVER_URL_BIOPORTAL + BP_SEARCH;
+        // Query parameters
+        String q = "cell";
+        String scope = "classes";
+        String source = "WRONG-SOURCE";
+        // Service invocation - Search all
+        WSResponse wsResponse = WS.url(url).setHeader("Authorization", authHeader).setQueryParameter("q", q)
+            .setQueryParameter("scope", scope).setQueryParameter("sources", source).get().get(TIMEOUT_MS);
+        // Check HTTP response
+        Assert.assertEquals(NOT_FOUND, wsResponse.getStatus());
+      }
+    });
+  }
+
+  @Test
   public void searchValueSetsTest() {
     running(testServer(TEST_SERVER_PORT), new Runnable() {
       public void run() {
