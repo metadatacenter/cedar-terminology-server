@@ -58,7 +58,7 @@ public class TerminologyController extends Controller {
           required = false) @QueryParam("sources") String sources,
       @ApiParam(value = "Will perform a search specifically geared towards type-ahead suggestions. Default: false",
           required = false) @QueryParam
-          ("page") boolean suggest,
+          ("suggest") boolean suggest,
       @ApiParam(value = "Ontology for which the subtree search will be performed", required = false) @QueryParam
           ("source") String source,
       @ApiParam(value = "Limits the search to a specific ontology branch", required = false) @QueryParam
