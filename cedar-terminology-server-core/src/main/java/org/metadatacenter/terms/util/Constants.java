@@ -24,6 +24,9 @@ public class Constants
   public static final String BP_SEARCH_SCOPE_VALUE_SETS = "value_sets";
   public static final String BP_SEARCH_SCOPE_VALUES = "values";
 
+  /** BioPortal API endpoint parameters **/
+  public static final String BP_INCLUDE_ALL = "include=all";
+
   /** Other constants **/
   public static final String BP_VS_COLLECTIONS = BP_ONTOLOGIES;
   public static final String CEDAR_PROVISIONAL_CLASSES_ONTOLOGY = "CEDARPC";
