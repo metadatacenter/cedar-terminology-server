@@ -20,7 +20,7 @@ public interface ITerminologyService {
 
   Ontology findOntology(String id, boolean includeDetails, String apiKey) throws IOException;
 
-  List<OntologyClass> getRootClasses(String ontologyId, String apiKey) throws IOException;
+  List<OntologyClass> getRootClasses(String ontologyId, boolean isFlat, String apiKey) throws IOException;
 
   /**
    * Classes
@@ -40,7 +40,7 @@ public interface ITerminologyService {
 
   void deleteProvisionalClass(String id, String apiKey) throws IOException;
 
-  List<TreeNode> getClassTree(String id, String ontology, String apiKey) throws IOException;
+  List<TreeNode> getClassTree(String id, String ontology, boolean isFlat, String apiKey) throws IOException;
 
   PagedResults<OntologyClass> getClassChildren(String id, String ontology, int page, int pageSize, String apiKey)
       throws IOException;

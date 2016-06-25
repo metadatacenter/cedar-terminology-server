@@ -14,15 +14,18 @@ public class BpOntology {
   private String type;
   private String acronym;
   private String name;
+  @JsonProperty("flat")
+  private boolean isFlat;
 
   public BpOntology() {}
 
-  public BpOntology(String id, String ldType, String type, String acronym, String name) {
+  public BpOntology(String id, String ldType, String type, String acronym, String name, boolean isFlat) {
     this.id = id;
     this.ldType = ldType;
     this.type = type;
     this.acronym = acronym;
     this.name = name;
+    this.isFlat = isFlat;
   }
 
   public String getId() {
@@ -63,5 +66,13 @@ public class BpOntology {
 
   public void setName(String name) {
     this.name = name;
+  }
+
+  public boolean getIsFlat() {
+    return isFlat;
+  }
+
+  public void setIsFlat(boolean isFlat) {
+    this.isFlat = isFlat;
   }
 }

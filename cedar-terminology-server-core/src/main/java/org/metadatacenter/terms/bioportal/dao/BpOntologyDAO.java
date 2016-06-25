@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.metadatacenter.terms.util.Constants.BP_API_BASE;
+import static org.metadatacenter.terms.util.Constants.BP_INCLUDE_ALL;
 import static org.metadatacenter.terms.util.Constants.BP_ONTOLOGIES;
 
 public class BpOntologyDAO {
@@ -29,7 +30,7 @@ public class BpOntologyDAO {
   }
 
   public BpOntology find(String id, String apiKey) throws HTTPException, IOException {
-    String url = BP_API_BASE + BP_ONTOLOGIES + id;
+    String url = BP_API_BASE + BP_ONTOLOGIES + id + "?" + BP_INCLUDE_ALL;
 
     HttpResponse response = HttpUtil.makeHttpRequest(Request.Get(url)
         .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
@@ -65,7 +66,7 @@ public class BpOntologyDAO {
   }
 
   public List<BpOntology> findAll(String apiKey) throws HTTPException, IOException {
-    String url = BP_API_BASE + BP_ONTOLOGIES;
+    String url = BP_API_BASE + BP_ONTOLOGIES + "?" + BP_INCLUDE_ALL;
 
     HttpResponse response = HttpUtil.makeHttpRequest(Request.Get(url)
         .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).

@@ -49,6 +49,7 @@ public class TerminologyService implements ITerminologyService {
         if (includeDetails) {
           ont.setDetails(getOntologyDetails(ont.getId(), apiKey));
         }
+        //System.out.println(ont);
         ontologies.add(ont);
         System.out.println(ont.getId() + " loaded (" + i++ + ")");
       }
@@ -115,8 +116,12 @@ public class TerminologyService implements ITerminologyService {
     return details;
   }
 
-  public List<OntologyClass> getRootClasses(String ontologyId, String apiKey) throws IOException {
+  public List<OntologyClass> getRootClasses(String ontologyId, boolean isFlat, String apiKey) throws IOException {
     List<OntologyClass> roots = new ArrayList<>();
+    // If it is a flat ontology BioPortal will return a timeout. An empty list will be returned to avoid calling BioPortal
+    if (isFlat) {
+      return roots;
+    }
     if (ontologyId.compareTo(CEDAR_PROVISIONAL_CLASSES_ONTOLOGY)==0) {
       // Retrieve all provisional classes in that ontology
       // TODO: This call is broken. Use it after it is fixed instead of retrieving all provisional classes and then filtering them
@@ -192,7 +197,11 @@ public class TerminologyService implements ITerminologyService {
     bpService.deleteProvisionalClass(id, apiKey);
   }
 
-  public List<TreeNode> getClassTree(String id, String ontology, String apiKey) throws IOException {
+  public List<TreeNode> getClassTree(String id, String ontology, boolean isFlat, String apiKey) throws IOException {
+    // If it is a flat ontology BioPortal will return a timeout. An empty list will be returned to avoid calling BioPortal
+    if (isFlat) {
+      return new ArrayList<>();
+    }
     List<BpTreeNode> bpNodes = bpService.getClassTree(id, ontology, apiKey);
     List<TreeNode> nodes = new ArrayList<>();
     for (BpTreeNode n : bpNodes) {

@@ -197,11 +197,14 @@ public class TerminologyController extends Controller {
       return badRequest();
     }
     try {
-      List<OntologyClass> roots = termService.getRootClasses(ontology, apiKey);
+      boolean isFlat = Cache.ontologiesCache.get("ontologies").get(ontology).getIsFlat();
+      List<OntologyClass> roots = termService.getRootClasses(ontology, isFlat, apiKey);
       return ok((JsonNode) new ObjectMapper().valueToTree(roots));
     } catch (HTTPException e) {
       return Results.status(e.getStatusCode());
     } catch (IOException e) {
+      return internalServerError(e.getMessage());
+    } catch (ExecutionException e) {
       return internalServerError(e.getMessage());
     }
   }
@@ -295,11 +298,14 @@ public class TerminologyController extends Controller {
     }
     try {
       id = Util.encodeIfNeeded(id);
-      List<TreeNode> tree = termService.getClassTree(Util.encodeIfNeeded(id), ontology, apiKey);
+      boolean isFlat = Cache.ontologiesCache.get("ontologies").get(ontology).getIsFlat();
+      List<TreeNode> tree = termService.getClassTree(Util.encodeIfNeeded(id), ontology, isFlat, apiKey);
       return ok((JsonNode) new ObjectMapper().valueToTree(tree));
     } catch (HTTPException e) {
       return Results.status(e.getStatusCode());
     } catch (IOException e) {
+      return internalServerError(e.getMessage());
+    } catch (ExecutionException e) {
       return internalServerError(e.getMessage());
     }
   }

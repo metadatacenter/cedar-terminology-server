@@ -66,7 +66,9 @@ public class ObjectConverter {
    **/
 
   public static Ontology toOntology(BpOntology o) {
-    return new Ontology(o.getAcronym(), o.getId(), o.getName(), null);
+    // Note that some BioPortal ontologies have the "flat" parameter set to null. In those cases isFlat will be set to false
+    boolean isFlat = o.getIsFlat()? true : false;
+    return new Ontology(o.getAcronym(), o.getId(), o.getName(), isFlat, null);
   }
 
   public static OntologyClass toOntologyClass(BpProvisionalClass pc) {
