@@ -293,6 +293,16 @@ public class TerminologyService implements ITerminologyService {
     return vs;
   }
 
+  public ValueSet findValueSetByValue(String id, String vsCollection, String apiKey) throws IOException {
+    List<BpClass> bpParents = bpService.getClassParents(id, vsCollection, apiKey);
+    ValueSet vs = null;
+    // Keep only the first parent
+    for (int i = 0; i < 1; i++) {
+      vs = ObjectConverter.toValueSet(bpParents.get(i));
+    }
+    return vs;
+  }
+
   public void updateProvisionalValueSet(ValueSet vs, String apiKey) throws IOException {
     bpService.updateProvisionalClass(ObjectConverter.toBpProvisionalClass(vs), apiKey);
   }
@@ -434,6 +444,11 @@ public class TerminologyService implements ITerminologyService {
       }
     }
     return v;
+  }
+
+  public PagedResults<Value> findAllValuesInValueSetByValue(String id, String vsCollection, int page, int pageSize, String apiKey) throws IOException {
+    ValueSet vs = findValueSetByValue(id, vsCollection, apiKey);
+    return findValuesByValueSet(Util.encodeIfNeeded(vs.getLdId()), vsCollection, page, pageSize, apiKey);
   }
 
   public void updateProvisionalValue(Value v, String apiKey) throws IOException {

@@ -74,6 +74,8 @@ public interface ITerminologyService {
 
   ValueSet findValueSet(String id, String vsCollection, String apiKey) throws IOException;
 
+  ValueSet findValueSetByValue(String id, String vsCollection, String apiKey) throws IOException;
+
   void updateProvisionalValueSet(ValueSet vs, String apiKey) throws IOException;
 
   void deleteProvisionalValueSet(String id, String apiKey) throws IOException;
@@ -101,6 +103,8 @@ public interface ITerminologyService {
   Value findRegularValue(String id, String ontology, String apiKey) throws IOException;
 
   Value findValue(String id, String ontology, String apiKey) throws IOException;
+
+  PagedResults<Value> findAllValuesInValueSetByValue(String id, String ontology, int page, int pageSize, String apiKey) throws IOException;
 
   void updateProvisionalValue(Value v, String apiKey) throws IOException;
 
