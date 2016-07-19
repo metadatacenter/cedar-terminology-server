@@ -42,6 +42,7 @@ GET            /bioportal/vs-collections                                        
 POST           /bioportal/vs-collections/:vs_collection/value-sets/:vs/values        controllers.TerminologyController.createValue(vs_collection: String, vs: String)
 GET            /bioportal/vs-collections/:vs_collection/value-sets/:vs/values        controllers.TerminologyController.findValuesByValueSet(vs: String, vs_collection: String, page: Int ?= 1, page_size: Int ?= 50)
 GET            /bioportal/vs-collections/:vs_collection/values/:id                   controllers.TerminologyController.findValue(id: String, vs_collection: String)
+GET            /bioportal/vs-collections/:vs_collection/values/:id/all-values        controllers.TerminologyController.findAllValuesInValueSetByValue(id: String, vs_collection: String, page: Int ?= 1, page_size: Int ?= 50)
 PATCH          /bioportal/values/:id                                                 controllers.TerminologyController.updateValue(id: String)
 DELETE         /bioportal/values/:id                                                 controllers.TerminologyController.deleteValue(id: String)
 
@@ -49,6 +50,7 @@ DELETE         /bioportal/values/:id                                            
 POST           /bioportal/vs-collections/:vs_collection/value-sets                   controllers.TerminologyController.createValueSet(vs_collection: String)
 GET            /bioportal/vs-collections/:vs_collection/value-sets/:id               controllers.TerminologyController.findValueSet(id: String, vs_collection: String)
 GET            /bioportal/vs-collections/:vs_collection/value-sets                   controllers.TerminologyController.findValueSetsByVsCollection(vs_collection : String, page: Int ?= 1, page_size: Int ?= 50)
+GET            /bioportal/vs-collections/:vs_collection/values/:id/value-set         controllers.TerminologyController.findValueSetByValue(id: String, vs_collection: String)
 GET            /bioportal/value-sets                                                 controllers.TerminologyController.findAllValueSets()
 PATCH          /bioportal/value-sets/:id                                             controllers.TerminologyController.updateValueSet(id: String)
 DELETE         /bioportal/value-sets/:id                                             controllers.TerminologyController.deleteValueSet(id: String)
