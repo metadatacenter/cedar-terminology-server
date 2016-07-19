@@ -955,6 +955,7 @@ public class TerminologyController extends Controller {
       return badRequest();
     }
     try {
+      id = Util.encodeIfNeeded(id);
       Value c = termService.findValue(id, vsCollection, apiKey);
       return ok((JsonNode) new ObjectMapper().valueToTree(c));
     } catch (HTTPException e) {
