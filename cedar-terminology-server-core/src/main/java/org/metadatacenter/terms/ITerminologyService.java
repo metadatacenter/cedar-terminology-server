@@ -104,6 +104,8 @@ public interface ITerminologyService {
 
   Value findValue(String id, String ontology, String apiKey) throws IOException;
 
+  TreeNode getValueTree(String id, String vsCollection, String apiKey) throws IOException;
+
   PagedResults<Value> findAllValuesInValueSetByValue(String id, String ontology, int page, int pageSize, String apiKey) throws IOException;
 
   void updateProvisionalValue(Value v, String apiKey) throws IOException;

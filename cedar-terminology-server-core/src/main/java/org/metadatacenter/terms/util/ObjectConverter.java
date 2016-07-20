@@ -204,6 +204,25 @@ public class ObjectConverter {
     return new TreeNode(bpTreeNode.getId(), bpTreeNode.getId(), bpTreeNode.getType(), bpTreeNode.getPrefLabel(), bpTreeNode.getLinks().getOntology(), bpTreeNode.getHasChildren(), children, bpTreeNode.isObsolete());
   }
 
+  // Transforms a value set and its values into a tree node
+  public static TreeNode toTreeNode(ValueSet vs, List<Value> values) {
+    List<TreeNode> children = new ArrayList<>();
+    boolean hasChildren = false;
+    if (values.size() > 0) {
+      hasChildren = true;
+      for (Value v : values) {
+        children.add(toTreeNode(v));
+      }
+    }
+    return new TreeNode(vs.getId(), vs.getLdId(), vs.getLdType(), vs.getType(), vs.getPrefLabel(), vs.getVsCollection(), hasChildren, children, false);
+  }
+
+  public static TreeNode toTreeNode(Value value) {
+    // Values do not have any children -> Emtpy list
+    List<TreeNode> children = new ArrayList<>();
+    return new TreeNode(value.getId(), value.getLdId(), value.getLdType(), value.getType(), value.getPrefLabel(), value.getVsCollection(), false, children, false);
+  }
+
   /**
    * From API object to API object
    */

@@ -995,6 +995,35 @@ public class TerminologyController extends Controller {
   }
 
   @ApiOperation(
+      value = "Get value tree (only for regular classes)",
+      httpMethod = "GET")
+  @ApiResponses(value = {
+      @ApiResponse(code = 200, message = "Success!"),
+      @ApiResponse(code = 400, message = "Bad Request"),
+      @ApiResponse(code = 401, message = "Unauthorized"),
+      @ApiResponse(code = 404, message = "Not Found"),
+      @ApiResponse(code = 500, message = "Internal Server Error")})
+  @ApiImplicitParams(value = {
+      @ApiImplicitParam(name = "id", value = "Value id. It must be encoded",
+          required = true, dataType = "string", paramType = "path"),
+      @ApiImplicitParam(name = "vs_collection", value = "Value set collection. Example: CEDARVS",
+          required = true, dataType = "string", paramType = "path")})
+  public static Result findValueTree(String id, String vsCollection) {
+    if (id.isEmpty() || vsCollection.isEmpty()) {
+      return badRequest();
+    }
+    try {
+      id = Util.encodeIfNeeded(id);
+      TreeNode tree = termService.getValueTree(Util.encodeIfNeeded(id), vsCollection, apiKey);
+      return ok((JsonNode) new ObjectMapper().valueToTree(tree));
+    } catch (HTTPException e) {
+      return Results.status(e.getStatusCode());
+    } catch (IOException e) {
+      return internalServerError(e.getMessage());
+    }
+  }
+
+  @ApiOperation(
       value = "Find all values in the value set that the given value belongs to",
       httpMethod = "GET")
   @ApiResponses(value = {

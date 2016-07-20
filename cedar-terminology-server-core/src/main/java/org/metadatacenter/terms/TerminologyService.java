@@ -446,6 +446,16 @@ public class TerminologyService implements ITerminologyService {
     return v;
   }
 
+  public TreeNode getValueTree(String id, String vsCollection, String apiKey) throws IOException {
+    // TODO: use values for page and pageSize from config file or params
+    int page = 1;
+    int pageSize = 1000;
+    ValueSet vs = findValueSetByValue(id, vsCollection, apiKey);
+    List<Value> values =
+        findValuesByValueSet(Util.encodeIfNeeded(vs.getLdId()), vsCollection, page, pageSize, apiKey).getCollection();
+    return ObjectConverter.toTreeNode(vs, values);
+  }
+
   public PagedResults<Value> findAllValuesInValueSetByValue(String id, String vsCollection, int page, int pageSize, String apiKey) throws IOException {
     ValueSet vs = findValueSetByValue(id, vsCollection, apiKey);
     return findValuesByValueSet(Util.encodeIfNeeded(vs.getLdId()), vsCollection, page, pageSize, apiKey);

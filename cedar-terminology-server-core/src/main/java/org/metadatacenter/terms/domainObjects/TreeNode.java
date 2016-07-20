@@ -27,6 +27,19 @@ public class TreeNode {
   public TreeNode() {
   }
 
+  public TreeNode(String id, String ldId, String ldtype, String type, String prefLabel, String ontology, boolean hasChildren,
+                  List<TreeNode> children, boolean obsolete) {
+    this.id = id;
+    this.ldId = ldId;
+    this.ldtype = ldtype;
+    this.type = type;
+    this.prefLabel = prefLabel;
+    this.ontology = ontology;
+    this.hasChildren = hasChildren;
+    this.children = children;
+    this.obsolete = obsolete;
+  }
+
   public TreeNode(String id, String ldId, String ldtype, String prefLabel, String ontology, boolean hasChildren,
                   List<TreeNode> children, boolean obsolete) {
     this.id = id;
