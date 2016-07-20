@@ -449,7 +449,7 @@ public class TerminologyService implements ITerminologyService {
   public TreeNode getValueTree(String id, String vsCollection, String apiKey) throws IOException {
     // TODO: use values for page and pageSize from config file or params
     int page = 1;
-    int pageSize = 1000;
+    int pageSize = 5000;
     ValueSet vs = findValueSetByValue(id, vsCollection, apiKey);
     List<Value> values =
         findValuesByValueSet(Util.encodeIfNeeded(vs.getLdId()), vsCollection, page, pageSize, apiKey).getCollection();
