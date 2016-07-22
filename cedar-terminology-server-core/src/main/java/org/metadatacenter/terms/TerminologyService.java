@@ -202,10 +202,20 @@ public class TerminologyService implements ITerminologyService {
     if (isFlat) {
       return new ArrayList<>();
     }
-    List<BpTreeNode> bpNodes = bpService.getClassTree(id, ontology, apiKey);
     List<TreeNode> nodes = new ArrayList<>();
-    for (BpTreeNode n : bpNodes) {
-      nodes.add(ObjectConverter.toTreeNode(n));
+    // If it is a class in the CEDARPC ontology...
+    if (ontology.compareTo(CEDAR_PROVISIONAL_CLASSES_ONTOLOGY)==0) {
+      // Get all classes in the ontology and build tree nodes from them
+      List<OntologyClass> classes = findAllProvisionalClasses(ontology, apiKey);
+      for (OntologyClass c : classes) {
+        nodes.add(ObjectConverter.toTreeNodeNoChildren(c));
+      }
+    }
+    else {
+      List<BpTreeNode> bpNodes = bpService.getClassTree(id, ontology, apiKey);
+      for (BpTreeNode n : bpNodes) {
+        nodes.add(ObjectConverter.toTreeNode(n));
+      }
     }
     return nodes;
   }

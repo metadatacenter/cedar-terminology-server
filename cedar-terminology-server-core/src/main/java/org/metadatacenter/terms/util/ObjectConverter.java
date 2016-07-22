@@ -223,6 +223,11 @@ public class ObjectConverter {
     return new TreeNode(value.getId(), value.getLdId(), value.getLdType(), value.getType(), value.getPrefLabel(), value.getVsCollection(), false, children, false);
   }
 
+  public static TreeNode toTreeNodeNoChildren(OntologyClass c) {
+    List<TreeNode> children = new ArrayList<>();
+    return new TreeNode(c.getId(), c.getLdId(), c.getLdType(), c.getType(), c.getPrefLabel(), c.getOntology(),  false, children, false);
+  }
+
   /**
    * From API object to API object
    */
