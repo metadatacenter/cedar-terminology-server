@@ -71,13 +71,20 @@ public class TerminologyService implements ITerminologyService {
     OntologyDetails details = new OntologyDetails();
     // Get number of classes
     try {
-      BpOntologyMetrics metrics = bpService.findOntologyMetrics(ontologyId, apiKey);
-      if (metrics.getClasses() != null) {
-        details.setNumberOfClasses(Integer.parseInt(metrics.getClasses()));
+      // CEDARPC has only one level so the number of classes will be the number of root classes
+      if (ontologyId.compareTo(CEDAR_PROVISIONAL_CLASSES_ONTOLOGY)==0) {
+        int numClasses = getRootClasses(ontologyId, false, apiKey).size();
+        details.setNumberOfClasses(numClasses);
       }
       else {
-        System.out.println("Number of classes is 'null' for " + ontologyId + ". It has been set to 0");
-        details.setNumberOfClasses(0);
+        BpOntologyMetrics metrics = bpService.findOntologyMetrics(ontologyId, apiKey);
+        if (metrics.getClasses() != null) {
+          details.setNumberOfClasses(Integer.parseInt(metrics.getClasses()));
+        }
+        else {
+          System.out.println("Number of classes is 'null' for " + ontologyId + ". It has been set to 0");
+          details.setNumberOfClasses(0);
+        }
       }
     } catch (HTTPException e) {
       if (e.getStatusCode() == 404) {
@@ -123,19 +130,11 @@ public class TerminologyService implements ITerminologyService {
       return roots;
     }
     if (ontologyId.compareTo(CEDAR_PROVISIONAL_CLASSES_ONTOLOGY)==0) {
-      // Retrieve all provisional classes in that ontology
-      // TODO: This call is broken. Use it after it is fixed instead of retrieving all provisional classes and then filtering them
-      //List<BpProvisionalClass> bpRoots = bpService.findAllProvisionalClasses(CEDAR_PROVISIONAL_CLASSES_ONTOLOGY, apiKey);
-      //      for (BpProvisionalClass c : bpRoots) {
-      //        roots.add(ObjectConverter.toOntologyClass(c));
-      //      }
-      List<BpProvisionalClass> bpRoots = bpService.findAllProvisionalClasses(null, apiKey);
+      List<BpProvisionalClass> bpRoots = bpService.findAllProvisionalClasses(ontologyId, apiKey);
       for (BpProvisionalClass c : bpRoots) {
-        if (c.getOntology() != null && Util.getShortIdentifier(c.getOntology()).compareTo(CEDAR_PROVISIONAL_CLASSES_ONTOLOGY)==0) {
           OntologyClass oc = ObjectConverter.toOntologyClass(c);
           oc.setHasChildren(false);
           roots.add(oc);
-        }
       }
     }
     else {
