@@ -88,7 +88,10 @@ public class BpProvisionalClassDAO {
         // on the BioPortal side. For the moment, the following code checksthat the classes provided by BioPortal belong
         // to the given ontology before returning them
         BpProvisionalClass c = mapper.convertValue(n, BpProvisionalClass.class);
-        if (c.getOntology() != null && (Util.getShortIdentifier(c.getOntology())).compareTo(ontology) == 0) {
+        if (ontology == null) {
+          provClasses.add(c);
+        }
+        else if (c.getOntology() != null && (Util.getShortIdentifier(c.getOntology())).compareTo(ontology) == 0) {
           provClasses.add(c);
         }
       }

@@ -1043,7 +1043,7 @@ public class TerminologyController extends Controller {
     }
     try {
       id = Util.encodeIfNeeded(id);
-      TreeNode tree = termService.getValueTree(Util.encodeIfNeeded(id), vsCollection, apiKey);
+      TreeNode tree = termService.getValueTree(id, vsCollection, apiKey);
       return ok((JsonNode) new ObjectMapper().valueToTree(tree));
     } catch (HTTPException e) {
       return Results.status(e.getStatusCode());

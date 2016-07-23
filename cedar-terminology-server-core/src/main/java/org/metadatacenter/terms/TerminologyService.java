@@ -13,10 +13,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.metadatacenter.terms.util.Constants.BP_API_BASE;
-import static org.metadatacenter.terms.util.Constants.BP_ONTOLOGY_TYPE_VS_COLLECTION;
-import static org.metadatacenter.terms.util.Constants.BP_VS_COLLECTIONS_READ;
-import static org.metadatacenter.terms.util.Constants.CEDAR_PROVISIONAL_CLASSES_ONTOLOGY;
+import static org.metadatacenter.terms.util.Constants.*;
 
 public class TerminologyService implements ITerminologyService {
 
@@ -279,12 +276,12 @@ public class TerminologyService implements ITerminologyService {
   }
 
   public ValueSet findProvisionalValueSet(String id, String apiKey) throws IOException {
-    BpProvisionalClass pc = bpService.findBpProvisionalClassById(id, apiKey);
+    BpProvisionalClass pc = bpService.findBpProvisionalClassById(Util.encodeIfNeeded(id), apiKey);
     return ObjectConverter.toValueSet(pc);
   }
 
   public ValueSet findRegularValueSet(String id, String vsCollection, String apiKey) throws IOException {
-    BpClass c = bpService.findBpClassById(id, vsCollection, apiKey);
+    BpClass c = bpService.findBpClassById(Util.encodeIfNeeded(id), vsCollection, apiKey);
     return ObjectConverter.toValueSet(c);
   }
 
@@ -303,11 +300,17 @@ public class TerminologyService implements ITerminologyService {
   }
 
   public ValueSet findValueSetByValue(String id, String vsCollection, String apiKey) throws IOException {
-    List<BpClass> bpParents = bpService.getClassParents(id, vsCollection, apiKey);
     ValueSet vs = null;
-    // Keep only the first parent
-    for (int i = 0; i < 1; i++) {
-      vs = ObjectConverter.toValueSet(bpParents.get(i));
+    if (vsCollection.compareTo(CEDAR_VALUE_SETS_ONTOLOGY) == 0) {
+      Value v = findProvisionalValue(id, apiKey);
+      vs = findValueSet(v.getVsId(), vsCollection, apiKey);
+    }
+    else {
+      List<BpClass> bpParents = bpService.getClassParents(id, vsCollection, apiKey);
+      // Keep only the first parent
+      for (int i = 0; i < 1; i++) {
+        vs = ObjectConverter.toValueSet(bpParents.get(i));
+      }
     }
     return vs;
   }
@@ -345,8 +348,7 @@ public class TerminologyService implements ITerminologyService {
       } else {
         List<Value> values = new ArrayList<>();
         // Get all provisional classes in the vsCollection
-        // TODO: Pass vsCollection instead of null. I did not do it because BioPortal returns error 500
-        List<OntologyClass> classes = findAllProvisionalClasses(null, apiKey);
+        List<OntologyClass> classes = findAllProvisionalClasses(vsCollection, apiKey);
         // Keep those provisional classes that are subclass of the given vs
         for (OntologyClass c : classes) {
           if (c.getSubclassOf() != null) {
