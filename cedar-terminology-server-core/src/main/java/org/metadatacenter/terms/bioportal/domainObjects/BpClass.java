@@ -111,4 +111,18 @@ public class BpClass
   public void setHasChildren(boolean hasChildren) {
     this.hasChildren = hasChildren;
   }
+
+  @Override
+  public String toString() {
+    return "BpClass{" +
+        "id='" + id + '\'' +
+        ", type='" + type + '\'' +
+        ", prefLabel='" + prefLabel + '\'' +
+        ", definition=" + definition +
+        ", synonym=" + synonym +
+        ", provisional=" + provisional +
+        ", links=" + links +
+        ", hasChildren=" + hasChildren +
+        '}';
+  }
 }

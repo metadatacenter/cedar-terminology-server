@@ -28,10 +28,13 @@ public class TerminologyService implements ITerminologyService {
     this.bpService = new BioPortalService(connectTimeout, socketTimeout);
   }
 
-  public PagedResults<SearchResult> search(String q, List<String> scope, List<String> sources, boolean suggest, String source, String subtreeRootId, int maxDepth, int page, int pageSize,
-                                            boolean displayContext, boolean displayLinks, String apiKey, List<String> valueSetsIds) throws
-      IOException {
-    BpPagedResults results = bpService.search(q, scope, sources, suggest, source, subtreeRootId, maxDepth, page, pageSize, displayContext, displayLinks, apiKey);
+  public PagedResults<SearchResult> search(String q, List<String> scope, List<String> sources, boolean suggest,
+                                           String source, String subtreeRootId, int maxDepth, int page, int pageSize,
+                                           boolean displayContext, boolean displayLinks, String apiKey, List<String>
+                                               valueSetsIds) throws IOException {
+    BpPagedResults<BpClass> results = bpService.search(q, scope, sources, suggest, source, subtreeRootId, maxDepth,
+        page, pageSize, displayContext, displayLinks, apiKey);
+
     return ObjectConverter.toSearchResults(results, valueSetsIds);
   }
 

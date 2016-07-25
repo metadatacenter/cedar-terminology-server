@@ -186,8 +186,13 @@ public class ObjectConverter {
         type = BP_TYPE_CLASS;
       }
 
+      String definition = null;
+      if (c.getDefinition() != null && c.getDefinition().size() > 0) {
+        definition = c.getDefinition().get(0);
+      }
+
       String source = c.getLinks().getOntology();
-      SearchResult r = new SearchResult(c.getId(), c.getId(), BP_TYPE_BASE + type, type, c.getPrefLabel(), source);
+      SearchResult r = new SearchResult(c.getId(), c.getId(), BP_TYPE_BASE + type, type, c.getPrefLabel(), definition, source);
       results.add(r);
     }
     return new PagedResults<>(bpr.getPage(), bpr.getPageCount(), bpr.getCollection().size(), bpr.getPrevPage(),
