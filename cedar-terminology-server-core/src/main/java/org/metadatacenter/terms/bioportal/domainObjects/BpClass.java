@@ -6,24 +6,26 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class BpClass
-{
+public class BpClass {
   @JsonProperty("@id")
   private String id;
   @JsonProperty("@type")
   private String type;
   private String prefLabel;
-  private List<String> definition;
+  // Here we use List<Object> instead of List<String> because some BioPortal classes have objects in their definition
+  // field, not just string. An example is the Thing class from schema.org. Using List<String> causes a
+  // deserialization problem
+  private List<Object> definition;
   private List<String> synonym;
   private boolean provisional;
   private BpLinks links;
   private boolean hasChildren;
 
-  public BpClass() {}
+  public BpClass() {
+  }
 
-  public BpClass(String id, String type, String prefLabel, List<String> definition, List<String> synonym,
-    boolean provisional, BpLinks links, boolean hasChildren)
-  {
+  public BpClass(String id, String type, String prefLabel, List<Object> definition, List<String> synonym,
+                 boolean provisional, BpLinks links, boolean hasChildren) {
     this.id = id;
     this.type = type;
     this.prefLabel = prefLabel;
@@ -34,73 +36,59 @@ public class BpClass
     this.hasChildren = hasChildren;
   }
 
-  public String getId()
-  {
+  public String getId() {
     return id;
   }
 
-  public void setId(String id)
-  {
+  public void setId(String id) {
     this.id = id;
   }
 
-  public String getType()
-  {
+  public String getType() {
     return type;
   }
 
-  public void setType(String type)
-  {
+  public void setType(String type) {
     this.type = type;
   }
 
-  public String getPrefLabel()
-  {
+  public String getPrefLabel() {
     return prefLabel;
   }
 
-  public void setPrefLabel(String prefLabel)
-  {
+  public void setPrefLabel(String prefLabel) {
     this.prefLabel = prefLabel;
   }
 
-  public List<String> getDefinition()
-  {
+  public List<Object> getDefinition() {
     return definition;
   }
 
-  public void setDefinition(List<String> definition)
-  {
+  public void setDefinition(List<Object> definition) {
     this.definition = definition;
   }
 
-  public List<String> getSynonym()
-  {
+  public List<String> getSynonym() {
     return synonym;
   }
 
-  public void setSynonym(List<String> synonym)
-  {
+  public void setSynonym(List<String> synonym) {
     this.synonym = synonym;
   }
 
-  public boolean isProvisional()
-  {
+  public boolean isProvisional() {
     return provisional;
   }
 
-  public void setProvisional(boolean provisional)
-  {
+  public void setProvisional(boolean provisional) {
     this.provisional = provisional;
   }
 
-  public BpLinks getLinks()
-  {
+  public BpLinks getLinks() {
     return links;
   }
 
-  public void setLinks(BpLinks links)
-  {
+  public void setLinks(BpLinks links) {
     this.links = links;
   }
 

@@ -8,6 +8,7 @@ import org.metadatacenter.terms.domainObjects.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 
 import static org.metadatacenter.terms.util.Constants.BP_VS_COLLECTIONS_READ;
 import static org.metadatacenter.terms.util.Constants.BP_TYPE_BASE;
@@ -88,7 +89,7 @@ public class ObjectConverter {
 
   public static OntologyClass toOntologyClass(BpClass pc) {
     return new OntologyClass(Util.getShortIdentifier(pc.getId()), pc.getId(), pc.getPrefLabel(), null, pc.getLinks()
-        .getOntology(), pc.getDefinition(),
+        .getOntology(), toListOfString(pc.getDefinition()),
         pc.getSynonym(), null, null, pc.isProvisional(), null, pc.getHasChildren());
   }
 
@@ -113,13 +114,13 @@ public class ObjectConverter {
 
   public static ValueSet toValueSet(BpClass c) {
     return new ValueSet(Util.getShortIdentifier(c.getId()), c.getId(), c.getPrefLabel(), null, c.getLinks()
-        .getOntology(), c.getDefinition(),
+        .getOntology(), toListOfString(c.getDefinition()),
         c.getSynonym(), null, c.isProvisional(), null);
   }
 
   public static Value toValue(BpClass c) {
     return new Value(Util.getShortIdentifier(c.getId()), c.getId(), c.getPrefLabel(), null, null, c.getLinks()
-        .getOntology(), c.getDefinition(),
+        .getOntology(), toListOfString(c.getDefinition()),
         c.getSynonym(), null, c.isProvisional(), null);
   }
 
@@ -188,7 +189,7 @@ public class ObjectConverter {
 
       String definition = null;
       if (c.getDefinition() != null && c.getDefinition().size() > 0) {
-        definition = c.getDefinition().get(0);
+        definition = toListOfString(c.getDefinition()).get(0);
       }
 
       String source = c.getLinks().getOntology();
@@ -260,5 +261,16 @@ public class ObjectConverter {
     return new ValueSet(c.getId(), c.getLdId(), c.getPrefLabel(), c.getCreator(), c.getOntology(), c.getDefinitions(), c
         .getSynonyms(), c.getRelations(), c.isProvisional(), c.getCreated());
   }
+
+  // Utils
+
+  public static List<String> toListOfString(List<Object> objects) {
+    List<String> strings = new ArrayList<>();
+    for (Object object : objects) {
+      strings.add(Objects.toString(object, null));
+    }
+    return strings;
+  }
+
 
 }
