@@ -179,6 +179,11 @@ public class TerminologyService implements ITerminologyService {
     return c;
   }
 
+  public PagedResults<OntologyClass> findAllClassesInOntology(String ontology, int page, int pageSize, String apiKey) throws IOException {
+    BpPagedResults<BpClass> classes = bpService.findAllClassesInOntology(ontology, page, pageSize, apiKey);
+    return ObjectConverter.toClassResults(classes);
+  }
+
   public List<OntologyClass> findAllProvisionalClasses(String ontology, String apiKey) throws IOException {
     List<BpProvisionalClass> provClasses = bpService.findAllProvisionalClasses(ontology, apiKey);
     List<OntologyClass> classes = new ArrayList<>();

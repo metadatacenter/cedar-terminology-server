@@ -34,6 +34,8 @@ public interface ITerminologyService {
 
   OntologyClass findClass(String id, String ontology, String apiKey) throws IOException;
 
+  PagedResults<OntologyClass> findAllClassesInOntology(String ontology, int page, int pageSize, String apiKey) throws IOException;
+
   List<OntologyClass> findAllProvisionalClasses(String ontology, String apiKey) throws IOException;
 
   void updateProvisionalClass(OntologyClass c, String apiKey) throws IOException;

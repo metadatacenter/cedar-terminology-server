@@ -214,6 +214,31 @@ public class TerminologyController extends Controller {
    **/
 
   @ApiOperation(
+      value = "Get all classes for a specific ontology (including provisional classes)",
+      httpMethod = "GET")
+  @ApiResponses(value = {
+      @ApiResponse(code = 200, message = "Success!"),
+      @ApiResponse(code = 400, message = "Bad Request"),
+      @ApiResponse(code = 401, message = "Unauthorized"),
+      @ApiResponse(code = 500, message = "Internal Server Error")})
+  @ApiImplicitParams(value = {
+      @ApiImplicitParam(name = "ontology", value = "Ontology. Example: NCIT",
+          required = true, dataType = "string", paramType = "path")})
+  public static Result findAllClassesForOntology(String ontology, int page, int pageSize) {
+    if (ontology.isEmpty()) {
+      return badRequest();
+    }
+    try {
+      PagedResults<OntologyClass> classes = termService.findAllClassesInOntology(ontology, page, pageSize, apiKey);
+      return ok((JsonNode) new ObjectMapper().valueToTree(classes));
+    } catch (HTTPException e) {
+      return Results.status(e.getStatusCode());
+    } catch (IOException e) {
+      return internalServerError(e.getMessage());
+    }
+  }
+
+  @ApiOperation(
       value = "Create a provisional class",
       httpMethod = "POST")
   @ApiResponses(value = {

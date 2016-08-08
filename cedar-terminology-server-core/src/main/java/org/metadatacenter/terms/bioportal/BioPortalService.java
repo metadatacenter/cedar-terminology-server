@@ -165,6 +165,10 @@ public class BioPortalService implements IBioPortalService
     return bpClassDAO.find(id, ontology, apiKey);
   }
 
+  public BpPagedResults<BpClass> findAllClassesInOntology(String ontology, int page, int pageSize, String apiKey) throws IOException {
+    return bpClassDAO.findAllClassesInOntology(ontology, page, pageSize, apiKey);
+  }
+
   public List<BpTreeNode> getClassTree(String id, String ontology, String apiKey) throws IOException {
     return bpClassDAO.getTree(id, ontology, apiKey);
   }
