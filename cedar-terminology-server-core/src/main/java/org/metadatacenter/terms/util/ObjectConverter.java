@@ -266,8 +266,10 @@ public class ObjectConverter {
 
   public static List<String> toListOfString(List<Object> objects) {
     List<String> strings = new ArrayList<>();
-    for (Object object : objects) {
-      strings.add(Objects.toString(object, null));
+    if (objects != null) {
+      for (Object object : objects) {
+        strings.add(Objects.toString(object, null));
+      }
     }
     return strings;
   }
