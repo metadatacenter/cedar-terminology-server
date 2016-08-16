@@ -11,14 +11,8 @@
   <groupId>org.metadatacenter</groupId>
   <artifactId>cedar-terminology-server</artifactId>
   <name>CEDAR Terminology Server</name>
-<<<<<<< HEAD
   <description>A wrapper for the BioPortal API that simplifies the access to BioPortal ontologies and value sets</description>
-  <version>0.5.5</version>
-=======
-  <description>A wrapper for the BioPortal API that simplifies the access to BioPortal ontologies and value sets
-  </description>
   <version>0.5.6</version>
->>>>>>> release-0.5.6
   <packaging>pom</packaging>
 
   <scm>
