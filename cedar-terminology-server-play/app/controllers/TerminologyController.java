@@ -214,6 +214,31 @@ public class TerminologyController extends Controller {
    **/
 
   @ApiOperation(
+      value = "Get all classes for a specific ontology (including provisional classes)",
+      httpMethod = "GET")
+  @ApiResponses(value = {
+      @ApiResponse(code = 200, message = "Success!"),
+      @ApiResponse(code = 400, message = "Bad Request"),
+      @ApiResponse(code = 401, message = "Unauthorized"),
+      @ApiResponse(code = 500, message = "Internal Server Error")})
+  @ApiImplicitParams(value = {
+      @ApiImplicitParam(name = "ontology", value = "Ontology. Example: NCIT",
+          required = true, dataType = "string", paramType = "path")})
+  public static Result findAllClassesForOntology(String ontology, int page, int pageSize) {
+    if (ontology.isEmpty()) {
+      return badRequest();
+    }
+    try {
+      PagedResults<OntologyClass> classes = termService.findAllClassesInOntology(ontology, page, pageSize, apiKey);
+      return ok((JsonNode) new ObjectMapper().valueToTree(classes));
+    } catch (HTTPException e) {
+      return Results.status(e.getStatusCode());
+    } catch (IOException e) {
+      return internalServerError(e.getMessage());
+    }
+  }
+
+  @ApiOperation(
       value = "Create a provisional class",
       httpMethod = "POST")
   @ApiResponses(value = {
@@ -795,6 +820,35 @@ public class TerminologyController extends Controller {
   }
 
   @ApiOperation(
+      value = "Get value set tree",
+      httpMethod = "GET")
+  @ApiResponses(value = {
+      @ApiResponse(code = 200, message = "Success!"),
+      @ApiResponse(code = 400, message = "Bad Request"),
+      @ApiResponse(code = 401, message = "Unauthorized"),
+      @ApiResponse(code = 404, message = "Not Found"),
+      @ApiResponse(code = 500, message = "Internal Server Error")})
+  @ApiImplicitParams(value = {
+      @ApiImplicitParam(name = "id", value = "Value set id. It must be encoded",
+          required = true, dataType = "string", paramType = "path"),
+      @ApiImplicitParam(name = "vs_collection", value = "Value set collection. Example: CEDARVS",
+          required = true, dataType = "string", paramType = "path")})
+  public static Result findValueSetTree(String id, String vsCollection) {
+    if (id.isEmpty() || vsCollection.isEmpty()) {
+      return badRequest();
+    }
+    try {
+      id = Util.encodeIfNeeded(id);
+      TreeNode tree = termService.getValueSetTree(Util.encodeIfNeeded(id), vsCollection, apiKey);
+      return ok((JsonNode) new ObjectMapper().valueToTree(tree));
+    } catch (HTTPException e) {
+      return Results.status(e.getStatusCode());
+    } catch (IOException e) {
+      return internalServerError(e.getMessage());
+    }
+  }
+
+  @ApiOperation(
       value = "Find all value sets",
       // notes = ...
       httpMethod = "GET")
@@ -1014,7 +1068,7 @@ public class TerminologyController extends Controller {
     }
     try {
       id = Util.encodeIfNeeded(id);
-      TreeNode tree = termService.getValueTree(Util.encodeIfNeeded(id), vsCollection, apiKey);
+      TreeNode tree = termService.getValueTree(id, vsCollection, apiKey);
       return ok((JsonNode) new ObjectMapper().valueToTree(tree));
     } catch (HTTPException e) {
       return Results.status(e.getStatusCode());

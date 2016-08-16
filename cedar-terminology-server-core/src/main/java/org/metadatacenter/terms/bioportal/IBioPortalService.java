@@ -37,6 +37,8 @@ public interface IBioPortalService
 
   BpClass findBpClassById(String id, String ontology, String apiKey) throws IOException;
 
+  BpPagedResults<BpClass> findAllClassesInOntology(String ontology, int page, int pageSize, String apiKey) throws IOException;
+
   List<BpTreeNode> getClassTree(String id, String ontology, String apiKey) throws IOException;
 
   BpPagedResults<BpClass> findValueSetsByValueSetCollection(String vsCollection, int page, int pageSize, String apiKey) throws IOException;

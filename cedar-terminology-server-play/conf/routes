@@ -18,6 +18,7 @@ GET            /bioportal/ontologies/:id                                        
 GET            /bioportal/ontologies/:ontology/classes/roots                         controllers.TerminologyController.findRootClasses(ontology: String)
 
 ### Classes ###
+GET            /bioportal/ontologies/:ontology/classes                               controllers.TerminologyController.findAllClassesForOntology(ontology: String, page: Int ?= 1, page_size: Int ?= 50)
 POST           /bioportal/ontologies/:ontology/classes                               controllers.TerminologyController.createClass(ontology: String)
 GET            /bioportal/classes/provisional                                        controllers.TerminologyController.findAllProvisionalClasses()
 GET            /bioportal/ontologies/:ontology/classes/provisional                   controllers.TerminologyController.findAllProvisionalClassesForOntology(ontology: String)
@@ -52,6 +53,7 @@ POST           /bioportal/vs-collections/:vs_collection/value-sets              
 GET            /bioportal/vs-collections/:vs_collection/value-sets/:id               controllers.TerminologyController.findValueSet(id: String, vs_collection: String)
 GET            /bioportal/vs-collections/:vs_collection/value-sets                   controllers.TerminologyController.findValueSetsByVsCollection(vs_collection : String, page: Int ?= 1, page_size: Int ?= 50)
 GET            /bioportal/vs-collections/:vs_collection/values/:id/value-set         controllers.TerminologyController.findValueSetByValue(id: String, vs_collection: String)
+GET            /bioportal/vs-collections/:vs_collection/value-sets/:id/tree          controllers.TerminologyController.findValueSetTree(id: String, vs_collection: String)
 GET            /bioportal/value-sets                                                 controllers.TerminologyController.findAllValueSets()
 PATCH          /bioportal/value-sets/:id                                             controllers.TerminologyController.updateValueSet(id: String)
 DELETE         /bioportal/value-sets/:id                                             controllers.TerminologyController.deleteValueSet(id: String)

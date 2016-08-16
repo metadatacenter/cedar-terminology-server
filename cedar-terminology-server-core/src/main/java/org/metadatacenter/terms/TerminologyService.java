@@ -13,10 +13,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.metadatacenter.terms.util.Constants.BP_API_BASE;
-import static org.metadatacenter.terms.util.Constants.BP_ONTOLOGY_TYPE_VS_COLLECTION;
-import static org.metadatacenter.terms.util.Constants.BP_VS_COLLECTIONS_READ;
-import static org.metadatacenter.terms.util.Constants.CEDAR_PROVISIONAL_CLASSES_ONTOLOGY;
+import static org.metadatacenter.terms.util.Constants.*;
 
 public class TerminologyService implements ITerminologyService {
 
@@ -31,10 +28,13 @@ public class TerminologyService implements ITerminologyService {
     this.bpService = new BioPortalService(connectTimeout, socketTimeout);
   }
 
-  public PagedResults<SearchResult> search(String q, List<String> scope, List<String> sources, boolean suggest, String source, String subtreeRootId, int maxDepth, int page, int pageSize,
-                                            boolean displayContext, boolean displayLinks, String apiKey, List<String> valueSetsIds) throws
-      IOException {
-    BpPagedResults results = bpService.search(q, scope, sources, suggest, source, subtreeRootId, maxDepth, page, pageSize, displayContext, displayLinks, apiKey);
+  public PagedResults<SearchResult> search(String q, List<String> scope, List<String> sources, boolean suggest,
+                                           String source, String subtreeRootId, int maxDepth, int page, int pageSize,
+                                           boolean displayContext, boolean displayLinks, String apiKey, List<String>
+                                               valueSetsIds) throws IOException {
+    BpPagedResults<BpClass> results = bpService.search(q, scope, sources, suggest, source, subtreeRootId, maxDepth,
+        page, pageSize, displayContext, displayLinks, apiKey);
+
     return ObjectConverter.toSearchResults(results, valueSetsIds);
   }
 
@@ -71,13 +71,20 @@ public class TerminologyService implements ITerminologyService {
     OntologyDetails details = new OntologyDetails();
     // Get number of classes
     try {
-      BpOntologyMetrics metrics = bpService.findOntologyMetrics(ontologyId, apiKey);
-      if (metrics.getClasses() != null) {
-        details.setNumberOfClasses(Integer.parseInt(metrics.getClasses()));
+      // CEDARPC has only one level so the number of classes will be the number of root classes
+      if (ontologyId.compareTo(CEDAR_PROVISIONAL_CLASSES_ONTOLOGY)==0) {
+        int numClasses = getRootClasses(ontologyId, false, apiKey).size();
+        details.setNumberOfClasses(numClasses);
       }
       else {
-        System.out.println("Number of classes is 'null' for " + ontologyId + ". It has been set to 0");
-        details.setNumberOfClasses(0);
+        BpOntologyMetrics metrics = bpService.findOntologyMetrics(ontologyId, apiKey);
+        if (metrics.getClasses() != null) {
+          details.setNumberOfClasses(Integer.parseInt(metrics.getClasses()));
+        }
+        else {
+          System.out.println("Number of classes is 'null' for " + ontologyId + ". It has been set to 0");
+          details.setNumberOfClasses(0);
+        }
       }
     } catch (HTTPException e) {
       if (e.getStatusCode() == 404) {
@@ -123,19 +130,11 @@ public class TerminologyService implements ITerminologyService {
       return roots;
     }
     if (ontologyId.compareTo(CEDAR_PROVISIONAL_CLASSES_ONTOLOGY)==0) {
-      // Retrieve all provisional classes in that ontology
-      // TODO: This call is broken. Use it after it is fixed instead of retrieving all provisional classes and then filtering them
-      //List<BpProvisionalClass> bpRoots = bpService.findAllProvisionalClasses(CEDAR_PROVISIONAL_CLASSES_ONTOLOGY, apiKey);
-      //      for (BpProvisionalClass c : bpRoots) {
-      //        roots.add(ObjectConverter.toOntologyClass(c));
-      //      }
-      List<BpProvisionalClass> bpRoots = bpService.findAllProvisionalClasses(null, apiKey);
+      List<BpProvisionalClass> bpRoots = bpService.findAllProvisionalClasses(ontologyId, apiKey);
       for (BpProvisionalClass c : bpRoots) {
-        if (c.getOntology() != null && Util.getShortIdentifier(c.getOntology()).compareTo(CEDAR_PROVISIONAL_CLASSES_ONTOLOGY)==0) {
           OntologyClass oc = ObjectConverter.toOntologyClass(c);
           oc.setHasChildren(false);
           roots.add(oc);
-        }
       }
     }
     else {
@@ -180,6 +179,11 @@ public class TerminologyService implements ITerminologyService {
     return c;
   }
 
+  public PagedResults<OntologyClass> findAllClassesInOntology(String ontology, int page, int pageSize, String apiKey) throws IOException {
+    BpPagedResults<BpClass> classes = bpService.findAllClassesInOntology(ontology, page, pageSize, apiKey);
+    return ObjectConverter.toClassResults(classes);
+  }
+
   public List<OntologyClass> findAllProvisionalClasses(String ontology, String apiKey) throws IOException {
     List<BpProvisionalClass> provClasses = bpService.findAllProvisionalClasses(ontology, apiKey);
     List<OntologyClass> classes = new ArrayList<>();
@@ -202,10 +206,20 @@ public class TerminologyService implements ITerminologyService {
     if (isFlat) {
       return new ArrayList<>();
     }
-    List<BpTreeNode> bpNodes = bpService.getClassTree(id, ontology, apiKey);
     List<TreeNode> nodes = new ArrayList<>();
-    for (BpTreeNode n : bpNodes) {
-      nodes.add(ObjectConverter.toTreeNode(n));
+    // If it is a class in the CEDARPC ontology...
+    if (ontology.compareTo(CEDAR_PROVISIONAL_CLASSES_ONTOLOGY)==0) {
+      // Get all classes in the ontology and build tree nodes from them
+      List<OntologyClass> classes = findAllProvisionalClasses(ontology, apiKey);
+      for (OntologyClass c : classes) {
+        nodes.add(ObjectConverter.toTreeNodeNoChildren(c));
+      }
+    }
+    else {
+      List<BpTreeNode> bpNodes = bpService.getClassTree(id, ontology, apiKey);
+      for (BpTreeNode n : bpNodes) {
+        nodes.add(ObjectConverter.toTreeNode(n));
+      }
     }
     return nodes;
   }
@@ -270,12 +284,12 @@ public class TerminologyService implements ITerminologyService {
   }
 
   public ValueSet findProvisionalValueSet(String id, String apiKey) throws IOException {
-    BpProvisionalClass pc = bpService.findBpProvisionalClassById(id, apiKey);
+    BpProvisionalClass pc = bpService.findBpProvisionalClassById(Util.encodeIfNeeded(id), apiKey);
     return ObjectConverter.toValueSet(pc);
   }
 
   public ValueSet findRegularValueSet(String id, String vsCollection, String apiKey) throws IOException {
-    BpClass c = bpService.findBpClassById(id, vsCollection, apiKey);
+    BpClass c = bpService.findBpClassById(Util.encodeIfNeeded(id), vsCollection, apiKey);
     return ObjectConverter.toValueSet(c);
   }
 
@@ -294,11 +308,17 @@ public class TerminologyService implements ITerminologyService {
   }
 
   public ValueSet findValueSetByValue(String id, String vsCollection, String apiKey) throws IOException {
-    List<BpClass> bpParents = bpService.getClassParents(id, vsCollection, apiKey);
     ValueSet vs = null;
-    // Keep only the first parent
-    for (int i = 0; i < 1; i++) {
-      vs = ObjectConverter.toValueSet(bpParents.get(i));
+    if (vsCollection.compareTo(CEDAR_VALUE_SETS_ONTOLOGY) == 0) {
+      Value v = findProvisionalValue(id, apiKey);
+      vs = findValueSet(v.getVsId(), vsCollection, apiKey);
+    }
+    else {
+      List<BpClass> bpParents = bpService.getClassParents(id, vsCollection, apiKey);
+      // Keep only the first parent
+      for (int i = 0; i < 1; i++) {
+        vs = ObjectConverter.toValueSet(bpParents.get(i));
+      }
     }
     return vs;
   }
@@ -336,8 +356,7 @@ public class TerminologyService implements ITerminologyService {
       } else {
         List<Value> values = new ArrayList<>();
         // Get all provisional classes in the vsCollection
-        // TODO: Pass vsCollection instead of null. I did not do it because BioPortal returns error 500
-        List<OntologyClass> classes = findAllProvisionalClasses(null, apiKey);
+        List<OntologyClass> classes = findAllProvisionalClasses(vsCollection, apiKey);
         // Keep those provisional classes that are subclass of the given vs
         for (OntologyClass c : classes) {
           if (c.getSubclassOf() != null) {
@@ -451,6 +470,16 @@ public class TerminologyService implements ITerminologyService {
     int page = 1;
     int pageSize = 5000;
     ValueSet vs = findValueSetByValue(id, vsCollection, apiKey);
+    List<Value> values =
+        findValuesByValueSet(Util.encodeIfNeeded(vs.getLdId()), vsCollection, page, pageSize, apiKey).getCollection();
+    return ObjectConverter.toTreeNode(vs, values);
+  }
+
+  public TreeNode getValueSetTree(String id, String vsCollection, String apiKey) throws IOException {
+    // TODO: use values for page and pageSize from config file or params
+    int page = 1;
+    int pageSize = 5000;
+    ValueSet vs = findValueSet(id, vsCollection, apiKey);
     List<Value> values =
         findValuesByValueSet(Util.encodeIfNeeded(vs.getLdId()), vsCollection, page, pageSize, apiKey).getCollection();
     return ObjectConverter.toTreeNode(vs, values);

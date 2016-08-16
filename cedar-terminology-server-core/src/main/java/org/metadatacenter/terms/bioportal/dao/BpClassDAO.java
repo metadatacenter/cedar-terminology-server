@@ -48,6 +48,25 @@ public class BpClassDAO
     }
   }
 
+  public BpPagedResults<BpClass> findAllClassesInOntology(String ontology, int page, int pageSize, String apiKey) throws HTTPException, IOException {
+    String url = BP_API_BASE + BP_ONTOLOGIES + ontology + "/" + BP_CLASSES + "?include=prefLabel,hasChildren,created,synonym,definition"
+        + "&page=" + page + "&pagesize=" + pageSize;
+
+    HttpResponse response = HttpUtil.makeHttpRequest(Request.Get(url)
+        .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
+            connectTimeout(connectTimeout).socketTimeout(socketTimeout));
+
+    int statusCode = response.getStatusLine().getStatusCode();
+    // The classes were successfully retrieved
+    if (statusCode == 200) {
+      ObjectMapper mapper = new ObjectMapper();
+      JsonNode bpResult = mapper.readTree(new String(EntityUtils.toByteArray(response.getEntity())));
+      return mapper.readValue(mapper.treeAsTokens(bpResult), new TypeReference<BpPagedResults<BpClass>>() {});
+    } else {
+      throw new HTTPException(statusCode);
+    }
+  }
+
   public List<BpTreeNode> getTree(String id, String ontology, String apiKey) throws IOException {
     String url = BP_API_BASE + BP_ONTOLOGIES + ontology + "/" + BP_CLASSES + id + "/tree";
 

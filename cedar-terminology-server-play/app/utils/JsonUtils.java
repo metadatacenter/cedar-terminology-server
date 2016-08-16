@@ -1,8 +1,8 @@
 package utils;
 
-import checkers.nullness.quals.NonNull;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.checkerframework.checker.nullness.qual.NonNull;
 
 public class JsonUtils
 {

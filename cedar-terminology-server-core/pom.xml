@@ -6,7 +6,11 @@
   <parent>
     <groupId>org.metadatacenter</groupId>
     <artifactId>cedar-terminology-server</artifactId>
+<<<<<<< HEAD
     <version>0.5.5</version>
+=======
+    <version>0.5.6</version>
+>>>>>>> release-0.5.6
   </parent>
 
   <groupId>org.metadatacenter</groupId>
@@ -19,14 +23,14 @@
     <dependency>
       <groupId>org.apache.httpcomponents</groupId>
       <artifactId>httpclient</artifactId>
-      <version>${apache.httpclient.version}</version>
+      <version>${apache.httpcomponents.httpclient.version}</version>
     </dependency>
 
     <!-- HTTPClient Fluent API-->
     <dependency>
       <groupId>org.apache.httpcomponents</groupId>
       <artifactId>fluent-hc</artifactId>
-      <version>${apache.httpclient.version}</version>
+      <version>${apache.httpclient.fluent-hc.version}</version>
     </dependency>
 
     <!-- Jackson -->
@@ -56,8 +60,8 @@
     </dependency>
 
     <dependency>
-      <groupId>edu.washington.cs.types.checker</groupId>
-      <artifactId>checker-framework</artifactId>
+      <groupId>org.checkerframework</groupId>
+      <artifactId>checker</artifactId>
       <version>${checker.framework.version}</version>
     </dependency>
 
@@ -78,7 +82,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
-        <version>${maven-compiler-plugin.version}</version>
+        <version>${maven.compiler.plugin.version}</version>
         <configuration>
           <source>${java.version}</source>
           <target>${java.version}</target>

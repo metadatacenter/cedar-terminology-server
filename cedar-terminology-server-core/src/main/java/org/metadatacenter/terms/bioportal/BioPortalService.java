@@ -100,7 +100,7 @@ public class BioPortalService implements IBioPortalService
       url += "&suggest=true";
     }
 
-    /** Add source (only for subtree search) **/
+    /** Add source **/
     if (source != null) {
       url += "&ontology=" + source;
       /** Add subtreeRootId **/
@@ -110,6 +110,9 @@ public class BioPortalService implements IBioPortalService
         url += "&max_depth=" + maxDepth;
       }
     }
+
+    /** Include additional information **/
+    url += "&include=prefLabel,definition";
 
     /** Add page and pageSize **/
     url += "&page=" + page + "&pagesize=" + pageSize;
@@ -160,6 +163,10 @@ public class BioPortalService implements IBioPortalService
 
   public BpClass findBpClassById(String id, String ontology, String apiKey) throws IOException {
     return bpClassDAO.find(id, ontology, apiKey);
+  }
+
+  public BpPagedResults<BpClass> findAllClassesInOntology(String ontology, int page, int pageSize, String apiKey) throws IOException {
+    return bpClassDAO.findAllClassesInOntology(ontology, page, pageSize, apiKey);
   }
 
   public List<BpTreeNode> getClassTree(String id, String ontology, String apiKey) throws IOException {

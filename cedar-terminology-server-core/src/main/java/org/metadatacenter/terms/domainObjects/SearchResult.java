@@ -17,18 +17,20 @@ public class SearchResult {
   private String ldType;
   private String type;
   private String prefLabel;
+  private String definition;
   private String source;
 
   // The default constructor is used by Jackson for deserialization
   public SearchResult() {
   }
 
-  public SearchResult(String id, String ldId, String ldType, String type, String prefLabel, String source) {
+  public SearchResult(String id, String ldId, String ldType, String type, String prefLabel, String definition, String source) {
     this.id = id;
     this.ldId = ldId;
     this.ldType = ldType;
     this.type = type;
     this.prefLabel = prefLabel;
+    this.definition = definition;
     this.source = source;
   }
 
@@ -70,6 +72,14 @@ public class SearchResult {
 
   public void setPrefLabel(String prefLabel) {
     this.prefLabel = prefLabel;
+  }
+
+  public String getDefinition() {
+    return definition;
+  }
+
+  public void setDefinition(String definition) {
+    this.definition = definition;
   }
 
   public String getSource() {

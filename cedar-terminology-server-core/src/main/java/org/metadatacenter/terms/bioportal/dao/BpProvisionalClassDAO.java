@@ -83,7 +83,17 @@ public class BpProvisionalClassDAO {
       JsonNode bpResult = mapper.readTree(new String(EntityUtils.toByteArray(response.getEntity())));
       List<BpProvisionalClass> provClasses = new ArrayList<>();
       for (JsonNode n : bpResult) {
-        provClasses.add(mapper.convertValue(n, BpProvisionalClass.class));
+        // Sometimes the call to BioPortal to retrieve all provisional classes for a particular ontology (e.g.
+        // CEDARPC) returns some results that do not belong to any ontology. TODO: This is a bug that should be fixed
+        // on the BioPortal side. For the moment, the following code checksthat the classes provided by BioPortal belong
+        // to the given ontology before returning them
+        BpProvisionalClass c = mapper.convertValue(n, BpProvisionalClass.class);
+        if (ontology == null) {
+          provClasses.add(c);
+        }
+        else if (c.getOntology() != null && (Util.getShortIdentifier(c.getOntology())).compareTo(ontology) == 0) {
+          provClasses.add(c);
+        }
       }
       return provClasses;
     } else {
