@@ -30,7 +30,7 @@
 
   <properties>
     <!-- Do Not Remove This! We need it in Pom.scala -->
-    <scala.version>2.12.0-RC1</scala.version>
+    <scala.version>2.11.5</scala.version>
   </properties>
 
   <dependencies>
