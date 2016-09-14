@@ -48,3 +48,11 @@ Note: The 'dist' folder from the swagger-ui project has been copied to the 'publ
 ## IntelliJ IDEA 14 configuration
 
 Instructions on how to configure IntelliJ 14 to build and run this project are available [here] (https://github.com/metadatacenter/cedar-docs/wiki/Maven-Play-project-configuration-in-IntelliJ-IDEA-14).
+
+## Questions
+
+If you have questions about this repository, please subscribe to the [CEDAR Developer Support
+mailing list](https://mailman.stanford.edu/mailman/listinfo/cedar-developers).
+After subscribing, send messages to cedar-developers at lists.stanford.edu.
+
+
