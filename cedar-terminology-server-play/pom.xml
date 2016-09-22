@@ -22,12 +22,6 @@
     </dependency>
 
     <dependency>
-      <groupId>org.scala-lang</groupId>
-      <artifactId>scala-library</artifactId>
-      <version>${scala.version}</version>
-    </dependency>
-
-    <dependency>
       <groupId>com.typesafe.play</groupId>
       <artifactId>play_${play2.scala.version}</artifactId>
       <version>${play2.version}</version>
