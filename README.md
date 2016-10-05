@@ -1,5 +1,7 @@
 # cedar-terminology-server
 
+[![Build Status](https://travis-ci.org/metadatacenter/cedar-terminology-server.svg?branch=master)](https://travis-ci.org/metadatacenter/cedar-terminology-server)
+
 A wrapper for the BioPortal API that simplifies the access to BioPortal ontologies and value sets from CEDAR tools.
 
 This project is implemented in Java using [Play Framework](http://www.playframework.com/).
