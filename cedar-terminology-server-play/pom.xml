@@ -97,11 +97,6 @@
     </dependency>
 
     <dependency>
-      <groupId>junit</groupId>
-      <artifactId>junit</artifactId>
-    </dependency>
-
-    <dependency>
       <groupId>com.typesafe.play</groupId>
       <artifactId>play-json_${play2.scala.version}</artifactId>
     </dependency>
