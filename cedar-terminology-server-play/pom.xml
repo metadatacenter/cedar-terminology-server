@@ -5,7 +5,7 @@
   <parent>
     <groupId>org.metadatacenter</groupId>
     <artifactId>cedar-terminology-server</artifactId>
-    <version>0.8.2</version>
+    <version>0.8.5</version>
   </parent>
 
   <groupId>org.metadatacenter</groupId>
@@ -18,19 +18,16 @@
     <dependency>
       <groupId>org.metadatacenter</groupId>
       <artifactId>cedar-terminology-server-core</artifactId>
-      <version>${project.version}</version>
     </dependency>
 
     <dependency>
       <groupId>com.typesafe.play</groupId>
       <artifactId>play_${play2.scala.version}</artifactId>
-      <version>${play2.version}</version>
     </dependency>
 
     <dependency>
       <groupId>com.typesafe.play</groupId>
       <artifactId>play-test_${play2.scala.version}</artifactId>
-      <version>${play2.version}</version>
       <scope>test</scope>
     </dependency>
 
@@ -38,46 +35,74 @@
     <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
       <artifactId>jackson-core</artifactId>
-      <version>${jackson.core.version}</version>
     </dependency>
 
     <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
       <artifactId>jackson-databind</artifactId>
-      <version>${jackson.core.version}</version>
     </dependency>
 
     <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
       <artifactId>jackson-annotations</artifactId>
-      <version>${jackson.core.version}</version>
     </dependency>
 
     <dependency>
       <groupId>org.checkerframework</groupId>
       <artifactId>checker</artifactId>
-      <version>${checker.framework.version}</version>
     </dependency>
 
     <!-- Play WS -->
     <dependency>
       <groupId>com.typesafe.play</groupId>
       <artifactId>play-java-ws_2.11</artifactId>
-      <version>${play-java-ws.version}</version>
     </dependency>
 
     <!-- Swagger-Play2 -->
     <dependency>
       <groupId>com.wordnik</groupId>
       <artifactId>swagger-play2_${play2.scala.version}</artifactId>
-      <version>${swagger-play2.version}</version>
     </dependency>
 
     <!-- Google Guava -->
     <dependency>
       <groupId>com.google.guava</groupId>
       <artifactId>guava</artifactId>
-      <version>${google-guava.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.scala-lang</groupId>
+      <artifactId>scala-library</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.scala-lang.modules</groupId>
+      <artifactId>scala-xml_${play2.scala.version}</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>com.typesafe</groupId>
+      <artifactId>config</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>com.typesafe.play</groupId>
+      <artifactId>twirl-api_${play2.scala.version}</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>com.wordnik</groupId>
+      <artifactId>swagger-annotations</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>com.typesafe.play</groupId>
+      <artifactId>play-json_${play2.scala.version}</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
     </dependency>
 
   </dependencies>
