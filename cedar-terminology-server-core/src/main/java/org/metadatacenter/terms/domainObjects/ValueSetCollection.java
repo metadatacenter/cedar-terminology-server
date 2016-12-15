@@ -2,12 +2,12 @@ package org.metadatacenter.terms.domainObjects;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
-import com.wordnik.swagger.annotations.ApiModel;
+//import com.wordnik.swagger.annotations.ApiModel;
 
 import static org.metadatacenter.terms.util.Constants.BP_TYPE_BASE;
 import static org.metadatacenter.terms.util.Constants.BP_TYPE_VS_COLLECTION;
 
-@ApiModel
+//@ApiModel
 @JsonPropertyOrder({"id", "@id", "@type", "type", "name", "details"})
 public class ValueSetCollection {
   private String id;

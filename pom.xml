@@ -11,7 +11,7 @@
   <groupId>org.metadatacenter</groupId>
   <artifactId>cedar-terminology-server</artifactId>
   <name>CEDAR Terminology Server</name>
-  <description>A wrapper for the BioPortal API that simplifies the access to BioPortal ontologies and value sets
+  <description>A wrapper for the BioPortal API that simplifies the access to BioPortal resources
   </description>
   <version>0.8.7-SNAPSHOT</version>
   <packaging>pom</packaging>
@@ -20,26 +20,32 @@
     <connection>scm:git:git@github.com:metadatacenter/cedar-terminology-server.git</connection>
     <developerConnection>scm:git:git@github.com:metadatacenter/cedar-terminology-server.git</developerConnection>
     <url>https://github.com/metadatacenter/cedar-terminology-server</url>
-    <tag>release-0.7.0</tag>
+    <tag>HEAD</tag>
   </scm>
 
   <modules>
     <module>cedar-terminology-server-core</module>
-    <module>cedar-terminology-server-play</module>
+    <module>cedar-terminology-server-application</module>
   </modules>
 
   <properties>
-    <!-- Do Not Remove This! We need it in Pom.scala -->
-    <scala.version>2.11.5</scala.version>
   </properties>
 
   <dependencies>
-
     <dependency>
       <groupId>ch.qos.logback</groupId>
       <artifactId>logback-classic</artifactId>
     </dependency>
-
   </dependencies>
+
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>org.metadatacenter</groupId>
+        <artifactId>cedar-terminology-server-core</artifactId>
+        <version>${cedar.version}</version>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
 
 </project>

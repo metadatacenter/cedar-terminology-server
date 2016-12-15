@@ -4,20 +4,16 @@
 
 A wrapper for the BioPortal API that simplifies the access to BioPortal ontologies and value sets from CEDAR tools.
 
-This project is implemented in Java using [Play Framework](http://www.playframework.com/).
-
-The multimodule structure of this project is based on the template [play-cedar-service](https://github.com/metadatacenter/play-cedar-service),
-which allows the use Maven with the Play Framework.
+This project is implemented in Java using Dropwizard.
 
 The project contains two subdirectories:
 
 - cedar-terminology-server-core: Core server functionality
-- cedar-terminology-server-play: Play-based interface to server
+- cedar-terminology-server-application: Dropwizard-based interface to server
 
 ## Versions
 
 * Java: 1.8
-* Play Framework: 2.3.8
 
 ## Getting started
 
@@ -36,20 +32,20 @@ Go to the project root folder and execute the Maven "test" goal:
 At the project root folder:
 
     mvn install
-    cd cedar-terminology-server-play
-    mvn play2:run
+    cd cedar-terminology-server-application
+    java \
+          -Dkeycloak.config.path="$CEDAR_HOME/keycloak.json" \
+          -jar $CEDAR_HOME/cedar-terminology-server/cedar-terminology-server-application/target/cedar-terminology-server-application-*.jar \
+          server \
+          "$CEDAR_HOME/cedar-terminology-server/cedar-terminology-server-application/config.yml"
 
-By default, the services will be running at http://localhost:9000.
+By default, the services will be running at http://localhost:9004.
 
 ## Documentation
 
-This project uses the Swagger Framework (http://swagger.io/), which provides interactive documentation for the terminology server. The documentation is shown when opening the default page (http://localhost:9000).
+This project uses the Swagger Framework (http://swagger.io/), which provides interactive documentation for the terminology server. The documentation is shown when opening the default page (http://localhost:9004).
 
 Note: The 'dist' folder from the swagger-ui project has been copied to the 'public/swagger-ui' folder and a light customization was done using the instructions provided at [https://github.com/swagger-api/swagger-ui](https://github.com/swagger-api/swagger-ui)
-
-## IntelliJ IDEA 14 configuration
-
-Instructions on how to configure IntelliJ 14 to build and run this project are available [here] (https://github.com/metadatacenter/cedar-docs/wiki/Maven-Play-project-configuration-in-IntelliJ-IDEA-14).
 
 ## Questions
 

@@ -44,10 +44,10 @@
     </dependency>
 
     <!-- Swagger annotations. They can be used by Swagger to generate the service documentation -->
-    <dependency>
-      <groupId>com.wordnik</groupId>
-      <artifactId>swagger-annotations</artifactId>
-    </dependency>
+    <!--<dependency>-->
+      <!--<groupId>com.wordnik</groupId>-->
+      <!--<artifactId>swagger-annotations</artifactId>-->
+    <!--</dependency>-->
 
     <dependency>
       <groupId>org.checkerframework</groupId>
@@ -75,25 +75,6 @@
           <source>${java.version}</source>
           <target>${java.version}</target>
         </configuration>
-      </plugin>
-
-      <plugin>
-        <groupId>net.alchim31.maven</groupId>
-        <artifactId>scala-maven-plugin</artifactId>
-        <version>${scala.maven.plugin.version}</version>
-        <configuration>
-          <source>${java.version}</source>
-          <target>${java.version}</target>
-          <checkMultipleScalaVersions>false</checkMultipleScalaVersions>
-        </configuration>
-        <executions>
-          <execution>
-            <goals>
-              <goal>compile</goal>
-              <goal>testCompile</goal>
-            </goals>
-          </execution>
-        </executions>
       </plugin>
 
     </plugins>

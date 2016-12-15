@@ -2,12 +2,12 @@ package org.metadatacenter.terms.domainObjects;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
-import com.wordnik.swagger.annotations.ApiModel;
-import com.wordnik.swagger.annotations.ApiModelProperty;
+//import com.wordnik.swagger.annotations.ApiModel;
+//import com.wordnik.swagger.annotations.ApiModelProperty;
 
 import java.util.List;
 
-@ApiModel
+//@ApiModel
 @JsonPropertyOrder({"id", "@id", "@type", "type", "prefLabel", "source"})
 public class SearchResult {
   private String id;
