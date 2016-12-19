@@ -1,0 +1,11 @@
+server:
+  applicationConnectors:
+  - type: http
+    port: 3333
+  adminConnectors:
+  - type: http
+    port: 3433
+logging:
+  level: INFO
+  loggers:
+    org.metadatacenter: DEBUG

@@ -17,7 +17,7 @@ public class IndexResource {
 
   static {
     info = new IdentityHashMap<>();
-    info.put("name", "CEDAR ValueRecommender Server");
+    info.put("name", "CEDAR Terminology Server");
   }
 
   public IndexResource() {
