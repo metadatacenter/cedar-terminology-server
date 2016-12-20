@@ -26,7 +26,7 @@ import java.util.concurrent.ExecutionException;
 import static org.metadatacenter.rest.assertion.GenericAssertions.LoggedIn;
 import static org.metadatacenter.terms.util.Constants.*;
 
-@Path("/")
+@Path("/bioportal")
 @Produces(MediaType.APPLICATION_JSON)
 public class SearchResource extends AbstractResource {
 
