@@ -15,7 +15,6 @@ import org.metadatacenter.config.CedarConfig;
 import org.metadatacenter.util.test.TestUtil;
 
 import javax.ws.rs.client.Client;
-import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
@@ -59,8 +58,8 @@ public class SearchResourceTest {
   public void searchAllTest() {
     // Query parameters
     String q = "white blood cell";
-    // Service invocation - Search all
-    Response response = client.target(baseUrlSearch).queryParam("q", q).request(MediaType.APPLICATION_JSON_TYPE)
+    // Service invocation
+    Response response = client.target(baseUrlSearch).queryParam("q", q).request()
         .header("Authorization", authHeader).get();
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
@@ -79,9 +78,8 @@ public class SearchResourceTest {
     // Query parameters
     String q = "white blood cell";
     String scope = "classes";
-    // Service invocation - Search classes
-    Response response = client.target(baseUrlSearch).queryParam("q", q).queryParam("scope", scope).request(MediaType
-        .APPLICATION_JSON_TYPE)
+    // Service invocation
+    Response response = client.target(baseUrlSearch).queryParam("q", q).queryParam("scope", scope).request()
         .header("Authorization", authHeader).get();
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
@@ -101,12 +99,12 @@ public class SearchResourceTest {
     String q = "cell";
     String scope = "classes";
     String source = "OBI";
-    // Service invocation - Search classes
+    // Service invocation
     Response response = client.target(baseUrlSearch)
         .queryParam("q", q)
         .queryParam("scope", scope)
         .queryParam("sources", source)
-        .request(MediaType.APPLICATION_JSON_TYPE).header("Authorization", authHeader).get();
+        .request().header("Authorization", authHeader).get();
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
     // Check Content-Type
@@ -124,6 +122,21 @@ public class SearchResourceTest {
     }
   }
 
+  @Test
+  public void searchClassesByWrongSourceTest() {
+    // Query parameters
+    String q = "cell";
+    String scope = "classes";
+    String source = "WRONG-SOURCE";
+    // Service invocation
+    Response response = client.target(baseUrlSearch)
+        .queryParam("q", q)
+        .queryParam("scope", scope)
+        .queryParam("sources", source)
+        .request().header("Authorization", authHeader).get();
+    // Check HTTP response
+    Assert.assertEquals(Status.NOT_FOUND.getStatusCode(), response.getStatus());
+  }
 
 }
 

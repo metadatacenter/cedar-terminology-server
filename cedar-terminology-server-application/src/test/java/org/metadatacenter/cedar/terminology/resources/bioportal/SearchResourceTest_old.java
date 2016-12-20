@@ -232,7 +232,7 @@ public class SearchResourceTest_old {
 //    });
 //  }
 //
-//  @Test
+//  @Test [done]
 //  public void searchClassesBySourceTest() {
 //    running(testServer(TEST_SERVER_PORT), new Runnable() {
 //      public void run() {
@@ -265,7 +265,7 @@ public class SearchResourceTest_old {
 //    });
 //  }
 //
-//  @Test
+//  @Test [done]
 //  public void searchClassesByWrongSourceTest() {
 //    running(testServer(TEST_SERVER_PORT), new Runnable() {
 //      public void run() {
