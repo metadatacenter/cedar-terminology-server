@@ -46,7 +46,8 @@ public class SearchResourceTest {
     client = new JerseyClientBuilder(RULE.getEnvironment()).build("BioPortal search endpoint client");
     client.property(ClientProperties.CONNECT_TIMEOUT, cedarConfig.getTerminologyConfig().getBioPortal()
         .getConnectTimeout());
-    client.property(ClientProperties.READ_TIMEOUT, cedarConfig.getTerminologyConfig().getBioPortal().getSocketTimeout());
+    client.property(ClientProperties.READ_TIMEOUT, cedarConfig.getTerminologyConfig().getBioPortal().getSocketTimeout
+        ());
   }
 
   @ClassRule
@@ -56,8 +57,10 @@ public class SearchResourceTest {
 
   @Test
   public void searchAllTest() {
-    String query = "white blood cell";
-    Response response = client.target(baseUrlSearch).queryParam("q", query).request(MediaType.APPLICATION_JSON_TYPE)
+    // Query parameters
+    String q = "white blood cell";
+    // Service invocation - Search all
+    Response response = client.target(baseUrlSearch).queryParam("q", q).request(MediaType.APPLICATION_JSON_TYPE)
         .header("Authorization", authHeader).get();
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
@@ -67,7 +70,28 @@ public class SearchResourceTest {
     JsonNode jsonResponse = response.readEntity(JsonNode.class);
     int pageCount = jsonResponse.get("pageCount").asInt();
     int lowLimitPageCount = 2000;
-    Assert.assertTrue("The number of search results for '" + query + "' is lower than expected", pageCount >
+    Assert.assertTrue("The number of search results for '" + q + "' is lower than expected", pageCount >
+        lowLimitPageCount);
+  }
+
+  @Test
+  public void searchClassesTest() {
+    // Query parameters
+    String q = "white blood cell";
+    String scope = "classes";
+    // Service invocation - Search classes
+    Response response = client.target(baseUrlSearch).queryParam("q", q).queryParam("scope", scope).request(MediaType
+        .APPLICATION_JSON_TYPE)
+        .header("Authorization", authHeader).get();
+    // Check HTTP response
+    Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
+    // Check Content-Type
+    Assert.assertEquals(jsonContentType, response.getHeaderString(contentTypeHeader));
+    // Check the number of results
+    JsonNode jsonResponse = response.readEntity(JsonNode.class);
+    int pageCount = jsonResponse.get("pageCount").asInt();
+    int lowLimitPageCount = 2000;
+    Assert.assertTrue("The number of search results for '" + q + "' is lower than expected", pageCount >
         lowLimitPageCount);
   }
 

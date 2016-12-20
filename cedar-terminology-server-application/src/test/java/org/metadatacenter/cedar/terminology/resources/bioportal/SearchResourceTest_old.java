@@ -183,7 +183,7 @@ public class SearchResourceTest_old {
 //   * Search tests
 //   */
 //
-//  @Test
+//  @Test [done]
 //  public void searchAllTest() {
 //    running(testServer(TEST_SERVER_PORT), new Runnable() {
 //      public void run() {
