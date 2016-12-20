@@ -207,7 +207,7 @@ public class SearchResourceTest_old {
 //    });
 //  }
 //
-//  @Test
+//  @Test [done]
 //  public void searchClassesTest() {
 //    running(testServer(TEST_SERVER_PORT), new Runnable() {
 //      public void run() {

@@ -95,6 +95,36 @@ public class SearchResourceTest {
         lowLimitPageCount);
   }
 
+  @Test
+  public void searchClassesBySourceTest() {
+    // Query parameters
+    String q = "cell";
+    String scope = "classes";
+    String source = "OBI";
+    // Service invocation - Search classes
+    Response response = client.target(baseUrlSearch)
+        .queryParam("q", q)
+        .queryParam("scope", scope)
+        .queryParam("sources", source)
+        .request(MediaType.APPLICATION_JSON_TYPE).header("Authorization", authHeader).get();
+    // Check HTTP response
+    Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
+    // Check Content-Type
+    Assert.assertEquals(jsonContentType, response.getHeaderString(contentTypeHeader));
+    // Check that there are some results
+    JsonNode jsonResponse = response.readEntity(JsonNode.class);
+    JsonNode results = jsonResponse.get("collection");
+    Assert.assertTrue("The number of search results for '" + q + "' is lower than expected", results.size() > 1);
+    // Check that the retrieved classes are from the right source
+    for (JsonNode r : results) {
+      String resultSource = r.get("source").asText();
+      String shortResultSource = resultSource.substring(resultSource.lastIndexOf("/") + 1);
+      Assert.assertTrue("Class source does not match the expected source",
+          source.compareTo(shortResultSource) == 0);
+    }
+  }
+
+
 }
 
 
