@@ -1,20 +1,10 @@
 package org.metadatacenter.cedar.terminology.resources.bioportal;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import io.dropwizard.client.JerseyClientBuilder;
-import io.dropwizard.testing.ResourceHelpers;
-import io.dropwizard.testing.junit.DropwizardAppRule;
-import org.glassfish.jersey.client.ClientProperties;
 import org.junit.Assert;
 import org.junit.BeforeClass;
-import org.junit.ClassRule;
 import org.junit.Test;
-import org.metadatacenter.cedar.terminology.TerminologyServerApplication;
-import org.metadatacenter.cedar.terminology.TerminologyServerConfiguration;
-import org.metadatacenter.config.CedarConfig;
-import org.metadatacenter.util.test.TestUtil;
 
-import javax.ws.rs.client.Client;
 import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -23,12 +13,8 @@ import javax.ws.rs.core.Response.Status;
 /**
  * Integration tests. They are done by starting a test server that makes it possible to test the real HTTP stack.
  */
-public class SearchResourceTest {
+public class SearchResourceTest extends AbstractTest {
 
-  private static CedarConfig cedarConfig;
-  private static Client client;
-  private static String authHeader;
-  private static final String BASE_URL = "http://localhost";
   private static final String BP_SEARCH = "bioportal/search";
   private static String baseUrlSearch;
 
@@ -38,21 +24,8 @@ public class SearchResourceTest {
    */
   @BeforeClass
   public static void oneTimeSetUp() {
-    cedarConfig = CedarConfig.getInstance();
-    authHeader = TestUtil.getTestUser1AuthHeader();
     baseUrlSearch = BASE_URL + ":" + RULE.getLocalPort() + "/" + BP_SEARCH;
-
-    client = new JerseyClientBuilder(RULE.getEnvironment()).build("BioPortal search endpoint client");
-    client.property(ClientProperties.CONNECT_TIMEOUT, cedarConfig.getTerminologyConfig().getBioPortal()
-        .getConnectTimeout());
-    client.property(ClientProperties.READ_TIMEOUT, cedarConfig.getTerminologyConfig().getBioPortal().getSocketTimeout
-        ());
   }
-
-  @ClassRule
-  public static final DropwizardAppRule<TerminologyServerConfiguration> RULE =
-      new DropwizardAppRule<>(TerminologyServerApplication.class, ResourceHelpers
-          .resourceFilePath("test-config.yml"));
 
   @Test
   public void searchAllTest() {
@@ -179,28 +152,3 @@ public class SearchResourceTest {
   }
 
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
