@@ -283,7 +283,7 @@ public class SearchResourceTest_old {
 //    });
 //  }
 //
-//  @Test
+//  @Test [done]
 //  public void searchValueSetsTest() {
 //    running(testServer(TEST_SERVER_PORT), new Runnable() {
 //      public void run() {
@@ -308,7 +308,7 @@ public class SearchResourceTest_old {
 //    });
 //  }
 //
-//  @Test
+//  @Test [done]
 //  public void searchValuesTest() {
 //    running(testServer(TEST_SERVER_PORT), new Runnable() {
 //      public void run() {
