@@ -15,6 +15,8 @@ import org.metadatacenter.config.CedarConfig;
 import org.metadatacenter.util.test.TestUtil;
 
 import javax.ws.rs.client.Client;
+import javax.ws.rs.core.HttpHeaders;
+import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
@@ -29,8 +31,6 @@ public class SearchResourceTest {
   private static final String BASE_URL = "http://localhost";
   private static final String BP_SEARCH = "bioportal/search";
   private static String baseUrlSearch;
-  private static final String jsonContentType = "application/json";
-  private static final String contentTypeHeader = "Content-Type";
 
   /**
    * One-time initialization code.
@@ -64,7 +64,7 @@ public class SearchResourceTest {
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
     // Check Content-Type
-    Assert.assertEquals(jsonContentType, response.getHeaderString(contentTypeHeader));
+    Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check the number of results
     JsonNode jsonResponse = response.readEntity(JsonNode.class);
     int pageCount = jsonResponse.get("pageCount").asInt();
@@ -84,7 +84,7 @@ public class SearchResourceTest {
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
     // Check Content-Type
-    Assert.assertEquals(jsonContentType, response.getHeaderString(contentTypeHeader));
+    Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check the number of results
     JsonNode jsonResponse = response.readEntity(JsonNode.class);
     int pageCount = jsonResponse.get("pageCount").asInt();
@@ -108,7 +108,7 @@ public class SearchResourceTest {
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
     // Check Content-Type
-    Assert.assertEquals(jsonContentType, response.getHeaderString(contentTypeHeader));
+    Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check that there are some results
     JsonNode jsonResponse = response.readEntity(JsonNode.class);
     JsonNode results = jsonResponse.get("collection");
@@ -136,6 +136,26 @@ public class SearchResourceTest {
         .request().header("Authorization", authHeader).get();
     // Check HTTP response
     Assert.assertEquals(Status.NOT_FOUND.getStatusCode(), response.getStatus());
+  }
+
+  @Test
+  public void searchValueSetsTest() {
+    // Query parameters
+    String q = "Amblyopia";
+    String scope = "value_sets";
+    // Service invocation
+    Response response = client.target(baseUrlSearch)
+        .queryParam("q", q)
+        .queryParam("scope", scope)
+        .request().header("Authorization", authHeader).get();
+    // Check HTTP response
+    Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
+    // Check Content-Type
+    Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
+    // Check that there are some results
+    JsonNode jsonResponse = response.readEntity(JsonNode.class);
+    JsonNode results = jsonResponse.get("collection");
+    Assert.assertTrue("The number of search results for '" + q + "' is lower than expected", results.size() > 1);
   }
 
 }
