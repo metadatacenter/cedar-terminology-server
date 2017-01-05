@@ -38,6 +38,8 @@
 //        Application.config.getInt("bioportal.socketTimeout"));
 //    apiKey = Application.config.getString("bioportal.apiKeys.cedar");
 //  }
+
+// [DONE]
 //
 //  @ApiOperation(
 //      value = "Find classes, value sets and value set items",

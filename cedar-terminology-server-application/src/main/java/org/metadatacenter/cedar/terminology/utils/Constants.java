@@ -7,7 +7,7 @@ package org.metadatacenter.cedar.terminology.utils;
  */
 public class Constants {
 
-  public static final String BP_ENDPOINT = "bioportal/";
+  public static final String BP_ENDPOINT = "bioportal";
   public static final String BP_SEARCH = "search";
   public static final String BP_CLASSES = "classes";
   public static final String BP_ONTOLOGIES = "ontologies";

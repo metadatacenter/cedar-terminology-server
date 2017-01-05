@@ -15,24 +15,12 @@ import javax.ws.rs.core.Response.Status;
  */
 public class SearchResourceTest extends AbstractTest {
 
-  private static final String BP_SEARCH = "bioportal/search";
-  private static String baseUrlSearch;
-
-  /**
-   * One-time initialization code.
-   * (Called once before any of the test methods in the class).
-   */
-  @BeforeClass
-  public static void oneTimeSetUp() {
-    baseUrlSearch = BASE_URL + ":" + RULE.getLocalPort() + "/" + BP_SEARCH;
-  }
-
   @Test
   public void searchAllTest() {
     // Query parameters
     String q = "white blood cell";
     // Service invocation
-    Response response = client.target(baseUrlSearch).queryParam("q", q).request()
+    Response response = client.target(baseUrlBpSearch).queryParam("q", q).request()
         .header("Authorization", authHeader).get();
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
@@ -52,7 +40,7 @@ public class SearchResourceTest extends AbstractTest {
     String q = "white blood cell";
     String scope = "classes";
     // Service invocation
-    Response response = client.target(baseUrlSearch).queryParam("q", q).queryParam("scope", scope).request()
+    Response response = client.target(baseUrlBpSearch).queryParam("q", q).queryParam("scope", scope).request()
         .header("Authorization", authHeader).get();
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
@@ -73,7 +61,7 @@ public class SearchResourceTest extends AbstractTest {
     String scope = "classes";
     String source = "OBI";
     // Service invocation
-    Response response = client.target(baseUrlSearch)
+    Response response = client.target(baseUrlBpSearch)
         .queryParam("q", q)
         .queryParam("scope", scope)
         .queryParam("sources", source)
@@ -102,7 +90,7 @@ public class SearchResourceTest extends AbstractTest {
     String scope = "classes";
     String source = "WRONG-SOURCE";
     // Service invocation
-    Response response = client.target(baseUrlSearch)
+    Response response = client.target(baseUrlBpSearch)
         .queryParam("q", q)
         .queryParam("scope", scope)
         .queryParam("sources", source)
@@ -117,7 +105,7 @@ public class SearchResourceTest extends AbstractTest {
     String q = "Amblyopia";
     String scope = "value_sets";
     // Service invocation
-    Response response = client.target(baseUrlSearch)
+    Response response = client.target(baseUrlBpSearch)
         .queryParam("q", q)
         .queryParam("scope", scope)
         .request().header("Authorization", authHeader).get();
@@ -137,7 +125,7 @@ public class SearchResourceTest extends AbstractTest {
     String q = "inclusion";
     String scope = "values";
     // Service invocation
-    Response response = client.target(baseUrlSearch)
+    Response response = client.target(baseUrlBpSearch)
         .queryParam("q", q)
         .queryParam("scope", scope)
         .request().header("Authorization", authHeader).get();

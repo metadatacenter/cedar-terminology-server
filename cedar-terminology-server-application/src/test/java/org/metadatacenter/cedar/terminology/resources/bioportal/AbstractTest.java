@@ -11,6 +11,8 @@ import org.metadatacenter.cedar.terminology.TerminologyServerConfiguration;
 import org.metadatacenter.config.CedarConfig;
 import org.metadatacenter.util.test.TestUtil;
 
+import static org.metadatacenter.cedar.terminology.utils.Constants.*;
+
 import javax.ws.rs.client.Client;
 
 /**
@@ -22,6 +24,14 @@ public abstract class AbstractTest {
   protected static Client client;
   protected static String authHeader;
   protected static final String BASE_URL = "http://localhost";
+  protected static String baseUrlBp;
+  protected static String baseUrlBpSearch;
+  protected static String baseUrlBpOntologies;
+
+  @ClassRule
+  public static final DropwizardAppRule<TerminologyServerConfiguration> RULE =
+      new DropwizardAppRule<>(TerminologyServerApplication.class, ResourceHelpers
+          .resourceFilePath("test-config.yml"));
 
   /**
    * One-time initialization code.
@@ -32,13 +42,15 @@ public abstract class AbstractTest {
     cedarConfig = CedarConfig.getInstance();
     authHeader = TestUtil.getTestUser1AuthHeader();
 
+    baseUrlBp = BASE_URL + ":" + RULE.getLocalPort() + "/" + BP_ENDPOINT;
+    baseUrlBpSearch = baseUrlBp + "/" + BP_SEARCH;
+    baseUrlBpOntologies = baseUrlBp + "/" + BP_ONTOLOGIES;
+
     client = new JerseyClientBuilder(RULE.getEnvironment()).build("BioPortal search endpoint client");
     client.property(ClientProperties.CONNECT_TIMEOUT, cedarConfig.getTerminologyConfig().getBioPortal().getConnectTimeout());
     client.property(ClientProperties.READ_TIMEOUT, cedarConfig.getTerminologyConfig().getBioPortal().getSocketTimeout());
   }
 
-  @ClassRule
-  public static final DropwizardAppRule<TerminologyServerConfiguration> RULE =
-      new DropwizardAppRule<>(TerminologyServerApplication.class, ResourceHelpers
-          .resourceFilePath("test-config.yml"));
+
+
 }

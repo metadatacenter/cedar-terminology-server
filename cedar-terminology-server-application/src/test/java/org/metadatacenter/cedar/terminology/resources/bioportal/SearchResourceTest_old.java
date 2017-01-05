@@ -337,7 +337,7 @@ public class SearchResourceTest_old {
 //   * Classes
 //   **/
 //
-//  @Test
+//  @Test [done]
 //  public void createClassTest() {
 //    running(testServer(TEST_SERVER_PORT), new Runnable() {
 //      public void run() {
@@ -376,7 +376,7 @@ public class SearchResourceTest_old {
 //    });
 //  }
 //
-//  @Test
+//  @Test [done]
 //  // TODO: test regular classes
 //  public void findClassTest() {
 //    running(testServer(TEST_SERVER_PORT), new Runnable() {
@@ -491,7 +491,7 @@ public class SearchResourceTest_old {
 //    });
 //  }
 //
-//  @Test
+//  @Test [done]
 //  public void deleteClassTest() {
 //    running(testServer(TEST_SERVER_PORT), new Runnable() {
 //      public void run() {
