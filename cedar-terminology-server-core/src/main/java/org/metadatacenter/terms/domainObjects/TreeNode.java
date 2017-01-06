@@ -96,7 +96,7 @@ public class TreeNode {
     this.ontology = ontology;
   }
 
-  public boolean isHasChildren() {
+  public boolean getHasChildren() {
     return hasChildren;
   }
 

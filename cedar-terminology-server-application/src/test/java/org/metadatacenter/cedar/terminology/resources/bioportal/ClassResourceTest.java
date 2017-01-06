@@ -3,14 +3,18 @@ package org.metadatacenter.cedar.terminology.resources.bioportal;
 import org.junit.*;
 import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.terms.domainObjects.OntologyClass;
+import org.metadatacenter.terms.domainObjects.TreeNode;
 import org.metadatacenter.terms.util.Util;
 
+import javax.ws.rs.Path;
 import javax.ws.rs.client.Entity;
 import javax.ws.rs.core.GenericType;
 import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -129,21 +133,61 @@ public class ClassResourceTest extends AbstractTest {
   // TODO: check that provisional classes are returned too
   @Test
   public void findAllClassesForOntologyTest() {
-    // Create a provisional class
     String ontology = "NCIT";
-    int ontologySize = 1080000;
+    int ontologySize = 108000;
     String url = baseUrlBpOntologies + "/" + ontology + "/" + BP_CLASSES;
     // Service invocation
     Response findResponse = client.target(url).request().header("Authorization", authHeader).get();
-    // Check the number of results retrieved
-    PagedResults<OntologyClass> classes = findResponse.readEntity(new GenericType<PagedResults<OntologyClass>>() {});
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), findResponse.getStatus());
     // Check Content-Type
     Assert.assertEquals(MediaType.APPLICATION_JSON, findResponse.getHeaderString(HttpHeaders.CONTENT_TYPE));
-    // Check the number of results
+    // Check the number of results retrieved
+    PagedResults<OntologyClass> classes = findResponse.readEntity(new GenericType<PagedResults<OntologyClass>>() {});
     int numClassesFound = classes.getPageSize() * classes.getPageCount();
-    Assert.assertTrue("The number of classes found (" +  numClassesFound +") is lower than expected (" + ontologySize + ")" , numClassesFound >= ontologySize);
+    Assert.assertTrue("The number of classes found (" +  numClassesFound + ") is lower than expected (" + ontologySize + ")" , numClassesFound >= ontologySize);
+  }
+
+  // TODO: test it for provisional classes too
+  @Test
+  public void findClassTreeTest() {// @Path("/bioportal/ontologies/{ontology}/classes/{id}/tree")
+    String ontology = "NCIT";
+    // Class "Cellular Process" from NCIT (The parent class is "Biological Process")
+    String classId = "http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C20480";
+    String parentClassId = "http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C17828";
+    String encodedClassId = null;
+    try {
+      encodedClassId = URLEncoder.encode(classId, "UTF-8");
+    } catch (UnsupportedEncodingException e) {
+      e.printStackTrace();
+    }
+    String url = baseUrlBpOntologies + "/" + ontology + "/" + BP_CLASSES + "/" + encodedClassId + "/" + BP_TREE;
+    // Service invocation
+    Response response = client.target(url).request().header("Authorization", authHeader).get();
+    // Check HTTP response
+    Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
+    // Check Content-Type
+    Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
+    // Check that the tree is not empty and that it is correctly expanded to the given class
+    List<TreeNode> tree = response.readEntity(new GenericType<List<TreeNode>>() {});
+    Assert.assertTrue("Empty tree", tree.size() > 0);
+    boolean classFound = false;
+    for (TreeNode node : tree) {
+      // If "Biological Process"
+      if (node.getLdId().equals(parentClassId)) {
+        Assert.assertTrue("The 'hasChildren' property for this node should be set to 'true'", node.getHasChildren() == true);
+        Assert.assertTrue("The number of children returned for this node shouldn't be 0", node.getChildren().size() > 0);
+        for (TreeNode childrenNode : node.getChildren()) {
+          // If "Cellular Process"
+          if (childrenNode.getLdId().equals(classId)) {
+            classFound = true;
+          }
+        }
+      } else {
+        Assert.assertTrue("The number of children returned for this node should be 0", node.getChildren().size() == 0);
+      }
+    }
+    Assert.assertTrue("Given class not found in the returned tree", classFound);
   }
 
   @Test

@@ -11,6 +11,7 @@ import org.metadatacenter.rest.context.CedarRequestContextFactory;
 import org.metadatacenter.rest.exception.CedarAssertionException;
 import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.terms.domainObjects.OntologyClass;
+import org.metadatacenter.terms.domainObjects.TreeNode;
 import org.metadatacenter.terms.util.Util;
 import org.metadatacenter.util.http.CedarResponse;
 import org.metadatacenter.util.json.JsonMapper;
@@ -69,27 +70,26 @@ public class ClassResource extends AbstractResource {
 
   @GET
   @Path("ontologies/{ontology}/classes/{id}")
-//  @ApiOperation(
-//      value = "Find class (either regular or provisional) by id and ontology",
-//      httpMethod = "GET")
-//  @ApiResponses(value = {
-//      @ApiResponse(code = 200, message = "Success!"),
-//      @ApiResponse(code = 400, message = "Bad Request"),
-//      @ApiResponse(code = 401, message = "Unauthorized"),
-//      @ApiResponse(code = 404, message = "Not Found"),
-//      @ApiResponse(code = 500, message = "Internal Server Error")})
-//  @ApiImplicitParams(value = {
-//      @ApiImplicitParam(name = "id", value = "Class id. It must be encoded. Example: http%3A%2F%2Fdata.bioontology" +
-//          ".org%2Fprovisional_classes%2F4f82a7f0-bbba-0133-b23e-005056010074 (provisional), " +
-//          "http%3A%2F%2Fncicb.nci.nih.gov%2Fxml%2Fowl%2FEVS%2FThesaurus.owl%23C3224 (regular) ",
-//          required = true, dataType = "string", paramType = "path"),
-//      @ApiImplicitParam(name = "ontology", value = "Ontology. Example: NCIT",
-//          required = true, dataType = "string", paramType = "path")})
-  public static Response findClass(@PathParam("ontology") String ontology, @PathParam("id") String id) throws
+  //  @ApiOperation(
+  //      value = "Find class (either regular or provisional) by id and ontology",
+  //      httpMethod = "GET")
+  //  @ApiResponses(value = {
+  //      @ApiResponse(code = 200, message = "Success!"),
+  //      @ApiResponse(code = 400, message = "Bad Request"),
+  //      @ApiResponse(code = 401, message = "Unauthorized"),
+  //      @ApiResponse(code = 404, message = "Not Found"),
+  //      @ApiResponse(code = 500, message = "Internal Server Error")})
+  //  @ApiImplicitParams(value = {
+  //      @ApiImplicitParam(name = "id", value = "Class id. It must be encoded. Example: http%3A%2F%2Fdata.bioontology" +
+  //          ".org%2Fprovisional_classes%2F4f82a7f0-bbba-0133-b23e-005056010074 (provisional), " +
+  //          "http%3A%2F%2Fncicb.nci.nih.gov%2Fxml%2Fowl%2FEVS%2FThesaurus.owl%23C3224 (regular) ",
+  //          required = true, dataType = "string", paramType = "path"),
+  //      @ApiImplicitParam(name = "ontology", value = "Ontology. Example: NCIT",
+  //          required = true, dataType = "string", paramType = "path")})
+  public static Response findClass(@PathParam("ontology") String ontology, @PathParam("id") @Encoded String id) throws
       CedarAssertionException {
     try {
-      id = Util.encodeIfNeeded(id);
-      OntologyClass c = terminologyService.findClass(Util.encodeIfNeeded(id), ontology, apiKey);
+      OntologyClass c = terminologyService.findClass(id, ontology, apiKey);
       return Response.ok().entity(JsonMapper.MAPPER.valueToTree(c)).build();
     } catch (HTTPException e) {
       return Response.status(e.getStatusCode()).build();
@@ -101,16 +101,16 @@ public class ClassResource extends AbstractResource {
   @GET
   @Path("ontologies/{ontology}/classes")
   //  @ApiOperation(
-//      value = "Get all classes from a specific ontology (including provisional classes)",
-//      httpMethod = "GET")
-//  @ApiResponses(value = {
-//      @ApiResponse(code = 200, message = "Success!"),
-//      @ApiResponse(code = 400, message = "Bad Request"),
-//      @ApiResponse(code = 401, message = "Unauthorized"),
-//      @ApiResponse(code = 500, message = "Internal Server Error")})
-//  @ApiImplicitParams(value = {
-//      @ApiImplicitParam(name = "ontology", value = "Ontology. Example: NCIT",
-//          required = true, dataType = "string", paramType = "path")})
+  //      value = "Get all classes from a specific ontology (including provisional classes)",
+  //      httpMethod = "GET")
+  //  @ApiResponses(value = {
+  //      @ApiResponse(code = 200, message = "Success!"),
+  //      @ApiResponse(code = 400, message = "Bad Request"),
+  //      @ApiResponse(code = 401, message = "Unauthorized"),
+  //      @ApiResponse(code = 500, message = "Internal Server Error")})
+  //  @ApiImplicitParams(value = {
+  //      @ApiImplicitParam(name = "ontology", value = "Ontology. Example: NCIT",
+  //          required = true, dataType = "string", paramType = "path")})
   public static Response findAllClassesForOntology(@PathParam("ontology") String ontology,
                                                    @QueryParam("page") @DefaultValue("1") int page,
                                                    @QueryParam("pageSize") int pageSize) throws CedarAssertionException {
@@ -119,8 +119,7 @@ public class ClassResource extends AbstractResource {
       pageSize = defaultPageSize;
     }
     try {
-      PagedResults<OntologyClass> classes = terminologyService.findAllClassesInOntology(ontology, page, pageSize,
-          apiKey);
+      PagedResults<OntologyClass> classes = terminologyService.findAllClassesInOntology(ontology, page, pageSize, apiKey);
       return Response.ok().entity(JsonMapper.MAPPER.valueToTree(classes)).build();
     } catch (HTTPException e) {
       return Response.status(e.getStatusCode()).build();
@@ -131,18 +130,18 @@ public class ClassResource extends AbstractResource {
 
   @DELETE
   @Path("classes/{id}")
-//  @ApiOperation(
-//      value = "Delete a provisional class",
-//      httpMethod = "DELETE")
-//  @ApiResponses(value = {
-//      @ApiResponse(code = 204, message = "Success! (No Content)"),
-//      @ApiResponse(code = 400, message = "Bad Request"),
-//      @ApiResponse(code = 401, message = "Unauthorized"),
-//      @ApiResponse(code = 404, message = "Not Found"),
-//      @ApiResponse(code = 500, message = "Internal Server Error")})
-//  @ApiImplicitParams(value = {
-//      @ApiImplicitParam(name = "id", value = "Provisional class id. Example: 720f50f0-ae6f-0133-848f-005056010073",
-//          required = true, dataType = "string", paramType = "path")})
+  //  @ApiOperation(
+  //      value = "Delete a provisional class",
+  //      httpMethod = "DELETE")
+  //  @ApiResponses(value = {
+  //      @ApiResponse(code = 204, message = "Success! (No Content)"),
+  //      @ApiResponse(code = 400, message = "Bad Request"),
+  //      @ApiResponse(code = 401, message = "Unauthorized"),
+  //      @ApiResponse(code = 404, message = "Not Found"),
+  //      @ApiResponse(code = 500, message = "Internal Server Error")})
+  //  @ApiImplicitParams(value = {
+  //      @ApiImplicitParam(name = "id", value = "Provisional class id. Example: 720f50f0-ae6f-0133-848f-005056010073",
+  //          required = true, dataType = "string", paramType = "path")})
   public static Response deleteClass(@PathParam("id") String id) throws CedarAssertionException {
     try {
       terminologyService.deleteProvisionalClass(id, apiKey);
@@ -154,9 +153,8 @@ public class ClassResource extends AbstractResource {
     }
   }
 
-
-
-//
+  @GET
+  @Path("ontologies/{ontology}/classes/{id}/tree")
 //  @ApiOperation(
 //      value = "Get class tree (only for regular classes)",
 //      httpMethod = "GET")
@@ -173,24 +171,21 @@ public class ClassResource extends AbstractResource {
 //          required = true, dataType = "string", paramType = "path"),
 //      @ApiImplicitParam(name = "ontology", value = "Ontology. Example: NCIT",
 //          required = true, dataType = "string", paramType = "path")})
-//  public static Result findClassTree(String id, String ontology) {
-//    if (id.isEmpty() || ontology.isEmpty()) {
-//      return badRequest();
-//    }
-//    try {
-//      id = Util.encodeIfNeeded(id);
-//      boolean isFlat = Cache.ontologiesCache.get("ontologies").get(ontology).getIsFlat();
-//      List<TreeNode> tree = termService.getClassTree(Util.encodeIfNeeded(id), ontology, isFlat, apiKey);
-//      return ok((JsonNode) new ObjectMapper().valueToTree(tree));
-//    } catch (HTTPException e) {
-//      return Results.status(e.getStatusCode());
-//    } catch (IOException e) {
-//      return internalServerError(e.getMessage());
-//    } catch (ExecutionException e) {
-//      return internalServerError(e.getMessage());
-//    }
-//  }
-//
+  public static Response findClassTree(@PathParam("ontology") String ontology, @PathParam("id") @Encoded String id) throws
+      CedarAssertionException {
+    try {
+      boolean isFlat = Cache.ontologiesCache.get("ontologies").get(ontology).getIsFlat();
+      List<TreeNode> tree = terminologyService.getClassTree(id, ontology, isFlat, apiKey);
+      return Response.ok().entity(JsonMapper.MAPPER.valueToTree(tree)).build();
+    } catch (HTTPException e) {
+      return Response.status(e.getStatusCode()).build();
+    } catch (IOException e) {
+      throw new CedarAssertionException(e);
+    } catch (ExecutionException e) {
+      throw new CedarAssertionException(e);
+    }
+  }
+
 //  @ApiOperation(
 //      value = "Get class children (only for regular classes)",
 //      httpMethod = "GET")
