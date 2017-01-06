@@ -240,6 +240,7 @@
 //    }
 //  }
 //
+//  [done]
 //  @ApiOperation(
 //      value = "Create a provisional class",
 //      httpMethod = "POST")
@@ -272,6 +273,7 @@
 //    }
 //  }
 //
+//  [done]
 //  @ApiOperation(
 //      value = "Find class (either regular or provisional) by id and ontology",
 //      httpMethod = "GET")
@@ -525,6 +527,7 @@
 //    return internalServerError();
 //  }
 //
+//  [done]
 //  @ApiOperation(
 //      value = "Delete a provisional class",
 //      httpMethod = "DELETE")

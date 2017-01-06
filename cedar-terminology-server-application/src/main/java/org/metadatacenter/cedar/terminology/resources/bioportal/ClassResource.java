@@ -98,6 +98,37 @@ public class ClassResource extends AbstractResource {
     }
   }
 
+  @GET
+  @Path("ontologies/{ontology}/classes")
+  //  @ApiOperation(
+//      value = "Get all classes from a specific ontology (including provisional classes)",
+//      httpMethod = "GET")
+//  @ApiResponses(value = {
+//      @ApiResponse(code = 200, message = "Success!"),
+//      @ApiResponse(code = 400, message = "Bad Request"),
+//      @ApiResponse(code = 401, message = "Unauthorized"),
+//      @ApiResponse(code = 500, message = "Internal Server Error")})
+//  @ApiImplicitParams(value = {
+//      @ApiImplicitParam(name = "ontology", value = "Ontology. Example: NCIT",
+//          required = true, dataType = "string", paramType = "path")})
+  public static Response findAllClassesForOntology(@PathParam("ontology") String ontology,
+                                                   @QueryParam("page") @DefaultValue("1") int page,
+                                                   @QueryParam("pageSize") int pageSize) throws CedarAssertionException {
+    // If pageSize not defined, set default value
+    if (pageSize == 0) {
+      pageSize = defaultPageSize;
+    }
+    try {
+      PagedResults<OntologyClass> classes = terminologyService.findAllClassesInOntology(ontology, page, pageSize,
+          apiKey);
+      return Response.ok().entity(JsonMapper.MAPPER.valueToTree(classes)).build();
+    } catch (HTTPException e) {
+      return Response.status(e.getStatusCode()).build();
+    } catch (IOException e) {
+      throw new CedarAssertionException(e);
+    }
+  }
+
   @DELETE
   @Path("classes/{id}")
 //  @ApiOperation(
@@ -122,6 +153,8 @@ public class ClassResource extends AbstractResource {
       throw new CedarAssertionException(e);
     }
   }
+
+
 
 //
 //  @ApiOperation(

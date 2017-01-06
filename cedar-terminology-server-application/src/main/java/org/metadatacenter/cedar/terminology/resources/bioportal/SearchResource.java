@@ -47,6 +47,7 @@ public class SearchResource extends AbstractResource {
     c.must(c.user()).be(LoggedIn);
 
     try {
+      // If pageSize not defined, set default value
       if (pageSize == 0) {
         pageSize = defaultPageSize;
       }

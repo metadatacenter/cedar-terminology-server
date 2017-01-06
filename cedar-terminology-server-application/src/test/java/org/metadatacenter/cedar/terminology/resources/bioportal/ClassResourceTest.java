@@ -1,10 +1,12 @@
 package org.metadatacenter.cedar.terminology.resources.bioportal;
 
 import org.junit.*;
+import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.terms.domainObjects.OntologyClass;
 import org.metadatacenter.terms.util.Util;
 
 import javax.ws.rs.client.Entity;
+import javax.ws.rs.core.GenericType;
 import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -94,8 +96,8 @@ public class ClassResourceTest extends AbstractTest {
     Assert.assertEquals(expected.isProvisional(), created.isProvisional());
   }
 
-  @Test
   // TODO: test regular classes
+  @Test
   public void findClassTest() {
     // Create a provisional class
     OntologyClass created = createClass();
@@ -122,6 +124,26 @@ public class ClassResourceTest extends AbstractTest {
     Assert.assertEquals(new HashSet<>(created.getRelations()), new HashSet<>(found.getRelations()));
     Assert.assertEquals(created.isProvisional(), found.isProvisional());
     Assert.assertEquals(created.getCreated(), found.getCreated());
+  }
+
+  // TODO: check that provisional classes are returned too
+  @Test
+  public void findAllClassesForOntologyTest() {
+    // Create a provisional class
+    String ontology = "NCIT";
+    int ontologySize = 1080000;
+    String url = baseUrlBpOntologies + "/" + ontology + "/" + BP_CLASSES;
+    // Service invocation
+    Response findResponse = client.target(url).request().header("Authorization", authHeader).get();
+    // Check the number of results retrieved
+    PagedResults<OntologyClass> classes = findResponse.readEntity(new GenericType<PagedResults<OntologyClass>>() {});
+    // Check HTTP response
+    Assert.assertEquals(Status.OK.getStatusCode(), findResponse.getStatus());
+    // Check Content-Type
+    Assert.assertEquals(MediaType.APPLICATION_JSON, findResponse.getHeaderString(HttpHeaders.CONTENT_TYPE));
+    // Check the number of results
+    int numClassesFound = classes.getPageSize() * classes.getPageCount();
+    Assert.assertTrue("The number of classes found (" +  numClassesFound +") is lower than expected (" + ontologySize + ")" , numClassesFound >= ontologySize);
   }
 
   @Test
