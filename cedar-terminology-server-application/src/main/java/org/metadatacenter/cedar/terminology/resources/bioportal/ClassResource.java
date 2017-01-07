@@ -186,41 +186,43 @@ public class ClassResource extends AbstractResource {
     }
   }
 
-//  @ApiOperation(
-//      value = "Get class children (only for regular classes)",
-//      httpMethod = "GET")
-//  @ApiResponses(value = {
-//      @ApiResponse(code = 200, message = "Success!"),
-//      @ApiResponse(code = 400, message = "Bad Request"),
-//      @ApiResponse(code = 401, message = "Unauthorized"),
-//      @ApiResponse(code = 404, message = "Not Found"),
-//      @ApiResponse(code = 500, message = "Internal Server Error")})
-//  @ApiImplicitParams(value = {
-//      @ApiImplicitParam(name = "id", value = "Class id. It must be encoded. Example: http%3A%2F%2Fdata.bioontology" +
-//          ".org%2Fprovisional_classes%2F4f82a7f0-bbba-0133-b23e-005056010074 (provisional), " +
-//          "http%3A%2F%2Fncicb.nci.nih.gov%2Fxml%2Fowl%2FEVS%2FThesaurus.owl%23C3224 (regular) ",
-//          required = true, dataType = "string", paramType = "path"),
-//      @ApiImplicitParam(name = "ontology", value = "Ontology. Example: NCIT",
-//          required = true, dataType = "string", paramType = "path")})
-//  public static Result findClassChildren(String id, String ontology, @ApiParam(value = "Integer representing the " +
-//      "page number. Default: 'page=1'", required = false) @QueryParam("page") int page, @ApiParam(value = "Integer " +
-//      "representing the size of the returned page. Default: 'pageSize=50'", required = false) @QueryParam
-//      ("page_size") int pageSize) {
-//    if (id.isEmpty() || ontology.isEmpty()) {
-//      return badRequest();
-//    }
-//    try {
-//      id = Util.encodeIfNeeded(id);
-//      PagedResults<OntologyClass> children = termService.getClassChildren(Util.encodeIfNeeded(id), ontology, page,
-//          pageSize, apiKey);
-//      return ok((JsonNode) new ObjectMapper().valueToTree(children));
-//    } catch (HTTPException e) {
-//      return Results.status(e.getStatusCode());
-//    } catch (IOException e) {
-//      return internalServerError(e.getMessage());
-//    }
-//  }
-//
+  @GET
+  @Path("ontologies/{ontology}/classes/{id}/children")
+  //  @ApiOperation(
+  //      value = "Get class children (only for regular classes)",
+  //      httpMethod = "GET")
+  //  @ApiResponses(value = {
+  //      @ApiResponse(code = 200, message = "Success!"),
+  //      @ApiResponse(code = 400, message = "Bad Request"),
+  //      @ApiResponse(code = 401, message = "Unauthorized"),
+  //      @ApiResponse(code = 404, message = "Not Found"),
+  //      @ApiResponse(code = 500, message = "Internal Server Error")})
+  //  @ApiImplicitParams(value = {
+  //      @ApiImplicitParam(name = "id", value = "Class id. It must be encoded. Example: http%3A%2F%2Fdata
+  // .bioontology" +
+  //          ".org%2Fprovisional_classes%2F4f82a7f0-bbba-0133-b23e-005056010074 (provisional), " +
+  //          "http%3A%2F%2Fncicb.nci.nih.gov%2Fxml%2Fowl%2FEVS%2FThesaurus.owl%23C3224 (regular) ",
+  //          required = true, dataType = "string", paramType = "path"),
+  //      @ApiImplicitParam(name = "ontology", value = "Ontology. Example: NCIT",
+  //          required = true, dataType = "string", paramType = "path")})
+  public static Response findClassChildren(@PathParam("ontology") String ontology, @PathParam("id") @Encoded String id,
+                                           @QueryParam("page") @DefaultValue("1") int page, @QueryParam("pageSize")
+                                             int pageSize) throws CedarAssertionException {
+    // If pageSize not defined, set default value
+    if (pageSize == 0) {
+      pageSize = defaultPageSize;
+    }
+    try {
+      PagedResults<OntologyClass> children = terminologyService.getClassChildren(id, ontology, page,
+          pageSize, apiKey);
+      return Response.ok().entity(JsonMapper.MAPPER.valueToTree(children)).build();
+    } catch (HTTPException e) {
+      return Response.status(e.getStatusCode()).build();
+    } catch (IOException e) {
+      throw new CedarAssertionException(e);
+    }
+  }
+
 //  @ApiOperation(
 //      value = "Find descendants of a given class",
 //      httpMethod = "GET")

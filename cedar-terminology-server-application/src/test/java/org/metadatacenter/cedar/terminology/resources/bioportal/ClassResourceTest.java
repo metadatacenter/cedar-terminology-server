@@ -150,7 +150,7 @@ public class ClassResourceTest extends AbstractTest {
 
   // TODO: test it for provisional classes too
   @Test
-  public void findClassTreeTest() {// @Path("/bioportal/ontologies/{ontology}/classes/{id}/tree")
+  public void findClassTreeTest() {
     String ontology = "NCIT";
     // Class "Cellular Process" from NCIT (The parent class is "Biological Process")
     String classId = "http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C20480";
@@ -188,6 +188,38 @@ public class ClassResourceTest extends AbstractTest {
       }
     }
     Assert.assertTrue("Given class not found in the returned tree", classFound);
+  }
+
+  // TODO: test it for provisional classes too
+  @Test
+  public void findClassChildrenTest() {
+    String ontology = "NCIT";
+    // Class "Biological Process" from NCIT. One of its children is "Cellular Process".
+    String classId = "http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C17828";
+    String childClassId = "http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C20480";
+    String encodedClassId = null;
+    try {
+      encodedClassId = URLEncoder.encode(classId, "UTF-8");
+    } catch (UnsupportedEncodingException e) {
+      e.printStackTrace();
+    }
+    String url = baseUrlBpOntologies + "/" + ontology + "/" + BP_CLASSES + "/" + encodedClassId + "/" + BP_CHILDREN;
+    // Service invocation
+    Response response = client.target(url).request().header("Authorization", authHeader).get();
+    // Check HTTP response
+    Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
+    // Check Content-Type
+    Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
+    // Check that the call returns some children and that one of them is "Cellular Process".
+    PagedResults<OntologyClass> children = response.readEntity(new GenericType<PagedResults<OntologyClass>>() {});
+    Assert.assertTrue("Empty tree", children.getCollection().size() > 0);
+    boolean childFound = false;
+    for (OntologyClass c : children.getCollection()) {
+      if (c.getLdId().equals(childClassId)) {
+        childFound = true;
+      }
+    }
+    Assert.assertTrue("Child " + childClassId + " not found for the given class", childFound);
   }
 
   @Test
