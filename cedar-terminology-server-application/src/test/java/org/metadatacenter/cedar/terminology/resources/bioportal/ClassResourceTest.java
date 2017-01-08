@@ -316,29 +316,25 @@ public class ClassResourceTest extends AbstractTest {
     }
   }
 
-//
-//  @Test
-//  public void findAllProvisionalClassesForOntologyTest() {
-//    running(testServer(TEST_SERVER_PORT), new Runnable() {
-//      public void run() {
-//        // Create a provisional class
-//        OntologyClass createdClass = createClass();
-//        String url = SERVER_URL_BIOPORTAL + BP_ONTOLOGIES + "/" +
-//            Util.getShortIdentifier(createdClass.getOntology()) + "/" + BP_PROVISIONAL_CLASSES;
-//        // Find all
-//        WSResponse wsResponse = WS.url(url).setHeader("Authorization", authHeader).get().get(TIMEOUT_MS);
-//        // Check response is OK
-//        Assert.assertEquals(OK, wsResponse.getStatus());
-//        // Check Content-Type
-//        Assert.assertEquals(wsResponse.getHeader("Content-Type"), "application/json; charset=utf-8");
-//        // Check that the array returned is not empty
-//        int classesCount = wsResponse.asJson().size();
-//        Assert.assertFalse("Empty array returned", classesCount == 0);
-//      }
-//    });
-//  }
-
-
+  @Test
+  public void findAllProvisionalClassesForOntologyTest() {
+    // Create a provisional class
+    OntologyClass createdClass = createClass();
+    String url = baseUrlBpOntologies + "/" + Util.getShortIdentifier(createdClass.getOntology()) + "/" + BP_PROVISIONAL_CLASSES;
+    // Service invocation
+    Response response = client.target(url).request().header("Authorization", authHeader).get();
+    // Check HTTP response
+    Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
+    // Check Content-Type
+    Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
+    // Check that the array returned is not empty
+    PagedResults<OntologyClass> results = response.readEntity(new GenericType<PagedResults<OntologyClass>>() {});
+    Assert.assertTrue("Empty array returned", results.getCollection().size() > 0);
+    // Check that the classes returned are provisional
+    for (OntologyClass pc : results.getCollection()) {
+      Assert.assertTrue("Provisional class expected, but non provisional class found", pc.isProvisional());
+    }
+  }
 
   @Test
   public void deleteClassTest() {

@@ -69,6 +69,7 @@ public class BpProvisionalClassDAO {
   }
 
   public BpPagedResults<BpProvisionalClass> findAll(String ontology, int page, int pageSize, String apiKey) throws IOException {
+    BpPagedResults<BpProvisionalClass> results = null;
     String url = null;
     if (ontology != null) {
       url = BP_API_BASE + BP_ONTOLOGIES + ontology + "/" + Constants.BP_PROVISIONAL_CLASSES;
@@ -84,7 +85,16 @@ public class BpProvisionalClassDAO {
     if (statusCode == 200) {
       ObjectMapper mapper = new ObjectMapper();
       JsonNode bpResult = mapper.readTree(new String(EntityUtils.toByteArray(response.getEntity())));
-      return mapper.readValue(mapper.treeAsTokens(bpResult), new TypeReference<BpPagedResults<BpProvisionalClass>>() {});
+      if (ontology != null) {
+        // If the ontology is specified, BioPortal does not return paged results, so we have to build them.
+        // TODO: task for the BioPortal team: provide paged results when the ontology is specified
+        List<BpProvisionalClass> provClasses = mapper.readValue(mapper.treeAsTokens(bpResult), new TypeReference<List<BpProvisionalClass>>() {});
+        results = new BpPagedResults<>(1, 1, 0, 0, provClasses);
+        return results;
+      }
+      else {
+        return mapper.readValue(mapper.treeAsTokens(bpResult), new TypeReference<BpPagedResults<BpProvisionalClass>>() {});
+      }
     } else {
       throw new HTTPException(statusCode);
     }

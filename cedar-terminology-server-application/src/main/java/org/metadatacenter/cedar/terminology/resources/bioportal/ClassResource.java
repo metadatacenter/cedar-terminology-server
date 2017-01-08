@@ -309,11 +309,10 @@ public class ClassResource extends AbstractResource {
       pageSize = defaultPageSize;
     }
     try {
-      PagedResults<OntologyClass> provClasses = terminologyService.findAllProvisionalClasses(null, page, pageSize, apiKey);
+      PagedResults<OntologyClass> classes = terminologyService.findAllProvisionalClasses(null, page, pageSize, apiKey);
       // This line ensures that @class type annotations are included for each element in the list
-      ObjectWriter writer = JsonMapper.MAPPER.writerFor(new TypeReference<PagedResults<OntologyClass>>() {
-      });
-      return Response.ok().entity(JsonMapper.MAPPER.readTree(writer.writeValueAsString(provClasses))).build();
+      ObjectWriter writer = JsonMapper.MAPPER.writerFor(new TypeReference<PagedResults<OntologyClass>>() {});
+      return Response.ok().entity(JsonMapper.MAPPER.readTree(writer.writeValueAsString(classes))).build();
     } catch (HTTPException e) {
       return Response.status(e.getStatusCode()).build();
     } catch (IOException e) {
@@ -321,39 +320,39 @@ public class ClassResource extends AbstractResource {
     }
   }
 
-//
-//  @ApiOperation(
-//      value = "Get all provisional classes for a specific ontology (including provisional value sets and
-// provisional " +
-//          "values)",
-//      httpMethod = "GET")
-//  @ApiResponses(value = {
-//      @ApiResponse(code = 200, message = "Success!"),
-//      @ApiResponse(code = 400, message = "Bad Request"),
-//      @ApiResponse(code = 401, message = "Unauthorized"),
-//      @ApiResponse(code = 500, message = "Internal Server Error")})
-//  @ApiImplicitParams(value = {
-//      @ApiImplicitParam(name = "ontology", value = "Ontology. Example: NCIT",
-//          required = true, dataType = "string", paramType = "path")})
-//  public static Result findAllProvisionalClassesForOntology(String ontology) {
-//    if (ontology.isEmpty()) {
-//      return badRequest();
-//    }
-//    try {
-//      List<OntologyClass> classes = termService
-//          .findAllProvisionalClasses(ontology, apiKey);
-//      ObjectMapper mapper = new ObjectMapper();
-//      // This line ensures that @class type annotations are included for each element in the list
-//      ObjectWriter writer = mapper.writerFor(new TypeReference<List<OntologyClass>>() {
-//      });
-//      return ok(mapper.readTree(writer.writeValueAsString(classes)));
-//    } catch (HTTPException e) {
-//      return Results.status(e.getStatusCode());
-//    } catch (IOException e) {
-//      return internalServerError(e.getMessage());
-//    }
-//  }
-//
+  @GET
+  @Path("ontologies/{ontology}/classes/provisional")
+  //  @ApiOperation(
+  //      value = "Get all provisional classes for a specific ontology (including provisional value sets and
+  // provisional " +
+  //          "values)",
+  //      httpMethod = "GET")
+  //  @ApiResponses(value = {
+  //      @ApiResponse(code = 200, message = "Success!"),
+  //      @ApiResponse(code = 400, message = "Bad Request"),
+  //      @ApiResponse(code = 401, message = "Unauthorized"),
+  //      @ApiResponse(code = 500, message = "Internal Server Error")})
+  //  @ApiImplicitParams(value = {
+  //      @ApiImplicitParam(name = "ontology", value = "Ontology. Example: NCIT",
+  //          required = true, dataType = "string", paramType = "path")})
+  public static Response findAllProvisionalClassesForOntology(@PathParam("ontology") String ontology, @QueryParam
+      ("page") @DefaultValue("1") int page, @QueryParam("pageSize") int pageSize) throws CedarAssertionException {
+    // If pageSize not defined, set default value
+    if (pageSize == 0) {
+      pageSize = defaultPageSize;
+    }
+    try {
+      PagedResults<OntologyClass> classes = terminologyService.findAllProvisionalClasses(ontology, page, pageSize, apiKey);
+      // This line ensures that @class type annotations are included for each element in the list
+      ObjectWriter writer = JsonMapper.MAPPER.writerFor(new TypeReference<PagedResults<OntologyClass>>() {});
+      return Response.ok().entity(JsonMapper.MAPPER.readTree(writer.writeValueAsString(classes))).build();
+    } catch (HTTPException e) {
+      return Response.status(e.getStatusCode()).build();
+    } catch (IOException e) {
+      throw new CedarAssertionException(e);
+    }
+  }
+
 //  @ApiOperation(
 //      value = "Update a provisional class",
 //      httpMethod = "PATCH")
