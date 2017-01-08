@@ -211,16 +211,134 @@ public class ClassResourceTest extends AbstractTest {
     // Check Content-Type
     Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check that the call returns some children and that one of them is "Cellular Process".
+    // Note that this check is done with a class that has less children than the default page size. Otherwise,
+    // we should iterate over all pages.
     PagedResults<OntologyClass> children = response.readEntity(new GenericType<PagedResults<OntologyClass>>() {});
-    Assert.assertTrue("Empty tree", children.getCollection().size() > 0);
+    Assert.assertTrue("No children returned", children.getCollection().size() > 0);
     boolean childFound = false;
     for (OntologyClass c : children.getCollection()) {
       if (c.getLdId().equals(childClassId)) {
         childFound = true;
       }
     }
-    Assert.assertTrue("Child " + childClassId + " not found for the given class", childFound);
+    Assert.assertTrue("Child " + childClassId + " not found for the given class" + classId, childFound);
   }
+
+  // TODO: test it for provisional classes too
+  @Test
+  public void findClassDescendantsTest() {
+    String ontology = "NCIT";
+    // Class "Mobiluncus" from NCIT (C86517)
+    //   - 1st level descendant: Mobiluncus curtisii (C86518)
+    //   - 2nd level descendant: Mobiluncus curtisii subsp holmesii (C86897)
+    String classId = "http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C86517";
+    String descendant1ClassId = "http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C86518";
+    String descendant2ClassId = "http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C86897";
+    String encodedClassId = null;
+    try {
+      encodedClassId = URLEncoder.encode(classId, "UTF-8");
+    } catch (UnsupportedEncodingException e) {
+      e.printStackTrace();
+    }
+    String url = baseUrlBpOntologies + "/" + ontology + "/" + BP_CLASSES + "/" + encodedClassId + "/" + BP_DESCENDANTS;
+    // Service invocation
+    Response response = client.target(url).request().header("Authorization", authHeader).get();
+    // Check HTTP response
+    Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
+    // Check Content-Type
+    Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
+    // Check that the call returns some children and that one of them is "Cellular Process".
+    // Note that this check is done with a class that has less descendants than the default page size. Otherwise,
+    // we should iterate over all pages.
+    PagedResults<OntologyClass> descendants = response.readEntity(new GenericType<PagedResults<OntologyClass>>() {});
+    Assert.assertTrue("No descendants returned", descendants.getCollection().size() > 0);
+    boolean descendant1Found = false;
+    boolean descendant2Found = false;
+    for (OntologyClass c : descendants.getCollection()) {
+      if (c.getLdId().equals(descendant1ClassId)) {
+        descendant1Found = true;
+      }
+      else if (c.getLdId().equals(descendant2ClassId)) {
+        descendant2Found = true;
+      }
+    }
+    Assert.assertTrue("Descendant " + descendant1ClassId + " not found for the given class " + classId, descendant1Found);
+    Assert.assertTrue("Descendant " + descendant2ClassId + " not found for the given class " + classId, descendant2Found);
+  }
+
+  // TODO: test it for provisional classes too
+  @Test
+  public void findClassParentsTest() {
+    String ontology = "NCIT";
+    // Class "Cellular Process" (C20480) from NCIT. Its parent is "Biological Process" (C17828).
+    String classId = "http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C20480";
+    String parentClassId = "http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C17828";
+    String encodedClassId = null;
+    try {
+      encodedClassId = URLEncoder.encode(classId, "UTF-8");
+    } catch (UnsupportedEncodingException e) {
+      e.printStackTrace();
+    }
+    String url = baseUrlBpOntologies + "/" + ontology + "/" + BP_CLASSES + "/" + encodedClassId + "/" + BP_PARENTS;
+    // Service invocation
+    Response response = client.target(url).request().header("Authorization", authHeader).get();
+    // Check HTTP response
+    Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
+    // Check Content-Type
+    Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
+    // Check that the call returns the expected parent
+    List<OntologyClass> parents = response.readEntity(new GenericType<List<OntologyClass>>() {});
+    Assert.assertTrue("No parents returned", parents.size() > 0);
+    boolean parentFound = false;
+    for (OntologyClass c : parents) {
+      if (c.getLdId().equals(parentClassId)) {
+        parentFound = true;
+      }
+    }
+    Assert.assertTrue("Parent " + parentClassId + " not found for the given class " + classId, parentFound);
+  }
+
+  @Test
+  public void findAllProvisionalClassesTest() {
+    String url = baseUrlBp + "/" + BP_PROVISIONAL_CLASSES;
+    // Service invocation
+    Response response = client.target(url).request().header("Authorization", authHeader).get();
+    // Check HTTP response
+    Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
+    // Check Content-Type
+    Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
+    // Check that the array returned is not empty
+    PagedResults<OntologyClass> results = response.readEntity(new GenericType<PagedResults<OntologyClass>>() {});
+    Assert.assertTrue("Empty array returned", results.getCollection().size() > 0);
+    // Check that the classes returned are provisional
+    for (OntologyClass pc : results.getCollection()) {
+      Assert.assertTrue("Provisional class expected, but non provisional class found", pc.isProvisional());
+    }
+  }
+
+//
+//  @Test
+//  public void findAllProvisionalClassesForOntologyTest() {
+//    running(testServer(TEST_SERVER_PORT), new Runnable() {
+//      public void run() {
+//        // Create a provisional class
+//        OntologyClass createdClass = createClass();
+//        String url = SERVER_URL_BIOPORTAL + BP_ONTOLOGIES + "/" +
+//            Util.getShortIdentifier(createdClass.getOntology()) + "/" + BP_PROVISIONAL_CLASSES;
+//        // Find all
+//        WSResponse wsResponse = WS.url(url).setHeader("Authorization", authHeader).get().get(TIMEOUT_MS);
+//        // Check response is OK
+//        Assert.assertEquals(OK, wsResponse.getStatus());
+//        // Check Content-Type
+//        Assert.assertEquals(wsResponse.getHeader("Content-Type"), "application/json; charset=utf-8");
+//        // Check that the array returned is not empty
+//        int classesCount = wsResponse.asJson().size();
+//        Assert.assertFalse("Empty array returned", classesCount == 0);
+//      }
+//    });
+//  }
+
+
 
   @Test
   public void deleteClassTest() {
