@@ -1,10 +1,12 @@
 package org.metadatacenter.cedar.terminology.resources.bioportal;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import org.junit.*;
 import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.terms.domainObjects.OntologyClass;
 import org.metadatacenter.terms.domainObjects.TreeNode;
 import org.metadatacenter.terms.util.Util;
+import org.metadatacenter.util.json.JsonMapper;
 
 import javax.ws.rs.Path;
 import javax.ws.rs.client.Entity;
@@ -354,6 +356,41 @@ public class ClassResourceTest extends AbstractTest {
     Assert.assertEquals(Status.NOT_FOUND.getStatusCode(), findResponse.getStatus());
   }
 
+  @Test
+  public void updateClassTest() {
+    // Create a provisional class
+    OntologyClass createdClass = createClass();
+    OntologyClass updatedClass = new OntologyClass(createdClass.getId(), createdClass.getLdId(), "new label",
+        createdClass.getCreator(), createdClass.getOntology(), createdClass.getDefinitions(), createdClass.getSynonyms(),
+        createdClass.getSubclassOf(), createdClass.getRelations(), createdClass.isProvisional(), createdClass.getCreated(),
+        createdClass.getHasChildren());
+    String url = baseUrlBp + "/" + BP_CLASSES + "/" + createdClass.getId();
+    // Service invocation
+    Response updateResponse = client.target(url).request().header("Authorization", authHeader).put(Entity.json
+        (updatedClass));
+    // Check HTTP response
+    Assert.assertEquals(Status.NO_CONTENT.getStatusCode(), updateResponse.getStatus());
+    // Retrieve the class
+    String findUrl = baseUrlBpOntologies + "/" + Util.getShortIdentifier(createdClass.getOntology())
+        + "/" + BP_CLASSES + "/" + createdClass.getId();
+    Response findResponse = client.target(findUrl).request().header("Authorization", authHeader).get();
+    OntologyClass found = findResponse.readEntity(OntologyClass.class);
+    // Check that the modifications have been done correctly
+    OntologyClass expected = updatedClass;
+    Assert.assertEquals(expected.getId(), found.getId());
+    Assert.assertEquals(expected.getLdId(), found.getLdId());
+    Assert.assertEquals(expected.getPrefLabel(), found.getPrefLabel());
+    Assert.assertEquals(expected.getCreator(), found.getCreator());
+    Assert.assertEquals(expected.getOntology(), found.getOntology());
+    Assert.assertTrue(expected.getDefinitions().containsAll(found.getDefinitions()) && found.getDefinitions().containsAll(expected.getDefinitions()));
+    Assert.assertTrue(expected.getSynonyms().containsAll(found.getSynonyms()) && found.getSynonyms().containsAll(expected.getSynonyms()));
+    Assert.assertEquals(expected.getSubclassOf(), found.getSubclassOf());
+    Assert.assertEquals(expected.getRelations(), found.getRelations());
+    Assert.assertEquals(expected.isProvisional(), found.isProvisional());
+    Assert.assertEquals(expected.getCreated(), found.getCreated());
+    Assert.assertEquals(expected.getHasChildren(), found.getHasChildren());
+  }
+
   /**
    * Utils
    */
@@ -375,7 +412,6 @@ public class ClassResourceTest extends AbstractTest {
       String findUrl = baseUrlBpOntologies + "/" + Util.getShortIdentifier(c.getOntology()) + "/" +
           BP_CLASSES + "/" + c.getId();
       String deleteUrl = baseUrlBp + "/" + BP_CLASSES + "/" + c.getId();
-
       Response findResponse = client.target(findUrl).request().header("Authorization", authHeader).get();
       if (findResponse.getStatus() == Status.OK.getStatusCode()) {
         Response deleteResponse = client.target(deleteUrl).request().header("Authorization", authHeader).delete();
