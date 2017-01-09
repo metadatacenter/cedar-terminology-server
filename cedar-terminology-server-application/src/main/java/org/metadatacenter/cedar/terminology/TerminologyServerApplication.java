@@ -38,10 +38,10 @@ public class TerminologyServerApplication extends Application<TerminologyServerC
     IAuthorizationResolver authResolver = new AuthorizationKeycloakAndApiKeyResolver();
     Authorization.setAuthorizationResolver(authResolver);
     Authorization.setUserService(CedarDataServices.getUserService());
-    // Initialize cache
-    Cache.init();
     // Inject configuration
     AbstractResource.injectCedarConfig(CedarConfig.getInstance());
+    // Initialize cache (note that this must be done after injecting the configuration)
+    Cache.init();
   }
 
   @Override

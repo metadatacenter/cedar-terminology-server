@@ -15,6 +15,7 @@ public class Constants {
   public static final String BP_CHILDREN = "children";
   public static final String BP_DESCENDANTS = "descendants";
   public static final String BP_PARENTS = "parents";
+  public static final String BP_ROOTS = "roots";
   public static final String BP_RELATIONS = "relations";
   public static final String BP_VALUE_SET_COLLECTIONS = "vs-collections";
   public static final String BP_VALUE_SETS = "value-sets";

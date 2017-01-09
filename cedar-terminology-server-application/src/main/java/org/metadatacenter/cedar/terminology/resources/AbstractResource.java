@@ -24,7 +24,7 @@ public abstract class AbstractResource {
 
   protected static String apiKey;
   protected static int defaultPageSize;
-  protected static TerminologyService terminologyService;
+  public static TerminologyService terminologyService;
 
 
   public static void injectCedarConfig(CedarConfig cedarConfig) {

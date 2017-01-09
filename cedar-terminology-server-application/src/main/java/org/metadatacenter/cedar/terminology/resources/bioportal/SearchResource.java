@@ -6,6 +6,7 @@ import org.hibernate.validator.constraints.NotEmpty;
 import org.metadatacenter.cedar.cache.Cache;
 import org.metadatacenter.cedar.terminology.resources.AbstractResource;
 import org.metadatacenter.error.CedarErrorKey;
+import org.metadatacenter.exception.CedarException;
 import org.metadatacenter.rest.context.CedarRequestContext;
 import org.metadatacenter.rest.context.CedarRequestContextFactory;
 import org.metadatacenter.rest.exception.CedarAssertionException;
@@ -41,7 +42,7 @@ public class SearchResource extends AbstractResource {
                          @QueryParam("subtree_root_id") String subtreeRootId,
                          @QueryParam("max_depth") @DefaultValue("1") int maxDepth,
                          @QueryParam("page") @DefaultValue("1") int page,
-                         @QueryParam("page_size") int pageSize) throws CedarAssertionException {
+                         @QueryParam("page_size") int pageSize) throws CedarException {
 
     CedarRequestContext c = CedarRequestContextFactory.fromRequest(request);
     c.must(c.user()).be(LoggedIn);
@@ -81,9 +82,7 @@ public class SearchResource extends AbstractResource {
       return Response.ok().entity(output).build();
     } catch (HTTPException e) {
       return Response.status(e.getStatusCode()).build();
-    } catch (IOException e) {
-      throw new CedarAssertionException(e);
-    } catch (ExecutionException e) {
+    } catch (IOException | ExecutionException e) {
       throw new CedarAssertionException(e);
     }
   }

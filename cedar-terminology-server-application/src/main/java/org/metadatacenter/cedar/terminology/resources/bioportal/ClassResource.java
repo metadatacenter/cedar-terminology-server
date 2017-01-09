@@ -5,6 +5,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import org.metadatacenter.cedar.cache.Cache;
 import org.metadatacenter.cedar.terminology.resources.AbstractResource;
+import org.metadatacenter.exception.CedarException;
+import org.metadatacenter.exception.CedarProcessingException;
 import org.metadatacenter.rest.context.CedarRequestContext;
 import org.metadatacenter.rest.context.CedarRequestContextFactory;
 import org.metadatacenter.rest.exception.CedarAssertionException;
@@ -46,7 +48,7 @@ public class ClassResource extends AbstractResource {
   //          = "string", paramType = "path"),
   //      @ApiImplicitParam(value = "Class to be created", required = true, dataType = "org.metadatacenter.terms" +
   //          ".domainObjects.OntologyClass", paramType = "body")})
-  public Response createClass(@PathParam("ontology") String ontology) throws CedarAssertionException {
+  public Response createClass(@PathParam("ontology") String ontology) throws CedarException {
     CedarRequestContext ctx = CedarRequestContextFactory.fromRequest(request);
     ctx.must(ctx.user()).be(LoggedIn);
     try {
@@ -57,10 +59,8 @@ public class ClassResource extends AbstractResource {
       return Response.created(new URI(createdClass.getLdId())).entity(createdClassJson).build();
     } catch (HTTPException e) {
       return Response.status(e.getStatusCode()).build();
-    } catch (URISyntaxException e) {
-      throw new CedarAssertionException(e);
-    } catch (IOException e) {
-      throw new CedarAssertionException(e);
+    } catch (URISyntaxException | IOException e) {
+      throw new CedarProcessingException(e);
     }
   }
 
@@ -111,7 +111,7 @@ public class ClassResource extends AbstractResource {
   //          required = true, dataType = "string", paramType = "path")})
   public Response findAllClassesForOntology(@PathParam("ontology") String ontology,
                                                    @QueryParam("page") @DefaultValue("1") int page,
-                                                   @QueryParam("pageSize") int pageSize) throws CedarAssertionException {
+                                                   @QueryParam("pageSize") int pageSize) throws CedarException {
     CedarRequestContext ctx = CedarRequestContextFactory.fromRequest(request);
     ctx.must(ctx.user()).be(LoggedIn);
     // If pageSize not defined, set default value
@@ -142,7 +142,7 @@ public class ClassResource extends AbstractResource {
   //  @ApiImplicitParams(value = {
   //      @ApiImplicitParam(name = "id", value = "Provisional class id. Example: 720f50f0-ae6f-0133-848f-005056010073",
   //          required = true, dataType = "string", paramType = "path")})
-  public Response deleteClass(@PathParam("id") String id) throws CedarAssertionException {
+  public Response deleteClass(@PathParam("id") String id) throws CedarException {
     CedarRequestContext ctx = CedarRequestContextFactory.fromRequest(request);
     ctx.must(ctx.user()).be(LoggedIn);
     try {
@@ -183,9 +183,7 @@ public class ClassResource extends AbstractResource {
       return Response.ok().entity(JsonMapper.MAPPER.valueToTree(tree)).build();
     } catch (HTTPException e) {
       return Response.status(e.getStatusCode()).build();
-    } catch (IOException e) {
-      throw new CedarAssertionException(e);
-    } catch (ExecutionException e) {
+    } catch (IOException | ExecutionException e) {
       throw new CedarAssertionException(e);
     }
   }
@@ -211,7 +209,7 @@ public class ClassResource extends AbstractResource {
   //          required = true, dataType = "string", paramType = "path")})
   public Response findClassChildren(@PathParam("id") @Encoded String id, @PathParam("ontology") String ontology,
                                            @QueryParam("page") @DefaultValue("1") int page, @QueryParam("pageSize")
-                                             int pageSize) throws CedarAssertionException {
+                                             int pageSize) throws CedarException {
     CedarRequestContext ctx = CedarRequestContextFactory.fromRequest(request);
     ctx.must(ctx.user()).be(LoggedIn);
     // If pageSize not defined, set default value
@@ -250,7 +248,7 @@ public class ClassResource extends AbstractResource {
   //      @ApiImplicitParam(name = "ontology", value = "Ontology. Example: NCIT",
   //          required = true, dataType = "string", paramType = "path")})
   public Response findClassDescendants(@PathParam("id") @Encoded String id, @PathParam("ontology") String ontology,
-                                              @QueryParam("page") @DefaultValue("1") int page, @QueryParam("pageSize") int pageSize) throws CedarAssertionException {
+                                              @QueryParam("page") @DefaultValue("1") int page, @QueryParam("pageSize") int pageSize) throws CedarException {
     CedarRequestContext ctx = CedarRequestContextFactory.fromRequest(request);
     ctx.must(ctx.user()).be(LoggedIn);
     // If pageSize not defined, set default value
@@ -287,7 +285,7 @@ public class ClassResource extends AbstractResource {
 //      @ApiImplicitParam(name = "ontology", value = "Ontology. Example: NCIT",
 //          required = true, dataType = "string", paramType = "path")})
   public Response findClassParents(@PathParam("id") @Encoded String id, @PathParam("ontology") String ontology)
-      throws CedarAssertionException {
+      throws CedarException {
     CedarRequestContext ctx = CedarRequestContextFactory.fromRequest(request);
     ctx.must(ctx.user()).be(LoggedIn);
     try {
@@ -311,7 +309,7 @@ public class ClassResource extends AbstractResource {
   //      @ApiResponse(code = 401, message = "Unauthorized"),
   //      @ApiResponse(code = 500, message = "Internal Server Error")})
   public Response findAllProvisionalClasses(@QueryParam("page") @DefaultValue("1") int page,
-                                                   @QueryParam("pageSize") int pageSize) throws CedarAssertionException {
+                                                   @QueryParam("pageSize") int pageSize) throws CedarException {
     CedarRequestContext ctx = CedarRequestContextFactory.fromRequest(request);
     ctx.must(ctx.user()).be(LoggedIn);
     // If pageSize not defined, set default value
@@ -346,7 +344,7 @@ public class ClassResource extends AbstractResource {
   //      @ApiImplicitParam(name = "ontology", value = "Ontology. Example: NCIT",
   //          required = true, dataType = "string", paramType = "path")})
   public Response findAllProvisionalClassesForOntology(@PathParam("ontology") String ontology, @QueryParam
-      ("page") @DefaultValue("1") int page, @QueryParam("pageSize") int pageSize) throws CedarAssertionException {
+      ("page") @DefaultValue("1") int page, @QueryParam("pageSize") int pageSize) throws CedarException {
     CedarRequestContext ctx = CedarRequestContextFactory.fromRequest(request);
     ctx.must(ctx.user()).be(LoggedIn);
     // If pageSize not defined, set default value
@@ -383,7 +381,7 @@ public class ClassResource extends AbstractResource {
   // .metadatacenter" +
   //          ".terms" +
   //          ".domainObjects.OntologyClass", paramType = "body")})
-  public Response updateClass(@PathParam("id") String id) throws CedarAssertionException {
+  public Response updateClass(@PathParam("id") String id) throws CedarException {
     CedarRequestContext ctx = CedarRequestContextFactory.fromRequest(request);
     ctx.must(ctx.user()).be(LoggedIn);
     try {

@@ -6,6 +6,7 @@ import com.google.common.cache.LoadingCache;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.ListenableFutureTask;
 //import controllers.TerminologyController;
+import org.metadatacenter.cedar.terminology.resources.AbstractResource;
 import org.metadatacenter.terms.domainObjects.Ontology;
 import org.metadatacenter.terms.domainObjects.ValueSet;
 //import play.Logger;
@@ -111,8 +112,7 @@ public class Cache {
       valueSets = readValueSetsFromFile();
     } else {
       //Logger.info("Loading value sets from BioPortal");
-      // TODO: update this line to make it work with the Dropwizard project
-      //valueSets = TerminologyController.termService.findAllValueSets(apiKeyCache);
+      valueSets = AbstractResource.terminologyService.findAllValueSets(apiKeyCache);
       saveValueSetsToFile(valueSets);
     }
     firstLoadValueSets = false;
@@ -131,8 +131,7 @@ public class Cache {
       ontologies = readOntologiesFromFile();
     } else {
       //Logger.info("Loading ontologies from BioPortal");
-      // TODO: update this line to make it work with the Dropwizard project
-      //ontologies = TerminologyController.termService.findAllOntologies(true, apiKeyCache);
+      ontologies = AbstractResource.terminologyService.findAllOntologies(true, apiKeyCache);
       saveOntologiesToFile(ontologies);
     }
     firstLoadOntologies = false;

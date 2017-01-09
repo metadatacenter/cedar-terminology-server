@@ -1,14 +1,11 @@
 package org.metadatacenter.cedar.terminology.resources.bioportal;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import org.junit.*;
 import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.terms.domainObjects.OntologyClass;
 import org.metadatacenter.terms.domainObjects.TreeNode;
 import org.metadatacenter.terms.util.Util;
-import org.metadatacenter.util.json.JsonMapper;
 
-import javax.ws.rs.Path;
 import javax.ws.rs.client.Entity;
 import javax.ws.rs.core.GenericType;
 import javax.ws.rs.core.HttpHeaders;
