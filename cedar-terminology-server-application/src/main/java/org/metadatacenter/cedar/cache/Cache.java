@@ -80,8 +80,7 @@ public class Cache {
   // Google Guava cache for all ontologies. It has been implemented as a single-object cache that will contain a
   // LinkedHashMap with all ontologies, so that it is possible both getting them as an ordered list and quickly
   // access to specific ontologies by id.
-  public static LoadingCache<String, LinkedHashMap<String, Ontology>> ontologiesCache = CacheBuilder.newBuilder()
-      .maximumSize(1)
+  public static LoadingCache<String, LinkedHashMap<String, Ontology>> ontologiesCache = CacheBuilder.newBuilder().maximumSize(1)
           //.expireAfterAccess(5, TimeUnit.SECONDS)
           //.recordStats()
       .build(new CacheLoader<String, LinkedHashMap<String, Ontology>>() {

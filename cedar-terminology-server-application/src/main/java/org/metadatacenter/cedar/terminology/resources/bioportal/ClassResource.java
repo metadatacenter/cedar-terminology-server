@@ -1,22 +1,16 @@
 package org.metadatacenter.cedar.terminology.resources.bioportal;
 
-import com.codahale.metrics.annotation.Timed;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectWriter;
-import io.dropwizard.jersey.PATCH;
-import org.hibernate.validator.constraints.NotEmpty;
 import org.metadatacenter.cedar.cache.Cache;
 import org.metadatacenter.cedar.terminology.resources.AbstractResource;
-import org.metadatacenter.error.CedarErrorKey;
 import org.metadatacenter.rest.context.CedarRequestContext;
 import org.metadatacenter.rest.context.CedarRequestContextFactory;
 import org.metadatacenter.rest.exception.CedarAssertionException;
 import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.terms.domainObjects.OntologyClass;
 import org.metadatacenter.terms.domainObjects.TreeNode;
-import org.metadatacenter.terms.util.Util;
-import org.metadatacenter.util.http.CedarResponse;
 import org.metadatacenter.util.json.JsonMapper;
 
 import javax.ws.rs.*;
@@ -26,13 +20,10 @@ import javax.xml.ws.http.HTTPException;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 
 import static org.metadatacenter.rest.assertion.GenericAssertions.LoggedIn;
-import static org.metadatacenter.terms.util.Constants.*;
 
 @Path("/bioportal")
 @Produces(MediaType.APPLICATION_JSON)
@@ -406,7 +397,5 @@ public class ClassResource extends AbstractResource {
       throw new CedarAssertionException(e);
     }
   }
-
-
 
 }

@@ -4,10 +4,12 @@ import io.dropwizard.Application;
 import io.dropwizard.setup.Bootstrap;
 import io.dropwizard.setup.Environment;
 import org.metadatacenter.bridge.CedarDataServices;
+import org.metadatacenter.cedar.cache.Cache;
 import org.metadatacenter.cedar.terminology.health.TerminologyServerHealthCheck;
 import org.metadatacenter.cedar.terminology.resources.AbstractResource;
 import org.metadatacenter.cedar.terminology.resources.IndexResource;
 import org.metadatacenter.cedar.terminology.resources.bioportal.ClassResource;
+import org.metadatacenter.cedar.terminology.resources.bioportal.OntologyResource;
 import org.metadatacenter.cedar.terminology.resources.bioportal.SearchResource;
 import org.metadatacenter.cedar.util.dw.CedarDropwizardApplicationUtil;
 import org.metadatacenter.config.CedarConfig;
@@ -30,16 +32,16 @@ public class TerminologyServerApplication extends Application<TerminologyServerC
 
   @Override
   public void initialize(Bootstrap<TerminologyServerConfiguration> bootstrap) {
-
     // Init Keycloak
     KeycloakDeploymentProvider.getInstance();
     // Init Authorization Resolver
     IAuthorizationResolver authResolver = new AuthorizationKeycloakAndApiKeyResolver();
     Authorization.setAuthorizationResolver(authResolver);
     Authorization.setUserService(CedarDataServices.getUserService());
+    // Initialize cache
+    Cache.init();
     // Inject configuration
     AbstractResource.injectCedarConfig(CedarConfig.getInstance());
-
   }
 
   @Override
@@ -51,6 +53,7 @@ public class TerminologyServerApplication extends Application<TerminologyServerC
     // Register resources
     environment.jersey().register(new SearchResource());
     environment.jersey().register(new ClassResource());
+    environment.jersey().register(new OntologyResource());
 
     final TerminologyServerHealthCheck healthCheck = new TerminologyServerHealthCheck();
     environment.healthChecks().register("message", healthCheck);
