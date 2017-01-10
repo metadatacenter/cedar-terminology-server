@@ -52,7 +52,7 @@ public class ClassResource extends AbstractResource {
     CedarRequestContext ctx = CedarRequestContextFactory.fromRequest(request);
     ctx.must(ctx.user()).be(LoggedIn);
     try {
-      OntologyClass c = JsonMapper.MAPPER.readValue(request.getInputStream(), OntologyClass.class);
+      OntologyClass c = JsonMapper.MAPPER.convertValue(ctx.request().getRequestBody().asJson(), OntologyClass.class);
       c.setOntology(ontology);
       OntologyClass createdClass = terminologyService.createProvisionalClass(c, apiKey);
       JsonNode createdClassJson = JsonMapper.MAPPER.valueToTree(createdClass);
@@ -121,33 +121,6 @@ public class ClassResource extends AbstractResource {
     try {
       PagedResults<OntologyClass> classes = terminologyService.findAllClassesInOntology(ontology, page, pageSize, apiKey);
       return Response.ok().entity(JsonMapper.MAPPER.valueToTree(classes)).build();
-    } catch (HTTPException e) {
-      return Response.status(e.getStatusCode()).build();
-    } catch (IOException e) {
-      throw new CedarAssertionException(e);
-    }
-  }
-
-  @DELETE
-  @Path("classes/{id}")
-  //  @ApiOperation(
-  //      value = "Delete a provisional class",
-  //      httpMethod = "DELETE")
-  //  @ApiResponses(value = {
-  //      @ApiResponse(code = 204, message = "Success! (No Content)"),
-  //      @ApiResponse(code = 400, message = "Bad Request"),
-  //      @ApiResponse(code = 401, message = "Unauthorized"),
-  //      @ApiResponse(code = 404, message = "Not Found"),
-  //      @ApiResponse(code = 500, message = "Internal Server Error")})
-  //  @ApiImplicitParams(value = {
-  //      @ApiImplicitParam(name = "id", value = "Provisional class id. Example: 720f50f0-ae6f-0133-848f-005056010073",
-  //          required = true, dataType = "string", paramType = "path")})
-  public Response deleteClass(@PathParam("id") String id) throws CedarException {
-    CedarRequestContext ctx = CedarRequestContextFactory.fromRequest(request);
-    ctx.must(ctx.user()).be(LoggedIn);
-    try {
-      terminologyService.deleteProvisionalClass(id, apiKey);
-      return Response.noContent().build();
     } catch (HTTPException e) {
       return Response.status(e.getStatusCode()).build();
     } catch (IOException e) {
@@ -388,6 +361,33 @@ public class ClassResource extends AbstractResource {
       OntologyClass c = JsonMapper.MAPPER.readValue(request.getInputStream(), OntologyClass.class);
       //c.setId(id);
       terminologyService.updateProvisionalClass(c, apiKey);
+      return Response.noContent().build();
+    } catch (HTTPException e) {
+      return Response.status(e.getStatusCode()).build();
+    } catch (IOException e) {
+      throw new CedarAssertionException(e);
+    }
+  }
+
+  @DELETE
+  @Path("classes/{id}")
+  //  @ApiOperation(
+  //      value = "Delete a provisional class",
+  //      httpMethod = "DELETE")
+  //  @ApiResponses(value = {
+  //      @ApiResponse(code = 204, message = "Success! (No Content)"),
+  //      @ApiResponse(code = 400, message = "Bad Request"),
+  //      @ApiResponse(code = 401, message = "Unauthorized"),
+  //      @ApiResponse(code = 404, message = "Not Found"),
+  //      @ApiResponse(code = 500, message = "Internal Server Error")})
+  //  @ApiImplicitParams(value = {
+  //      @ApiImplicitParam(name = "id", value = "Provisional class id. Example: 720f50f0-ae6f-0133-848f-005056010073",
+  //          required = true, dataType = "string", paramType = "path")})
+  public Response deleteClass(@PathParam("id") String id) throws CedarException {
+    CedarRequestContext ctx = CedarRequestContextFactory.fromRequest(request);
+    ctx.must(ctx.user()).be(LoggedIn);
+    try {
+      terminologyService.deleteProvisionalClass(id, apiKey);
       return Response.noContent().build();
     } catch (HTTPException e) {
       return Response.status(e.getStatusCode()).build();

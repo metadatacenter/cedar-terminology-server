@@ -283,8 +283,7 @@ public class TerminologyService implements ITerminologyService {
    **/
 
   public Relation createProvisionalRelation(Relation r, String apiKey) throws IOException {
-    BpProvisionalRelation pr = bpService
-        .createBpProvisionalRelation(ObjectConverter.toBpProvisionalRelation(r), apiKey);
+    BpProvisionalRelation pr = bpService.createBpProvisionalRelation(ObjectConverter.toBpProvisionalRelation(r), apiKey);
     return ObjectConverter.toRelation(pr);
   }
 

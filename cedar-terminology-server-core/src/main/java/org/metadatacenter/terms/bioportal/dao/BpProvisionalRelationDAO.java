@@ -34,6 +34,8 @@ public class BpProvisionalRelationDAO {
             connectTimeout(connectTimeout).socketTimeout(socketTimeout)
         .bodyString(mapper.writeValueAsString(relation), ContentType.APPLICATION_JSON));
 
+    // TODO: return the message returned by BioPortal to the top layers. response.getEntity() could be used for that:
+    //EntityUtils.toString(response.getEntity(), "UTF-8");
     int statusCode = response.getStatusLine().getStatusCode();
     // The relation was successfully created
     if (statusCode == 201) {

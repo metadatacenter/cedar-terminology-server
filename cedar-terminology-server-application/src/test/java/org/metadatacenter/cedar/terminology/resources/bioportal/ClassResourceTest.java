@@ -14,7 +14,6 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 
@@ -25,28 +24,12 @@ import static org.metadatacenter.cedar.terminology.utils.Constants.*;
  */
 public class ClassResourceTest extends AbstractTest {
 
-  private static OntologyClass class1;
-  private static List<OntologyClass> createdClasses;
-
   /**
    * One-time initialization code.
    * (Called once before any of the test methods in the class).
    */
   @BeforeClass
   public static void oneTimeSetUp() {
-    // Initialize test class
-    String classLabel = "class1_test";
-    String classCreator = "http://data.bioontology.org/users/cedar-test";
-    String classOntology = "http://data.bioontology.org/ontologies/CEDARPC";
-    List classDefinitions = new ArrayList<>();
-    classDefinitions.add("classDefinition1");
-    classDefinitions.add("classDefinition2");
-    List classSynonyms = new ArrayList<>();
-    classSynonyms.add("classSynonym1");
-    classSynonyms.add("classSynonym2");
-    List classRelations = new ArrayList<>();
-    class1 = new OntologyClass(null, null, classLabel, classCreator, classOntology, classDefinitions,
-        classSynonyms, null, classRelations, true, null, false);
   }
 
   /**
@@ -55,8 +38,6 @@ public class ClassResourceTest extends AbstractTest {
    */
   @Before
   public void setUp() {
-    // Ids of test objects
-    createdClasses = new ArrayList<>();
   }
 
   /**
@@ -65,11 +46,6 @@ public class ClassResourceTest extends AbstractTest {
    */
   @After
   public void tearDown() {
-    try {
-      deleteCreatedClasses();
-    } catch (Exception e) {
-      e.printStackTrace();
-    }
   }
 
   @Test
@@ -81,10 +57,10 @@ public class ClassResourceTest extends AbstractTest {
     Assert.assertEquals(Status.CREATED.getStatusCode(), response.getStatus());
     // Check Content-Type
     Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
-    // Check fields
-    OntologyClass created = response.readEntity(OntologyClass.class);
     // Store class to delete the class after the test
+    OntologyClass created = response.readEntity(OntologyClass.class);
     createdClasses.add(created);
+    // Check fields
     OntologyClass expected = class1;
     Assert.assertNotNull(created.getId());
     Assert.assertNotNull(created.getLdId());
@@ -103,7 +79,7 @@ public class ClassResourceTest extends AbstractTest {
   @Test
   public void findClassTest() {
     // Create a provisional class
-    OntologyClass created = createClass();
+    OntologyClass created = createClass(class1);
     // Find the provisional class by id
     String classUrl = baseUrlBpOntologies + "/" + Util.getShortIdentifier(class1.getOntology()) + "/" + BP_CLASSES + "/" + created.getId();
     // Service invocation
@@ -318,7 +294,7 @@ public class ClassResourceTest extends AbstractTest {
   @Test
   public void findAllProvisionalClassesForOntologyTest() {
     // Create a provisional class
-    OntologyClass createdClass = createClass();
+    OntologyClass createdClass = createClass(class1);
     String url = baseUrlBpOntologies + "/" + Util.getShortIdentifier(createdClass.getOntology()) + "/" + BP_PROVISIONAL_CLASSES;
     // Service invocation
     Response response = client.target(url).request().header("Authorization", authHeader).get();
@@ -338,7 +314,7 @@ public class ClassResourceTest extends AbstractTest {
   @Test
   public void deleteClassTest() {
     // Create a provisional class
-    OntologyClass createdClass = createClass();
+    OntologyClass createdClass = createClass(class1);
     // Delete the class that has been created
     String classUrl = baseUrlBp + "/" + BP_CLASSES + "/" + createdClass.getId();
     Response deleteResponse = client.target(classUrl).request().header("Authorization", authHeader).delete();
@@ -356,7 +332,7 @@ public class ClassResourceTest extends AbstractTest {
   @Test
   public void updateClassTest() {
     // Create a provisional class
-    OntologyClass createdClass = createClass();
+    OntologyClass createdClass = createClass(class1);
     OntologyClass updatedClass = new OntologyClass(createdClass.getId(), createdClass.getLdId(), "new label",
         createdClass.getCreator(), createdClass.getOntology(), createdClass.getDefinitions(), createdClass.getSynonyms(),
         createdClass.getSubclassOf(), createdClass.getRelations(), createdClass.isProvisional(), createdClass.getCreated(),
@@ -386,39 +362,6 @@ public class ClassResourceTest extends AbstractTest {
     Assert.assertEquals(expected.isProvisional(), found.isProvisional());
     Assert.assertEquals(expected.getCreated(), found.getCreated());
     Assert.assertEquals(expected.getHasChildren(), found.getHasChildren());
-  }
-
-  /**
-   * Utils
-   */
-
-  private static OntologyClass createClass() {
-    String url = baseUrlBpOntologies + "/" + Util.getShortIdentifier(class1.getOntology()) + "/" + BP_CLASSES;
-    // Service invocation
-    Response response = client.target(url).request().header("Authorization", authHeader).post(Entity.json(class1));
-    // Check HTTP response
-    Assert.assertEquals(Status.CREATED.getStatusCode(), response.getStatus());
-    OntologyClass created = response.readEntity(OntologyClass.class);
-    createdClasses.add(created);
-    return created;
-  }
-
-  private static void deleteCreatedClasses() throws Exception {
-    for (OntologyClass c : createdClasses) {
-      // Check if the class still exists
-      String findUrl = baseUrlBpOntologies + "/" + Util.getShortIdentifier(c.getOntology()) + "/" +
-          BP_CLASSES + "/" + c.getId();
-      String deleteUrl = baseUrlBp + "/" + BP_CLASSES + "/" + c.getId();
-      Response findResponse = client.target(findUrl).request().header("Authorization", authHeader).get();
-      if (findResponse.getStatus() == Status.OK.getStatusCode()) {
-        Response deleteResponse = client.target(deleteUrl).request().header("Authorization", authHeader).delete();
-        if (deleteResponse.getStatus() != Status.NO_CONTENT.getStatusCode()) {
-          throw new Exception("Couldn't delete class: Id = " + c.getLdId());
-        }
-      } else {
-        throw new Exception("Couldn't find class: Id = " + c.getLdId());
-      }
-    }
   }
 
 }
