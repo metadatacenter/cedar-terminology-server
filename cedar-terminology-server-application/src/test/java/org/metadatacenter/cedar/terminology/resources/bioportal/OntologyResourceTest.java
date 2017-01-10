@@ -65,7 +65,7 @@ public class OntologyResourceTest extends AbstractTest {
     Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
     // Check Content-Type
     Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
-    // Check that the call returns the expected parent
+    // Check the results returned
     List<Ontology> ontologies = response.readEntity(new GenericType<List<Ontology>>() {});
     Assert.assertTrue("No ontologies returned", ontologies.size() > 0);
     Assert.assertTrue("Wrong number of ontologies returned", ontologies.size() > 525);

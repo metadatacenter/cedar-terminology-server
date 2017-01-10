@@ -8,10 +8,7 @@ import org.metadatacenter.cedar.cache.Cache;
 import org.metadatacenter.cedar.terminology.health.TerminologyServerHealthCheck;
 import org.metadatacenter.cedar.terminology.resources.AbstractResource;
 import org.metadatacenter.cedar.terminology.resources.IndexResource;
-import org.metadatacenter.cedar.terminology.resources.bioportal.ClassResource;
-import org.metadatacenter.cedar.terminology.resources.bioportal.OntologyResource;
-import org.metadatacenter.cedar.terminology.resources.bioportal.RelationResource;
-import org.metadatacenter.cedar.terminology.resources.bioportal.SearchResource;
+import org.metadatacenter.cedar.terminology.resources.bioportal.*;
 import org.metadatacenter.cedar.util.dw.CedarDropwizardApplicationUtil;
 import org.metadatacenter.config.CedarConfig;
 import org.metadatacenter.server.security.Authorization;
@@ -56,6 +53,7 @@ public class TerminologyServerApplication extends Application<TerminologyServerC
     environment.jersey().register(new ClassResource());
     environment.jersey().register(new OntologyResource());
     environment.jersey().register(new RelationResource());
+    environment.jersey().register(new ValueSetCollectionResource());
 
     final TerminologyServerHealthCheck healthCheck = new TerminologyServerHealthCheck();
     environment.healthChecks().register("message", healthCheck);

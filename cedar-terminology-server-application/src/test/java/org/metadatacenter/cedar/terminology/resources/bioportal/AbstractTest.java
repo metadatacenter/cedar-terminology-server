@@ -35,6 +35,7 @@ public abstract class AbstractTest {
   protected static String baseUrlBp;
   protected static String baseUrlBpSearch;
   protected static String baseUrlBpOntologies;
+  protected static String baseUrlBpVSCollections;
 
   protected static OntologyClass class1;
   protected static Relation relation1;
@@ -58,12 +59,11 @@ public abstract class AbstractTest {
     baseUrlBp = BASE_URL + ":" + RULE.getLocalPort() + "/" + BP_ENDPOINT;
     baseUrlBpSearch = baseUrlBp + "/" + BP_SEARCH;
     baseUrlBpOntologies = baseUrlBp + "/" + BP_ONTOLOGIES;
+    baseUrlBpVSCollections =  baseUrlBp + "/" + BP_VALUE_SET_COLLECTIONS;
 
     client = new JerseyClientBuilder(RULE.getEnvironment()).build("BioPortal search endpoint client");
-    client.property(ClientProperties.CONNECT_TIMEOUT, cedarConfig.getTerminologyConfig().getBioPortal()
-        .getConnectTimeout());
-    client.property(ClientProperties.READ_TIMEOUT, cedarConfig.getTerminologyConfig().getBioPortal().getSocketTimeout
-        ());
+    client.property(ClientProperties.CONNECT_TIMEOUT, cedarConfig.getTerminologyConfig().getBioPortal().getConnectTimeout());
+    client.property(ClientProperties.READ_TIMEOUT, cedarConfig.getTerminologyConfig().getBioPortal().getSocketTimeout());
 
     // Initialize test class
     String classLabel = "class1_test";
@@ -119,6 +119,7 @@ public abstract class AbstractTest {
    */
 
   /* Classes */
+
   protected static OntologyClass createClass(OntologyClass c) {
     String url = baseUrlBpOntologies + "/" + Util.getShortIdentifier(c.getOntology()) + "/" + BP_CLASSES;
     // Service invocation
