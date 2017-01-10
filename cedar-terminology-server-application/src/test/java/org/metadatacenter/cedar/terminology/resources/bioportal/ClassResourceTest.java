@@ -312,24 +312,6 @@ public class ClassResourceTest extends AbstractTest {
   }
 
   @Test
-  public void deleteClassTest() {
-    // Create a provisional class
-    OntologyClass createdClass = createClass(class1);
-    // Delete the class that has been created
-    String classUrl = baseUrlBp + "/" + BP_CLASSES + "/" + createdClass.getId();
-    Response deleteResponse = client.target(classUrl).request().header("Authorization", authHeader).delete();
-    // Check HTTP response
-    Assert.assertEquals(Status.NO_CONTENT.getStatusCode(), deleteResponse.getStatus());
-    // Remove class from the list of created classes
-    createdClasses.remove(createdClass);
-    // Try to retrieve the class to check that it has been deleted correctly
-    String findUrl = baseUrlBpOntologies + "/" + Util.getShortIdentifier(createdClass.getOntology()) + "/" + BP_CLASSES + "/" + createdClass.getId();
-    Response findResponse = client.target(findUrl).request().header("Authorization", authHeader).get();
-    // Check not found
-    Assert.assertEquals(Status.NOT_FOUND.getStatusCode(), findResponse.getStatus());
-  }
-
-  @Test
   public void updateClassTest() {
     // Create a provisional class
     OntologyClass createdClass = createClass(class1);
@@ -362,6 +344,24 @@ public class ClassResourceTest extends AbstractTest {
     Assert.assertEquals(expected.isProvisional(), found.isProvisional());
     Assert.assertEquals(expected.getCreated(), found.getCreated());
     Assert.assertEquals(expected.getHasChildren(), found.getHasChildren());
+  }
+
+  @Test
+  public void deleteClassTest() {
+    // Create a provisional class
+    OntologyClass createdClass = createClass(class1);
+    // Delete the class that has been created
+    String classUrl = baseUrlBp + "/" + BP_CLASSES + "/" + createdClass.getId();
+    Response deleteResponse = client.target(classUrl).request().header("Authorization", authHeader).delete();
+    // Check HTTP response
+    Assert.assertEquals(Status.NO_CONTENT.getStatusCode(), deleteResponse.getStatus());
+    // Remove class from the list of created classes
+    createdClasses.remove(createdClass);
+    // Try to retrieve the class to check that it has been deleted correctly
+    String findUrl = baseUrlBpOntologies + "/" + Util.getShortIdentifier(createdClass.getOntology()) + "/" + BP_CLASSES + "/" + createdClass.getId();
+    Response findResponse = client.target(findUrl).request().header("Authorization", authHeader).get();
+    // Check not found
+    Assert.assertEquals(Status.NOT_FOUND.getStatusCode(), findResponse.getStatus());
   }
 
 }

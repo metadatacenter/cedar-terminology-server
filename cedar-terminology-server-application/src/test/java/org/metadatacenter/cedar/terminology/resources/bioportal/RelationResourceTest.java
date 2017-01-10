@@ -65,8 +65,8 @@ public class RelationResourceTest extends AbstractTest {
     Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Store class to delete the class after the test
     Relation created = response.readEntity(Relation.class);
-    // Note: the following line it's not needed. When the class is deleted, BioPortal will delete the relation too.
-    //createdRelations.add(created);
+    // Note: the following line it's not currently needed, but it's kept for safety. When the class is deleted, BioPortal will delete the relation too.
+    createdRelations.add(created);
     // Check fields
     Relation expected = relation1;
     Assert.assertNotNull(created.getId());
@@ -78,98 +78,46 @@ public class RelationResourceTest extends AbstractTest {
     Assert.assertEquals(expected.getTargetClassOntology(), created.getTargetClassOntology());
   }
 
-  //  @Test
-//  public void createRelationTest() {
-//    running(testServer(TEST_SERVER_PORT), new Runnable() {
-//      public void run() {
-//        OntologyClass createdClass = createClass();
-//        // Create provisional relation
-//        relation1.setSourceClassId(createdClass.getLdId());
-//        ObjectMapper mapper = new ObjectMapper();
-//        JsonNode relation1Json = mapper.valueToTree(relation1);
-//        WSResponse wsResponseCreate = WS.url(SERVER_URL_BIOPORTAL + BP_RELATIONS).setHeader
-//            ("Authorization", authHeader).setContentType
-//            ("application/json").post(relation1Json).get(TIMEOUT_MS);
-//        // Check HTTP response
-//        Assert.assertEquals(CREATED, wsResponseCreate.getStatus());
-//        Relation created = null;
-//        try {
-//          created = mapper.treeToValue(wsResponseCreate.asJson(), Relation.class);
-//        } catch (JsonProcessingException e) {
-//          e.printStackTrace();
-//        }
-//        // Store the id to delete the relation after the test
-//        createdRelations.add(created);
-//        // Check Content-Type
-//        Assert.assertEquals("application/json; charset=utf-8", wsResponseCreate.getHeader("Content-Type"));
-//        // Check fields
-//        Relation expected = relation1;
-//        Assert.assertNotNull(created.getId());
-//        Assert.assertNotNull(created.getLdId());
-//        Assert.assertNotNull(created.getCreated());
-//        Assert.assertEquals(expected.getSourceClassId(), created.getSourceClassId());
-//        Assert.assertEquals(expected.getRelationType(), created.getRelationType());
-//        Assert.assertEquals(expected.getTargetClassId(), created.getTargetClassId());
-//        Assert.assertEquals(expected.getTargetClassOntology(), created.getTargetClassOntology());
-//      }
-//    });
-//  }
-//
-//  @Test
-//  public void findRelationTest() {
-//    running(testServer(TEST_SERVER_PORT), new Runnable() {
-//      public void run() {
-//        String url = SERVER_URL_BIOPORTAL + BP_RELATIONS;
-//        // Create a provisional relation
-//        Relation created = createRelation();
-//        // Find the provisional relation by id
-//        String relationUrl = url + "/" + created.getId();
-//        WSResponse wsResponseFind = WS.url(relationUrl).setHeader("Authorization", authHeader).get().get(TIMEOUT_MS);
-//        // Check response is OK
-//        Assert.assertEquals(OK, wsResponseFind.getStatus());
-//        // Check Content-Type
-//        Assert.assertEquals(wsResponseFind.getHeader("Content-Type"), "application/json; charset=utf-8");
-//        // Check the element retrieved
-//        ObjectMapper mapper = new ObjectMapper();
-//        Relation found = null;
-//        try {
-//          found = mapper.treeToValue(wsResponseFind.asJson(), Relation.class);
-//        } catch (JsonProcessingException e) {
-//          e.printStackTrace();
-//        }
-//        Assert.assertEquals(created.getId(), found.getId());
-//        Assert.assertEquals(created.getLdId(), found.getLdId());
-//        Assert.assertEquals(created.getSourceClassId(), found.getSourceClassId());
-//        Assert.assertEquals(created.getRelationType(), found.getRelationType());
-//        Assert.assertEquals(created.getTargetClassId(), found.getTargetClassId());
-//        Assert.assertEquals(created.getTargetClassOntology(), found.getTargetClassOntology());
-//        Assert.assertEquals(created.getCreated(), found.getCreated());
-//      }
-//    });
-//  }
-//
-//  @Test
-//  public void deleteRelationTest() {
-//    running(testServer(TEST_SERVER_PORT), new Runnable() {
-//      public void run() {
-//        String url = SERVER_URL_BIOPORTAL + BP_RELATIONS;
-//        // Create a provisional relation
-//        Relation created = createRelation();
-//        // Delete the relation that has been created
-//        String relationUrl = url + "/" + created.getId();
-//        WSResponse wsResponseDelete = WS.url(relationUrl).setHeader("Authorization", authHeader).delete().get
-//            (TIMEOUT_MS);
-//        // Check HTTP response
-//        Assert.assertEquals(NO_CONTENT, wsResponseDelete.getStatus());
-//        // Try to retrieve the relation to check that it has been deleted correctly
-//        WSResponse wsResponseFind = WS.url(relationUrl).setHeader("Authorization", authHeader).get().get(TIMEOUT_MS);
-//        // Check not found
-//        Assert.assertEquals(NOT_FOUND, wsResponseFind.getStatus());
-//      }
-//    });
-//  }
-//
+  @Test
+  public void findRelationTest() {
+    // Create a provisional relation
+    Relation created = createRelation(class1, relation1);
+    // Find the provisional relation by id
+    String url = baseUrlBp + "/" + BP_RELATIONS + "/" + created.getId();
+    // Service invocation
+    Response findResponse = client.target(url).request().header("Authorization", authHeader).get();
+    // Check HTTP response
+    Assert.assertEquals(Status.OK.getStatusCode(), findResponse.getStatus());
+    // Check Content-Type
+    Assert.assertEquals(MediaType.APPLICATION_JSON, findResponse.getHeaderString(HttpHeaders.CONTENT_TYPE));
+    // Check the element retrieved
+    Relation found = findResponse.readEntity(Relation.class);
+    // Check fields
+    Assert.assertEquals(created.getId(), found.getId());
+    Assert.assertEquals(created.getLdId(), found.getLdId());
+    Assert.assertEquals(created.getSourceClassId(), found.getSourceClassId());
+    Assert.assertEquals(created.getRelationType(), found.getRelationType());
+    Assert.assertEquals(created.getTargetClassId(), found.getTargetClassId());
+    Assert.assertEquals(created.getTargetClassOntology(), found.getTargetClassOntology());
+    Assert.assertEquals(created.getCreated(), found.getCreated());
+  }
 
-
+  @Test
+  public void deleteRelationTest() {
+    // Create a provisional relation
+    Relation created = createRelation(class1, relation1);
+    // Delete the relation that has been created
+    String url = baseUrlBp + "/" + BP_RELATIONS + "/" + created.getId();
+    Response deleteResponse = client.target(url).request().header("Authorization", authHeader).delete();
+    // Check HTTP response
+    Assert.assertEquals(Status.NO_CONTENT.getStatusCode(), deleteResponse.getStatus());
+    // Remove relation from the list of created relations. It has been already deleted
+    createdRelations.remove(created);
+    // Try to retrieve the relation to check that it has been deleted correctly
+    String findUrl = baseUrlBp + "/" + BP_RELATIONS + "/" + created.getId();
+    Response findResponse = client.target(findUrl).request().header("Authorization", authHeader).get();
+    // Check not found
+    Assert.assertEquals(Status.NOT_FOUND.getStatusCode(), findResponse.getStatus());
+  }
 
 }

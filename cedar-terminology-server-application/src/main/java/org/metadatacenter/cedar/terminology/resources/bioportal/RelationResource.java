@@ -124,7 +124,7 @@ public class RelationResource extends AbstractResource {
 //  }
 
   @DELETE
-  @Path("ontologies/relations/{id}")
+  @Path("relations/{id}")
   //  @ApiOperation(
   //      value = "Delete a provisional relation",
   //      httpMethod = "DELETE")

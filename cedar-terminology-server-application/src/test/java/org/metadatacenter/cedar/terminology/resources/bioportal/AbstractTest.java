@@ -60,8 +60,10 @@ public abstract class AbstractTest {
     baseUrlBpOntologies = baseUrlBp + "/" + BP_ONTOLOGIES;
 
     client = new JerseyClientBuilder(RULE.getEnvironment()).build("BioPortal search endpoint client");
-    client.property(ClientProperties.CONNECT_TIMEOUT, cedarConfig.getTerminologyConfig().getBioPortal().getConnectTimeout());
-    client.property(ClientProperties.READ_TIMEOUT, cedarConfig.getTerminologyConfig().getBioPortal().getSocketTimeout());
+    client.property(ClientProperties.CONNECT_TIMEOUT, cedarConfig.getTerminologyConfig().getBioPortal()
+        .getConnectTimeout());
+    client.property(ClientProperties.READ_TIMEOUT, cedarConfig.getTerminologyConfig().getBioPortal().getSocketTimeout
+        ());
 
     // Initialize test class
     String classLabel = "class1_test";
@@ -91,7 +93,7 @@ public abstract class AbstractTest {
    */
   @Before
   public void setUpAbstract() {
-    // Ids of test objects
+    // Test objects
     createdClasses = new ArrayList<>();
     createdRelations = new ArrayList<>();
   }
@@ -103,8 +105,10 @@ public abstract class AbstractTest {
   @After
   public void tearDownAbstract() {
     try {
-      deleteCreatedClasses();
+      // Relations are removed before removing classes. Otherwise, when removing a class, BioPortal will
+      // automatically remove the associated relation(s)
       deleteCreatedRelations();
+      deleteCreatedClasses();
     } catch (Exception e) {
       e.printStackTrace();
     }
@@ -115,7 +119,6 @@ public abstract class AbstractTest {
    */
 
   /* Classes */
-
   protected static OntologyClass createClass(OntologyClass c) {
     String url = baseUrlBpOntologies + "/" + Util.getShortIdentifier(c.getOntology()) + "/" + BP_CLASSES;
     // Service invocation
@@ -147,12 +150,12 @@ public abstract class AbstractTest {
 
   /* Relations */
 
-  protected static Relation createRelation(Relation r) {
+  protected static Relation createRelation(OntologyClass c, Relation r) {
     String url = baseUrlBp + "/" + BP_RELATIONS;
-    OntologyClass createdClass = createClass(class1);
+    OntologyClass createdClass = createClass(c);
     // Create provisional relation
-    relation1.setSourceClassId(createdClass.getId());
-    Response response = client.target(url).request().header("Authorization", authHeader).post(Entity.json(relation1));
+    r.setSourceClassId(createdClass.getId());
+    Response response = client.target(url).request().header("Authorization", authHeader).post(Entity.json(r));
     // Check HTTP response
     Assert.assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
     Relation created = response.readEntity(Relation.class);
@@ -168,10 +171,14 @@ public abstract class AbstractTest {
       if (findResponse.getStatus() == Response.Status.OK.getStatusCode()) {
         Response deleteResponse = client.target(url).request().header("Authorization", authHeader).delete();
         if (deleteResponse.getStatus() != Response.Status.NO_CONTENT.getStatusCode()) {
-          throw new Exception("Couldn't delete relation: Id = " + r.getLdId());
+          throw new Exception("Couldn't delete relation: Id = " + r.getLdId() +
+              ". This relation could have been automatically removed by BioPortal when deleting the class that " +
+              "contained it");
         }
       } else {
-        throw new Exception("Couldn't find relation: Id = " + r.getLdId());
+        throw new Exception("Couldn't find relation: Id = " + r.getLdId() +
+            ". This relation could have been automatically removed by BioPortal when deleting the class that " +
+            "contained it");
       }
     }
   }
