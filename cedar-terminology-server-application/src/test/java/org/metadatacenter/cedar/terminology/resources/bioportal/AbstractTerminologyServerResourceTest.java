@@ -6,6 +6,7 @@ import io.dropwizard.testing.ResourceHelpers;
 import io.dropwizard.testing.junit.DropwizardAppRule;
 import org.glassfish.jersey.client.ClientProperties;
 import org.junit.*;
+import org.metadatacenter.cedar.cache.Cache;
 import org.metadatacenter.cedar.terminology.TerminologyServerApplication;
 import org.metadatacenter.cedar.terminology.TerminologyServerConfiguration;
 import org.metadatacenter.config.CedarConfig;
@@ -28,7 +29,7 @@ import java.util.List;
 /**
  * Integration tests. They are done by starting a test server that makes it possible to test the real HTTP stack.
  */
-public abstract class AbstractTest {
+public abstract class AbstractTerminologyServerResourceTest {
 
   protected static CedarConfig cedarConfig;
   protected static Client client;
@@ -60,6 +61,15 @@ public abstract class AbstractTest {
    */
   @BeforeClass
   public static void oneTimeSetUpAbstract() {
+    // Wait while cache is being generated
+    while ((Cache.ontologiesCache.size() == 0) || (Cache.valueSetsCache.size() == 0)) {
+      try {
+        Thread.sleep(1000);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+    }
+
     cedarConfig = CedarConfig.getInstance();
     authHeader = TestUtil.getTestUser1AuthHeader();
 
@@ -254,10 +264,10 @@ public abstract class AbstractTest {
 
   /* Values */
 
-//  protected static Value createValue(Value v) {
-//
-//
-//
+//  protected static Value createValue(ValueSet vs, Value v) {
+//    ValueSet createdVs = createValueSet(vs);
+//    // Create a value in the value set
+//    v.setVsId(vs.getLdId());
 //
 //
 //    String url = baseUrlBpOntologies + "/" + Util.getShortIdentifier(c.getOntology()) + "/" + BP_CLASSES;

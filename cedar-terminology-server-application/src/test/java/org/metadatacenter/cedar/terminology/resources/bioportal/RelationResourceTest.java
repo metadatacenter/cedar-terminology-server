@@ -1,30 +1,21 @@
 package org.metadatacenter.cedar.terminology.resources.bioportal;
 
 import org.junit.*;
-import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.terms.domainObjects.OntologyClass;
 import org.metadatacenter.terms.domainObjects.Relation;
-import org.metadatacenter.terms.domainObjects.TreeNode;
-import org.metadatacenter.terms.util.Util;
 
 import javax.ws.rs.client.Entity;
-import javax.ws.rs.core.GenericType;
 import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
-import java.io.UnsupportedEncodingException;
-import java.net.URLEncoder;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
 
 import static org.metadatacenter.cedar.terminology.utils.Constants.*;
 
 /**
  * Integration tests. They are done by starting a test server that makes it possible to test the real HTTP stack.
  */
-public class RelationResourceTest extends AbstractTest {
+public class RelationResourceTest extends AbstractTerminologyServerResourceTest {
 
   /**
    * One-time initialization code.

@@ -5,11 +5,9 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.ListenableFutureTask;
-//import controllers.TerminologyController;
-import org.metadatacenter.cedar.terminology.resources.AbstractResource;
+import org.metadatacenter.cedar.terminology.resources.AbstractTerminologyServerResource;
 import org.metadatacenter.terms.domainObjects.Ontology;
 import org.metadatacenter.terms.domainObjects.ValueSet;
-//import play.Logger;
 
 import java.io.*;
 import java.util.LinkedHashMap;
@@ -19,9 +17,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-import static org.metadatacenter.cedar.terminology.utils.Constants.VALUE_SETS_CACHE_FILE;
-import static org.metadatacenter.cedar.terminology.utils.Constants.ONTOLOGIES_CACHE_FILE;
-import static org.metadatacenter.cedar.terminology.utils.Constants.CACHE_FOLDER_NAME;
+import static org.metadatacenter.cedar.terminology.utils.Constants.*;
 
 public class Cache {
 
@@ -112,7 +108,7 @@ public class Cache {
       valueSets = readValueSetsFromFile();
     } else {
       //Logger.info("Loading value sets from BioPortal");
-      valueSets = AbstractResource.terminologyService.findAllValueSets(apiKeyCache);
+      valueSets = AbstractTerminologyServerResource.terminologyService.findAllValueSets(apiKeyCache);
       saveValueSetsToFile(valueSets);
     }
     firstLoadValueSets = false;
@@ -131,7 +127,7 @@ public class Cache {
       ontologies = readOntologiesFromFile();
     } else {
       //Logger.info("Loading ontologies from BioPortal");
-      ontologies = AbstractResource.terminologyService.findAllOntologies(true, apiKeyCache);
+      ontologies = AbstractTerminologyServerResource.terminologyService.findAllOntologies(true, apiKeyCache);
       saveOntologiesToFile(ontologies);
     }
     firstLoadOntologies = false;

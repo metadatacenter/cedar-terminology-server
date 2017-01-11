@@ -1,7 +1,8 @@
 package org.metadatacenter.cedar.terminology.resources.bioportal;
 
 import org.metadatacenter.cedar.cache.Cache;
-import org.metadatacenter.cedar.terminology.resources.AbstractResource;
+import org.metadatacenter.cedar.terminology.resources.AbstractTerminologyServerResource;
+import org.metadatacenter.config.CedarConfig;
 import org.metadatacenter.exception.CedarException;
 import org.metadatacenter.rest.context.CedarRequestContext;
 import org.metadatacenter.rest.context.CedarRequestContextFactory;
@@ -26,7 +27,11 @@ import static org.metadatacenter.rest.assertion.GenericAssertions.LoggedIn;
 
 @Path("/bioportal")
 @Produces(MediaType.APPLICATION_JSON)
-public class OntologyResource extends AbstractResource {
+public class OntologyResource extends AbstractTerminologyServerResource {
+
+  public OntologyResource(CedarConfig cedarConfig) {
+    super(cedarConfig);
+  }
 
   @GET
   @Path("ontologies")

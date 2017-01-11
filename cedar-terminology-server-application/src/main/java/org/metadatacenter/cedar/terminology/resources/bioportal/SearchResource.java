@@ -4,7 +4,8 @@ import com.codahale.metrics.annotation.Timed;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.hibernate.validator.constraints.NotEmpty;
 import org.metadatacenter.cedar.cache.Cache;
-import org.metadatacenter.cedar.terminology.resources.AbstractResource;
+import org.metadatacenter.cedar.terminology.resources.AbstractTerminologyServerResource;
+import org.metadatacenter.config.CedarConfig;
 import org.metadatacenter.error.CedarErrorKey;
 import org.metadatacenter.exception.CedarException;
 import org.metadatacenter.rest.context.CedarRequestContext;
@@ -29,7 +30,11 @@ import static org.metadatacenter.terms.util.Constants.*;
 
 @Path("/bioportal")
 @Produces(MediaType.APPLICATION_JSON)
-public class SearchResource extends AbstractResource {
+public class SearchResource extends AbstractTerminologyServerResource {
+
+  public SearchResource(CedarConfig cedarConfig) {
+    super(cedarConfig);
+  }
 
   @GET
   @Timed

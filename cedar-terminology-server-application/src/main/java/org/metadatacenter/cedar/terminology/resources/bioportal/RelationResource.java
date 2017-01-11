@@ -4,7 +4,8 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import org.metadatacenter.cedar.cache.Cache;
-import org.metadatacenter.cedar.terminology.resources.AbstractResource;
+import org.metadatacenter.cedar.terminology.resources.AbstractTerminologyServerResource;
+import org.metadatacenter.config.CedarConfig;
 import org.metadatacenter.exception.CedarException;
 import org.metadatacenter.exception.CedarProcessingException;
 import org.metadatacenter.rest.context.CedarRequestContext;
@@ -30,7 +31,11 @@ import static org.metadatacenter.rest.assertion.GenericAssertions.LoggedIn;
 
 @Path("/bioportal")
 @Produces(MediaType.APPLICATION_JSON)
-public class RelationResource extends AbstractResource {
+public class RelationResource extends AbstractTerminologyServerResource {
+
+  public RelationResource(CedarConfig cedarConfig) {
+    super(cedarConfig);
+  }
 
   @POST
   @Path("relations")
@@ -75,7 +80,7 @@ public class RelationResource extends AbstractResource {
   //      @ApiImplicitParam(name = "id", value = "Provisional relation id. Example:
   // 720f50f0-ae6f-0133-848f-005056010073",
   //          required = true, dataType = "string", paramType = "path")})
-  public Response findRelation(@PathParam("id") String id) throws CedarAssertionException {
+  public Response findRelation(@PathParam("id") String id) throws CedarException {
     CedarRequestContext ctx = CedarRequestContextFactory.fromRequest(request);
     ctx.must(ctx.user()).be(LoggedIn);
     try {
@@ -138,7 +143,7 @@ public class RelationResource extends AbstractResource {
   //      @ApiImplicitParam(name = "id", value = "Provisional relation id. Example:
   // 720f50f0-ae6f-0133-848f-005056010073",
   //          required = true, dataType = "string", paramType = "path")})
-  public Response deleteRelation(@PathParam("id") String id) throws CedarAssertionException {
+  public Response deleteRelation(@PathParam("id") String id) throws CedarException {
     CedarRequestContext ctx = CedarRequestContextFactory.fromRequest(request);
     ctx.must(ctx.user()).be(LoggedIn);
     try {

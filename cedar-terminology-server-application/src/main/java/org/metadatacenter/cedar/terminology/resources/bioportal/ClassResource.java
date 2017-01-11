@@ -4,7 +4,8 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import org.metadatacenter.cedar.cache.Cache;
-import org.metadatacenter.cedar.terminology.resources.AbstractResource;
+import org.metadatacenter.cedar.terminology.resources.AbstractTerminologyServerResource;
+import org.metadatacenter.config.CedarConfig;
 import org.metadatacenter.exception.CedarException;
 import org.metadatacenter.exception.CedarProcessingException;
 import org.metadatacenter.rest.context.CedarRequestContext;
@@ -29,7 +30,11 @@ import static org.metadatacenter.rest.assertion.GenericAssertions.LoggedIn;
 
 @Path("/bioportal")
 @Produces(MediaType.APPLICATION_JSON)
-public class ClassResource extends AbstractResource {
+public class ClassResource extends AbstractTerminologyServerResource {
+
+  public ClassResource(CedarConfig cedarConfig) {
+    super(cedarConfig);
+  }
 
   @POST
   @Path("ontologies/{ontology}/classes")

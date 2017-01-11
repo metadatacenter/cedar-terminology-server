@@ -1,6 +1,8 @@
 package org.metadatacenter.cedar.terminology.resources.bioportal;
 
-import org.metadatacenter.cedar.terminology.resources.AbstractResource;
+import org.metadatacenter.cedar.terminology.resources.AbstractTerminologyServerResource;
+import org.metadatacenter.config.CedarConfig;
+import org.metadatacenter.exception.CedarException;
 import org.metadatacenter.rest.context.CedarRequestContext;
 import org.metadatacenter.rest.context.CedarRequestContextFactory;
 import org.metadatacenter.rest.exception.CedarAssertionException;
@@ -18,7 +20,11 @@ import static org.metadatacenter.rest.assertion.GenericAssertions.LoggedIn;
 
 @Path("/bioportal")
 @Produces(MediaType.APPLICATION_JSON)
-public class ValueSetCollectionResource extends AbstractResource {
+public class ValueSetCollectionResource extends AbstractTerminologyServerResource {
+
+  public ValueSetCollectionResource(CedarConfig cedarConfig) {
+    super(cedarConfig);
+  }
 
   @GET
   @Path("vs-collections")
@@ -32,7 +38,7 @@ public class ValueSetCollectionResource extends AbstractResource {
   //      @ApiResponse(code = 401, message = "Unauthorized"),
   //      @ApiResponse(code = 500, message = "Internal Server Error")})
   public Response findAllVSCollections(@QueryParam("include_details") @DefaultValue("false") boolean includeDetails)
-      throws CedarAssertionException {
+      throws CedarException {
     CedarRequestContext ctx = CedarRequestContextFactory.fromRequest(request);
     ctx.must(ctx.user()).be(LoggedIn);
     try {

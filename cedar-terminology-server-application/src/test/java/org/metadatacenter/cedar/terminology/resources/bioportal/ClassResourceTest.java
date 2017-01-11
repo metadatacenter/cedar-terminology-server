@@ -22,7 +22,7 @@ import static org.metadatacenter.cedar.terminology.utils.Constants.*;
 /**
  * Integration tests. They are done by starting a test server that makes it possible to test the real HTTP stack.
  */
-public class ClassResourceTest extends AbstractTest {
+public class ClassResourceTest extends AbstractTerminologyServerResourceTest {
 
   /**
    * One-time initialization code.

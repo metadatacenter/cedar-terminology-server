@@ -2,7 +2,6 @@ package org.metadatacenter.cedar.terminology.resources.bioportal;
 
 import org.junit.*;
 import org.metadatacenter.terms.customObjects.PagedResults;
-import org.metadatacenter.terms.domainObjects.OntologyClass;
 import org.metadatacenter.terms.domainObjects.ValueSet;
 import org.metadatacenter.terms.util.Util;
 
@@ -12,16 +11,14 @@ import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
-
 import java.util.HashSet;
 
-import static org.metadatacenter.cedar.terminology.utils.Constants.BP_CLASSES;
 import static org.metadatacenter.cedar.terminology.utils.Constants.BP_VALUE_SETS;
 
 /**
  * Integration tests. They are done by starting a test server that makes it possible to test the real HTTP stack.
  */
-public class ValueSetResourceTest extends AbstractTest {
+public class ValueSetResourceTest extends AbstractTerminologyServerResourceTest {
 
   /**
    * One-time initialization code.
@@ -117,6 +114,13 @@ public class ValueSetResourceTest extends AbstractTest {
     PagedResults<ValueSet> valueSets = findResponse.readEntity(new GenericType<PagedResults<ValueSet>>() {});
     int resultsCount = valueSets.getCollection().size();
     Assert.assertTrue("Wrong number of value sets retrieved", resultsCount > 1);
+  }
+
+  @Test
+  public void findValueSetByValueTest() {
+    // Create a provisional value set
+    ValueSet created1 = createValueSet(vs1);
+
   }
 
 //

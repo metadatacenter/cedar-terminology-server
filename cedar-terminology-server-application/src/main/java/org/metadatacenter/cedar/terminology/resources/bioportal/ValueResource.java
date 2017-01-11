@@ -4,7 +4,8 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import org.metadatacenter.cedar.cache.Cache;
-import org.metadatacenter.cedar.terminology.resources.AbstractResource;
+import org.metadatacenter.cedar.terminology.resources.AbstractTerminologyServerResource;
+import org.metadatacenter.config.CedarConfig;
 import org.metadatacenter.exception.CedarException;
 import org.metadatacenter.exception.CedarProcessingException;
 import org.metadatacenter.rest.context.CedarRequestContext;
@@ -30,7 +31,11 @@ import static org.metadatacenter.rest.assertion.GenericAssertions.LoggedIn;
 
 @Path("/bioportal")
 @Produces(MediaType.APPLICATION_JSON)
-public class ValueResource extends AbstractResource {
+public class ValueResource extends AbstractTerminologyServerResource {
+
+  public ValueResource(CedarConfig cedarConfig) {
+    super(cedarConfig);
+  }
 
   @POST
   @Path("vs-collections/{vs_collection}/value-sets/{vs}/values")
@@ -66,25 +71,6 @@ public class ValueResource extends AbstractResource {
       throw new CedarProcessingException(e);
     }
   }
-
-//  public static Result createValue(String vsCollection, String vs) {
-//    if (vsCollection.isEmpty() || vs.isEmpty()) {
-//      return badRequest();
-//    }
-//    try {
-//      ObjectMapper mapper = new ObjectMapper();
-//      Value v = mapper.convertValue(request().body().asJson(), Value.class);
-//      v.setVsCollection(vsCollection);
-//      v.setVsId(vs);
-//      Value createdValue = termService.createProvisionalValue(v, apiKey);
-//      return created((JsonNode) mapper.valueToTree(createdValue));
-//    } catch (HTTPException e) {
-//      return Results.status(e.getStatusCode());
-//    } catch (IOException e) {
-//      return internalServerError(e.getMessage());
-//    }
-//  }
-//
 
   @GET
   @Path("vs-collections/{vs_collection}/values/{id}")

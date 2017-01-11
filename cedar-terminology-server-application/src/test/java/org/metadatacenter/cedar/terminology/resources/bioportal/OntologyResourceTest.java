@@ -1,7 +1,6 @@
 package org.metadatacenter.cedar.terminology.resources.bioportal;
 
 import org.junit.*;
-import org.metadatacenter.cedar.cache.Cache;
 import org.metadatacenter.terms.domainObjects.Ontology;
 import org.metadatacenter.terms.domainObjects.OntologyClass;
 
@@ -17,7 +16,7 @@ import static org.metadatacenter.cedar.terminology.utils.Constants.*;
 /**
  * Integration tests. They are done by starting a test server that makes it possible to test the real HTTP stack.
  */
-public class OntologyResourceTest extends AbstractTest {
+public class OntologyResourceTest extends AbstractTerminologyServerResourceTest {
 
   private static Ontology ontology1;
 
@@ -27,14 +26,6 @@ public class OntologyResourceTest extends AbstractTest {
    */
   @BeforeClass
   public static void oneTimeSetUp() {
-    // Wait while cache is being generated
-    while (Cache.ontologiesCache.size() == 0) {
-      try {
-        Thread.sleep(1000);
-      } catch (InterruptedException e) {
-        e.printStackTrace();
-      }
-    }
     // Initialize ontology information
     ontology1 = new Ontology("NCIT","http://data.bioontology.org/ontologies/",
         "National Cancer Institute Thesaurus", false, null);

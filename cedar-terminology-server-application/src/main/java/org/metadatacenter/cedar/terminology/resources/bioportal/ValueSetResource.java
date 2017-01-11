@@ -2,7 +2,8 @@ package org.metadatacenter.cedar.terminology.resources.bioportal;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import org.metadatacenter.cedar.cache.Cache;
-import org.metadatacenter.cedar.terminology.resources.AbstractResource;
+import org.metadatacenter.cedar.terminology.resources.AbstractTerminologyServerResource;
+import org.metadatacenter.config.CedarConfig;
 import org.metadatacenter.exception.CedarException;
 import org.metadatacenter.exception.CedarProcessingException;
 import org.metadatacenter.rest.context.CedarRequestContext;
@@ -24,7 +25,11 @@ import static org.metadatacenter.rest.assertion.GenericAssertions.LoggedIn;
 
 @Path("/bioportal")
 @Produces(MediaType.APPLICATION_JSON)
-public class ValueSetResource extends AbstractResource {
+public class ValueSetResource extends AbstractTerminologyServerResource {
+
+  public ValueSetResource(CedarConfig cedarConfig) {
+    super(cedarConfig);
+  }
 
   @POST
   @Path("vs-collections/{vs_collection}/value-sets")
@@ -77,7 +82,7 @@ public class ValueSetResource extends AbstractResource {
   // af033050-b04b-0133-981f-005056010074",
   //          required = true, dataType = "string", paramType = "path")})
   public Response findValueSet(@PathParam("id") @Encoded String id, @PathParam("vs_collection") String vsCollection)
-      throws CedarAssertionException {
+      throws CedarException {
     CedarRequestContext ctx = CedarRequestContextFactory.fromRequest(request);
     ctx.must(ctx.user()).be(LoggedIn);
     try {
@@ -126,35 +131,34 @@ public class ValueSetResource extends AbstractResource {
     }
   }
 
-//
-//  @ApiOperation(
-//      value = "Find the value set that contains a particular value",
-//      // notes = ...
-//      httpMethod = "GET")
-//  @ApiResponses(value = {
-//      @ApiResponse(code = 200, message = "Success!"),
-//      @ApiResponse(code = 400, message = "Bad Request"),
-//      @ApiResponse(code = 401, message = "Unauthorized"),
-//      @ApiResponse(code = 500, message = "Internal Server Error")})
-//  @ApiImplicitParams(value = {
-//      @ApiImplicitParam(name = "id", value = "Value id. Example: 42f22880-b04b-0133-848f-005056010073",
-//          required = true, dataType = "string", paramType = "path"),
-//      @ApiImplicitParam(name = "vs_collection", value = "Value set collection. Example: CEDARVS",
-//          required = true, dataType = "string", paramType = "path")})
-//  public static Result findValueSetByValue(String id, String vsCollection) {
-//    if (id.isEmpty() || vsCollection.isEmpty()) {
-//      return badRequest();
-//    }
-//    try {
-//      id = Util.encodeIfNeeded(id);
-//      ValueSet vs = termService.findValueSetByValue(id, vsCollection, apiKey);
-//      return ok((JsonNode) new ObjectMapper().valueToTree(vs));
-//    } catch (HTTPException e) {
-//      return Results.status(e.getStatusCode());
-//    } catch (IOException e) {
-//      return internalServerError(e.getMessage());
-//    }
-//  }
+  @GET
+  @Path("vs-collections/{vs_collection}/values/{id}/value-set")
+  //  @ApiOperation(
+  //      value = "Find the value set that contains a particular value",
+  //      // notes = ...
+  //      httpMethod = "GET")
+  //  @ApiResponses(value = {
+  //      @ApiResponse(code = 200, message = "Success!"),
+  //      @ApiResponse(code = 400, message = "Bad Request"),
+  //      @ApiResponse(code = 401, message = "Unauthorized"),
+  //      @ApiResponse(code = 500, message = "Internal Server Error")})
+  //  @ApiImplicitParams(value = {
+  //      @ApiImplicitParam(name = "id", value = "Value id. Example: 42f22880-b04b-0133-848f-005056010073",
+  //          required = true, dataType = "string", paramType = "path"),
+  //      @ApiImplicitParam(name = "vs_collection", value = "Value set collection. Example: CEDARVS",
+  //          required = true, dataType = "string", paramType = "path")})
+  public Response findValueSetByValue(@PathParam("id") @Encoded String id,
+                                      @PathParam("vs_collection") String vsCollection) throws CedarException {
+    try {
+      ValueSet vs = terminologyService.findValueSetByValue(id, vsCollection, apiKey);
+      return Response.ok().entity(JsonMapper.MAPPER.valueToTree(vs)).build();
+    } catch (HTTPException e) {
+      return Response.status(e.getStatusCode()).build();
+    } catch (IOException e) {
+      throw new CedarAssertionException(e);
+    }
+  }
+
 //
 //  @ApiOperation(
 //      value = "Get value set tree",

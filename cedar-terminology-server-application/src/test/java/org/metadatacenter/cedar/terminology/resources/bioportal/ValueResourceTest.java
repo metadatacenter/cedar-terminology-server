@@ -1,28 +1,24 @@
 package org.metadatacenter.cedar.terminology.resources.bioportal;
 
 import org.junit.*;
-import org.metadatacenter.terms.customObjects.PagedResults;
-import org.metadatacenter.terms.domainObjects.OntologyClass;
-import org.metadatacenter.terms.domainObjects.TreeNode;
+import org.metadatacenter.terms.domainObjects.Value;
+import org.metadatacenter.terms.domainObjects.ValueSet;
 import org.metadatacenter.terms.util.Util;
 
 import javax.ws.rs.client.Entity;
-import javax.ws.rs.core.GenericType;
 import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-import javax.ws.rs.core.Response.Status;
 import java.io.UnsupportedEncodingException;
-import java.net.URLEncoder;
 import java.util.HashSet;
-import java.util.List;
 
-import static org.metadatacenter.cedar.terminology.utils.Constants.*;
+import static org.metadatacenter.cedar.terminology.utils.Constants.BP_VALUES;
+import static org.metadatacenter.cedar.terminology.utils.Constants.BP_VALUE_SETS;
 
 /**
  * Integration tests. They are done by starting a test server that makes it possible to test the real HTTP stack.
  */
-public class ValueResourceTest extends AbstractTest {
+public class ValueResourceTest extends AbstractTerminologyServerResourceTest {
 
   /**
    * One-time initialization code.
@@ -46,6 +42,42 @@ public class ValueResourceTest extends AbstractTest {
    */
   @After
   public void tearDown() {
+  }
+
+  @Test
+  public void createValueTest() {
+    // Create value set and value
+    ValueSet createdVs = createValueSet(vs1);
+    value1.setVsId(createdVs.getLdId());
+    String url = null;
+    try {
+      url = baseUrlBpVSCollections + "/" + Util.getShortIdentifier(value1.getVsCollection()) + "/"
+          + BP_VALUE_SETS + "/" + Util.encodeIfNeeded(value1.getVsId()) + "/" + BP_VALUES;
+    } catch (UnsupportedEncodingException e) {
+      e.printStackTrace();
+    }
+    // Service invocation
+    Response response = client.target(url).request().header("Authorization", authHeader).post(Entity.json(value1));
+    // Check HTTP response
+    Assert.assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
+    // Check Content-Type
+    Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
+    // Store value to delete it after the test
+    Value created = response.readEntity(Value.class);
+    createdValues.add(created);
+    // Check fields
+    Value expected = value1;
+    Assert.assertNotNull(created.getId());
+    Assert.assertNotNull(created.getLdId());
+    Assert.assertNotNull(created.getCreated());
+    Assert.assertEquals(expected.getPrefLabel(), created.getPrefLabel());
+    Assert.assertEquals(expected.getCreator(), created.getCreator());
+    Assert.assertEquals(expected.getVsId(), created.getVsId());
+    Assert.assertEquals(expected.getVsCollection(), created.getVsCollection());
+    Assert.assertEquals(new HashSet<>(expected.getDefinitions()), new HashSet<>(created.getDefinitions()));
+    Assert.assertEquals(new HashSet<>(expected.getSynonyms()), new HashSet<>(created.getSynonyms()));
+    Assert.assertEquals(new HashSet<>(expected.getRelations()), new HashSet<>(created.getRelations()));
+    Assert.assertEquals(expected.isProvisional(), created.isProvisional());
   }
 
   //  @Test

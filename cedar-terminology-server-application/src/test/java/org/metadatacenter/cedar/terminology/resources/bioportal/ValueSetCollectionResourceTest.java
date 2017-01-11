@@ -13,7 +13,7 @@ import java.util.List;
 /**
  * Integration tests. They are done by starting a test server that makes it possible to test the real HTTP stack.
  */
-public class ValueSetCollectionResourceTest extends AbstractTest {
+public class ValueSetCollectionResourceTest extends AbstractTerminologyServerResourceTest {
 
   /**
    * One-time initialization code.
