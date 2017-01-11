@@ -154,9 +154,8 @@ public abstract class AbstractTerminologyServerResourceTest {
       // automatically remove the associated relation(s)
       deleteCreatedRelations();
       deleteCreatedClasses();
-      // Values should be removed before value sets
-      deleteCreatedValues();
       deleteCreatedValueSets();
+      deleteCreatedValues();
     } catch (Exception e) {
       e.printStackTrace();
     }

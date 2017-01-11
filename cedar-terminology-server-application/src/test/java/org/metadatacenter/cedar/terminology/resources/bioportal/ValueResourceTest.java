@@ -185,26 +185,24 @@ public class ValueResourceTest extends AbstractTerminologyServerResourceTest {
 //    });
 //  }
 //
-//  @Test
-//  public void deleteValueTest() {
-//    running(testServer(TEST_SERVER_PORT), new Runnable() {
-//      public void run() {
-//        String url = SERVER_URL_BIOPORTAL + BP_VALUES;
-//        // Create a provisional value
-//        Value created = createValue();
-//        // Delete the value that has been created
-//        String valueUrl = url + "/" + created.getId();
-//        WSResponse wsResponseDelete = WS.url(valueUrl).setHeader("Authorization", authHeader).delete().get
-//            (TIMEOUT_MS);
-//        // Check HTTP response
-//        Assert.assertEquals(NO_CONTENT, wsResponseDelete.getStatus());
-//        // Try to retrieve the relation to check that it has been deleted correctly
-//        WSResponse wsResponseFind = WS.url(valueUrl).setHeader("Authorization", authHeader).get().get(TIMEOUT_MS);
-//        // Check not found
-//        Assert.assertEquals(NOT_FOUND, wsResponseFind.getStatus());
-//      }
-//    });
-//  }
 
+  @Test
+  public void deleteValueTest() {
+    // Create a provisional value
+    Value created = createValue(vs1, value1);
+    // Delete the value that has been created
+    String classUrl = baseUrlBp + "/" + BP_VALUES + "/" + created.getId();
+    Response deleteResponse = client.target(classUrl).request().header("Authorization", authHeader).delete();
+    // Check HTTP response
+    Assert.assertEquals(Response.Status.NO_CONTENT.getStatusCode(), deleteResponse.getStatus());
+    // Remove value from the list of created values. It has already been deleted
+    createdValues.remove(created);
+    // Try to retrieve the value to check that it has been deleted correctly
+    String findUrl = baseUrlBpVSCollections + "/" + Util.getShortIdentifier(created.getVsCollection()) + "/" +
+        BP_VALUES + "/" + created.getId();
+    Response findResponse = client.target(findUrl).request().header("Authorization", authHeader).get();
+    // Check not found
+    Assert.assertEquals(Response.Status.NOT_FOUND.getStatusCode(), findResponse.getStatus());
+  }
 
 }
