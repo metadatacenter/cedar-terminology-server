@@ -169,7 +169,7 @@ public abstract class AbstractTest {
     return created;
   }
 
-  protected static void deleteCreatedClasses() throws Exception {
+  private static void deleteCreatedClasses() throws Exception {
     for (OntologyClass c : createdClasses) {
       // Check if the class still exists
       String findUrl = baseUrlBpOntologies + "/" + Util.getShortIdentifier(c.getOntology()) + "/" +
@@ -202,7 +202,7 @@ public abstract class AbstractTest {
     return created;
   }
 
-  protected static void deleteCreatedRelations() throws Exception {
+  private static void deleteCreatedRelations() throws Exception {
     for (Relation r : createdRelations) {
       // Check if the relation still exists
       String url = baseUrlBp + "/" + BP_RELATIONS + "/" + r.getId();
@@ -225,7 +225,7 @@ public abstract class AbstractTest {
   /* Value Sets */
 
   protected static ValueSet createValueSet(ValueSet vs) {
-    String url = baseUrlBpVSCollections + Util.getShortIdentifier(vs.getVsCollection()) + "/" + BP_VALUE_SETS;
+    String url = baseUrlBpVSCollections + "/" + Util.getShortIdentifier(vs.getVsCollection()) + "/" + BP_VALUE_SETS;
     Response response = client.target(url).request().header("Authorization", authHeader).post(Entity.json(vs));
     // Check HTTP response
     Assert.assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());

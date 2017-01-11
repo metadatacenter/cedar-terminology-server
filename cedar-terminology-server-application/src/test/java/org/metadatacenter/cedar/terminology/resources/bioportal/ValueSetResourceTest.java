@@ -13,6 +13,7 @@ import javax.ws.rs.core.Response.Status;
 
 import java.util.HashSet;
 
+import static org.metadatacenter.cedar.terminology.utils.Constants.BP_CLASSES;
 import static org.metadatacenter.cedar.terminology.utils.Constants.BP_VALUE_SETS;
 
 /**
@@ -69,46 +70,33 @@ public class ValueSetResourceTest extends AbstractTest {
     Assert.assertEquals(expected.isProvisional(), created.isProvisional());
   }
 
- 
-
-  //  @Test
-//  // TODO: test find for regular value sets
-//  public void findValueSetTest() {
-//    running(testServer(TEST_SERVER_PORT), new Runnable() {
-//      public void run() {
-//        String url = SERVER_URL_BIOPORTAL + BP_VALUE_SET_COLLECTIONS + "/" + Util.getShortIdentifier(vs1
-//            .getVsCollection()) + "/" + BP_VALUE_SETS;
-//        // Create a provisional value set
-//        ValueSet created = createValueSet();
-//        // Find the provisional vs by id
-//        String vsUrl = url + "/" + created.getId();
-//        WSResponse wsResponseFind = WS.url(vsUrl).setHeader("Authorization", authHeader).get().get(TIMEOUT_MS);
-//        // Check response is OK
-//        Assert.assertEquals(OK, wsResponseFind.getStatus());
-//        // Check Content-Type
-//        Assert.assertEquals(wsResponseFind.getHeader("Content-Type"), "application/json; charset=utf-8");
-//        // Check the element retrieved
-//        ObjectMapper mapper = new ObjectMapper();
-//        ValueSet found = null;
-//        try {
-//          found = mapper.treeToValue(wsResponseFind.asJson(), ValueSet.class);
-//        } catch (JsonProcessingException e) {
-//          e.printStackTrace();
-//        }
-//        // Check fields
-//        Assert.assertEquals(created.getId(), found.getId());
-//        Assert.assertEquals(created.getLdId(), found.getLdId());
-//        Assert.assertEquals(created.getPrefLabel(), found.getPrefLabel());
-//        Assert.assertEquals(created.getCreator(), found.getCreator());
-//        Assert.assertEquals(created.getVsCollection(), found.getVsCollection());
-//        Assert.assertEquals(new HashSet<>(created.getDefinitions()), new HashSet<>(found.getDefinitions()));
-//        Assert.assertEquals(new HashSet<>(created.getSynonyms()), new HashSet<>(found.getSynonyms()));
-//        Assert.assertEquals(new HashSet<>(created.getRelations()), new HashSet<>(found.getRelations()));
-//        Assert.assertEquals(created.isProvisional(), found.isProvisional());
-//        Assert.assertEquals(created.getCreated(), found.getCreated());
-//      }
-//    });
-//  }
+  @Test
+  // TODO: test find for regular value sets too
+  public void findValueSetTest() {
+    // Create a provisional value set
+    ValueSet created = createValueSet(vs1);
+    // Find the provisional value set by id
+    String url = baseUrlBpVSCollections + "/" + Util.getShortIdentifier(created.getVsCollection()) + "/" + BP_VALUE_SETS + "/" + created.getId();
+    // Service invocation
+    Response findResponse = client.target(url).request().header("Authorization", authHeader).get();
+    // Check HTTP response
+    Assert.assertEquals(Status.OK.getStatusCode(), findResponse.getStatus());
+    // Check Content-Type
+    Assert.assertEquals(MediaType.APPLICATION_JSON, findResponse.getHeaderString(HttpHeaders.CONTENT_TYPE));
+    // Check the element retrieved
+    ValueSet found = findResponse.readEntity(ValueSet.class);
+    // Check fields
+    Assert.assertEquals(created.getId(), found.getId());
+    Assert.assertEquals(created.getLdId(), found.getLdId());
+    Assert.assertEquals(created.getPrefLabel(), found.getPrefLabel());
+    Assert.assertEquals(created.getCreator(), found.getCreator());
+    Assert.assertEquals(created.getVsCollection(), found.getVsCollection());
+    Assert.assertEquals(new HashSet<>(created.getDefinitions()), new HashSet<>(found.getDefinitions()));
+    Assert.assertEquals(new HashSet<>(created.getSynonyms()), new HashSet<>(found.getSynonyms()));
+    Assert.assertEquals(new HashSet<>(created.getRelations()), new HashSet<>(found.getRelations()));
+    Assert.assertEquals(created.isProvisional(), found.isProvisional());
+    Assert.assertEquals(created.getCreated(), found.getCreated());
+  }
 
   //  @Test
 //  public void findValueSetsByVsCollectionTest() {
