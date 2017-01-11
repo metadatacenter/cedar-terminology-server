@@ -54,6 +54,8 @@ public class TerminologyServerApplication extends Application<TerminologyServerC
     environment.jersey().register(new OntologyResource());
     environment.jersey().register(new RelationResource());
     environment.jersey().register(new ValueSetCollectionResource());
+    environment.jersey().register(new ValueSetResource());
+    environment.jersey().register(new ValueResource());
 
     final TerminologyServerHealthCheck healthCheck = new TerminologyServerHealthCheck();
     environment.healthChecks().register("message", healthCheck);

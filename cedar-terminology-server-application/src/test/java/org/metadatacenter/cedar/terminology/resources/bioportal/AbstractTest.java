@@ -11,6 +11,8 @@ import org.metadatacenter.cedar.terminology.TerminologyServerConfiguration;
 import org.metadatacenter.config.CedarConfig;
 import org.metadatacenter.terms.domainObjects.OntologyClass;
 import org.metadatacenter.terms.domainObjects.Relation;
+import org.metadatacenter.terms.domainObjects.Value;
+import org.metadatacenter.terms.domainObjects.ValueSet;
 import org.metadatacenter.terms.util.Util;
 import org.metadatacenter.util.json.JsonMapper;
 import org.metadatacenter.util.test.TestUtil;
@@ -37,10 +39,15 @@ public abstract class AbstractTest {
   protected static String baseUrlBpOntologies;
   protected static String baseUrlBpVSCollections;
 
-  protected static OntologyClass class1;
-  protected static Relation relation1;
   protected static List<OntologyClass> createdClasses;
   protected static List<Relation> createdRelations;
+  protected static List<ValueSet> createdValueSets;
+  protected static List<Value> createdValues;
+
+  protected static OntologyClass class1;
+  protected static Relation relation1;
+  protected static ValueSet vs1;
+  protected static Value value1;
 
   @ClassRule
   public static final DropwizardAppRule<TerminologyServerConfiguration> RULE =
@@ -85,6 +92,33 @@ public abstract class AbstractTest {
     String targetClassId = "http://purl.bioontology.org/ontology/CPT/1002796";
     String targetClassOntology = "http://data.bioontology.org/ontologies/CPT";
     relation1 = new Relation(null, null, null, relationType, targetClassId, targetClassOntology, null, relationCreator);
+
+    // Initialize test value set
+    String vsLabel = "vs1_test";
+    String vsCreator = "http://data.bioontology.org/users/cedar-test";
+    String vsCollection = "http://data.bioontology.org/ontologies/CEDARVS";
+    List vsDefinitions = new ArrayList<>();
+    vsDefinitions.add("vsDefinition1");
+    vsDefinitions.add("vsDefinition2");
+    List vsSynonyms = new ArrayList<>();
+    vsSynonyms.add("vsSynonym1");
+    vsSynonyms.add("vsSynonym2");
+    List vsRelations = new ArrayList<>();
+    vs1 = new ValueSet(null, null, vsLabel, vsCreator, vsCollection, vsDefinitions, vsSynonyms, vsRelations, true, null);
+
+    // Initialize test value - the vsId will be set later
+    String valueLabel = "value1_test";
+    String valueCreator = "http://data.bioontology.org/users/cedar-test";
+    String valueVsCollection = "http://data.bioontology.org/ontologies/CEDARVS";
+    List valueDefinitions = new ArrayList<>();
+    valueDefinitions.add("valueDefinition1");
+    valueDefinitions.add("valueDefinition2");
+    List valueSynonyms = new ArrayList<>();
+    valueSynonyms.add("valueSynonym1");
+    valueSynonyms.add("valueSynonym2");
+    List valueRelations = new ArrayList<>();
+    value1 = new Value(null, null, valueLabel, valueCreator, null, valueVsCollection, valueDefinitions,
+        valueSynonyms, valueRelations, true, null);
   }
 
   /**
@@ -96,6 +130,8 @@ public abstract class AbstractTest {
     // Test objects
     createdClasses = new ArrayList<>();
     createdRelations = new ArrayList<>();
+    createdValueSets = new ArrayList<>();
+    createdValues = new ArrayList<>();
   }
 
   /**
@@ -109,6 +145,8 @@ public abstract class AbstractTest {
       // automatically remove the associated relation(s)
       deleteCreatedRelations();
       deleteCreatedClasses();
+      deleteCreatedValueSets();
+      deleteCreatedValues();
     } catch (Exception e) {
       e.printStackTrace();
     }
@@ -182,6 +220,98 @@ public abstract class AbstractTest {
             "contained it");
       }
     }
+  }
+
+  /* Value Sets */
+
+  protected static ValueSet createValueSet(ValueSet vs) {
+    String url = baseUrlBpVSCollections + Util.getShortIdentifier(vs.getVsCollection()) + "/" + BP_VALUE_SETS;
+    Response response = client.target(url).request().header("Authorization", authHeader).post(Entity.json(vs));
+    // Check HTTP response
+    Assert.assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
+    ValueSet created = response.readEntity(ValueSet.class);
+    createdValueSets.add(created);
+    return created;
+  }
+
+  private static void deleteCreatedValueSets() throws Exception {
+    for (ValueSet vs : createdValueSets) {
+      // Check if the value set still exists
+      String findUrl = baseUrlBpVSCollections + "/" + Util.getShortIdentifier(vs.getVsCollection()) + "/" +
+          BP_VALUE_SETS + "/" + vs.getId();
+      String deleteUrl = baseUrlBp + "/" + BP_VALUE_SETS + "/" + vs.getId();
+      Response findResponse = client.target(findUrl).request().header("Authorization", authHeader).get();
+      if (findResponse.getStatus() == Response.Status.OK.getStatusCode()) {
+        Response deleteResponse = client.target(deleteUrl).request().header("Authorization", authHeader).delete();
+        if (deleteResponse.getStatus() != Response.Status.NO_CONTENT.getStatusCode()) {
+          throw new Exception("Couldn't delete value set: Id = " + vs.getLdId());
+        }
+      } else {
+        throw new Exception("Couldn't find value set: Id = " + vs.getLdId());
+      }
+    }
+  }
+
+  /* Values */
+
+//  protected static Value createValue(Value v) {
+//
+//
+//
+//
+//
+//    String url = baseUrlBpOntologies + "/" + Util.getShortIdentifier(c.getOntology()) + "/" + BP_CLASSES;
+//    // Service invocation
+//    Response response = client.target(url).request().header("Authorization", authHeader).post(Entity.json(c));
+//    // Check HTTP response
+//    Assert.assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
+//    OntologyClass created = response.readEntity(OntologyClass.class);
+//    createdClasses.add(created);
+//    return created;
+//  }
+//
+//    private static Value createValue() {
+//    ValueSet createdVs = createValueSet();
+//    // Create provisional value
+//    value1.setVsId(createdVs.getLdId());
+//    String url = null;
+//    try {
+//      url = SERVER_URL_BIOPORTAL + BP_VALUE_SET_COLLECTIONS + "/" + Util.getShortIdentifier(value1
+//          .getVsCollection()) + "/" + BP_VALUE_SETS + "/" + Util.encodeIfNeeded(value1.getVsId()) + "/" +
+//          BP_VALUES;
+//    } catch (UnsupportedEncodingException e) {
+//      e.printStackTrace();
+//    }
+//    ObjectMapper mapper = new ObjectMapper();
+//    JsonNode value1Json = mapper.valueToTree(value1);
+//    WSResponse wsResponseCreate = WS.url(url).setHeader
+//        ("Authorization", authHeader).setContentType
+//        ("application/json").post(value1Json).get(TIMEOUT_MS);
+//    // Check HTTP response
+//    Assert.assertEquals(CREATED, wsResponseCreate.getStatus());
+//    Value created = null;
+//    try {
+//      created = mapper.treeToValue(wsResponseCreate.asJson(), Value.class);
+//    } catch (JsonProcessingException e) {
+//      e.printStackTrace();
+//    }
+//    // Store the id to delete the object after the test
+//    createdValues.add(created);
+//    return created;
+//  }
+
+//
+private static void deleteCreatedValues() {
+//    for (Value v : createdValues) {
+//      // Check if the value still exists
+//      String findUrl = SERVER_URL_BIOPORTAL + BP_VALUE_SET_COLLECTIONS + "/" + Util.getShortIdentifier(v
+//          .getVsCollection()) + "/" + BP_VALUES + "/" + v.getId();
+//      String deleteUrl = SERVER_URL_BIOPORTAL + BP_VALUES + "/" + v.getId();
+//      if (WS.url(findUrl).setHeader("Authorization", authHeader).get().get(TIMEOUT_MS).getStatus() == OK) {
+//        WS.url(deleteUrl).setHeader("Authorization", authHeader).delete().get(TIMEOUT_MS);
+////        Logger.info("Deleted value: " + v.getId());
+//      }
+//    }
   }
 
 }
