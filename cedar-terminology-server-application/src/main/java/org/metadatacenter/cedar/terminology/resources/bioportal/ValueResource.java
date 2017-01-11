@@ -1,9 +1,6 @@
 package org.metadatacenter.cedar.terminology.resources.bioportal;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectWriter;
-import org.metadatacenter.cedar.cache.Cache;
 import org.metadatacenter.cedar.terminology.resources.AbstractTerminologyServerResource;
 import org.metadatacenter.config.CedarConfig;
 import org.metadatacenter.exception.CedarException;
@@ -11,9 +8,6 @@ import org.metadatacenter.exception.CedarProcessingException;
 import org.metadatacenter.rest.context.CedarRequestContext;
 import org.metadatacenter.rest.context.CedarRequestContextFactory;
 import org.metadatacenter.rest.exception.CedarAssertionException;
-import org.metadatacenter.terms.customObjects.PagedResults;
-import org.metadatacenter.terms.domainObjects.OntologyClass;
-import org.metadatacenter.terms.domainObjects.TreeNode;
 import org.metadatacenter.terms.domainObjects.Value;
 import org.metadatacenter.util.json.JsonMapper;
 
@@ -24,8 +18,6 @@ import javax.xml.ws.http.HTTPException;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.List;
-import java.util.concurrent.ExecutionException;
 
 import static org.metadatacenter.rest.assertion.GenericAssertions.LoggedIn;
 
@@ -229,33 +221,32 @@ public class ValueResource extends AbstractTerminologyServerResource {
 //    }
 //    return internalServerError();
 //  }
-//
-//  @ApiOperation(
-//      value = "Delete a provisional value",
-//      httpMethod = "DELETE")
-//  @ApiResponses(value = {
-//      @ApiResponse(code = 204, message = "Success! (No Content)"),
-//      @ApiResponse(code = 400, message = "Bad Request"),
-//      @ApiResponse(code = 401, message = "Unauthorized"),
-//      @ApiResponse(code = 404, message = "Not Found"),
-//      @ApiResponse(code = 500, message = "Internal Server Error")})
-//  @ApiImplicitParams(value = {
-//      @ApiImplicitParam(name = "id", value = "Provisional value id. Example: 720f50f0-ae6f-0133-848f-005056010073",
-//          required = true, dataType = "string", paramType = "path")})
-//  public static Result deleteValue(String id) {
-//    if (id.isEmpty()) {
-//      return badRequest();
-//    }
-//    try {
-//      termService.deleteProvisionalValue(id, apiKey);
-//    } catch (HTTPException e) {
-//      return Results.status(e.getStatusCode());
-//    } catch (IOException e) {
-//      return internalServerError(e.getMessage());
-//    }
-//    return internalServerError();
-//  }
-//
 
+  @DELETE
+  @Path("values/{id}")
+  //  @ApiOperation(
+  //      value = "Delete a provisional value",
+  //      httpMethod = "DELETE")
+  //  @ApiResponses(value = {
+  //      @ApiResponse(code = 204, message = "Success! (No Content)"),
+  //      @ApiResponse(code = 400, message = "Bad Request"),
+  //      @ApiResponse(code = 401, message = "Unauthorized"),
+  //      @ApiResponse(code = 404, message = "Not Found"),
+  //      @ApiResponse(code = 500, message = "Internal Server Error")})
+  //  @ApiImplicitParams(value = {
+  //      @ApiImplicitParam(name = "id", value = "Provisional value id. Example: 720f50f0-ae6f-0133-848f-005056010073",
+  //          required = true, dataType = "string", paramType = "path")})
+  public Response deleteValue(@PathParam("id") String id) throws CedarException {
+    CedarRequestContext ctx = CedarRequestContextFactory.fromRequest(request);
+    ctx.must(ctx.user()).be(LoggedIn);
+    try {
+      terminologyService.deleteProvisionalValue(id, apiKey);
+      return Response.noContent().build();
+    } catch (HTTPException e) {
+      return Response.status(e.getStatusCode()).build();
+    } catch (IOException e) {
+      throw new CedarAssertionException(e);
+    }
+  }
 
 }

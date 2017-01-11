@@ -279,23 +279,6 @@ public class ValueSetResource extends AbstractTerminologyServerResource {
     }
   }
 
-//  public static Result deleteValueSet(String id) {
-//    if (id.isEmpty()) {
-//      return badRequest();
-//    }
-//    try {
-//      termService.deleteProvisionalValueSet(id, apiKey);
-//    } catch (HTTPException e) {
-//      if (e.getStatusCode() == 204) {
-//        // Refresh value sets cache
-//        Cache.valueSetsCache.refresh("value-sets");
-//      }
-//      return Results.status(e.getStatusCode());
-//    } catch (IOException e) {
-//      return internalServerError(e.getMessage());
-//    }
-//    return internalServerError();
-//  }
 //
 //  @ApiOperation(
 //      value = "Find all values in a value set (regular or provisional)",

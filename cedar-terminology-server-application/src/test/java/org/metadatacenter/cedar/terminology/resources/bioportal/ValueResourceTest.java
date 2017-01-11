@@ -1,6 +1,7 @@
 package org.metadatacenter.cedar.terminology.resources.bioportal;
 
 import org.junit.*;
+import org.metadatacenter.terms.domainObjects.OntologyClass;
 import org.metadatacenter.terms.domainObjects.Value;
 import org.metadatacenter.terms.domainObjects.ValueSet;
 import org.metadatacenter.terms.util.Util;
@@ -12,6 +13,7 @@ import javax.ws.rs.core.Response;
 import java.io.UnsupportedEncodingException;
 import java.util.HashSet;
 
+import static org.metadatacenter.cedar.terminology.utils.Constants.BP_CLASSES;
 import static org.metadatacenter.cedar.terminology.utils.Constants.BP_VALUES;
 import static org.metadatacenter.cedar.terminology.utils.Constants.BP_VALUE_SETS;
 
@@ -80,54 +82,35 @@ public class ValueResourceTest extends AbstractTerminologyServerResourceTest {
     Assert.assertEquals(expected.isProvisional(), created.isProvisional());
   }
 
-  //  @Test
-//  public void createValueTest() {
-//    running(testServer(TEST_SERVER_PORT), new Runnable() {
-//      public void run() {
-//        ValueSet createdVs = createValueSet();
-//        // Create provisional value
-//        value1.setVsId(createdVs.getLdId());
-//        String url = null;
-//        try {
-//          url = SERVER_URL_BIOPORTAL + BP_VALUE_SET_COLLECTIONS + "/" + Util.getShortIdentifier(value1
-//              .getVsCollection()) + "/" + BP_VALUE_SETS + "/" + Util.encodeIfNeeded(value1.getVsId()) + "/" +
-//              BP_VALUES;
-//        } catch (UnsupportedEncodingException e) {
-//          e.printStackTrace();
-//        }
-//        ObjectMapper mapper = new ObjectMapper();
-//        JsonNode value1Json = mapper.valueToTree(value1);
-//        WSResponse wsResponseCreate = WS.url(url).setHeader
-//            ("Authorization", authHeader).setContentType
-//            ("application/json").post(value1Json).get(TIMEOUT_MS);
-//        // Check HTTP response
-//        Assert.assertEquals(CREATED, wsResponseCreate.getStatus());
-//        Value created = null;
-//        try {
-//          created = mapper.treeToValue(wsResponseCreate.asJson(), Value.class);
-//        } catch (JsonProcessingException e) {
-//          e.printStackTrace();
-//        }
-//        // Store the id to delete the object after the test
-//        createdValues.add(created);
-//        // Check Content-Type
-//        Assert.assertEquals("application/json; charset=utf-8", wsResponseCreate.getHeader("Content-Type"));
-//        // Check fields
-//        Value expected = value1;
-//        Assert.assertNotNull(created.getId());
-//        Assert.assertNotNull(created.getLdId());
-//        Assert.assertNotNull(created.getCreated());
-//        Assert.assertEquals(expected.getPrefLabel(), created.getPrefLabel());
-//        Assert.assertEquals(expected.getCreator(), created.getCreator());
-//        Assert.assertEquals(expected.getVsId(), created.getVsId());
-//        Assert.assertEquals(expected.getVsCollection(), created.getVsCollection());
-//        Assert.assertEquals(new HashSet<>(expected.getDefinitions()), new HashSet<>(created.getDefinitions()));
-//        Assert.assertEquals(new HashSet<>(expected.getSynonyms()), new HashSet<>(created.getSynonyms()));
-//        Assert.assertEquals(new HashSet<>(expected.getRelations()), new HashSet<>(created.getRelations()));
-//        Assert.assertEquals(expected.isProvisional(), created.isProvisional());
-//      }
-//    });
-//  }
+  @Test
+  public void findValueTest() {
+    // Create a provisional value
+    Value created = createValue(vs1, value1);
+    // Find the value by id
+    String findUrl = baseUrlBpVSCollections + "/" + Util.getShortIdentifier(created.getVsCollection()) + "/" +
+        BP_VALUES + "/" + created.getId();
+    // Service invocation
+    Response findResponse = client.target(findUrl).request().header("Authorization", authHeader).get();
+    // Check HTTP response
+    Assert.assertEquals(Response.Status.OK.getStatusCode(), findResponse.getStatus());
+    // Check Content-Type
+    Assert.assertEquals(MediaType.APPLICATION_JSON, findResponse.getHeaderString(HttpHeaders.CONTENT_TYPE));
+    // Check the element retrieved
+    Value found = findResponse.readEntity(Value.class);
+    // Check fields
+    Assert.assertEquals(created.getId(), found.getId());
+    Assert.assertEquals(created.getLdId(), found.getLdId());
+    Assert.assertEquals(created.getPrefLabel(), found.getPrefLabel());
+    Assert.assertEquals(created.getCreator(), found.getCreator());
+    Assert.assertEquals(created.getVsId(), found.getVsId());
+    Assert.assertEquals(created.getVsCollection(), found.getVsCollection());
+    Assert.assertEquals(new HashSet<>(created.getDefinitions()), new HashSet<>(found.getDefinitions()));
+    Assert.assertEquals(new HashSet<>(created.getSynonyms()), new HashSet<>(found.getSynonyms()));
+    Assert.assertEquals(new HashSet<>(created.getRelations()), new HashSet<>(found.getRelations()));
+    Assert.assertEquals(created.isProvisional(), found.isProvisional());
+    Assert.assertEquals(created.getCreated(), found.getCreated());
+  }
+
 //
 //  @Test
 //  public void findValueTest() {

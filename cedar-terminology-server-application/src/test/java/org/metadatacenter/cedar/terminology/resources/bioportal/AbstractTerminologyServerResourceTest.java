@@ -1,6 +1,5 @@
 package org.metadatacenter.cedar.terminology.resources.bioportal;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import io.dropwizard.client.JerseyClientBuilder;
 import io.dropwizard.testing.ResourceHelpers;
 import io.dropwizard.testing.junit.DropwizardAppRule;
@@ -15,16 +14,16 @@ import org.metadatacenter.terms.domainObjects.Relation;
 import org.metadatacenter.terms.domainObjects.Value;
 import org.metadatacenter.terms.domainObjects.ValueSet;
 import org.metadatacenter.terms.util.Util;
-import org.metadatacenter.util.json.JsonMapper;
 import org.metadatacenter.util.test.TestUtil;
-
-import static org.metadatacenter.cedar.terminology.utils.Constants.*;
 
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.Entity;
 import javax.ws.rs.core.Response;
+import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.List;
+
+import static org.metadatacenter.cedar.terminology.utils.Constants.*;
 
 /**
  * Integration tests. They are done by starting a test server that makes it possible to test the real HTTP stack.
@@ -151,12 +150,13 @@ public abstract class AbstractTerminologyServerResourceTest {
   @After
   public void tearDownAbstract() {
     try {
-      // Relations are removed before removing classes. Otherwise, when removing a class, BioPortal will
+      // Relations should be removed before classes. Otherwise, when removing a class, BioPortal will
       // automatically remove the associated relation(s)
       deleteCreatedRelations();
       deleteCreatedClasses();
-      deleteCreatedValueSets();
+      // Values should be removed before value sets
       deleteCreatedValues();
+      deleteCreatedValueSets();
     } catch (Exception e) {
       e.printStackTrace();
     }
@@ -264,64 +264,42 @@ public abstract class AbstractTerminologyServerResourceTest {
 
   /* Values */
 
-//  protected static Value createValue(ValueSet vs, Value v) {
-//    ValueSet createdVs = createValueSet(vs);
-//    // Create a value in the value set
-//    v.setVsId(vs.getLdId());
-//
-//
-//    String url = baseUrlBpOntologies + "/" + Util.getShortIdentifier(c.getOntology()) + "/" + BP_CLASSES;
-//    // Service invocation
-//    Response response = client.target(url).request().header("Authorization", authHeader).post(Entity.json(c));
-//    // Check HTTP response
-//    Assert.assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
-//    OntologyClass created = response.readEntity(OntologyClass.class);
-//    createdClasses.add(created);
-//    return created;
-//  }
-//
-//    private static Value createValue() {
-//    ValueSet createdVs = createValueSet();
-//    // Create provisional value
-//    value1.setVsId(createdVs.getLdId());
-//    String url = null;
-//    try {
-//      url = SERVER_URL_BIOPORTAL + BP_VALUE_SET_COLLECTIONS + "/" + Util.getShortIdentifier(value1
-//          .getVsCollection()) + "/" + BP_VALUE_SETS + "/" + Util.encodeIfNeeded(value1.getVsId()) + "/" +
-//          BP_VALUES;
-//    } catch (UnsupportedEncodingException e) {
-//      e.printStackTrace();
-//    }
-//    ObjectMapper mapper = new ObjectMapper();
-//    JsonNode value1Json = mapper.valueToTree(value1);
-//    WSResponse wsResponseCreate = WS.url(url).setHeader
-//        ("Authorization", authHeader).setContentType
-//        ("application/json").post(value1Json).get(TIMEOUT_MS);
-//    // Check HTTP response
-//    Assert.assertEquals(CREATED, wsResponseCreate.getStatus());
-//    Value created = null;
-//    try {
-//      created = mapper.treeToValue(wsResponseCreate.asJson(), Value.class);
-//    } catch (JsonProcessingException e) {
-//      e.printStackTrace();
-//    }
-//    // Store the id to delete the object after the test
-//    createdValues.add(created);
-//    return created;
-//  }
+  protected static Value createValue(ValueSet vs, Value v) {
+    // Create value set
+    ValueSet createdVs = createValueSet(vs);
+    v.setVsId(createdVs.getLdId());
+    String url = null;
+    try {
+      url = baseUrlBpVSCollections + "/" + Util.getShortIdentifier(v.getVsCollection()) + "/"
+          + BP_VALUE_SETS + "/" + Util.encodeIfNeeded(v.getVsId()) + "/" + BP_VALUES;
+    } catch (UnsupportedEncodingException e) {
+      e.printStackTrace();
+    }
+    // Service invocation
+    Response response = client.target(url).request().header("Authorization", authHeader).post(Entity.json(v));
+    // Check HTTP response
+    Assert.assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
+    Value created = response.readEntity(Value.class);
+    createdValues.add(created);
+    return created;
+  }
 
-//
-private static void deleteCreatedValues() {
-//    for (Value v : createdValues) {
-//      // Check if the value still exists
-//      String findUrl = SERVER_URL_BIOPORTAL + BP_VALUE_SET_COLLECTIONS + "/" + Util.getShortIdentifier(v
-//          .getVsCollection()) + "/" + BP_VALUES + "/" + v.getId();
-//      String deleteUrl = SERVER_URL_BIOPORTAL + BP_VALUES + "/" + v.getId();
-//      if (WS.url(findUrl).setHeader("Authorization", authHeader).get().get(TIMEOUT_MS).getStatus() == OK) {
-//        WS.url(deleteUrl).setHeader("Authorization", authHeader).delete().get(TIMEOUT_MS);
-////        Logger.info("Deleted value: " + v.getId());
-//      }
-//    }
+  private static void deleteCreatedValues() throws Exception {
+    for (Value v : createdValues) {
+      // Check if the value still exists
+      String findUrl = baseUrlBpVSCollections + "/" + Util.getShortIdentifier(v.getVsCollection()) + "/" + BP_VALUES
+          + "/" + v.getId();
+      String deleteUrl = baseUrlBp + "/" + BP_VALUES + "/" + v.getId();
+      Response findResponse = client.target(findUrl).request().header("Authorization", authHeader).get();
+      if (findResponse.getStatus() == Response.Status.OK.getStatusCode()) {
+        Response deleteResponse = client.target(deleteUrl).request().header("Authorization", authHeader).delete();
+        if (deleteResponse.getStatus() != Response.Status.NO_CONTENT.getStatusCode()) {
+          throw new Exception("Couldn't delete value: Id = " + v.getId());
+        }
+      } else {
+        throw new Exception("Couldn't find value: Id = " + v.getId());
+      }
+    }
   }
 
 }
