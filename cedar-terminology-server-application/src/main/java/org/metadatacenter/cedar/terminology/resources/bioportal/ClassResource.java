@@ -292,8 +292,9 @@ public class ClassResource extends AbstractResource {
     try {
       PagedResults<OntologyClass> classes = terminologyService.findAllProvisionalClasses(null, page, pageSize, apiKey);
       // This line ensures that @class type annotations are included for each element in the list
-      ObjectWriter writer = JsonMapper.MAPPER.writerFor(new TypeReference<PagedResults<OntologyClass>>() {});
-      return Response.ok().entity(JsonMapper.MAPPER.readTree(writer.writeValueAsString(classes))).build();
+      //ObjectWriter writer = JsonMapper.MAPPER.writerFor(new TypeReference<PagedResults<OntologyClass>>() {});
+      //return Response.ok().entity(JsonMapper.MAPPER.readTree(writer.writeValueAsString(classes))).build();
+      return Response.ok().entity(JsonMapper.MAPPER.valueToTree(classes)).build();
     } catch (HTTPException e) {
       return Response.status(e.getStatusCode()).build();
     } catch (IOException e) {

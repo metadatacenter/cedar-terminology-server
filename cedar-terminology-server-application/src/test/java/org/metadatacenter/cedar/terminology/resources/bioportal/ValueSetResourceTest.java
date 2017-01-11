@@ -1,11 +1,13 @@
 package org.metadatacenter.cedar.terminology.resources.bioportal;
 
 import org.junit.*;
+import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.terms.domainObjects.OntologyClass;
 import org.metadatacenter.terms.domainObjects.ValueSet;
 import org.metadatacenter.terms.util.Util;
 
 import javax.ws.rs.client.Entity;
+import javax.ws.rs.core.GenericType;
 import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -98,27 +100,25 @@ public class ValueSetResourceTest extends AbstractTest {
     Assert.assertEquals(created.getCreated(), found.getCreated());
   }
 
-  //  @Test
-//  public void findValueSetsByVsCollectionTest() {
-//    running(testServer(TEST_SERVER_PORT), new Runnable() {
-//      public void run() {
-//        // Create two provisional value sets
-//        ValueSet created1 = createValueSet();
-//        createValueSet();
-//        // Find url
-//        String url = SERVER_URL_BIOPORTAL + BP_VALUE_SET_COLLECTIONS + "/" + Util.getShortIdentifier(created1
-//            .getVsCollection()) + "/" + BP_VALUE_SETS;
-//        WSResponse wsResponseFind = WS.url(url).setHeader("Authorization", authHeader).get().get(TIMEOUT_MS);
-//        // Check response is OK
-//        Assert.assertEquals(OK, wsResponseFind.getStatus());
-//        // Check Content-Type
-//        Assert.assertEquals(wsResponseFind.getHeader("Content-Type"), "application/json; charset=utf-8");
-//        // Check the number of elements retrieved
-//        int resultsCount = wsResponseFind.asJson().get("collection").size();
-//        Assert.assertTrue("Wrong number of value sets retrieved", resultsCount > 1);
-//      }
-//    });
-//  }
+  @Test
+  public void findValueSetsByVsCollectionTest() {
+    // Create two provisional value sets
+    ValueSet created1 = createValueSet(vs1);
+    createValueSet(vs1);
+    // Find url
+    String url = baseUrlBpVSCollections + "/" + Util.getShortIdentifier(created1.getVsCollection()) + "/" + BP_VALUE_SETS;
+    // Service invocation
+    Response findResponse = client.target(url).request().header("Authorization", authHeader).get();
+    // Check HTTP response
+    Assert.assertEquals(Status.OK.getStatusCode(), findResponse.getStatus());
+    // Check Content-Type
+    Assert.assertEquals(MediaType.APPLICATION_JSON, findResponse.getHeaderString(HttpHeaders.CONTENT_TYPE));
+    // Check the number of elements retrieved
+    PagedResults<ValueSet> valueSets = findResponse.readEntity(new GenericType<PagedResults<ValueSet>>() {});
+    int resultsCount = valueSets.getCollection().size();
+    Assert.assertTrue("Wrong number of value sets retrieved", resultsCount > 1);
+  }
+
 //
 //  @Test
 //  public void findAllValueSetsTest() {

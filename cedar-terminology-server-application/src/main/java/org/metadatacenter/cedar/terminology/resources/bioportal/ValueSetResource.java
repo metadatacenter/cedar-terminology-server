@@ -8,7 +8,7 @@ import org.metadatacenter.exception.CedarProcessingException;
 import org.metadatacenter.rest.context.CedarRequestContext;
 import org.metadatacenter.rest.context.CedarRequestContextFactory;
 import org.metadatacenter.rest.exception.CedarAssertionException;
-import org.metadatacenter.terms.domainObjects.Value;
+import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.terms.domainObjects.ValueSet;
 import org.metadatacenter.util.json.JsonMapper;
 
@@ -90,40 +90,42 @@ public class ValueSetResource extends AbstractResource {
     }
   }
 
-//
-//  @ApiOperation(
-//      value = "Find all value sets in a value set collection",
-//      // notes = ...
-//      httpMethod = "GET")
-//  @ApiResponses(value = {
-//      @ApiResponse(code = 200, message = "Success!"),
-//      @ApiResponse(code = 400, message = "Bad Request"),
-//      @ApiResponse(code = 401, message = "Unauthorized"),
-//      @ApiResponse(code = 500, message = "Internal Server Error")})
-//  @ApiImplicitParams(value = {
-//      @ApiImplicitParam(name = "vs_collection", value = "Value set collection. Example: CEDARVS",
-//          required = true, dataType = "string", paramType = "path")})
-//  public static Result findValueSetsByVsCollection(String vsCollection, @ApiParam(value = "Integer representing the " +
-//      "page number. Default: 'page=1'", required = false) @QueryParam("page") int page, @ApiParam(value = "Integer " +
-//      "representing the size of the returned page. Default: 'pageSize=50'", required = false) @QueryParam
-//      ("page_size") int pageSize) {
-//    if ((vsCollection == null) || (vsCollection.length() == 0)) {
-//      return badRequest();
-//    }
-//    try {
-//      PagedResults<ValueSet> valueSets = termService.
-//          findValueSetsByVsCollection(vsCollection, page, pageSize, apiKey);
-//      ObjectMapper mapper = new ObjectMapper();
-//      // This line ensures that @class type annotations are included for each element in the collection
-//      ObjectWriter writer = mapper.writerFor(new TypeReference<PagedResults<Value>>() {
-//      });
-//      return ok(mapper.readTree(writer.writeValueAsString(valueSets)));
-//    } catch (HTTPException e) {
-//      return Results.status(e.getStatusCode());
-//    } catch (IOException e) {
-//      return internalServerError(e.getMessage());
-//    }
-//  }
+  @GET
+  @Path("vs-collections/{vs_collection}/value-sets")
+  //  @ApiOperation(
+  //      value = "Find all value sets in a value set collection",
+  //      // notes = ...
+  //      httpMethod = "GET")
+  //  @ApiResponses(value = {
+  //      @ApiResponse(code = 200, message = "Success!"),
+  //      @ApiResponse(code = 400, message = "Bad Request"),
+  //      @ApiResponse(code = 401, message = "Unauthorized"),
+  //      @ApiResponse(code = 500, message = "Internal Server Error")})
+  //  @ApiImplicitParams(value = {
+  //      @ApiImplicitParam(name = "vs_collection", value = "Value set collection. Example: CEDARVS",
+  //          required = true, dataType = "string", paramType = "path")})
+  public Response findValueSetsByVsCollection(@PathParam("vs_collection") String vsCollection,
+                                              @QueryParam("page") @DefaultValue("1") int page,
+                                              @QueryParam("pageSize") int pageSize) throws CedarException {
+    CedarRequestContext ctx = CedarRequestContextFactory.fromRequest(request);
+    ctx.must(ctx.user()).be(LoggedIn);
+    // If pageSize not defined, set default value
+    if (pageSize == 0) {
+      pageSize = defaultPageSize;
+    }
+    try {
+      PagedResults<ValueSet> valueSets = terminologyService.findValueSetsByVsCollection(vsCollection, page, pageSize, apiKey);
+      // This line ensures that @class type annotations are included for each element in the collection
+      //ObjectWriter writer = JsonMapper.MAPPER.writerFor(new TypeReference<PagedResults<ValueSet>>() {});
+      //return Response.ok().entity(JsonMapper.MAPPER.valueToTree(writer.writeValueAsString(valueSets))).build();
+      return Response.ok().entity(JsonMapper.MAPPER.valueToTree(valueSets)).build();
+    } catch (HTTPException e) {
+      return Response.status(e.getStatusCode()).build();
+    } catch (IOException e) {
+      throw new CedarAssertionException(e);
+    }
+  }
+
 //
 //  @ApiOperation(
 //      value = "Find the value set that contains a particular value",
