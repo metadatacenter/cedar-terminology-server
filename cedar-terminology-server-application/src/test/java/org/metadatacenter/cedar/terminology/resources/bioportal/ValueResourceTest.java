@@ -1,6 +1,7 @@
 package org.metadatacenter.cedar.terminology.resources.bioportal;
 
 import org.junit.*;
+import org.metadatacenter.terms.domainObjects.OntologyClass;
 import org.metadatacenter.terms.domainObjects.TreeNode;
 import org.metadatacenter.terms.domainObjects.Value;
 import org.metadatacenter.terms.domainObjects.ValueSet;
@@ -151,43 +152,38 @@ public class ValueResourceTest extends AbstractTerminologyServerResourceTest {
     Assert.assertTrue("Expected values not found in the returned tree", v1Found && v2Found);
   }
 
-
-//
-//  @Test
-//  public void updateValueTest() {
-//    running(testServer(TEST_SERVER_PORT), new Runnable() {
-//      public void run() {
-//        String url = SERVER_URL_BIOPORTAL + BP_VALUES;
-//        // Create a provisional value
-//        Value created = createValue();
-//        // Update the created value
-//        String updatedLabel = "new label";
-//        JsonNode changes = Json.newObject().put("prefLabel", updatedLabel);
-//        // Update
-//        String valueUrl = url + "/" + created.getId();
-//        WSResponse wsResponseUpdate = WS.url(valueUrl).setHeader("Authorization", authHeader).patch(changes).get
-//            (TIMEOUT_MS);
-//        // Check HTTP response
-//        Assert.assertEquals(NO_CONTENT, wsResponseUpdate.getStatus());
-//        // Retrieve the value
-//        String findUrl = SERVER_URL_BIOPORTAL + BP_VALUE_SET_COLLECTIONS + "/" + Util.getShortIdentifier(created.
-//            getVsCollection()) + "/" + BP_VALUES + "/" + created.getId();
-//        WSResponse wsResponseFind = WS.url(findUrl).setHeader("Authorization", authHeader).get().get(TIMEOUT_MS);
-//        ObjectMapper mapper = new ObjectMapper();
-//        Value retrievedValue = null;
-//        try {
-//          retrievedValue = mapper.treeToValue(wsResponseFind.asJson(), Value.class);
-//        } catch (JsonProcessingException e) {
-//          e.printStackTrace();
-//        }
-//        // Check that the modifications have been done correctly
-//        Assert.assertNotNull(retrievedValue.getPrefLabel());
-//        Assert.assertTrue("The value has not been updated correctly", updatedLabel.compareTo
-//            (retrievedValue.getPrefLabel()) == 0);
-//      }
-//    });
-//  }
-//
+  @Test
+  public void updateValueTest() {
+    // Create a provisional value
+    ValueSet createdValueSet = createValueSet(vs1);
+    Value createdValue = createValue(createdValueSet.getLdId(), value1);
+    Value updatedValue = new Value(createdValue.getId(), createdValue.getLdId(), "new label",
+        createdValue.getCreator(), createdValue.getVsId(), createdValue.getVsCollection(), createdValue.getDefinitions(),
+        createdValue.getSynonyms(), createdValue.getRelations(), createdValue.isProvisional(), createdValue.getCreated());
+    String url = baseUrlBp + "/" + BP_VALUES + "/" + createdValue.getId();
+    // Service invocation
+    Response updateResponse = client.target(url).request().header("Authorization", authHeader).put(Entity.json(updatedValue));
+    // Check HTTP response
+    Assert.assertEquals(Response.Status.NO_CONTENT.getStatusCode(), updateResponse.getStatus());
+    // Retrieve the value
+    String findUrl = baseUrlBpVSCollections + "/" + Util.getShortIdentifier(createdValue.getVsCollection()) + "/" +
+        BP_VALUES + "/" + createdValue.getId();
+    Response findResponse = client.target(findUrl).request().header("Authorization", authHeader).get();
+    Value found = findResponse.readEntity(Value.class);
+    // Check that the modifications have been done correctly
+    Value expected = updatedValue;
+    Assert.assertEquals(expected.getId(), found.getId());
+    Assert.assertEquals(expected.getLdId(), found.getLdId());
+    Assert.assertEquals(expected.getPrefLabel(), found.getPrefLabel());
+    Assert.assertEquals(expected.getCreator(), found.getCreator());
+    Assert.assertEquals(expected.getVsId(), found.getVsId());
+    Assert.assertEquals(expected.getVsCollection(), found.getVsCollection());
+    Assert.assertEquals(new HashSet<>(expected.getDefinitions()), new HashSet<>(found.getDefinitions()));
+    Assert.assertEquals(new HashSet<>(expected.getSynonyms()), new HashSet<>(found.getSynonyms()));
+    Assert.assertEquals(new HashSet<>(expected.getRelations()), new HashSet<>(found.getRelations()));
+    Assert.assertEquals(expected.isProvisional(), found.isProvisional());
+    Assert.assertEquals(expected.getCreated(), found.getCreated());
+  }
 
   @Test
   public void deleteValueTest() {
