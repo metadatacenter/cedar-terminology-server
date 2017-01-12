@@ -1,21 +1,22 @@
 package org.metadatacenter.cedar.terminology.resources.bioportal;
 
 import org.junit.*;
-import org.metadatacenter.terms.domainObjects.OntologyClass;
+import org.metadatacenter.terms.domainObjects.TreeNode;
 import org.metadatacenter.terms.domainObjects.Value;
 import org.metadatacenter.terms.domainObjects.ValueSet;
 import org.metadatacenter.terms.util.Util;
 
 import javax.ws.rs.client.Entity;
+import javax.ws.rs.core.GenericType;
 import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
 import java.util.HashSet;
+import java.util.List;
 
-import static org.metadatacenter.cedar.terminology.utils.Constants.BP_CLASSES;
-import static org.metadatacenter.cedar.terminology.utils.Constants.BP_VALUES;
-import static org.metadatacenter.cedar.terminology.utils.Constants.BP_VALUE_SETS;
+import static org.metadatacenter.cedar.terminology.utils.Constants.*;
 
 /**
  * Integration tests. They are done by starting a test server that makes it possible to test the real HTTP stack.
@@ -85,7 +86,8 @@ public class ValueResourceTest extends AbstractTerminologyServerResourceTest {
   @Test
   public void findValueTest() {
     // Create a provisional value
-    Value created = createValue(vs1, value1);
+    ValueSet createdVs = createValueSet(vs1);
+    Value created = createValue(createdVs.getLdId(), value1);
     // Find the value by id
     String findUrl = baseUrlBpVSCollections + "/" + Util.getShortIdentifier(created.getVsCollection()) + "/" +
         BP_VALUES + "/" + created.getId();
@@ -111,44 +113,45 @@ public class ValueResourceTest extends AbstractTerminologyServerResourceTest {
     Assert.assertEquals(created.getCreated(), found.getCreated());
   }
 
-//
-//  @Test
-//  public void findValueTest() {
-//    running(testServer(TEST_SERVER_PORT), new Runnable() {
-//      public void run() {
-//        // Create a provisional value
-//        Value created = createValue();
-//        String url = SERVER_URL_BIOPORTAL + BP_VALUE_SET_COLLECTIONS + "/" + Util.getShortIdentifier(created
-//            .getVsCollection()) + "/" + BP_VALUES;
-//        // Find the provisional value by id
-//        String valueUrl = url + "/" + created.getId();
-//        WSResponse wsResponseFind = WS.url(valueUrl).setHeader("Authorization", authHeader).get().get(TIMEOUT_MS);
-//        // Check response is OK
-//        Assert.assertEquals(OK, wsResponseFind.getStatus());
-//        // Check Content-Type
-//        Assert.assertEquals(wsResponseFind.getHeader("Content-Type"), "application/json; charset=utf-8");
-//        // Check the element retrieved
-//        ObjectMapper mapper = new ObjectMapper();
-//        Value found = null;
-//        try {
-//          found = mapper.treeToValue(wsResponseFind.asJson(), Value.class);
-//        } catch (JsonProcessingException e) {
-//          e.printStackTrace();
-//        }
-//        Assert.assertEquals(created.getId(), found.getId());
-//        Assert.assertEquals(created.getLdId(), found.getLdId());
-//        Assert.assertEquals(created.getPrefLabel(), found.getPrefLabel());
-//        Assert.assertEquals(created.getCreator(), found.getCreator());
-//        Assert.assertEquals(created.getVsId(), found.getVsId());
-//        Assert.assertEquals(created.getVsCollection(), found.getVsCollection());
-//        Assert.assertEquals(new HashSet<>(created.getDefinitions()), new HashSet<>(found.getDefinitions()));
-//        Assert.assertEquals(new HashSet<>(created.getSynonyms()), new HashSet<>(found.getSynonyms()));
-//        Assert.assertEquals(new HashSet<>(created.getRelations()), new HashSet<>(found.getRelations()));
-//        Assert.assertEquals(created.isProvisional(), found.isProvisional());
-//        Assert.assertEquals(created.getCreated(), found.getCreated());
-//      }
-//    });
-//  }
+  // TODO: test it for non-provisional values and value sets
+  @Test
+  public void findValueTreeTest() {
+    ValueSet createdVs = createValueSet(vs1);
+    Value createdValue1 = createValue(createdVs.getLdId(), value1);
+    Value createdValue2 = createValue(createdVs.getLdId(), value2);
+    String encodedValue1Id = null;
+    try {
+      encodedValue1Id = URLEncoder.encode(createdValue1.getLdId(), "UTF-8");
+    } catch (UnsupportedEncodingException e) {
+      e.printStackTrace();
+    }
+    String url = baseUrlBpVSCollections + "/" + Util.getShortIdentifier(createdValue1.getVsCollection())
+        + "/" + BP_VALUES + "/" + encodedValue1Id + "/" + BP_TREE;
+    // Service invocation
+    Response response = client.target(url).request().header("Authorization", authHeader).get();
+    // Check HTTP response
+    Assert.assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+    // Check Content-Type
+    Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
+    // Check that the tree is not empty
+    TreeNode tree = response.readEntity(TreeNode.class);
+    Assert.assertTrue("No children", tree.getChildren().size() > 0);
+    // Check that the root is the expected value set
+    Assert.assertTrue("The tree root does not correspond to the expected value set", tree.getId().equals(createdVs.getId()));
+    // Check that the children correspond to the created values
+    boolean v1Found = false;
+    boolean v2Found = false;
+    for (TreeNode node : tree.getChildren()) {
+      if (node.getId().equals(createdValue1.getId())) {
+        v1Found = true;
+      } else if (node.getId().equals(createdValue2.getId())) {
+        v2Found = true;
+      }
+    }
+    Assert.assertTrue("Expected values not found in the returned tree", v1Found && v2Found);
+  }
+
+
 //
 //  @Test
 //  public void updateValueTest() {
@@ -189,7 +192,8 @@ public class ValueResourceTest extends AbstractTerminologyServerResourceTest {
   @Test
   public void deleteValueTest() {
     // Create a provisional value
-    Value created = createValue(vs1, value1);
+    ValueSet createdVs = createValueSet(vs1);
+    Value created = createValue(createdVs.getLdId(), value1);
     // Delete the value that has been created
     String classUrl = baseUrlBp + "/" + BP_VALUES + "/" + created.getId();
     Response deleteResponse = client.target(classUrl).request().header("Authorization", authHeader).delete();

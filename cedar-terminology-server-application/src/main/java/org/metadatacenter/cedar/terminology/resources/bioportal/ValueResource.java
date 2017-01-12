@@ -8,6 +8,7 @@ import org.metadatacenter.exception.CedarProcessingException;
 import org.metadatacenter.rest.context.CedarRequestContext;
 import org.metadatacenter.rest.context.CedarRequestContextFactory;
 import org.metadatacenter.rest.exception.CedarAssertionException;
+import org.metadatacenter.terms.domainObjects.TreeNode;
 import org.metadatacenter.terms.domainObjects.Value;
 import org.metadatacenter.util.json.JsonMapper;
 
@@ -80,7 +81,7 @@ public class ValueResource extends AbstractTerminologyServerResource {
   //      @ApiImplicitParam(name = "id", value = "Value id. Example: 42f22880-b04b-0133-848f-005056010073",
   //          required = true, dataType = "string", paramType = "path")})
   public Response findValue(@PathParam("id") @Encoded String id, @PathParam("vs_collection") String vsCollection) throws
-      CedarAssertionException {
+      CedarException {
     CedarRequestContext ctx = CedarRequestContextFactory.fromRequest(request);
     ctx.must(ctx.user()).be(LoggedIn);
     try {
@@ -93,65 +94,36 @@ public class ValueResource extends AbstractTerminologyServerResource {
     }
   }
 
-//  @ApiOperation(
-//      value = "Find value by id",
-//      httpMethod = "GET")
-//  @ApiResponses(value = {
-//      @ApiResponse(code = 200, message = "Success!"),
-//      @ApiResponse(code = 400, message = "Bad Request"),
-//      @ApiResponse(code = 401, message = "Unauthorized"),
-//      @ApiResponse(code = 500, message = "Internal Server Error")})
-//  @ApiImplicitParams(value = {
-//      @ApiImplicitParam(name = "vs_collection", value = "Value set collection. Example: CEDARVS",
-//          required = true, dataType = "string", paramType = "path"),
-//      @ApiImplicitParam(name = "vs", value = "Value set identifier. Example: http%3A%2F%2Fwww.semanticweb" +
-//          ".org%2Fjgraybeal%2Fontologies%2F2015%2F7%2Fcedarvaluesets%23Study_File_Type",
-//          required = true, dataType = "string", paramType = "path"),
-//      @ApiImplicitParam(name = "id", value = "Value id. Example: 42f22880-b04b-0133-848f-005056010073",
-//          required = true, dataType = "string", paramType = "path")})
-//  public static Result findValue(String id, String vsCollection) {
-//    if (id.isEmpty() || vsCollection.isEmpty()) {
-//      return badRequest();
-//    }
-//    try {
-//      id = Util.encodeIfNeeded(id);
-//      Value c = termService.findValue(id, vsCollection, apiKey);
-//      return ok((JsonNode) new ObjectMapper().valueToTree(c));
-//    } catch (HTTPException e) {
-//      return Results.status(e.getStatusCode());
-//    } catch (IOException e) {
-//      return internalServerError(e.getMessage());
-//    }
-//  }
-//
-//  @ApiOperation(
-//      value = "Get value tree (only for regular classes)",
-//      httpMethod = "GET")
-//  @ApiResponses(value = {
-//      @ApiResponse(code = 200, message = "Success!"),
-//      @ApiResponse(code = 400, message = "Bad Request"),
-//      @ApiResponse(code = 401, message = "Unauthorized"),
-//      @ApiResponse(code = 404, message = "Not Found"),
-//      @ApiResponse(code = 500, message = "Internal Server Error")})
-//  @ApiImplicitParams(value = {
-//      @ApiImplicitParam(name = "id", value = "Value id. It must be encoded",
-//          required = true, dataType = "string", paramType = "path"),
-//      @ApiImplicitParam(name = "vs_collection", value = "Value set collection. Example: CEDARVS",
-//          required = true, dataType = "string", paramType = "path")})
-//  public static Result findValueTree(String id, String vsCollection) {
-//    if (id.isEmpty() || vsCollection.isEmpty()) {
-//      return badRequest();
-//    }
-//    try {
-//      id = Util.encodeIfNeeded(id);
-//      TreeNode tree = termService.getValueTree(id, vsCollection, apiKey);
-//      return ok((JsonNode) new ObjectMapper().valueToTree(tree));
-//    } catch (HTTPException e) {
-//      return Results.status(e.getStatusCode());
-//    } catch (IOException e) {
-//      return internalServerError(e.getMessage());
-//    }
-//  }
+  @GET
+  @Path("vs-collections/{vs_collection}/values/{id}/tree")
+  //  @ApiOperation(
+  //      value = "Get value tree (only for regular classes)",
+  //      httpMethod = "GET")
+  //  @ApiResponses(value = {
+  //      @ApiResponse(code = 200, message = "Success!"),
+  //      @ApiResponse(code = 400, message = "Bad Request"),
+  //      @ApiResponse(code = 401, message = "Unauthorized"),
+  //      @ApiResponse(code = 404, message = "Not Found"),
+  //      @ApiResponse(code = 500, message = "Internal Server Error")})
+  //  @ApiImplicitParams(value = {
+  //      @ApiImplicitParam(name = "id", value = "Value id. It must be encoded",
+  //          required = true, dataType = "string", paramType = "path"),
+  //      @ApiImplicitParam(name = "vs_collection", value = "Value set collection. Example: CEDARVS",
+  //          required = true, dataType = "string", paramType = "path")})
+  public Response findValueTree(@PathParam("id") @Encoded String id, @PathParam("vs_collection") String vsCollection)
+      throws CedarException {
+    CedarRequestContext ctx = CedarRequestContextFactory.fromRequest(request);
+    ctx.must(ctx.user()).be(LoggedIn);
+    try {
+      TreeNode tree = terminologyService.getValueTree(id, vsCollection, apiKey);
+      return Response.ok().entity(JsonMapper.MAPPER.valueToTree(tree)).build();
+    } catch (HTTPException e) {
+      return Response.status(e.getStatusCode()).build();
+    } catch (IOException e) {
+      throw new CedarAssertionException(e);
+    }
+  }
+  
 //
 //  @ApiOperation(
 //      value = "Find all values in the value set that the given value belongs to",

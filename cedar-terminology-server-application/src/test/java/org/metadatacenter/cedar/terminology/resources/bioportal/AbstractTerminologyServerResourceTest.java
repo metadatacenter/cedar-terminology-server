@@ -48,6 +48,7 @@ public abstract class AbstractTerminologyServerResourceTest {
   protected static Relation relation1;
   protected static ValueSet vs1;
   protected static Value value1;
+  protected static Value value2;
 
   @ClassRule
   public static final DropwizardAppRule<TerminologyServerConfiguration> RULE =
@@ -115,19 +116,33 @@ public abstract class AbstractTerminologyServerResourceTest {
     List vsRelations = new ArrayList<>();
     vs1 = new ValueSet(null, null, vsLabel, vsCreator, vsCollection, vsDefinitions, vsSynonyms, vsRelations, true, null);
 
-    // Initialize test value - the vsId will be set later
-    String valueLabel = "value1_test";
-    String valueCreator = "http://data.bioontology.org/users/cedar-test";
-    String valueVsCollection = "http://data.bioontology.org/ontologies/CEDARVS";
-    List valueDefinitions = new ArrayList<>();
-    valueDefinitions.add("valueDefinition1");
-    valueDefinitions.add("valueDefinition2");
-    List valueSynonyms = new ArrayList<>();
-    valueSynonyms.add("valueSynonym1");
-    valueSynonyms.add("valueSynonym2");
+    // Initialize test value 1 - the vsId will be set later
+    String value1Label = "value1_test";
+    String value1Creator = "http://data.bioontology.org/users/cedar-test";
+    String value1VsCollection = "http://data.bioontology.org/ontologies/CEDARVS";
+    List value1Definitions = new ArrayList<>();
+    value1Definitions.add("value1Definition1");
+    value1Definitions.add("value1Definition2");
+    List value1Synonyms = new ArrayList<>();
+    value1Synonyms.add("value1Synonym1");
+    value1Synonyms.add("value1Synonym2");
     List valueRelations = new ArrayList<>();
-    value1 = new Value(null, null, valueLabel, valueCreator, null, valueVsCollection, valueDefinitions,
-        valueSynonyms, valueRelations, true, null);
+    value1 = new Value(null, null, value1Label, value1Creator, null, value1VsCollection, value1Definitions,
+        value1Synonyms, valueRelations, true, null);
+
+    // Initialize test value 2 - the vsId will be set later
+    String value2Label = "value2_test";
+    String value2Creator = "http://data.bioontology.org/users/cedar-test";
+    String value2VsCollection = "http://data.bioontology.org/ontologies/CEDARVS";
+    List value2Definitions = new ArrayList<>();
+    value2Definitions.add("value2Definition1");
+    value2Definitions.add("value2Definition2");
+    List value2Synonyms = new ArrayList<>();
+    value2Synonyms.add("value2Synonym1");
+    value2Synonyms.add("value2Synonym2");
+    List value2Relations = new ArrayList<>();
+    value2 = new Value(null, null, value2Label, value2Creator, null, value2VsCollection, value2Definitions,
+        value2Synonyms, value2Relations, true, null);
   }
 
   /**
@@ -263,10 +278,9 @@ public abstract class AbstractTerminologyServerResourceTest {
 
   /* Values */
 
-  protected static Value createValue(ValueSet vs, Value v) {
-    // Create value set
-    ValueSet createdVs = createValueSet(vs);
-    v.setVsId(createdVs.getLdId());
+  // Creates a value v in a value set vs
+  protected static Value createValue(String vsLdId, Value v) {
+    v.setVsId(vsLdId);
     String url = null;
     try {
       url = baseUrlBpVSCollections + "/" + Util.getShortIdentifier(v.getVsCollection()) + "/"
