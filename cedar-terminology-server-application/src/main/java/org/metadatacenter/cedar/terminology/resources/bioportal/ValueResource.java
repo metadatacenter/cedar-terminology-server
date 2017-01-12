@@ -123,7 +123,7 @@ public class ValueResource extends AbstractTerminologyServerResource {
       throw new CedarAssertionException(e);
     }
   }
-  
+
 //
 //  @ApiOperation(
 //      value = "Find all values in the value set that the given value belongs to",
@@ -162,37 +162,38 @@ public class ValueResource extends AbstractTerminologyServerResource {
 //    }
 //  }
 //
-//  @ApiOperation(
-//      value = "Update a provisional value",
-//      httpMethod = "PATCH")
-//  @ApiResponses(value = {
-//      @ApiResponse(code = 204, message = "Success! (No Content)"),
-//      @ApiResponse(code = 400, message = "Bad Request"),
-//      @ApiResponse(code = 401, message = "Unauthorized"),
-//      @ApiResponse(code = 404, message = "Not Found"),
-//      @ApiResponse(code = 500, message = "Internal Server Error")})
-//  @ApiImplicitParams(value = {
-//      @ApiImplicitParam(name = "id", value = "Provisional value id. Example: 720f50f0-ae6f-0133-848f-005056010073",
-//          required = true, dataType = "string", paramType = "path"),
-//      @ApiImplicitParam(value = "Updated information for the value", required = true, dataType = "org.metadatacenter" +
-//          ".terms" +
-//          ".domainObjects.OntologyClass", paramType = "body")})
-//  public static Result updateValue(String id) {
-//    if (id.isEmpty()) {
-//      return badRequest();
-//    }
-//    ObjectMapper mapper = new ObjectMapper();
-//    Value v = mapper.convertValue(request().body().asJson(), Value.class);
-//    v.setId(id);
-//    try {
-//      termService.updateProvisionalValue(v, apiKey);
-//    } catch (HTTPException e) {
-//      return Results.status(e.getStatusCode());
-//    } catch (IOException e) {
-//      return internalServerError(e.getMessage());
-//    }
-//    return internalServerError();
-//  }
+
+  @PUT
+  @Path("values/{id}")
+  //  @ApiOperation(
+  //      value = "Update a provisional value",
+  //      httpMethod = "PATCH")
+  //  @ApiResponses(value = {
+  //      @ApiResponse(code = 204, message = "Success! (No Content)"),
+  //      @ApiResponse(code = 400, message = "Bad Request"),
+  //      @ApiResponse(code = 401, message = "Unauthorized"),
+  //      @ApiResponse(code = 404, message = "Not Found"),
+  //      @ApiResponse(code = 500, message = "Internal Server Error")})
+  //  @ApiImplicitParams(value = {
+  //      @ApiImplicitParam(name = "id", value = "Provisional value id. Example: 720f50f0-ae6f-0133-848f-005056010073",
+  //          required = true, dataType = "string", paramType = "path"),
+  //      @ApiImplicitParam(value = "Updated information for the value", required = true, dataType = "org
+  // .metadatacenter" +
+  //          ".terms" +
+  //          ".domainObjects.OntologyClass", paramType = "body")})
+  public Response updateValue(@PathParam("id") String id) throws CedarException {
+    CedarRequestContext ctx = CedarRequestContextFactory.fromRequest(request);
+    ctx.must(ctx.user()).be(LoggedIn);
+    try {
+      Value v = JsonMapper.MAPPER.readValue(request.getInputStream(), Value.class);
+      terminologyService.updateProvisionalValue(v, apiKey);
+      return Response.noContent().build();
+    } catch (HTTPException e) {
+      return Response.status(e.getStatusCode()).build();
+    } catch (IOException e) {
+      throw new CedarAssertionException(e);
+    }
+  }
 
   @DELETE
   @Path("values/{id}")
