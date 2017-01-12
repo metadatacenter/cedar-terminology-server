@@ -88,7 +88,7 @@ public class ClassResource extends AbstractTerminologyServerResource {
   //      @ApiImplicitParam(name = "ontology", value = "Ontology. Example: NCIT",
   //          required = true, dataType = "string", paramType = "path")})
   public Response findClass(@PathParam("id") @Encoded String id, @PathParam("ontology") String ontology) throws
-      CedarAssertionException {
+      CedarException {
     CedarRequestContext ctx = CedarRequestContextFactory.fromRequest(request);
     ctx.must(ctx.user()).be(LoggedIn);
     try {
@@ -152,7 +152,7 @@ public class ClassResource extends AbstractTerminologyServerResource {
 //      @ApiImplicitParam(name = "ontology", value = "Ontology. Example: NCIT",
 //          required = true, dataType = "string", paramType = "path")})
   public Response findClassTree(@PathParam("id") @Encoded String id, @PathParam("ontology") String ontology) throws
-      CedarAssertionException {
+      CedarException {
     CedarRequestContext ctx = CedarRequestContextFactory.fromRequest(request);
     ctx.must(ctx.user()).be(LoggedIn);
     try {
