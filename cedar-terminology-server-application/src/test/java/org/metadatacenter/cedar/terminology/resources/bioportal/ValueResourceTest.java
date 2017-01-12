@@ -1,6 +1,7 @@
 package org.metadatacenter.cedar.terminology.resources.bioportal;
 
 import org.junit.*;
+import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.terms.domainObjects.OntologyClass;
 import org.metadatacenter.terms.domainObjects.TreeNode;
 import org.metadatacenter.terms.domainObjects.Value;
@@ -150,6 +151,41 @@ public class ValueResourceTest extends AbstractTerminologyServerResourceTest {
       }
     }
     Assert.assertTrue("Expected values not found in the returned tree", v1Found && v2Found);
+  }
+
+  // TODO: test it for non-provisional values and value sets
+  @Test
+  public void findAllValuesInValueSetByValueTest() {
+    ValueSet createdVs = createValueSet(vs1);
+    Value createdValue1 = createValue(createdVs.getLdId(), value1);
+    Value createdValue2 = createValue(createdVs.getLdId(), value2);
+    String encodedValue1Id = null;
+    try {
+      encodedValue1Id = URLEncoder.encode(createdValue1.getLdId(), "UTF-8");
+    } catch (UnsupportedEncodingException e) {
+      e.printStackTrace();
+    }
+    String url = baseUrlBpVSCollections + "/" + Util.getShortIdentifier(createdValue1.getVsCollection())
+        + "/" + BP_VALUES + "/" + encodedValue1Id + "/" + BP_ALL_VALUES;
+    // Service invocation
+    Response response = client.target(url).request().header("Authorization", authHeader).get();
+    // Check HTTP response
+    Assert.assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+    // Check Content-Type
+    Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
+    // Check that there are some results
+    PagedResults<Value> values = response.readEntity(new GenericType<PagedResults<Value>>(){});
+    Assert.assertTrue("No values found", values.getCollection().size() == 2);
+    boolean v1Found = false;
+    boolean v2Found = false;
+    for (Value v : values.getCollection()) {
+      if (v.getId().equals(createdValue1.getId())) {
+        v1Found = true;
+      } else if (v.getId().equals(createdValue2.getId())) {
+        v2Found = true;
+      }
+    }
+    Assert.assertTrue("Expected values not found", v1Found && v2Found);
   }
 
   @Test

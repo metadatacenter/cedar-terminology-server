@@ -20,6 +20,7 @@ public class Constants {
   public static final String BP_VALUE_SET_COLLECTIONS = "vs-collections";
   public static final String BP_VALUE_SETS = "value-sets";
   public static final String BP_VALUES = "values";
+  public static final String BP_ALL_VALUES = "all-values";
   public static final String BP_PROVISIONAL_CLASSES = BP_CLASSES + "/provisional";
   public static final String CACHE_FOLDER_NAME = "cache/terminology";
   public static final String ONTOLOGIES_CACHE_FILE = "ontologies.cache";
