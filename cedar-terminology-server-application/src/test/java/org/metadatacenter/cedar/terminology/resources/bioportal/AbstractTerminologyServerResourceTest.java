@@ -47,6 +47,7 @@ public abstract class AbstractTerminologyServerResourceTest {
   protected static OntologyClass class1;
   protected static Relation relation1;
   protected static ValueSet vs1;
+  protected static ValueSet vs2;
   protected static Value value1;
   protected static Value value2;
 
@@ -82,6 +83,19 @@ public abstract class AbstractTerminologyServerResourceTest {
     client.property(ClientProperties.CONNECT_TIMEOUT, cedarConfig.getTerminologyConfig().getBioPortal().getConnectTimeout());
     client.property(ClientProperties.READ_TIMEOUT, cedarConfig.getTerminologyConfig().getBioPortal().getSocketTimeout());
 
+  }
+
+  /**
+   * Sets up the test fixture.
+   * (Called before every test case method.)
+   */
+  @Before
+  public void setUpAbstract() {
+    createdClasses = new ArrayList<>();
+    createdRelations = new ArrayList<>();
+    createdValueSets = new ArrayList<>();
+    createdValues = new ArrayList<>();
+
     // Initialize test class
     String classLabel = "class1_test";
     String classCreator = "http://data.bioontology.org/users/cedar-test";
@@ -103,18 +117,31 @@ public abstract class AbstractTerminologyServerResourceTest {
     String targetClassOntology = "http://data.bioontology.org/ontologies/CPT";
     relation1 = new Relation(null, null, null, relationType, targetClassId, targetClassOntology, null, relationCreator);
 
-    // Initialize test value set
-    String vsLabel = "vs1_test";
-    String vsCreator = "http://data.bioontology.org/users/cedar-test";
-    String vsCollection = "http://data.bioontology.org/ontologies/CEDARVS";
-    List vsDefinitions = new ArrayList<>();
-    vsDefinitions.add("vsDefinition1");
-    vsDefinitions.add("vsDefinition2");
-    List vsSynonyms = new ArrayList<>();
-    vsSynonyms.add("vsSynonym1");
-    vsSynonyms.add("vsSynonym2");
-    List vsRelations = new ArrayList<>();
-    vs1 = new ValueSet(null, null, vsLabel, vsCreator, vsCollection, vsDefinitions, vsSynonyms, vsRelations, true, null);
+    // Initialize test value set 1
+    String vs1Label = "vs1_test";
+    String vs1Creator = "http://data.bioontology.org/users/cedar-test";
+    String vs1Collection = "http://data.bioontology.org/ontologies/CEDARVS";
+    List vs1Definitions = new ArrayList<>();
+    vs1Definitions.add("vs1Definition1");
+    vs1Definitions.add("vs1Definition2");
+    List vs1Synonyms = new ArrayList<>();
+    vs1Synonyms.add("vs1Synonym1");
+    vs1Synonyms.add("vs1Synonym2");
+    List vs1Relations = new ArrayList<>();
+    vs1 = new ValueSet(null, null, vs1Label, vs1Creator, vs1Collection, vs1Definitions, vs1Synonyms, vs1Relations, true, null);
+
+    // Initialize test value set 2
+    String vs2Label = "vs2_test";
+    String vs2Creator = "http://data.bioontology.org/users/cedar-test";
+    String vs2Collection = "http://data.bioontology.org/ontologies/CEDARVS";
+    List vs2Definitions = new ArrayList<>();
+    vs2Definitions.add("vs2Definition1");
+    vs2Definitions.add("vs2Definition2");
+    List vs2Synonyms = new ArrayList<>();
+    vs2Synonyms.add("vs2Synonym1");
+    vs2Synonyms.add("vs2Synonym2");
+    List vs2Relations = new ArrayList<>();
+    vs2 = new ValueSet(null, null, vs2Label, vs2Creator, vs2Collection, vs2Definitions, vs2Synonyms, vs2Relations, true, null);
 
     // Initialize test value 1 - the vsId will be set later
     String value1Label = "value1_test";
@@ -143,19 +170,6 @@ public abstract class AbstractTerminologyServerResourceTest {
     List value2Relations = new ArrayList<>();
     value2 = new Value(null, null, value2Label, value2Creator, null, value2VsCollection, value2Definitions,
         value2Synonyms, value2Relations, true, null);
-  }
-
-  /**
-   * Sets up the test fixture.
-   * (Called before every test case method.)
-   */
-  @Before
-  public void setUpAbstract() {
-    // Test objects
-    createdClasses = new ArrayList<>();
-    createdRelations = new ArrayList<>();
-    createdValueSets = new ArrayList<>();
-    createdValues = new ArrayList<>();
   }
 
   /**
@@ -202,6 +216,7 @@ public abstract class AbstractTerminologyServerResourceTest {
       Response findResponse = client.target(findUrl).request().header("Authorization", authHeader).get();
       if (findResponse.getStatus() == Response.Status.OK.getStatusCode()) {
         Response deleteResponse = client.target(deleteUrl).request().header("Authorization", authHeader).delete();
+        System.out.println("Class deleted: " + c.getLdId());
         if (deleteResponse.getStatus() != Response.Status.NO_CONTENT.getStatusCode()) {
           throw new Exception("Couldn't delete class: Id = " + c.getLdId());
         }
@@ -233,6 +248,7 @@ public abstract class AbstractTerminologyServerResourceTest {
       Response findResponse = client.target(url).request().header("Authorization", authHeader).get();
       if (findResponse.getStatus() == Response.Status.OK.getStatusCode()) {
         Response deleteResponse = client.target(url).request().header("Authorization", authHeader).delete();
+        System.out.println("Relation deleted: " + r.getLdId());
         if (deleteResponse.getStatus() != Response.Status.NO_CONTENT.getStatusCode()) {
           throw new Exception("Couldn't delete relation: Id = " + r.getLdId() +
               ". This relation could have been automatically removed by BioPortal when deleting the class that " +
@@ -267,6 +283,7 @@ public abstract class AbstractTerminologyServerResourceTest {
       Response findResponse = client.target(findUrl).request().header("Authorization", authHeader).get();
       if (findResponse.getStatus() == Response.Status.OK.getStatusCode()) {
         Response deleteResponse = client.target(deleteUrl).request().header("Authorization", authHeader).delete();
+        System.out.println("Value Set deleted: " + vs.getId());
         if (deleteResponse.getStatus() != Response.Status.NO_CONTENT.getStatusCode()) {
           throw new Exception("Couldn't delete value set: Id = " + vs.getLdId());
         }
@@ -306,6 +323,7 @@ public abstract class AbstractTerminologyServerResourceTest {
       Response findResponse = client.target(findUrl).request().header("Authorization", authHeader).get();
       if (findResponse.getStatus() == Response.Status.OK.getStatusCode()) {
         Response deleteResponse = client.target(deleteUrl).request().header("Authorization", authHeader).delete();
+        System.out.println("Value deleted: " + v.getId());
         if (deleteResponse.getStatus() != Response.Status.NO_CONTENT.getStatusCode()) {
           throw new Exception("Couldn't delete value: Id = " + v.getId());
         }

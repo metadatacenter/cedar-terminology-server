@@ -2,6 +2,7 @@ package org.metadatacenter.cedar.terminology.resources.bioportal;
 
 import org.junit.*;
 import org.metadatacenter.terms.customObjects.PagedResults;
+import org.metadatacenter.terms.domainObjects.Ontology;
 import org.metadatacenter.terms.domainObjects.ValueSet;
 import org.metadatacenter.terms.util.Util;
 
@@ -12,6 +13,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 import java.util.HashSet;
+import java.util.List;
 
 import static org.metadatacenter.cedar.terminology.utils.Constants.BP_VALUE_SETS;
 
@@ -116,34 +118,31 @@ public class ValueSetResourceTest extends AbstractTerminologyServerResourceTest 
     Assert.assertTrue("Wrong number of value sets retrieved", resultsCount > 1);
   }
 
-  @Test
-  public void findValueSetByValueTest() {
-    // Create a provisional value set
-    ValueSet created1 = createValueSet(vs1);
+//  @Test
+//  public void findValueSetByValueTest() {
+//    // Create a provisional value set
+//    ValueSet created1 = createValueSet(vs1);
+//
+//  }
 
+  @Test
+  public void findAllValueSetsTest() {
+    // Create two provisional value sets
+    createValueSet(vs1);
+    createValueSet(vs2);
+    // Find url
+    String url = baseUrlBp + "/" + BP_VALUE_SETS;
+    // Service invocation
+    Response response = client.target(url).request().header("Authorization", authHeader).get();
+    // Check HTTP response
+    Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
+    // Check Content-Type
+    Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
+    // Check the results returned
+    List<ValueSet> valueSets = response.readEntity(new GenericType<List<ValueSet>>() {});
+    Assert.assertTrue("Wrong number of value sets returned", valueSets.size() > 1);
   }
 
-//
-//  @Test
-//  public void findAllValueSetsTest() {
-//    running(testServer(TEST_SERVER_PORT), new Runnable() {
-//      public void run() {
-//        // Create two provisional value sets
-//        createValueSet();
-//        createValueSet();
-//        // Find url
-//        String url = SERVER_URL_BIOPORTAL + BP_VALUE_SETS;
-//        WSResponse wsResponseFind = WS.url(url).setHeader("Authorization", authHeader).get().get(TIMEOUT_MS);
-//        // Check response is OK
-//        Assert.assertEquals(OK, wsResponseFind.getStatus());
-//        // Check Content-Type
-//        Assert.assertEquals(wsResponseFind.getHeader("Content-Type"), "application/json; charset=utf-8");
-//        // Check the number of elements retrieved
-//        int resultsCount = wsResponseFind.asJson().size();
-//        Assert.assertTrue("Wrong number of value sets retrieved", resultsCount > 1);
-//      }
-//    });
-//  }
 //
 //  @Test
 //  public void updateValueSetTest() {
