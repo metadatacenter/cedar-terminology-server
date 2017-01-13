@@ -3,6 +3,7 @@ package org.metadatacenter.cedar.terminology.resources.bioportal;
 import org.junit.*;
 import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.terms.domainObjects.Ontology;
+import org.metadatacenter.terms.domainObjects.OntologyClass;
 import org.metadatacenter.terms.domainObjects.ValueSet;
 import org.metadatacenter.terms.util.Util;
 
@@ -15,6 +16,7 @@ import javax.ws.rs.core.Response.Status;
 import java.util.HashSet;
 import java.util.List;
 
+import static org.metadatacenter.cedar.terminology.utils.Constants.BP_CLASSES;
 import static org.metadatacenter.cedar.terminology.utils.Constants.BP_VALUE_SETS;
 
 /**
@@ -179,29 +181,24 @@ public class ValueSetResourceTest extends AbstractTerminologyServerResourceTest 
 //      }
 //    });
 //  }
-//
-//  @Test
-//  public void deleteValueSetTest() {
-//    running(testServer(TEST_SERVER_PORT), new Runnable() {
-//      public void run() {
-//        String url = SERVER_URL_BIOPORTAL + BP_VALUE_SETS;
-//        // Create a provisional value set
-//        ValueSet created = createValueSet();
-//        // Delete the vs that has been created
-//        String vsUrl = url + "/" + created.getId();
-//        WSResponse wsResponseDelete = WS.url(vsUrl).setHeader("Authorization", authHeader).delete().get(TIMEOUT_MS);
-//        // Check HTTP response
-//        Assert.assertEquals(NO_CONTENT, wsResponseDelete.getStatus());
-//        // Try to retrieve the vs to check that it has been deleted correctly
-//        String findUrl = SERVER_URL_BIOPORTAL + BP_VALUE_SET_COLLECTIONS + "/" + Util.getShortIdentifier(created
-//            .getVsCollection()) +
-//            "/" + BP_VALUE_SETS + "/" + created.getId();
-//        WSResponse wsResponseFind = WS.url(findUrl).setHeader("Authorization", authHeader).get().get(TIMEOUT_MS);
-//        // Check not found
-//        Assert.assertEquals(NOT_FOUND, wsResponseFind.getStatus());
-//      }
-//    });
-//  }
+
+  @Test
+  public void deleteValueSetTest() {
+    // Create a provisional value set
+    ValueSet created = createValueSet(vs1);
+    // Delete the vs that has been created
+    String url = baseUrlBp + "/" + BP_VALUE_SETS + "/" + created.getId();
+    Response deleteResponse = client.target(url).request().header("Authorization", authHeader).delete();
+    // Check HTTP response
+    Assert.assertEquals(Status.NO_CONTENT.getStatusCode(), deleteResponse.getStatus());
+    // Try to retrieve the vs to check that it has been deleted correctly
+    String findUrl = baseUrlBpVSCollections + "/" + Util.getShortIdentifier(created.getVsCollection()) +
+        "/" + BP_VALUE_SETS + "/" + created.getId();
+    Response findResponse = client.target(findUrl).request().header("Authorization", authHeader).get();
+    // Check not found
+    Assert.assertEquals(Status.NOT_FOUND.getStatusCode(), findResponse.getStatus());
+  }
+
 
 
 }
