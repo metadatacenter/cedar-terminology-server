@@ -145,42 +145,38 @@ public class ValueSetResourceTest extends AbstractTerminologyServerResourceTest 
     Assert.assertTrue("Wrong number of value sets returned", valueSets.size() > 1);
   }
 
-//
-//  @Test
-//  public void updateValueSetTest() {
-//    running(testServer(TEST_SERVER_PORT), new Runnable() {
-//      public void run() {
-//        String url = SERVER_URL_BIOPORTAL + BP_VALUE_SETS;
-//        // Create a provisional value set
-//        ValueSet created = createValueSet();
-//        // Update the created vs
-//        String updatedLabel = "new label";
-//        JsonNode changes = Json.newObject().put("prefLabel", updatedLabel);
-//        // Update
-//        String vsUrl = url + "/" + created.getId();
-//        WSResponse wsResponseUpdate = WS.url(vsUrl).setHeader("Authorization", authHeader).patch(changes).get
-//            (TIMEOUT_MS);
-//        // Check HTTP response
-//        Assert.assertEquals(NO_CONTENT, wsResponseUpdate.getStatus());
-//        // Retrieve the value set
-//        String findUrl = SERVER_URL_BIOPORTAL + BP_VALUE_SET_COLLECTIONS + "/" + Util.getShortIdentifier(created
-//            .getVsCollection()) +
-//            "/" + BP_VALUE_SETS + "/" + created.getId();
-//        WSResponse wsResponseFind = WS.url(findUrl).setHeader("Authorization", authHeader).get().get(TIMEOUT_MS);
-//        ObjectMapper mapper = new ObjectMapper();
-//        ValueSet retrievedVs = null;
-//        try {
-//          retrievedVs = mapper.treeToValue(wsResponseFind.asJson(), ValueSet.class);
-//        } catch (JsonProcessingException e) {
-//          e.printStackTrace();
-//        }
-//        // Check that the modifications have been done correctly
-//        Assert.assertNotNull(retrievedVs.getPrefLabel());
-//        Assert.assertTrue("The value set has not been updated correctly", updatedLabel.compareTo
-//            (retrievedVs.getPrefLabel()) == 0);
-//      }
-//    });
-//  }
+  @Test
+  public void updateValueSetTest() {
+    // Create a provisional value set
+    ValueSet created = createValueSet(vs1);
+    // Update the vs that has been created
+    String url = baseUrlBp + "/" + BP_VALUE_SETS + "/" + created.getId();
+    ValueSet updatedValueSet = new ValueSet(created.getId(), created.getLdId(), "new label", created.getCreator(),
+        created.getVsCollection(), created.getDefinitions(), created.getSynonyms(),
+        created.getRelations(), created.isProvisional(), created.getCreated());
+    // Service invocation
+    Response updateResponse = client.target(url).request().header("Authorization", authHeader).put(Entity.json(updatedValueSet));
+    // Check HTTP response
+    Assert.assertEquals(Status.NO_CONTENT.getStatusCode(), updateResponse.getStatus());
+    String findUrl = baseUrlBpVSCollections + "/" + Util.getShortIdentifier(created.getVsCollection()) + "/" +
+        BP_VALUE_SETS + "/" + created.getId();
+    // Service invocation
+    Response findResponse = client.target(findUrl).request().header("Authorization", authHeader).get();
+    // Check the element retrieved
+    ValueSet found = findResponse.readEntity(ValueSet.class);
+    // Check fields
+    ValueSet expected = updatedValueSet;
+    Assert.assertEquals(expected.getId(), found.getId());
+    Assert.assertEquals(expected.getLdId(), found.getLdId());
+    Assert.assertEquals(expected.getPrefLabel(), found.getPrefLabel());
+    Assert.assertEquals(expected.getCreator(), found.getCreator());
+    Assert.assertEquals(expected.getVsCollection(), found.getVsCollection());
+    Assert.assertEquals(new HashSet<>(expected.getDefinitions()), new HashSet<>(found.getDefinitions()));
+    Assert.assertEquals(new HashSet<>(expected.getSynonyms()), new HashSet<>(found.getSynonyms()));
+    Assert.assertEquals(new HashSet<>(expected.getRelations()), new HashSet<>(found.getRelations()));
+    Assert.assertEquals(expected.isProvisional(), found.isProvisional());
+    Assert.assertEquals(expected.getCreated(), found.getCreated());
+  }
 
   @Test
   public void deleteValueSetTest() {
@@ -198,7 +194,5 @@ public class ValueSetResourceTest extends AbstractTerminologyServerResourceTest 
     // Check not found
     Assert.assertEquals(Status.NOT_FOUND.getStatusCode(), findResponse.getStatus());
   }
-
-
 
 }

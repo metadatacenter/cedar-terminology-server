@@ -216,7 +216,6 @@ public abstract class AbstractTerminologyServerResourceTest {
       Response findResponse = client.target(findUrl).request().header("Authorization", authHeader).get();
       if (findResponse.getStatus() == Response.Status.OK.getStatusCode()) {
         Response deleteResponse = client.target(deleteUrl).request().header("Authorization", authHeader).delete();
-        System.out.println("Class deleted: " + c.getLdId());
         if (deleteResponse.getStatus() != Response.Status.NO_CONTENT.getStatusCode()) {
           throw new Exception("Couldn't delete class: Id = " + c.getLdId());
         }
@@ -248,7 +247,6 @@ public abstract class AbstractTerminologyServerResourceTest {
       Response findResponse = client.target(url).request().header("Authorization", authHeader).get();
       if (findResponse.getStatus() == Response.Status.OK.getStatusCode()) {
         Response deleteResponse = client.target(url).request().header("Authorization", authHeader).delete();
-        System.out.println("Relation deleted: " + r.getLdId());
         if (deleteResponse.getStatus() != Response.Status.NO_CONTENT.getStatusCode()) {
           throw new Exception("Couldn't delete relation: Id = " + r.getLdId() +
               ". This relation could have been automatically removed by BioPortal when deleting the class that " +
@@ -283,7 +281,6 @@ public abstract class AbstractTerminologyServerResourceTest {
       Response findResponse = client.target(findUrl).request().header("Authorization", authHeader).get();
       if (findResponse.getStatus() == Response.Status.OK.getStatusCode()) {
         Response deleteResponse = client.target(deleteUrl).request().header("Authorization", authHeader).delete();
-        System.out.println("Value Set deleted: " + vs.getId());
         if (deleteResponse.getStatus() != Response.Status.NO_CONTENT.getStatusCode()) {
           throw new Exception("Couldn't delete value set: Id = " + vs.getLdId());
         }
@@ -323,7 +320,6 @@ public abstract class AbstractTerminologyServerResourceTest {
       Response findResponse = client.target(findUrl).request().header("Authorization", authHeader).get();
       if (findResponse.getStatus() == Response.Status.OK.getStatusCode()) {
         Response deleteResponse = client.target(deleteUrl).request().header("Authorization", authHeader).delete();
-        System.out.println("Value deleted: " + v.getId());
         if (deleteResponse.getStatus() != Response.Status.NO_CONTENT.getStatusCode()) {
           throw new Exception("Couldn't delete value: Id = " + v.getId());
         }
