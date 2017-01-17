@@ -2,6 +2,8 @@ package org.metadatacenter.cedar.terminology.resources.bioportal;
 
 import org.junit.*;
 import org.metadatacenter.terms.customObjects.PagedResults;
+import org.metadatacenter.terms.domainObjects.Ontology;
+import org.metadatacenter.terms.domainObjects.OntologyClass;
 import org.metadatacenter.terms.domainObjects.ValueSet;
 import org.metadatacenter.terms.util.Util;
 
@@ -12,7 +14,9 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 import java.util.HashSet;
+import java.util.List;
 
+import static org.metadatacenter.cedar.terminology.utils.Constants.BP_CLASSES;
 import static org.metadatacenter.cedar.terminology.utils.Constants.BP_VALUE_SETS;
 
 /**
@@ -116,93 +120,79 @@ public class ValueSetResourceTest extends AbstractTerminologyServerResourceTest 
     Assert.assertTrue("Wrong number of value sets retrieved", resultsCount > 1);
   }
 
-  @Test
-  public void findValueSetByValueTest() {
-    // Create a provisional value set
-    ValueSet created1 = createValueSet(vs1);
+//  @Test
+//  public void findValueSetByValueTest() {
+//    // Create a provisional value set
+//    ValueSet created1 = createValueSet(vs1);
+//
+//  }
 
+  @Test
+  public void findAllValueSetsTest() {
+    // Create two provisional value sets
+    createValueSet(vs1);
+    createValueSet(vs2);
+    // Find url
+    String url = baseUrlBp + "/" + BP_VALUE_SETS;
+    // Service invocation
+    Response response = client.target(url).request().header("Authorization", authHeader).get();
+    // Check HTTP response
+    Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
+    // Check Content-Type
+    Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
+    // Check the results returned
+    List<ValueSet> valueSets = response.readEntity(new GenericType<List<ValueSet>>() {});
+    Assert.assertTrue("Wrong number of value sets returned", valueSets.size() > 1);
   }
 
-//
-//  @Test
-//  public void findAllValueSetsTest() {
-//    running(testServer(TEST_SERVER_PORT), new Runnable() {
-//      public void run() {
-//        // Create two provisional value sets
-//        createValueSet();
-//        createValueSet();
-//        // Find url
-//        String url = SERVER_URL_BIOPORTAL + BP_VALUE_SETS;
-//        WSResponse wsResponseFind = WS.url(url).setHeader("Authorization", authHeader).get().get(TIMEOUT_MS);
-//        // Check response is OK
-//        Assert.assertEquals(OK, wsResponseFind.getStatus());
-//        // Check Content-Type
-//        Assert.assertEquals(wsResponseFind.getHeader("Content-Type"), "application/json; charset=utf-8");
-//        // Check the number of elements retrieved
-//        int resultsCount = wsResponseFind.asJson().size();
-//        Assert.assertTrue("Wrong number of value sets retrieved", resultsCount > 1);
-//      }
-//    });
-//  }
-//
-//  @Test
-//  public void updateValueSetTest() {
-//    running(testServer(TEST_SERVER_PORT), new Runnable() {
-//      public void run() {
-//        String url = SERVER_URL_BIOPORTAL + BP_VALUE_SETS;
-//        // Create a provisional value set
-//        ValueSet created = createValueSet();
-//        // Update the created vs
-//        String updatedLabel = "new label";
-//        JsonNode changes = Json.newObject().put("prefLabel", updatedLabel);
-//        // Update
-//        String vsUrl = url + "/" + created.getId();
-//        WSResponse wsResponseUpdate = WS.url(vsUrl).setHeader("Authorization", authHeader).patch(changes).get
-//            (TIMEOUT_MS);
-//        // Check HTTP response
-//        Assert.assertEquals(NO_CONTENT, wsResponseUpdate.getStatus());
-//        // Retrieve the value set
-//        String findUrl = SERVER_URL_BIOPORTAL + BP_VALUE_SET_COLLECTIONS + "/" + Util.getShortIdentifier(created
-//            .getVsCollection()) +
-//            "/" + BP_VALUE_SETS + "/" + created.getId();
-//        WSResponse wsResponseFind = WS.url(findUrl).setHeader("Authorization", authHeader).get().get(TIMEOUT_MS);
-//        ObjectMapper mapper = new ObjectMapper();
-//        ValueSet retrievedVs = null;
-//        try {
-//          retrievedVs = mapper.treeToValue(wsResponseFind.asJson(), ValueSet.class);
-//        } catch (JsonProcessingException e) {
-//          e.printStackTrace();
-//        }
-//        // Check that the modifications have been done correctly
-//        Assert.assertNotNull(retrievedVs.getPrefLabel());
-//        Assert.assertTrue("The value set has not been updated correctly", updatedLabel.compareTo
-//            (retrievedVs.getPrefLabel()) == 0);
-//      }
-//    });
-//  }
-//
-//  @Test
-//  public void deleteValueSetTest() {
-//    running(testServer(TEST_SERVER_PORT), new Runnable() {
-//      public void run() {
-//        String url = SERVER_URL_BIOPORTAL + BP_VALUE_SETS;
-//        // Create a provisional value set
-//        ValueSet created = createValueSet();
-//        // Delete the vs that has been created
-//        String vsUrl = url + "/" + created.getId();
-//        WSResponse wsResponseDelete = WS.url(vsUrl).setHeader("Authorization", authHeader).delete().get(TIMEOUT_MS);
-//        // Check HTTP response
-//        Assert.assertEquals(NO_CONTENT, wsResponseDelete.getStatus());
-//        // Try to retrieve the vs to check that it has been deleted correctly
-//        String findUrl = SERVER_URL_BIOPORTAL + BP_VALUE_SET_COLLECTIONS + "/" + Util.getShortIdentifier(created
-//            .getVsCollection()) +
-//            "/" + BP_VALUE_SETS + "/" + created.getId();
-//        WSResponse wsResponseFind = WS.url(findUrl).setHeader("Authorization", authHeader).get().get(TIMEOUT_MS);
-//        // Check not found
-//        Assert.assertEquals(NOT_FOUND, wsResponseFind.getStatus());
-//      }
-//    });
-//  }
+  @Test
+  public void updateValueSetTest() {
+    // Create a provisional value set
+    ValueSet created = createValueSet(vs1);
+    // Update the vs that has been created
+    String url = baseUrlBp + "/" + BP_VALUE_SETS + "/" + created.getId();
+    ValueSet updatedValueSet = new ValueSet(created.getId(), created.getLdId(), "new label", created.getCreator(),
+        created.getVsCollection(), created.getDefinitions(), created.getSynonyms(),
+        created.getRelations(), created.isProvisional(), created.getCreated());
+    // Service invocation
+    Response updateResponse = client.target(url).request().header("Authorization", authHeader).put(Entity.json(updatedValueSet));
+    // Check HTTP response
+    Assert.assertEquals(Status.NO_CONTENT.getStatusCode(), updateResponse.getStatus());
+    String findUrl = baseUrlBpVSCollections + "/" + Util.getShortIdentifier(created.getVsCollection()) + "/" +
+        BP_VALUE_SETS + "/" + created.getId();
+    // Service invocation
+    Response findResponse = client.target(findUrl).request().header("Authorization", authHeader).get();
+    // Check the element retrieved
+    ValueSet found = findResponse.readEntity(ValueSet.class);
+    // Check fields
+    ValueSet expected = updatedValueSet;
+    Assert.assertEquals(expected.getId(), found.getId());
+    Assert.assertEquals(expected.getLdId(), found.getLdId());
+    Assert.assertEquals(expected.getPrefLabel(), found.getPrefLabel());
+    Assert.assertEquals(expected.getCreator(), found.getCreator());
+    Assert.assertEquals(expected.getVsCollection(), found.getVsCollection());
+    Assert.assertEquals(new HashSet<>(expected.getDefinitions()), new HashSet<>(found.getDefinitions()));
+    Assert.assertEquals(new HashSet<>(expected.getSynonyms()), new HashSet<>(found.getSynonyms()));
+    Assert.assertEquals(new HashSet<>(expected.getRelations()), new HashSet<>(found.getRelations()));
+    Assert.assertEquals(expected.isProvisional(), found.isProvisional());
+    Assert.assertEquals(expected.getCreated(), found.getCreated());
+  }
 
+  @Test
+  public void deleteValueSetTest() {
+    // Create a provisional value set
+    ValueSet created = createValueSet(vs1);
+    // Delete the vs that has been created
+    String url = baseUrlBp + "/" + BP_VALUE_SETS + "/" + created.getId();
+    Response deleteResponse = client.target(url).request().header("Authorization", authHeader).delete();
+    // Check HTTP response
+    Assert.assertEquals(Status.NO_CONTENT.getStatusCode(), deleteResponse.getStatus());
+    // Try to retrieve the vs to check that it has been deleted correctly
+    String findUrl = baseUrlBpVSCollections + "/" + Util.getShortIdentifier(created.getVsCollection()) +
+        "/" + BP_VALUE_SETS + "/" + created.getId();
+    Response findResponse = client.target(findUrl).request().header("Authorization", authHeader).get();
+    // Check not found
+    Assert.assertEquals(Status.NOT_FOUND.getStatusCode(), findResponse.getStatus());
+  }
 
 }
