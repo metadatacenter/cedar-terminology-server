@@ -21,7 +21,6 @@ import static org.metadatacenter.cedar.terminology.utils.Constants.*;
 
 public class Cache {
 
-  public static String apiKeyCache = "8c478417-cae7-473d-bcd7-a03cf229bb5d"; // cedar-public user api key
   private static ScheduledExecutorService executor;
   private static final int refreshInitialDelay = 0;
   private static final int refreshDelay = 13;
@@ -37,15 +36,21 @@ public class Cache {
     executor = Executors.newSingleThreadScheduledExecutor();
   }
 
-  public static void init() {
+  public static void init(boolean testMode) {
     //Logger.info("Initializing cache");
-    executor.scheduleWithFixedDelay(
-        new Runnable() {
-          public void run() {
-            valueSetsCache.refresh("value-sets");
-            ontologiesCache.refresh("ontologies");
-          }
-        }, refreshInitialDelay, refreshDelay, delayUnit);
+    if (testMode) {
+      ontologiesCachePath = TEST_CACHE_FOLDER_NAME + "/" + ONTOLOGIES_CACHE_FILE;
+      valueSetsCachePath = TEST_CACHE_FOLDER_NAME + "/" + VALUE_SETS_CACHE_FILE;
+    }
+    else {
+      executor.scheduleWithFixedDelay(
+          new Runnable() {
+            public void run() {
+              valueSetsCache.refresh("value-sets");
+              ontologiesCache.refresh("ontologies");
+            }
+          }, refreshInitialDelay, refreshDelay, delayUnit);
+    }
   }
 
   // Google Guava cache for all value sets. It has been implemented as a single-object cache that will contain a
@@ -108,7 +113,7 @@ public class Cache {
       valueSets = readValueSetsFromFile();
     } else {
       //Logger.info("Loading value sets from BioPortal");
-      valueSets = AbstractTerminologyServerResource.terminologyService.findAllValueSets(apiKeyCache);
+      valueSets = AbstractTerminologyServerResource.terminologyService.findAllValueSets(BP_PUBLIC_API_KEY);
       saveValueSetsToFile(valueSets);
     }
     firstLoadValueSets = false;
@@ -127,7 +132,7 @@ public class Cache {
       ontologies = readOntologiesFromFile();
     } else {
       //Logger.info("Loading ontologies from BioPortal");
-      ontologies = AbstractTerminologyServerResource.terminologyService.findAllOntologies(true, apiKeyCache);
+      ontologies = AbstractTerminologyServerResource.terminologyService.findAllOntologies(true, BP_PUBLIC_API_KEY);
       saveOntologiesToFile(ontologies);
     }
     firstLoadOntologies = false;

@@ -7,6 +7,7 @@ import org.glassfish.jersey.client.ClientProperties;
 import org.junit.*;
 import org.metadatacenter.cedar.cache.Cache;
 import org.metadatacenter.cedar.terminology.TerminologyServerApplication;
+import org.metadatacenter.cedar.terminology.TerminologyServerApplicationTest;
 import org.metadatacenter.cedar.terminology.TerminologyServerConfiguration;
 import org.metadatacenter.config.CedarConfig;
 import org.metadatacenter.terms.domainObjects.OntologyClass;
@@ -53,8 +54,7 @@ public abstract class AbstractTerminologyServerResourceTest {
 
   @ClassRule
   public static final DropwizardAppRule<TerminologyServerConfiguration> RULE =
-      new DropwizardAppRule<>(TerminologyServerApplication.class, ResourceHelpers
-          .resourceFilePath("test-config.yml"));
+      new DropwizardAppRule<>(TerminologyServerApplicationTest.class, ResourceHelpers.resourceFilePath("test-config.yml"));
 
   /**
    * One-time initialization code.
@@ -62,26 +62,18 @@ public abstract class AbstractTerminologyServerResourceTest {
    */
   @BeforeClass
   public static void oneTimeSetUpAbstract() {
-    // Wait while cache is being generated
-    while ((Cache.ontologiesCache.size() == 0) || (Cache.valueSetsCache.size() == 0)) {
-      try {
-        Thread.sleep(1000);
-      } catch (InterruptedException e) {
-        e.printStackTrace();
-      }
-    }
-
-    cedarConfig = CedarConfig.getInstance();
-    authHeader = TestUtil.getTestUser1AuthHeader();
 
     baseUrlBp = BASE_URL + ":" + RULE.getLocalPort() + "/" + BP_ENDPOINT;
     baseUrlBpSearch = baseUrlBp + "/" + BP_SEARCH;
     baseUrlBpOntologies = baseUrlBp + "/" + BP_ONTOLOGIES;
     baseUrlBpVSCollections =  baseUrlBp + "/" + BP_VALUE_SET_COLLECTIONS;
 
+    cedarConfig = CedarConfig.getInstance();
     client = new JerseyClientBuilder(RULE.getEnvironment()).build("BioPortal search endpoint client");
     client.property(ClientProperties.CONNECT_TIMEOUT, cedarConfig.getTerminologyConfig().getBioPortal().getConnectTimeout());
     client.property(ClientProperties.READ_TIMEOUT, cedarConfig.getTerminologyConfig().getBioPortal().getSocketTimeout());
+
+    authHeader = TestUtil.getTestUser1AuthHeader();
 
   }
 

@@ -11,11 +11,12 @@ import org.metadatacenter.cedar.terminology.resources.bioportal.*;
 import org.metadatacenter.cedar.util.dw.CedarDropwizardApplicationUtil;
 import org.metadatacenter.config.CedarConfig;
 import org.metadatacenter.terms.TerminologyService;
+import static org.metadatacenter.cedar.terminology.utils.Constants.*;
 
 public class TerminologyServerApplication extends Application<TerminologyServerConfiguration> {
 
-  private static CedarConfig cedarConfig;
-  private static TerminologyService terminologyService;
+  protected static CedarConfig cedarConfig;
+  protected static TerminologyService terminologyService;
 
   public static void main(String[] args) throws Exception {
     new TerminologyServerApplication().run(args);
@@ -23,7 +24,7 @@ public class TerminologyServerApplication extends Application<TerminologyServerC
 
   @Override
   public String getName() {
-    return "terminology-server";
+    return APP_NAME;
   }
 
   @Override
@@ -35,7 +36,12 @@ public class TerminologyServerApplication extends Application<TerminologyServerC
         cedarConfig.getTerminologyConfig().getBioPortal().getSocketTimeout());
     AbstractTerminologyServerResource.injectTerminologyService(terminologyService);
     // Initialize cache (note that this must be done after initializing the terminologyService)
-    Cache.init();
+    // When running the application on testing mode, the cache is loaded from the files stored into the test resources folder
+    boolean testMode = false;
+    if (bootstrap.getApplication().getName().equals(TEST_APP_NAME)) {
+      testMode = true;
+    }
+    Cache.init(testMode);
   }
 
   @Override
