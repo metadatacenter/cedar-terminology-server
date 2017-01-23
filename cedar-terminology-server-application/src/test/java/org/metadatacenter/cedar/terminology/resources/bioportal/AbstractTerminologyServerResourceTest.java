@@ -54,7 +54,8 @@ public abstract class AbstractTerminologyServerResourceTest {
 
   @ClassRule
   public static final DropwizardAppRule<TerminologyServerConfiguration> RULE =
-      new DropwizardAppRule<>(TerminologyServerApplicationTest.class, ResourceHelpers.resourceFilePath("test-config.yml"));
+      new DropwizardAppRule<>(TerminologyServerApplicationTest.class, ResourceHelpers.resourceFilePath("test-config" +
+          ".yml"));
 
   /**
    * One-time initialization code.
@@ -62,18 +63,22 @@ public abstract class AbstractTerminologyServerResourceTest {
    */
   @BeforeClass
   public static void oneTimeSetUpAbstract() {
+    CedarConfig cedarConfig = CedarConfig.getInstance();
+
+    AbstractTerminologyServerResourceTest.cedarConfig = cedarConfig;
 
     baseUrlBp = BASE_URL + ":" + RULE.getLocalPort() + "/" + BP_ENDPOINT;
     baseUrlBpSearch = baseUrlBp + "/" + BP_SEARCH;
     baseUrlBpOntologies = baseUrlBp + "/" + BP_ONTOLOGIES;
-    baseUrlBpVSCollections =  baseUrlBp + "/" + BP_VALUE_SET_COLLECTIONS;
+    baseUrlBpVSCollections = baseUrlBp + "/" + BP_VALUE_SET_COLLECTIONS;
 
-    cedarConfig = CedarConfig.getInstance();
     client = new JerseyClientBuilder(RULE.getEnvironment()).build("BioPortal search endpoint client");
-    client.property(ClientProperties.CONNECT_TIMEOUT, cedarConfig.getTerminologyConfig().getBioPortal().getConnectTimeout());
-    client.property(ClientProperties.READ_TIMEOUT, cedarConfig.getTerminologyConfig().getBioPortal().getSocketTimeout());
+    client.property(ClientProperties.CONNECT_TIMEOUT, cedarConfig.getTerminologyConfig().getBioPortal()
+        .getConnectTimeout());
+    client.property(ClientProperties.READ_TIMEOUT, cedarConfig.getTerminologyConfig().getBioPortal().getSocketTimeout
+        ());
 
-    authHeader = TestUtil.getTestUser1AuthHeader();
+    authHeader = TestUtil.getTestUser1AuthHeader(cedarConfig);
 
   }
 
@@ -120,7 +125,8 @@ public abstract class AbstractTerminologyServerResourceTest {
     vs1Synonyms.add("vs1Synonym1");
     vs1Synonyms.add("vs1Synonym2");
     List vs1Relations = new ArrayList<>();
-    vs1 = new ValueSet(null, null, vs1Label, vs1Creator, vs1Collection, vs1Definitions, vs1Synonyms, vs1Relations, true, null);
+    vs1 = new ValueSet(null, null, vs1Label, vs1Creator, vs1Collection, vs1Definitions, vs1Synonyms, vs1Relations,
+        true, null);
 
     // Initialize test value set 2
     String vs2Label = "vs2_test";
@@ -133,7 +139,8 @@ public abstract class AbstractTerminologyServerResourceTest {
     vs2Synonyms.add("vs2Synonym1");
     vs2Synonyms.add("vs2Synonym2");
     List vs2Relations = new ArrayList<>();
-    vs2 = new ValueSet(null, null, vs2Label, vs2Creator, vs2Collection, vs2Definitions, vs2Synonyms, vs2Relations, true, null);
+    vs2 = new ValueSet(null, null, vs2Label, vs2Creator, vs2Collection, vs2Definitions, vs2Synonyms, vs2Relations,
+        true, null);
 
     // Initialize test value 1 - the vsId will be set later
     String value1Label = "value1_test";
@@ -187,7 +194,6 @@ public abstract class AbstractTerminologyServerResourceTest {
    */
 
   /* Classes */
-
   protected static OntologyClass createClass(OntologyClass c) {
     String url = baseUrlBpOntologies + "/" + Util.getShortIdentifier(c.getOntology()) + "/" + BP_CLASSES;
     // Service invocation
