@@ -3,6 +3,7 @@ package org.metadatacenter.cedar.terminology;
 import io.dropwizard.Application;
 import io.dropwizard.setup.Bootstrap;
 import io.dropwizard.setup.Environment;
+import org.metadatacenter.bridge.CedarDataServices;
 import org.metadatacenter.cedar.cache.Cache;
 import org.metadatacenter.cedar.terminology.health.TerminologyServerHealthCheck;
 import org.metadatacenter.cedar.terminology.resources.AbstractTerminologyServerResource;
@@ -29,8 +30,10 @@ public class TerminologyServerApplication extends Application<TerminologyServerC
 
   @Override
   public void initialize(Bootstrap<TerminologyServerConfiguration> bootstrap) {
-    CedarDropwizardApplicationUtil.setupKeycloak();
     cedarConfig = CedarConfig.getInstance();
+    CedarDataServices.getInstance(cedarConfig);
+
+    CedarDropwizardApplicationUtil.setupKeycloak();
     terminologyService = new TerminologyService(cedarConfig.getTerminologyConfig().getBioPortal().getBasePath(),
         cedarConfig.getTerminologyConfig().getBioPortal().getConnectTimeout(),
         cedarConfig.getTerminologyConfig().getBioPortal().getSocketTimeout());

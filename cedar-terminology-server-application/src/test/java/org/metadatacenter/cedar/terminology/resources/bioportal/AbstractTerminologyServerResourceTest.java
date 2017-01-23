@@ -61,19 +61,20 @@ public abstract class AbstractTerminologyServerResourceTest {
    * (Called once before any of the test methods in the class).
    */
   @BeforeClass
-  public static void oneTimeSetUpAbstract() {
+  public static void oneTimeSetUpAbstract(CedarConfig cedarConfig) {
+
+    AbstractTerminologyServerResourceTest.cedarConfig = cedarConfig;
 
     baseUrlBp = BASE_URL + ":" + RULE.getLocalPort() + "/" + BP_ENDPOINT;
     baseUrlBpSearch = baseUrlBp + "/" + BP_SEARCH;
     baseUrlBpOntologies = baseUrlBp + "/" + BP_ONTOLOGIES;
     baseUrlBpVSCollections =  baseUrlBp + "/" + BP_VALUE_SET_COLLECTIONS;
 
-    cedarConfig = CedarConfig.getInstance();
     client = new JerseyClientBuilder(RULE.getEnvironment()).build("BioPortal search endpoint client");
     client.property(ClientProperties.CONNECT_TIMEOUT, cedarConfig.getTerminologyConfig().getBioPortal().getConnectTimeout());
     client.property(ClientProperties.READ_TIMEOUT, cedarConfig.getTerminologyConfig().getBioPortal().getSocketTimeout());
 
-    authHeader = TestUtil.getTestUser1AuthHeader();
+    authHeader = TestUtil.getTestUser1AuthHeader(cedarConfig);
 
   }
 
