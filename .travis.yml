@@ -21,7 +21,7 @@ notifications:
 before_install:
   - sleep 15
   - mongoimport --db cedar --collection users --file cedar-terminology-server-application/src/test/resources/test-user-1.json
-install: '[ ${TRAVIS_PULL_REQUEST} = ''false'' ] && mvn clean deploy --settings .m2/travis-settings.xml'
+install: '[ ${TRAVIS_PULL_REQUEST} = ''false'' ] && mvn -DskipTests=true clean deploy --settings .m2/travis-settings.xml'
 env:
   global:
   - secure: D7QFbMlUlIyTxCbtBQg/IHn+tg1KTE4y1aB2pp0ueC1zv3S07YQpDg0tm0922nqH+PFeI8VD/fsUQlZjhlw3BTt5rBtAbo1gQ0CiEpeIa8rOmSKFX9ZeaZMNAxHAOcsxWLPAQy04dV9sZdiBJ45Vc+hfEXMKxFBDZYzvtyrUoILEbl7Hyxd2OmO8z9h3grm5TV2P0yMfY5yNb+hPoxxMiiN9duHFGJ5LzM3F5h2muDamr7qOpktlpgWWLwJTSP779RZ4h/jfaBySFE5ugMj6k0fw7RdRpp14yTgzDcSQ42e4120zgunPONPel7cAEKb6jOpGAZ91lPzMweCIo2wq6vY2pZYU4bjl2aA7UIgD0hjhGG+pNKoqNaGY3lPyM6Tnw3GDyXHlQAmIqAcqvYcMx5QAmrRkpIf/x/WA/gyDeH/TOgd3IxmrGUq9ogNaVxayuT9y8nxhcvFNSFLxoOhFZbJU/+FSpw4d0+pttvpsSaCEF7Y/qlIGSYsZu5EAr7hV+JfJDfWGPl2hwDo2pcDK3lPWSmPiW1yOv5zx/8S+kwOMviFe2u5NFmNhiaoi4JIsnCBlPjPNcD2xqJmquobaUy/cRvPNA/tHHyocAl8YmDXJy7meASWZfKDu9ZPjWDIj/28V0JFoCQE/J53JCDAmd7Cc2cVzRRJKpVhc7GHHdYI=
