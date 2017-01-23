@@ -18,7 +18,7 @@ notifications:
     - cedar-core-developers@lists.stanford.edu
     on_success: never
     on_failure: always
-before_script:
+before_install:
   - sleep 15
   - mongoimport --db cedar --collection users --file cedar-terminology-server-application/src/test/resources/test-user-1.json
 install: '[ ${TRAVIS_PULL_REQUEST} = ''false'' ] && mvn clean deploy --settings .m2/travis-settings.xml'
