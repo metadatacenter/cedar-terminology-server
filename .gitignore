@@ -14,7 +14,6 @@ dist
 /.project
 */RUNNING_PID
 /.settings
-*.cache
 
 pom.xml.releaseBackup
 release.properties
