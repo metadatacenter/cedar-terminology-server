@@ -11,8 +11,7 @@
   <groupId>org.metadatacenter</groupId>
   <artifactId>cedar-terminology-server</artifactId>
   <name>CEDAR Terminology Server</name>
-  <description>A wrapper for the BioPortal API that simplifies the access to BioPortal resources
-  </description>
+  <description>A wrapper for the BioPortal API that simplifies the access to BioPortal resources</description>
   <version>0.8.7-SNAPSHOT</version>
   <packaging>pom</packaging>
 
@@ -20,7 +19,6 @@
     <connection>scm:git:git@github.com:metadatacenter/cedar-terminology-server.git</connection>
     <developerConnection>scm:git:git@github.com:metadatacenter/cedar-terminology-server.git</developerConnection>
     <url>https://github.com/metadatacenter/cedar-terminology-server</url>
-    <tag>HEAD</tag>
   </scm>
 
   <modules>
