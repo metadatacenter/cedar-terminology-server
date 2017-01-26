@@ -80,4 +80,8 @@
     </plugins>
 
   </build>
+
+  <scm>
+    <tag>release-0.9.1</tag>
+  </scm>
 </project>
