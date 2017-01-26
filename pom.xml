@@ -38,13 +38,4 @@
     </dependency>
   </dependencies>
 
-  <dependencyManagement>
-    <dependencies>
-      <dependency>
-        <groupId>org.metadatacenter</groupId>
-        <artifactId>cedar-terminology-server-core</artifactId>
-      </dependency>
-    </dependencies>
-  </dependencyManagement>
-
 </project>
