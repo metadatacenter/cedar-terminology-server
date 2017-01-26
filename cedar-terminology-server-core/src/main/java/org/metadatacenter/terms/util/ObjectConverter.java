@@ -164,6 +164,15 @@ public class ObjectConverter {
         bpr.getNextPage(), classes);
   }
 
+  public static PagedResults<OntologyClass> toClassResultsFromProvClassResults(BpPagedResults<BpProvisionalClass> bpr) {
+    List<OntologyClass> classes = new ArrayList<>();
+    for (BpProvisionalClass c : bpr.getCollection()) {
+      classes.add(toOntologyClass(c));
+    }
+    return new PagedResults<>(bpr.getPage(), bpr.getPageCount(), bpr.getCollection().size(), bpr.getPrevPage(),
+        bpr.getNextPage(), classes);
+  }
+
   public static PagedResults<SearchResult> toSearchResults(BpPagedResults<BpClass> bpr, List<String> valueSetsIds) {
     List<SearchResult> results = new ArrayList<>();
     for (BpClass c : bpr.getCollection()) {

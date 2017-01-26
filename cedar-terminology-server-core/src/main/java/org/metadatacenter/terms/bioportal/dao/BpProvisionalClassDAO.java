@@ -1,11 +1,14 @@
 package org.metadatacenter.terms.bioportal.dao;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.fluent.Request;
 import org.apache.http.entity.ContentType;
 import org.apache.http.util.EntityUtils;
+import org.metadatacenter.terms.bioportal.customObjects.BpPagedResults;
+import org.metadatacenter.terms.bioportal.domainObjects.BpClass;
 import org.metadatacenter.terms.bioportal.domainObjects.BpProvisionalClass;
 import org.metadatacenter.terms.util.Constants;
 import org.metadatacenter.terms.util.HttpUtil;
@@ -65,14 +68,15 @@ public class BpProvisionalClassDAO {
     }
   }
 
-  public List<BpProvisionalClass> findAll(String ontology, String apiKey) throws IOException {
+  public BpPagedResults<BpProvisionalClass> findAll(String ontology, int page, int pageSize, String apiKey) throws IOException {
+    BpPagedResults<BpProvisionalClass> results = null;
     String url = null;
     if (ontology != null) {
       url = BP_API_BASE + BP_ONTOLOGIES + ontology + "/" + Constants.BP_PROVISIONAL_CLASSES;
     } else {
       url = BP_API_BASE + BP_PROVISIONAL_CLASSES;
     }
-
+    url = url + "?page=" + page + "&pagesize=" + pageSize;
     HttpResponse response = HttpUtil.makeHttpRequest(Request.Get(url)
         .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
             connectTimeout(connectTimeout).socketTimeout(socketTimeout));
@@ -81,21 +85,16 @@ public class BpProvisionalClassDAO {
     if (statusCode == 200) {
       ObjectMapper mapper = new ObjectMapper();
       JsonNode bpResult = mapper.readTree(new String(EntityUtils.toByteArray(response.getEntity())));
-      List<BpProvisionalClass> provClasses = new ArrayList<>();
-      for (JsonNode n : bpResult) {
-        // Sometimes the call to BioPortal to retrieve all provisional classes for a particular ontology (e.g.
-        // CEDARPC) returns some results that do not belong to any ontology. TODO: This is a bug that should be fixed
-        // on the BioPortal side. For the moment, the following code checksthat the classes provided by BioPortal belong
-        // to the given ontology before returning them
-        BpProvisionalClass c = mapper.convertValue(n, BpProvisionalClass.class);
-        if (ontology == null) {
-          provClasses.add(c);
-        }
-        else if (c.getOntology() != null && (Util.getShortIdentifier(c.getOntology())).compareTo(ontology) == 0) {
-          provClasses.add(c);
-        }
+      if (ontology != null) {
+        // If the ontology is specified, BioPortal does not return paged results, so we have to build them.
+        // TODO: task for the BioPortal team: provide paged results when the ontology is specified
+        List<BpProvisionalClass> provClasses = mapper.readValue(mapper.treeAsTokens(bpResult), new TypeReference<List<BpProvisionalClass>>() {});
+        results = new BpPagedResults<>(1, 1, 0, 0, provClasses);
+        return results;
       }
-      return provClasses;
+      else {
+        return mapper.readValue(mapper.treeAsTokens(bpResult), new TypeReference<BpPagedResults<BpProvisionalClass>>() {});
+      }
     } else {
       throw new HTTPException(statusCode);
     }

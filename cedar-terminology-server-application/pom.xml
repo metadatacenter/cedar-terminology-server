@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>org.metadatacenter</groupId>
+    <artifactId>cedar-terminology-server</artifactId>
+    <version>0.9.1</version>
+  </parent>
+
+  <groupId>org.metadatacenter</groupId>
+  <artifactId>cedar-terminology-server-application</artifactId>
+  <packaging>jar</packaging>
+
+  <name>CEDAR Terminology Server Dropwizard Application</name>
+
+  <dependencies>
+
+    <dependency>
+      <groupId>org.metadatacenter</groupId>
+      <artifactId>cedar-server-rest</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.metadatacenter</groupId>
+      <artifactId>cedar-project-config</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.metadatacenter</groupId>
+      <artifactId>cedar-server-utils-core</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.metadatacenter</groupId>
+      <artifactId>cedar-server-utils-dropwizard</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.metadatacenter</groupId>
+      <artifactId>cedar-terminology-server-core</artifactId>
+      <version>0.9.1</version> <!-- TEMP -->
+    </dependency>
+
+    <dependency>
+      <groupId>org.metadatacenter</groupId>
+      <artifactId>cedar-auth-operations-keycloak</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.metadatacenter</groupId>
+      <artifactId>cedar-user-operations</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>io.dropwizard</groupId>
+      <artifactId>dropwizard-core</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>io.dropwizard</groupId>
+      <artifactId>dropwizard-jersey</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>io.dropwizard</groupId>
+      <artifactId>dropwizard-client</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>io.dropwizard</groupId>
+      <artifactId>dropwizard-testing</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>io.swagger</groupId>
+      <artifactId>swagger-annotations</artifactId>
+    </dependency>
+
+    <!-- Jackson -->
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-core</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-annotations</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.checkerframework</groupId>
+      <artifactId>checker</artifactId>
+    </dependency>
+
+    <!-- Google Guava -->
+    <dependency>
+      <groupId>com.google.guava</groupId>
+      <artifactId>guava</artifactId>
+    </dependency>
+
+    <!--<dependency>-->
+      <!--<groupId>com.wordnik</groupId>-->
+      <!--<artifactId>swagger-annotations</artifactId>-->
+    <!--</dependency>-->
+
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+    </dependency>
+
+  </dependencies>
+
+  <build>
+
+    <plugins>
+
+    <plugin>
+      <groupId>org.apache.maven.plugins</groupId>
+      <artifactId>maven-shade-plugin</artifactId>
+      <version>2.4.1</version>
+      <configuration>
+        <createDependencyReducedPom>true</createDependencyReducedPom>
+        <filters>
+          <filter>
+            <artifact>*:*</artifact>
+            <excludes>
+              <exclude>META-INF/*.SF</exclude>
+              <exclude>META-INF/*.DSA</exclude>
+              <exclude>META-INF/*.RSA</exclude>
+            </excludes>
+          </filter>
+        </filters>
+      </configuration>
+      <executions>
+        <execution>
+          <phase>package</phase>
+          <goals>
+            <goal>shade</goal>
+          </goals>
+          <configuration>
+            <transformers>
+              <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer" />
+              <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                <mainClass>org.metadatacenter.cedar.terminology.TerminologyServerApplication</mainClass>
+              </transformer>
+            </transformers>
+          </configuration>
+        </execution>
+      </executions>
+    </plugin>
+
+  </plugins>
+
+  </build>
+
+  <scm>
+    <tag>release-0.9.1</tag>
+  </scm>
+</project>

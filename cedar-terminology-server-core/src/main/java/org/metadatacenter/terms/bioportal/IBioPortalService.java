@@ -59,7 +59,7 @@ public interface IBioPortalService
 
   BpProvisionalClass findBpProvisionalClassById(String id, String apiKey) throws IOException;
 
-  List<BpProvisionalClass> findAllProvisionalClasses(String ontology, String apiKey) throws IOException;
+  BpPagedResults<BpProvisionalClass> findAllProvisionalClasses(String ontology, int page, int pageSize, String apiKey) throws IOException;
 
   void updateProvisionalClass(BpProvisionalClass c, String apiKey) throws IOException;
 

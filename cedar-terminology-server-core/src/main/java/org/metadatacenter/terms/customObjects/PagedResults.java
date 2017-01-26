@@ -12,6 +12,8 @@ public class PagedResults<T>
   private int nextPage;
   private List<T> collection;
 
+  public PagedResults() {}
+
   public PagedResults(int page, int pageCount, int pageSize, int prevPage, int nextPage, List<T> collection)
   {
     this.page = page;

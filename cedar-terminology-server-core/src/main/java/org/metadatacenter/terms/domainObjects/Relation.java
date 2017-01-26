@@ -2,34 +2,34 @@ package org.metadatacenter.terms.domainObjects;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
-import com.wordnik.swagger.annotations.ApiModel;
-import com.wordnik.swagger.annotations.ApiModelProperty;
+//import com.wordnik.swagger.annotations.ApiModel;
+//import com.wordnik.swagger.annotations.ApiModelProperty;
 
 import java.io.Serializable;
 
-@ApiModel
+//@ApiModel
 @JsonPropertyOrder({"id", "@id", "@type", "type", "sourceClassId", "relationType", "targetClassId", "targetClassOntology", "created"})
 public class Relation implements Serializable
 {
-  @ApiModelProperty(hidden = true)
+  //@ApiModelProperty(hidden = true)
   String id;
-  @ApiModelProperty(hidden = true)
+  //@ApiModelProperty(hidden = true)
   @JsonProperty("@id")
   private String ldId;
   @JsonProperty("@type")
   private String ldType = "http://data.bioontology.org/metadata/Relation";
   private String type = "Relation";
-  @ApiModelProperty(required = true)
+  //@ApiModelProperty(required = true)
   private String sourceClassId;
-  @ApiModelProperty(required = true)
+  //@ApiModelProperty(required = true)
   private String relationType;
-  @ApiModelProperty(required = true)
+  //@ApiModelProperty(required = true)
   private String targetClassId;
-  @ApiModelProperty(required = true)
+  //@ApiModelProperty(required = true)
   private String targetClassOntology;
-  @ApiModelProperty(hidden = true)
+  //@ApiModelProperty(hidden = true)
   private String created;
-  @ApiModelProperty(required = true)
+  //@ApiModelProperty(required = true)
   private String creator;
 
   // The default constructor is used by Jackson for deserialization

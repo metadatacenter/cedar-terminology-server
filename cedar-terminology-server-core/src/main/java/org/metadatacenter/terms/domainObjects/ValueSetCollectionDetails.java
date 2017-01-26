@@ -1,11 +1,11 @@
 package org.metadatacenter.terms.domainObjects;
 
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
-import com.wordnik.swagger.annotations.ApiModel;
+//import com.wordnik.swagger.annotations.ApiModel;
 
 import java.util.List;
 
-@ApiModel
+//@ApiModel
 @JsonPropertyOrder({"description", "numberOfClasses", "categories", "hasOntologyLanguage", "released",
     "creationDate", "homepage", "publication", "documentation", "version"})
 public class ValueSetCollectionDetails {

@@ -187,9 +187,9 @@ public class BioPortalService implements IBioPortalService
     return bpProvClassDAO.find(id, apiKey);
   }
 
-  public List<BpProvisionalClass> findAllProvisionalClasses(String ontology, String apiKey) throws IOException
+  public BpPagedResults<BpProvisionalClass> findAllProvisionalClasses(String ontology, int page, int pageSize, String apiKey) throws IOException
   {
-    return bpProvClassDAO.findAll(ontology, apiKey);
+    return bpProvClassDAO.findAll(ontology, page, pageSize, apiKey);
   }
 
   public void updateProvisionalClass(BpProvisionalClass c, String apiKey) throws IOException {

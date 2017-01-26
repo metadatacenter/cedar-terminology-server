@@ -129,14 +129,28 @@ public class TerminologyService implements ITerminologyService {
     if (isFlat) {
       return roots;
     }
+    // If CEDARPC ontology
     if (ontologyId.compareTo(CEDAR_PROVISIONAL_CLASSES_ONTOLOGY)==0) {
-      List<BpProvisionalClass> bpRoots = bpService.findAllProvisionalClasses(ontologyId, apiKey);
-      for (BpProvisionalClass c : bpRoots) {
+      // Iterate to retrieve all provisional classes
+      boolean finished = false;
+      int page = 1;
+      int pageSize = 200;
+      while (!finished) {
+        BpPagedResults<BpProvisionalClass> provClasses = bpService.findAllProvisionalClasses(ontologyId, page, pageSize, apiKey);
+        for (BpProvisionalClass c : provClasses.getCollection()) {
           OntologyClass oc = ObjectConverter.toOntologyClass(c);
           oc.setHasChildren(false);
           roots.add(oc);
+        }
+        if (provClasses.getPage() == provClasses.getPageCount()) {
+          finished = true;
+        }
+        else {
+          page++;
+        }
       }
     }
+    // If any other ontology
     else {
       List<BpClass> bpRoots = bpService.getRootClasses(ontologyId, apiKey);
       for (BpClass c : bpRoots) {
@@ -184,14 +198,35 @@ public class TerminologyService implements ITerminologyService {
     return ObjectConverter.toClassResults(classes);
   }
 
-  public List<OntologyClass> findAllProvisionalClasses(String ontology, String apiKey) throws IOException {
-    List<BpProvisionalClass> provClasses = bpService.findAllProvisionalClasses(ontology, apiKey);
+  public PagedResults<OntologyClass> findAllProvisionalClasses(String ontology, int page, int pageSize, String apiKey) throws IOException {
+    BpPagedResults<BpProvisionalClass> provClasses = bpService.findAllProvisionalClasses(ontology, page, pageSize, apiKey);
     List<OntologyClass> classes = new ArrayList<>();
-    for (BpProvisionalClass pc : provClasses) {
+    for (BpProvisionalClass pc : provClasses.getCollection()) {
       classes.add(ObjectConverter.toOntologyClass(pc));
     }
-    return classes;
+    PagedResults<OntologyClass> results = ObjectConverter.toClassResultsFromProvClassResults(provClasses);
+    return results;
   }
+
+  public List<OntologyClass> findAllProvisionalClasses(String ontology, String apiKey) throws IOException {
+    List<OntologyClass> result = new ArrayList<>();
+    boolean finished = false;
+    int page = 1;
+    int pageSize = 500;
+    while (!finished) {
+      BpPagedResults<BpProvisionalClass> provClasses = bpService.findAllProvisionalClasses(ontology, page, pageSize, apiKey);
+      PagedResults<OntologyClass> classes = ObjectConverter.toClassResultsFromProvClassResults(provClasses);
+      result.addAll(classes.getCollection());
+      if (provClasses.getPage() == provClasses.getPageCount()) {
+        finished = true;
+      }
+      else {
+        page++;
+      }
+    }
+    return result;
+  }
+
 
   public void updateProvisionalClass(OntologyClass c, String apiKey) throws IOException {
     bpService.updateProvisionalClass(ObjectConverter.toBpProvisionalClass(c), apiKey);
@@ -248,8 +283,7 @@ public class TerminologyService implements ITerminologyService {
    **/
 
   public Relation createProvisionalRelation(Relation r, String apiKey) throws IOException {
-    BpProvisionalRelation pr = bpService
-        .createBpProvisionalRelation(ObjectConverter.toBpProvisionalRelation(r), apiKey);
+    BpProvisionalRelation pr = bpService.createBpProvisionalRelation(ObjectConverter.toBpProvisionalRelation(r), apiKey);
     return ObjectConverter.toRelation(pr);
   }
 

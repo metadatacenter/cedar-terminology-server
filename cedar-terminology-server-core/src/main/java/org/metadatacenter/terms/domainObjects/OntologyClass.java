@@ -2,45 +2,45 @@ package org.metadatacenter.terms.domainObjects;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
-import com.wordnik.swagger.annotations.ApiModel;
-import com.wordnik.swagger.annotations.ApiModelProperty;
+//import com.wordnik.swagger.annotations.ApiModel;
+//import com.wordnik.swagger.annotations.ApiModelProperty;
 
 import static org.metadatacenter.terms.util.Constants.BP_TYPE_BASE;
 import static org.metadatacenter.terms.util.Constants.BP_TYPE_CLASS;
 
 import java.util.List;
 
-@ApiModel
+//@ApiModel
 @JsonPropertyOrder({"id", "@id", "@type", "type", "prefLabel", "creator", "ontology", "definitions", "synonyms", "subclassOf",
     "relations", "provisional", "created", "hasChildren"})
 public class OntologyClass {
-  @ApiModelProperty(hidden = true)
+  //@ApiModelProperty(hidden = true)
   private String id;
-  @ApiModelProperty(hidden = true)
+  //@ApiModelProperty(hidden = true)
   @JsonProperty("@id")
   private String ldId;
   @JsonProperty("@type")
   private String ldType = BP_TYPE_BASE + BP_TYPE_CLASS;
   private String type = BP_TYPE_CLASS;
-  @ApiModelProperty(required = true)
+  //@ApiModelProperty(required = true)
   private String prefLabel;
-  @ApiModelProperty(required = true)
+  //@ApiModelProperty(required = true)
   private String creator;
-  @ApiModelProperty(required = true)
+  //@ApiModelProperty(required = true)
   private String ontology;
-  @ApiModelProperty(required = false)
+  //@ApiModelProperty(required = false)
   private List<String> definitions;
-  @ApiModelProperty(required = false)
+  //@ApiModelProperty(required = false)
   private List<String> synonyms;
-  @ApiModelProperty(required = false)
+  //@ApiModelProperty(required = false)
   private String subclassOf;
-  @ApiModelProperty(required = false)
+  //@ApiModelProperty(required = false)
   private List<Relation> relations;
-  @ApiModelProperty(hidden = true)
+  //@ApiModelProperty(hidden = true)
   private boolean provisional;
-  @ApiModelProperty(hidden = true)
+  //@ApiModelProperty(hidden = true)
   private String created;
-  @ApiModelProperty(required = false)
+  //@ApiModelProperty(required = false)
   private Boolean hasChildren;
 
   // The default constructor is used by Jackson for deserialization

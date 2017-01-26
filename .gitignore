@@ -1,3 +1,4 @@
+dependency-reduced-pom.xml
 logs
 project/project
 project/target
@@ -13,8 +14,8 @@ dist
 /.project
 */RUNNING_PID
 /.settings
-*.cache
 
 pom.xml.releaseBackup
 release.properties
 pom.xml.versionsBackup
+dependency-reduced-pom.xml

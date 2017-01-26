@@ -1,0 +1,11 @@
+server:
+  applicationConnectors:
+  - type: http
+    port: 9004
+  adminConnectors:
+  - type: http
+    port: 9104
+logging:
+  level: INFO
+  loggers:
+    org.metadatacenter: DEBUG
