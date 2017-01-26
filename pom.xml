@@ -12,7 +12,7 @@
   <artifactId>cedar-terminology-server</artifactId>
   <name>CEDAR Terminology Server</name>
   <description>A wrapper for the BioPortal API that simplifies the access to BioPortal resources</description>
-  <version>0.8.7-SNAPSHOT</version>
+  <version>0.9.1-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <scm>
