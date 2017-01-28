@@ -2,8 +2,6 @@ package org.metadatacenter.cedar.terminology.resources.bioportal;
 
 import org.junit.*;
 import org.metadatacenter.terms.customObjects.PagedResults;
-import org.metadatacenter.terms.domainObjects.Ontology;
-import org.metadatacenter.terms.domainObjects.OntologyClass;
 import org.metadatacenter.terms.domainObjects.ValueSet;
 import org.metadatacenter.terms.util.Util;
 
@@ -16,7 +14,6 @@ import javax.ws.rs.core.Response.Status;
 import java.util.HashSet;
 import java.util.List;
 
-import static org.metadatacenter.cedar.terminology.utils.Constants.BP_CLASSES;
 import static org.metadatacenter.cedar.terminology.utils.Constants.BP_VALUE_SETS;
 
 /**
@@ -79,7 +76,8 @@ public class ValueSetResourceTest extends AbstractTerminologyServerResourceTest 
     // Create a provisional value set
     ValueSet created = createValueSet(vs1);
     // Find the provisional value set by id
-    String url = baseUrlBpVSCollections + "/" + Util.getShortIdentifier(created.getVsCollection()) + "/" + BP_VALUE_SETS + "/" + created.getId();
+    String url = baseUrlBpVSCollections + "/" + Util.getShortIdentifier(created.getVsCollection()) + "/" +
+        BP_VALUE_SETS + "/" + created.getId();
     // Service invocation
     Response findResponse = client.target(url).request().header("Authorization", authHeader).get();
     // Check HTTP response
@@ -107,7 +105,8 @@ public class ValueSetResourceTest extends AbstractTerminologyServerResourceTest 
     ValueSet created1 = createValueSet(vs1);
     createValueSet(vs1);
     // Find url
-    String url = baseUrlBpVSCollections + "/" + Util.getShortIdentifier(created1.getVsCollection()) + "/" + BP_VALUE_SETS;
+    String url = baseUrlBpVSCollections + "/" + Util.getShortIdentifier(created1.getVsCollection()) + "/" +
+        BP_VALUE_SETS;
     // Service invocation
     Response findResponse = client.target(url).request().header("Authorization", authHeader).get();
     // Check HTTP response
@@ -115,7 +114,8 @@ public class ValueSetResourceTest extends AbstractTerminologyServerResourceTest 
     // Check Content-Type
     Assert.assertEquals(MediaType.APPLICATION_JSON, findResponse.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check the number of elements retrieved
-    PagedResults<ValueSet> valueSets = findResponse.readEntity(new GenericType<PagedResults<ValueSet>>() {});
+    PagedResults<ValueSet> valueSets = findResponse.readEntity(new GenericType<PagedResults<ValueSet>>() {
+    });
     int resultsCount = valueSets.getCollection().size();
     Assert.assertTrue("Wrong number of value sets retrieved", resultsCount > 1);
   }
@@ -141,7 +141,8 @@ public class ValueSetResourceTest extends AbstractTerminologyServerResourceTest 
     // Check Content-Type
     Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check the results returned
-    List<ValueSet> valueSets = response.readEntity(new GenericType<List<ValueSet>>() {});
+    List<ValueSet> valueSets = response.readEntity(new GenericType<List<ValueSet>>() {
+    });
     Assert.assertTrue("Wrong number of value sets returned", valueSets.size() > 1);
   }
 
@@ -155,7 +156,8 @@ public class ValueSetResourceTest extends AbstractTerminologyServerResourceTest 
         created.getVsCollection(), created.getDefinitions(), created.getSynonyms(),
         created.getRelations(), created.isProvisional(), created.getCreated());
     // Service invocation
-    Response updateResponse = client.target(url).request().header("Authorization", authHeader).put(Entity.json(updatedValueSet));
+    Response updateResponse = client.target(url).request().header("Authorization", authHeader).put(Entity.json
+        (updatedValueSet));
     // Check HTTP response
     Assert.assertEquals(Status.NO_CONTENT.getStatusCode(), updateResponse.getStatus());
     String findUrl = baseUrlBpVSCollections + "/" + Util.getShortIdentifier(created.getVsCollection()) + "/" +
