@@ -9,6 +9,7 @@ import org.metadatacenter.rest.context.CedarRequestContextFactory;
 import org.metadatacenter.rest.exception.CedarAssertionException;
 import org.metadatacenter.terms.domainObjects.Ontology;
 import org.metadatacenter.terms.domainObjects.OntologyClass;
+import org.metadatacenter.util.http.CedarResponse;
 import org.metadatacenter.util.json.JsonMapper;
 
 import javax.ws.rs.GET;
@@ -79,7 +80,7 @@ public class OntologyResource extends AbstractTerminologyServerResource {
       // Retrieve ontology from ontologies cache
       Ontology ontologies = Cache.ontologiesCache.get("ontologies").get(id);
       if (ontologies == null) {
-        return Response.status(Response.Status.NOT_FOUND).build();
+        return CedarResponse.notFound().build();
       }
       return Response.ok().entity(JsonMapper.MAPPER.valueToTree(ontologies)).build();
     } catch (HTTPException e) {
