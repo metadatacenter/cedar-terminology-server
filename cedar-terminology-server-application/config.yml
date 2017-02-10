@@ -9,3 +9,15 @@ logging:
   level: INFO
   loggers:
     org.metadatacenter: DEBUG
+  appenders:
+    - type: console
+      threshold: ALL
+      timeZone: UTC
+      target: stdout
+    - type: file
+      currentLogFilename: ${CEDAR_HOME}/log/cedar-terminology-server.log
+      threshold: ALL
+      archive: true
+      archivedLogFilenamePattern: ${CEDAR_HOME}/log/cedar-terminology-server-%d.log
+      archivedFileCount: 5
+      timeZone: UTC
