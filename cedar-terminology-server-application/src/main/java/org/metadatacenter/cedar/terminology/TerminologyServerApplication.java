@@ -1,22 +1,20 @@
 package org.metadatacenter.cedar.terminology;
 
-import io.dropwizard.Application;
 import io.dropwizard.setup.Bootstrap;
 import io.dropwizard.setup.Environment;
-import org.metadatacenter.bridge.CedarDataServices;
 import org.metadatacenter.cedar.cache.Cache;
 import org.metadatacenter.cedar.terminology.health.TerminologyServerHealthCheck;
 import org.metadatacenter.cedar.terminology.resources.AbstractTerminologyServerResource;
 import org.metadatacenter.cedar.terminology.resources.IndexResource;
 import org.metadatacenter.cedar.terminology.resources.bioportal.*;
-import org.metadatacenter.cedar.util.dw.CedarDropwizardApplicationUtil;
-import org.metadatacenter.config.CedarConfig;
+import org.metadatacenter.cedar.util.dw.CedarMicroserviceApplication;
 import org.metadatacenter.terms.TerminologyService;
-import static org.metadatacenter.cedar.terminology.utils.Constants.*;
 
-public class TerminologyServerApplication extends Application<TerminologyServerConfiguration> {
+import static org.metadatacenter.cedar.terminology.utils.Constants.APP_NAME;
+import static org.metadatacenter.cedar.terminology.utils.Constants.TEST_APP_NAME;
 
-  protected static CedarConfig cedarConfig;
+public class TerminologyServerApplication extends CedarMicroserviceApplication<TerminologyServerConfiguration> {
+
   protected static TerminologyService terminologyService;
 
   public static void main(String[] args) throws Exception {
@@ -29,17 +27,14 @@ public class TerminologyServerApplication extends Application<TerminologyServerC
   }
 
   @Override
-  public void initialize(Bootstrap<TerminologyServerConfiguration> bootstrap) {
-    cedarConfig = CedarConfig.getInstance();
-    CedarDataServices.getInstance(cedarConfig);
-
-    CedarDropwizardApplicationUtil.setupKeycloak();
+  public void initializeApp(Bootstrap<TerminologyServerConfiguration> bootstrap) {
     terminologyService = new TerminologyService(cedarConfig.getTerminologyConfig().getBioPortal().getBasePath(),
         cedarConfig.getTerminologyConfig().getBioPortal().getConnectTimeout(),
         cedarConfig.getTerminologyConfig().getBioPortal().getSocketTimeout());
     AbstractTerminologyServerResource.injectTerminologyService(terminologyService);
     // Initialize cache (note that this must be done after initializing the terminologyService)
-    // When running the application on testing mode, the cache is loaded from the files stored into the test resources folder
+    // When running the application on testing mode, the cache is loaded from the files stored into the test
+    // resources folder
     boolean testMode = false;
     if (bootstrap.getApplication().getName().equals(TEST_APP_NAME)) {
       testMode = true;
@@ -48,7 +43,7 @@ public class TerminologyServerApplication extends Application<TerminologyServerC
   }
 
   @Override
-  public void run(TerminologyServerConfiguration configuration, Environment environment) {
+  public void runApp(TerminologyServerConfiguration configuration, Environment environment) {
 
     final IndexResource index = new IndexResource();
 
@@ -64,8 +59,5 @@ public class TerminologyServerApplication extends Application<TerminologyServerC
 
     final TerminologyServerHealthCheck healthCheck = new TerminologyServerHealthCheck();
     environment.healthChecks().register("message", healthCheck);
-
-    CedarDropwizardApplicationUtil.setupEnvironment(environment);
-
   }
 }
