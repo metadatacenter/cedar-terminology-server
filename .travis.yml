@@ -25,14 +25,14 @@ install: '[ ${TRAVIS_PULL_REQUEST} = ''false'' ] && mvn -DskipTests=true clean d
   --settings .m2/travis-settings.xml'
 env:
   global:
+  - CEDAR_HOME=${HOME}/
+  - CEDAR_HOST=abc
+  - CEDAR_TEST_USER2_UUID=abc
   - CEDAR_ADMIN_USER_UUID=abc
   - CEDAR_ADMIN_USER_PASSWORD=abc
   - CEDAR_NEO4J_TRANSACTION_URL=abc
   - CEDAR_NEO4J_AUTH_STRING=abc
   - CEDAR_NEO4J_AUTH_STRING=abc
-  - CEDAR_HOST=abc
-  - CEDAR_HOME=abc
-  - CEDAR_TEST_USER2_UUID=abc
   - CEDAR_TEST_USER3_UUID=abc
   - CEDAR_ADMIN_USER_API_KEY=abc
   - CEDAR_NCBI_SRA_FTP_PASSWORD=abc
