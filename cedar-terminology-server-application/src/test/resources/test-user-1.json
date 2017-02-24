@@ -41,34 +41,28 @@
     "permission_template_update"
   ],
   "uiPreferences": {
-    "populateATemplate": {
-      "type": "CedarUserUIPopulateATemplate",
-      "opened": true,
-      "sortBy": "name",
-      "sortDirection": "asc",
-      "viewMode": "grid"
-    },
     "folderView": {
-      "type": "CedarUserUIFolderView",
       "currentFolderId": null,
       "sortBy": "name",
       "sortDirection": "asc",
       "viewMode": "grid"
     },
-    "facetedSearch": {
-      "type": "CedarUserUIFacetedSearch",
-      "opened": false
-    },
     "resourceTypeFilters": {
-      "type": "CedarUserUIResourceTypeFilters",
-      "field": true,
+      "field": false,
       "element": true,
       "template": true,
       "instance": true
     },
     "infoPanel": {
-      "type": "CedarUserUIInfoPanel",
       "opened": false
-    }
+    },
+    "templateEditor": {
+      "templateJsonViewer": false
+    },
+    "metadataEditor": {
+      "templateJsonViewer": false,
+      "metadataJsonViewer": false
+    },
+    "stylesheet": "default"
   }
 }
