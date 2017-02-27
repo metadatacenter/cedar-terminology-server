@@ -20,30 +20,6 @@ public class Utils
     mapper.writeValue(sw, o);
     return sw.toString();
   }
-
-//  public static boolean isValidAuthorizationHeader(Request request)
-//  {
-//    if ((request.getHeader("Authorization") != null) && (request.getHeader("Authorization").split("=").length == 2))
-//      return true;
-//    else
-//      return false;
-//  }
-//
-//  public static String getApiKeyFromHeader(Request request)
-//  {
-//    return request.getHeader("Authorization").split("=")[1].trim();
-//  }
-//
-//  public static String encodeIfNeeded(String uri) throws UnsupportedEncodingException
-//  {
-//    String decodedUri = URLDecoder.decode(uri, "UTF-8");
-//    // It is necessary to encode it
-//    if (uri.compareTo(decodedUri)==0)
-//      return URLEncoder.encode(uri, "UTF-8");
-//    // If was already encoded
-//    else
-//      return uri;
-//  }
 }
 
 
