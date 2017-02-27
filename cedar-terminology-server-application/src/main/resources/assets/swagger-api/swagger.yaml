@@ -6,7 +6,7 @@ info:
   title: CEDAR Terminology Server API
   description: CEDAR Terminology Server API
   version: "1.0.0"
-host: terminology.metadatacenter.orgx
+# host: terminology.metadatacenter.orgx
 # host: terminology.staging.metadatacenter.net
 # host: terminology.metadatacenter.net
 basePath: /bioportal

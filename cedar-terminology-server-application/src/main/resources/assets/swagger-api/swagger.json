@@ -5,7 +5,6 @@
     "description": "CEDAR Terminology Server API",
     "version": "1.0.0"
   },
-  "host": "terminology.metadatacenter.orgx",
   "basePath": "/bioportal",
   "schemes": [
     "https"
