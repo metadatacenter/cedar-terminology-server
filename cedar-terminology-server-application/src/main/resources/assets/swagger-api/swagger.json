@@ -1,0 +1,1452 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "CEDAR Terminology Server API",
+    "description": "CEDAR Terminology Server API",
+    "version": "1.0.0"
+  },
+  "host": "terminology.metadatacenter.orgx",
+  "basePath": "/bioportal",
+  "schemes": [
+    "https"
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "tags": [
+    {
+      "name": "Classes"
+    },
+    {
+      "name": "Ontologies"
+    },
+    {
+      "name": "Value sets"
+    },
+    {
+      "name": "Value set collections"
+    },
+    {
+      "name": "Values"
+    },
+    {
+      "name": "Relations"
+    }
+  ],
+  "securityDefinitions": {
+    "api_key": {
+      "type": "apiKey",
+      "name": "Authorization",
+      "description": "Your CEDAR API key, using the format 'apiKey <yourApiKey>'",
+      "in": "header"
+    }
+  },
+  "parameters": {
+    "page": {
+      "name": "page",
+      "in": "query",
+      "description": "Page to be returned. Example&#58; 7",
+      "type": "integer",
+      "required": false,
+      "default": 1
+    },
+    "page_size": {
+      "name": "page_size",
+      "in": "query",
+      "description": "Number of results per page. Example&#58; 10",
+      "type": "integer",
+      "required": false,
+      "default": 50
+    },
+    "ontology": {
+      "name": "ontology",
+      "in": "path",
+      "description": "BioPortal ontology identifier. Examples&#58; NCIT, FMA, OBI.",
+      "required": true,
+      "type": "string"
+    },
+    "ontology_id": {
+      "name": "id",
+      "in": "path",
+      "description": "BioPortal ontology identifier. Examples&#58; NCIT, FMA, OBI.",
+      "required": true,
+      "type": "string"
+    },
+    "class_id": {
+      "name": "id",
+      "in": "path",
+      "description": "Class identifier. It must be URL encoded. Examples&#58; http%3A%2F%2Fdata.bioontology.org%2Fprovisional_classes%2F4f82a7f0-bbba-0133-b23e-005056010074 (provisional class). http%3A%2F%2Fncicb.nci.nih.gov%2Fxml%2Fowl%2FEVS%2FThesaurus.owl%23C3224 (regular class).",
+      "required": true,
+      "type": "string"
+    },
+    "class_id_regular": {
+      "name": "id",
+      "in": "path",
+      "description": "Class identifier. It must be URL encoded. Example&#58; http%3A%2F%2Fncicb.nci.nih.gov%2Fxml%2Fowl%2FEVS%2FThesaurus.owl%23C3224.",
+      "required": true,
+      "type": "string"
+    },
+    "class_id_provisional": {
+      "name": "id",
+      "in": "path",
+      "description": "Provisional class identifier. It must be URL encoded. Example&#58; http%3A%2F%2Fdata.bioontology.org%2Fprovisional_classes%2F4f82a7f0-bbba-0133-b23e-005056010074.",
+      "required": true,
+      "type": "string"
+    },
+    "relation_id": {
+      "name": "id",
+      "in": "path",
+      "description": "Provisional relation short identifier. Examples&#58; 720f50f0-ae6f-0133-848f-005056010073.",
+      "required": true,
+      "type": "string"
+    },
+    "vs_collection": {
+      "name": "vs_collection",
+      "in": "path",
+      "description": "Value set collection. Example&#58; CEDARVS.",
+      "required": true,
+      "type": "string"
+    },
+    "vs_id": {
+      "name": "id",
+      "in": "path",
+      "description": "Provisional value set short identifier. Example&#58; af033050-b04b-0133-981f-005056010074",
+      "required": true,
+      "type": "string"
+    },
+    "vs": {
+      "name": "vs",
+      "in": "path",
+      "description": "Value set identifier. Example&#58; http%3A%2F%2Fwww.semanticweb.org%2Fjgraybeal%2Fontologies%2F2015%2F7%2Fcedarvaluesets%23Study_File_Type",
+      "required": true,
+      "type": "string"
+    },
+    "value_id": {
+      "name": "id",
+      "in": "path",
+      "description": "Value identifier. Example&#58; 42f22880-b04b-0133-848f-005056010073",
+      "required": true,
+      "type": "string"
+    }
+  },
+  "responses": {
+    "ok": {
+      "description": "Successful operation"
+    },
+    "no_content": {
+      "description": "Successful operation (no content)"
+    },
+    "bad_request": {
+      "description": "Bad request"
+    },
+    "unauthorized": {
+      "description": "Unauthorized"
+    },
+    "not_found": {
+      "description": "Not found"
+    },
+    "internal_error": {
+      "description": "Internal server error"
+    }
+  },
+  "paths": {
+    "/search": {
+      "get": {
+        "summary": "Search",
+        "tags": [
+          "Classes",
+          "Value sets",
+          "Values"
+        ],
+        "description": "Search for ontology classes, value sets, and values.",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Search query. Example&#58; melanoma.",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "scope",
+            "in": "query",
+            "description": "Comma-separated list of search scopes. Accepted values={all, classes, value_sets, values}. Default&#58; all.",
+            "required": false,
+            "type": "string",
+            "default": "all"
+          },
+          {
+            "name": "sources",
+            "in": "query",
+            "description": "Comma-separated list of target ontologies and/or value sets. Example&#58; 'ontologies=CEDARVS,NCIT'. By default, all BioPortal ontologies and value sets are considered. The value of 'scope' overrides the list of sources specified using this parameter.",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "suggest",
+            "in": "query",
+            "description": "Will perform a search specifically geared towards type-ahead suggestions. Default&#58; false.",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "subtree_root_id",
+            "in": "query",
+            "description": "Class identifier that limits the search to the branch rooted on that class. It must be URL encoded. Example&#58; http%3A%2F%2Fncicb.nci.nih.gov%2Fxml%2Fowl%2FEVS%2FThesaurus.owl%23C3224.",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "source",
+            "in": "query",
+            "description": "Ontology for which the subtree search will be performed. Example&#58; NCIT.",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "maxDepth",
+            "in": "query",
+            "description": "Subtree depth.",
+            "required": false,
+            "type": "integer",
+            "default": 1
+          },
+          {
+            "$ref": "#/parameters/page"
+          },
+          {
+            "$ref": "#/parameters/page_size"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/ok"
+          },
+          "400": {
+            "$ref": "#/responses/bad_request"
+          },
+          "401": {
+            "$ref": "#/responses/unauthorized"
+          },
+          "500": {
+            "$ref": "#/responses/internal_error"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/ontologies/{ontology}/classes": {
+      "post": {
+        "summary": "Create class",
+        "tags": [
+          "Classes"
+        ],
+        "description": "Create a provisional class.",
+        "parameters": [
+          {
+            "$ref": "#/parameters/ontology"
+          }
+        ],
+        "responses": {
+          "204": {
+            "$ref": "#/responses/no_content"
+          },
+          "400": {
+            "$ref": "#/responses/bad_request"
+          },
+          "401": {
+            "$ref": "#/responses/unauthorized"
+          },
+          "500": {
+            "$ref": "#/responses/internal_error"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      },
+      "get": {
+        "summary": "Get classes",
+        "tags": [
+          "Classes"
+        ],
+        "description": "Get all classes from a specific ontology (including both regular and provisional classes).",
+        "parameters": [
+          {
+            "$ref": "#/parameters/ontology"
+          },
+          {
+            "$ref": "#/parameters/page"
+          },
+          {
+            "$ref": "#/parameters/page_size"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/ok"
+          },
+          "400": {
+            "$ref": "#/responses/bad_request"
+          },
+          "401": {
+            "$ref": "#/responses/unauthorized"
+          },
+          "500": {
+            "$ref": "#/responses/internal_error"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/ontologies/{ontology}/classes/{id}": {
+      "get": {
+        "summary": "Find class",
+        "tags": [
+          "Classes"
+        ],
+        "description": "Find class (either regular or provisional) by ontology and class id.",
+        "parameters": [
+          {
+            "$ref": "#/parameters/ontology"
+          },
+          {
+            "$ref": "#/parameters/class_id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/ok"
+          },
+          "400": {
+            "$ref": "#/responses/bad_request"
+          },
+          "401": {
+            "$ref": "#/responses/unauthorized"
+          },
+          "404": {
+            "$ref": "#/responses/not_found"
+          },
+          "500": {
+            "$ref": "#/responses/internal_error"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/ontologies/{ontology}/classes/{id}/tree": {
+      "get": {
+        "summary": "Get class tree",
+        "tags": [
+          "Classes"
+        ],
+        "description": "Get class tree (only for regular classes).",
+        "parameters": [
+          {
+            "$ref": "#/parameters/ontology"
+          },
+          {
+            "$ref": "#/parameters/class_id_regular"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/ok"
+          },
+          "400": {
+            "$ref": "#/responses/bad_request"
+          },
+          "401": {
+            "$ref": "#/responses/unauthorized"
+          },
+          "404": {
+            "$ref": "#/responses/not_found"
+          },
+          "500": {
+            "$ref": "#/responses/internal_error"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/ontologies/{ontology}/classes/{id}/children": {
+      "get": {
+        "summary": "Get class children",
+        "tags": [
+          "Classes"
+        ],
+        "description": "Get class children (only for regular classes).",
+        "parameters": [
+          {
+            "$ref": "#/parameters/ontology"
+          },
+          {
+            "$ref": "#/parameters/class_id_regular"
+          },
+          {
+            "$ref": "#/parameters/page"
+          },
+          {
+            "$ref": "#/parameters/page_size"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/ok"
+          },
+          "400": {
+            "$ref": "#/responses/bad_request"
+          },
+          "401": {
+            "$ref": "#/responses/unauthorized"
+          },
+          "404": {
+            "$ref": "#/responses/not_found"
+          },
+          "500": {
+            "$ref": "#/responses/internal_error"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/ontologies/{ontology}/classes/{id}/descendants": {
+      "get": {
+        "summary": "Get class descendants",
+        "tags": [
+          "Classes"
+        ],
+        "description": "Get class descendants.",
+        "parameters": [
+          {
+            "$ref": "#/parameters/ontology"
+          },
+          {
+            "$ref": "#/parameters/class_id"
+          },
+          {
+            "$ref": "#/parameters/page"
+          },
+          {
+            "$ref": "#/parameters/page_size"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/ok"
+          },
+          "400": {
+            "$ref": "#/responses/bad_request"
+          },
+          "401": {
+            "$ref": "#/responses/unauthorized"
+          },
+          "404": {
+            "$ref": "#/responses/not_found"
+          },
+          "500": {
+            "$ref": "#/responses/internal_error"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/ontologies/{ontology}/classes/{id}/parents": {
+      "get": {
+        "summary": "Get class parents",
+        "tags": [
+          "Classes"
+        ],
+        "description": "Get class descendants.",
+        "parameters": [
+          {
+            "$ref": "#/parameters/ontology"
+          },
+          {
+            "$ref": "#/parameters/class_id_regular"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/ok"
+          },
+          "400": {
+            "$ref": "#/responses/bad_request"
+          },
+          "401": {
+            "$ref": "#/responses/unauthorized"
+          },
+          "404": {
+            "$ref": "#/responses/not_found"
+          },
+          "500": {
+            "$ref": "#/responses/internal_error"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/classes/provisional": {
+      "get": {
+        "summary": "Get provisional classes",
+        "tags": [
+          "Classes"
+        ],
+        "description": "Get provisional classes (including provisional value sets and provisional values).",
+        "parameters": [
+          {
+            "$ref": "#/parameters/page"
+          },
+          {
+            "$ref": "#/parameters/page_size"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/ok"
+          },
+          "400": {
+            "$ref": "#/responses/bad_request"
+          },
+          "401": {
+            "$ref": "#/responses/unauthorized"
+          },
+          "500": {
+            "$ref": "#/responses/internal_error"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/ontologies/{ontology}/classes/provisional": {
+      "get": {
+        "summary": "Get all provisional classes in a particular ontology",
+        "tags": [
+          "Classes"
+        ],
+        "description": "Get all provisional classes in a particular ontology (including provisional value sets and provisional values)",
+        "parameters": [
+          {
+            "$ref": "#/parameters/ontology"
+          },
+          {
+            "$ref": "#/parameters/page"
+          },
+          {
+            "$ref": "#/parameters/page_size"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/ok"
+          },
+          "400": {
+            "$ref": "#/responses/bad_request"
+          },
+          "401": {
+            "$ref": "#/responses/unauthorized"
+          },
+          "500": {
+            "$ref": "#/responses/internal_error"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/classes/{id}": {
+      "put": {
+        "summary": "Update a provisional class",
+        "tags": [
+          "Classes"
+        ],
+        "description": "Update a provisional class.",
+        "parameters": [
+          {
+            "$ref": "#/parameters/class_id_provisional"
+          }
+        ],
+        "responses": {
+          "204": {
+            "$ref": "#/responses/no_content"
+          },
+          "400": {
+            "$ref": "#/responses/bad_request"
+          },
+          "401": {
+            "$ref": "#/responses/unauthorized"
+          },
+          "404": {
+            "$ref": "#/responses/not_found"
+          },
+          "500": {
+            "$ref": "#/responses/internal_error"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      },
+      "delete": {
+        "summary": "Delete a provisional class",
+        "tags": [
+          "Classes"
+        ],
+        "description": "Update a provisional class.",
+        "parameters": [
+          {
+            "$ref": "#/parameters/class_id_provisional"
+          }
+        ],
+        "responses": {
+          "204": {
+            "$ref": "#/responses/no_content"
+          },
+          "400": {
+            "$ref": "#/responses/bad_request"
+          },
+          "401": {
+            "$ref": "#/responses/unauthorized"
+          },
+          "404": {
+            "$ref": "#/responses/not_found"
+          },
+          "500": {
+            "$ref": "#/responses/internal_error"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/ontologies": {
+      "get": {
+        "summary": "Find all ontologies",
+        "description": "Find all ontologies.",
+        "tags": [
+          "Ontologies"
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/ok"
+          },
+          "400": {
+            "$ref": "#/responses/bad_request"
+          },
+          "401": {
+            "$ref": "#/responses/unauthorized"
+          },
+          "500": {
+            "$ref": "#/responses/internal_error"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/ontologies/{id}": {
+      "get": {
+        "summary": "Find ontology by id",
+        "description": "Find ontology by id.",
+        "tags": [
+          "Ontologies"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/parameters/ontology_id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/ok"
+          },
+          "400": {
+            "$ref": "#/responses/bad_request"
+          },
+          "401": {
+            "$ref": "#/responses/unauthorized"
+          },
+          "404": {
+            "$ref": "#/responses/not_found"
+          },
+          "500": {
+            "$ref": "#/responses/internal_error"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/ontologies/{ontology}/classes/roots": {
+      "get": {
+        "summary": "Get root classes",
+        "description": "Get root classes in a particular ontology. For the CEDARPC ontology, all provisional classes in it will be returned.",
+        "tags": [
+          "Classes",
+          "Ontologies"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/parameters/ontology"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/ok"
+          },
+          "400": {
+            "$ref": "#/responses/bad_request"
+          },
+          "401": {
+            "$ref": "#/responses/unauthorized"
+          },
+          "404": {
+            "$ref": "#/responses/not_found"
+          },
+          "500": {
+            "$ref": "#/responses/internal_error"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/relations": {
+      "post": {
+        "summary": "Create a provisional relation",
+        "tags": [
+          "Relations"
+        ],
+        "description": "Create a provisional relation.",
+        "responses": {
+          "204": {
+            "$ref": "#/responses/no_content"
+          },
+          "400": {
+            "$ref": "#/responses/bad_request"
+          },
+          "401": {
+            "$ref": "#/responses/unauthorized"
+          },
+          "500": {
+            "$ref": "#/responses/internal_error"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/relations/{id}": {
+      "get": {
+        "summary": "Find provisional relation by id",
+        "description": "Find provisional relation by id.",
+        "tags": [
+          "Relations"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/parameters/relation_id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/ok"
+          },
+          "400": {
+            "$ref": "#/responses/bad_request"
+          },
+          "401": {
+            "$ref": "#/responses/unauthorized"
+          },
+          "404": {
+            "$ref": "#/responses/not_found"
+          },
+          "500": {
+            "$ref": "#/responses/internal_error"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      },
+      "delete": {
+        "summary": "Delete provisional relation",
+        "description": "Delete provisional relation by id.",
+        "tags": [
+          "Relations"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/parameters/relation_id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/ok"
+          },
+          "400": {
+            "$ref": "#/responses/bad_request"
+          },
+          "401": {
+            "$ref": "#/responses/unauthorized"
+          },
+          "404": {
+            "$ref": "#/responses/not_found"
+          },
+          "500": {
+            "$ref": "#/responses/internal_error"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/vs-collections": {
+      "get": {
+        "summary": "Find all value set collections",
+        "description": "Find all value set collections.",
+        "tags": [
+          "Value set collections"
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/ok"
+          },
+          "400": {
+            "$ref": "#/responses/bad_request"
+          },
+          "401": {
+            "$ref": "#/responses/unauthorized"
+          },
+          "500": {
+            "$ref": "#/responses/internal_error"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/vs-collections/{vs_collection}/value-sets": {
+      "post": {
+        "summary": "Create a provisional value set",
+        "tags": [
+          "Value sets"
+        ],
+        "description": "Create a provisional value set in a particular value set collection.",
+        "parameters": [
+          {
+            "$ref": "#/parameters/vs_collection"
+          }
+        ],
+        "responses": {
+          "204": {
+            "$ref": "#/responses/no_content"
+          },
+          "400": {
+            "$ref": "#/responses/bad_request"
+          },
+          "401": {
+            "$ref": "#/responses/unauthorized"
+          },
+          "500": {
+            "$ref": "#/responses/internal_error"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      },
+      "get": {
+        "summary": "Get all value sets in a value set collection",
+        "tags": [
+          "Value sets"
+        ],
+        "description": "Get all value sets in a value set collection.",
+        "parameters": [
+          {
+            "$ref": "#/parameters/vs_collection"
+          },
+          {
+            "$ref": "#/parameters/page"
+          },
+          {
+            "$ref": "#/parameters/page_size"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/ok"
+          },
+          "400": {
+            "$ref": "#/responses/bad_request"
+          },
+          "401": {
+            "$ref": "#/responses/unauthorized"
+          },
+          "500": {
+            "$ref": "#/responses/internal_error"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/vs-collections/{vs_collection}/value-sets/{id}": {
+      "get": {
+        "summary": "Find value set by id",
+        "description": "Find provisional value set by id (either provisional or regular).",
+        "tags": [
+          "Value sets"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/parameters/vs_collection"
+          },
+          {
+            "$ref": "#/parameters/vs_id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/ok"
+          },
+          "400": {
+            "$ref": "#/responses/bad_request"
+          },
+          "401": {
+            "$ref": "#/responses/unauthorized"
+          },
+          "404": {
+            "$ref": "#/responses/not_found"
+          },
+          "500": {
+            "$ref": "#/responses/internal_error"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/vs-collections/{vs_collection}/values/{id}/value-set": {
+      "get": {
+        "summary": "Find the value set that contains a particular value",
+        "description": "Find the value set that contains a particular value.",
+        "tags": [
+          "Value sets"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/parameters/vs_collection"
+          },
+          {
+            "$ref": "#/parameters/vs_id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/ok"
+          },
+          "400": {
+            "$ref": "#/responses/bad_request"
+          },
+          "401": {
+            "$ref": "#/responses/unauthorized"
+          },
+          "404": {
+            "$ref": "#/responses/not_found"
+          },
+          "500": {
+            "$ref": "#/responses/internal_error"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/vs-collections/{vs_collection}/value-sets/{id}/tree": {
+      "get": {
+        "summary": "Get value set tree",
+        "tags": [
+          "Value sets"
+        ],
+        "description": "Get value set tree (only for regular value sets).",
+        "parameters": [
+          {
+            "$ref": "#/parameters/vs_collection"
+          },
+          {
+            "$ref": "#/parameters/vs_id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/ok"
+          },
+          "400": {
+            "$ref": "#/responses/bad_request"
+          },
+          "401": {
+            "$ref": "#/responses/unauthorized"
+          },
+          "404": {
+            "$ref": "#/responses/not_found"
+          },
+          "500": {
+            "$ref": "#/responses/internal_error"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/value-sets": {
+      "get": {
+        "summary": "Find all value sets",
+        "description": "Find all value sets.",
+        "tags": [
+          "Value sets"
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/ok"
+          },
+          "400": {
+            "$ref": "#/responses/bad_request"
+          },
+          "401": {
+            "$ref": "#/responses/unauthorized"
+          },
+          "500": {
+            "$ref": "#/responses/internal_error"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/value-sets/{id}": {
+      "put": {
+        "summary": "Update a provisional value set",
+        "tags": [
+          "Value sets"
+        ],
+        "description": "Update a provisional value set.",
+        "parameters": [
+          {
+            "$ref": "#/parameters/vs_id"
+          }
+        ],
+        "responses": {
+          "204": {
+            "$ref": "#/responses/no_content"
+          },
+          "400": {
+            "$ref": "#/responses/bad_request"
+          },
+          "401": {
+            "$ref": "#/responses/unauthorized"
+          },
+          "404": {
+            "$ref": "#/responses/not_found"
+          },
+          "500": {
+            "$ref": "#/responses/internal_error"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      },
+      "delete": {
+        "summary": "Delete a provisional value set",
+        "tags": [
+          "Value sets"
+        ],
+        "description": "Update a provisional value set.",
+        "parameters": [
+          {
+            "$ref": "#/parameters/vs_id"
+          }
+        ],
+        "responses": {
+          "204": {
+            "$ref": "#/responses/no_content"
+          },
+          "400": {
+            "$ref": "#/responses/bad_request"
+          },
+          "401": {
+            "$ref": "#/responses/unauthorized"
+          },
+          "404": {
+            "$ref": "#/responses/not_found"
+          },
+          "500": {
+            "$ref": "#/responses/internal_error"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/vs-collections/{vs_collection}/value-sets/{vs}/values": {
+      "post": {
+        "summary": "Create a provisional value",
+        "tags": [
+          "Values"
+        ],
+        "description": "Create a provisional value in a given value set.",
+        "parameters": [
+          {
+            "$ref": "#/parameters/vs_collection"
+          },
+          {
+            "$ref": "#/parameters/vs"
+          }
+        ],
+        "responses": {
+          "204": {
+            "$ref": "#/responses/no_content"
+          },
+          "400": {
+            "$ref": "#/responses/bad_request"
+          },
+          "401": {
+            "$ref": "#/responses/unauthorized"
+          },
+          "500": {
+            "$ref": "#/responses/internal_error"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      },
+      "get": {
+        "summary": "Find all values in a value set",
+        "tags": [
+          "Values"
+        ],
+        "description": "Find all values in a value set (either regular or provisional).",
+        "parameters": [
+          {
+            "$ref": "#/parameters/vs_collection"
+          },
+          {
+            "$ref": "#/parameters/vs"
+          },
+          {
+            "$ref": "#/parameters/page"
+          },
+          {
+            "$ref": "#/parameters/page_size"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/ok"
+          },
+          "400": {
+            "$ref": "#/responses/bad_request"
+          },
+          "401": {
+            "$ref": "#/responses/unauthorized"
+          },
+          "404": {
+            "$ref": "#/responses/not_found"
+          },
+          "500": {
+            "$ref": "#/responses/internal_error"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/vs-collections/{vs_collection}/values/{id}": {
+      "get": {
+        "summary": "Find value by id",
+        "description": "Find value by id.",
+        "tags": [
+          "Values"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/parameters/vs_collection"
+          },
+          {
+            "$ref": "#/parameters/value_id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/ok"
+          },
+          "400": {
+            "$ref": "#/responses/bad_request"
+          },
+          "401": {
+            "$ref": "#/responses/unauthorized"
+          },
+          "404": {
+            "$ref": "#/responses/not_found"
+          },
+          "500": {
+            "$ref": "#/responses/internal_error"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/vs-collections/{vs_collection}/values/{id}/tree": {
+      "get": {
+        "summary": "Get value tree",
+        "tags": [
+          "Values"
+        ],
+        "description": "Get value tree (only for regular values).",
+        "parameters": [
+          {
+            "$ref": "#/parameters/vs_collection"
+          },
+          {
+            "$ref": "#/parameters/value_id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/ok"
+          },
+          "400": {
+            "$ref": "#/responses/bad_request"
+          },
+          "401": {
+            "$ref": "#/responses/unauthorized"
+          },
+          "404": {
+            "$ref": "#/responses/not_found"
+          },
+          "500": {
+            "$ref": "#/responses/internal_error"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/vs-collections/{vs_collection}/values/{id}/all-values": {
+      "get": {
+        "summary": "Find all values in the value set that the given value belongs to",
+        "tags": [
+          "Values"
+        ],
+        "description": "Find all values in the value set that the given value belongs to.",
+        "parameters": [
+          {
+            "$ref": "#/parameters/vs_collection"
+          },
+          {
+            "$ref": "#/parameters/value_id"
+          },
+          {
+            "$ref": "#/parameters/page"
+          },
+          {
+            "$ref": "#/parameters/page_size"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/ok"
+          },
+          "400": {
+            "$ref": "#/responses/bad_request"
+          },
+          "401": {
+            "$ref": "#/responses/unauthorized"
+          },
+          "404": {
+            "$ref": "#/responses/not_found"
+          },
+          "500": {
+            "$ref": "#/responses/internal_error"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/values/{id}": {
+      "put": {
+        "summary": "Update a provisional value",
+        "tags": [
+          "Values"
+        ],
+        "description": "Update a provisional value.",
+        "parameters": [
+          {
+            "$ref": "#/parameters/value_id"
+          }
+        ],
+        "responses": {
+          "204": {
+            "$ref": "#/responses/no_content"
+          },
+          "400": {
+            "$ref": "#/responses/bad_request"
+          },
+          "401": {
+            "$ref": "#/responses/unauthorized"
+          },
+          "404": {
+            "$ref": "#/responses/not_found"
+          },
+          "500": {
+            "$ref": "#/responses/internal_error"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      },
+      "delete": {
+        "summary": "Delete a provisional value",
+        "tags": [
+          "Values"
+        ],
+        "description": "Delete a provisional value.",
+        "parameters": [
+          {
+            "$ref": "#/parameters/value_id"
+          }
+        ],
+        "responses": {
+          "204": {
+            "$ref": "#/responses/no_content"
+          },
+          "400": {
+            "$ref": "#/responses/bad_request"
+          },
+          "401": {
+            "$ref": "#/responses/unauthorized"
+          },
+          "404": {
+            "$ref": "#/responses/not_found"
+          },
+          "500": {
+            "$ref": "#/responses/internal_error"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    }
+  }
+}
