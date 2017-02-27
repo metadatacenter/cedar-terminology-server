@@ -28,15 +28,6 @@ public class ValueSetCollectionResource extends AbstractTerminologyServerResourc
 
   @GET
   @Path("vs-collections")
-  //  @ApiOperation(
-  //      value = "Find all value set collections",
-  //      //notes = "This call is not paged",
-  //      httpMethod = "GET")
-  //  @ApiResponses(value = {
-  //      @ApiResponse(code = 200, message = "Success!"),
-  //      @ApiResponse(code = 400, message = "Bad Request"),
-  //      @ApiResponse(code = 401, message = "Unauthorized"),
-  //      @ApiResponse(code = 500, message = "Internal Server Error")})
   public Response findAllVSCollections(@QueryParam("include_details") @DefaultValue("false") boolean includeDetails)
       throws CedarException {
     CedarRequestContext ctx = CedarRequestContextFactory.fromRequest(request);

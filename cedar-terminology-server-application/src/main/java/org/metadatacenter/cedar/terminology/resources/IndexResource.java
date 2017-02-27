@@ -18,6 +18,7 @@ public class IndexResource {
   static {
     info = new IdentityHashMap<>();
     info.put("name", "CEDAR Terminology Server");
+    info.put("documentation", "https://terminology." + System.getenv("CEDAR_HOST") + "/api");
   }
 
   public IndexResource() {

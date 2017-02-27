@@ -38,21 +38,6 @@ public class ClassResource extends AbstractTerminologyServerResource {
 
   @POST
   @Path("ontologies/{ontology}/classes")
-  //  @ApiOperation(
-  //      value = "Create a provisional class",
-  //      httpMethod = "POST")
-  //  @ApiResponses(value = {
-  //      @ApiResponse(code = 200, message = "Successful creation of a provisional class"),
-  //      //@ApiResponse(code = 200, message = "Successful creation of a provisional class", response = OntologyClass
-  //      // .class),
-  //      @ApiResponse(code = 400, message = "Bad Request"),
-  //      @ApiResponse(code = 401, message = "Unauthorized"),
-  //      @ApiResponse(code = 500, message = "Internal Server Error")})
-  //  @ApiImplicitParams(value = {
-  //      @ApiImplicitParam(name = "ontology", value = "Ontology identifier. Example: CEDARPC", required = true, dataType
-  //          = "string", paramType = "path"),
-  //      @ApiImplicitParam(value = "Class to be created", required = true, dataType = "org.metadatacenter.terms" +
-  //          ".domainObjects.OntologyClass", paramType = "body")})
   public Response createClass(@PathParam("ontology") String ontology) throws CedarException {
     CedarRequestContext ctx = CedarRequestContextFactory.fromRequest(request);
     ctx.must(ctx.user()).be(LoggedIn);
@@ -71,22 +56,6 @@ public class ClassResource extends AbstractTerminologyServerResource {
 
   @GET
   @Path("ontologies/{ontology}/classes/{id}")
-  //  @ApiOperation(
-  //      value = "Find class (either regular or provisional) by id and ontology",
-  //      httpMethod = "GET")
-  //  @ApiResponses(value = {
-  //      @ApiResponse(code = 200, message = "Success!"),
-  //      @ApiResponse(code = 400, message = "Bad Request"),
-  //      @ApiResponse(code = 401, message = "Unauthorized"),
-  //      @ApiResponse(code = 404, message = "Not Found"),
-  //      @ApiResponse(code = 500, message = "Internal Server Error")})
-  //  @ApiImplicitParams(value = {
-  //      @ApiImplicitParam(name = "id", value = "Class id. It must be encoded. Example: http%3A%2F%2Fdata.bioontology" +
-  //          ".org%2Fprovisional_classes%2F4f82a7f0-bbba-0133-b23e-005056010074 (provisional), " +
-  //          "http%3A%2F%2Fncicb.nci.nih.gov%2Fxml%2Fowl%2FEVS%2FThesaurus.owl%23C3224 (regular) ",
-  //          required = true, dataType = "string", paramType = "path"),
-  //      @ApiImplicitParam(name = "ontology", value = "Ontology. Example: NCIT",
-  //          required = true, dataType = "string", paramType = "path")})
   public Response findClass(@PathParam("id") @Encoded String id, @PathParam("ontology") String ontology) throws
       CedarException {
     CedarRequestContext ctx = CedarRequestContextFactory.fromRequest(request);
@@ -103,17 +72,6 @@ public class ClassResource extends AbstractTerminologyServerResource {
 
   @GET
   @Path("ontologies/{ontology}/classes")
-  //  @ApiOperation(
-  //      value = "Get all classes from a specific ontology (including provisional classes)",
-  //      httpMethod = "GET")
-  //  @ApiResponses(value = {
-  //      @ApiResponse(code = 200, message = "Success!"),
-  //      @ApiResponse(code = 400, message = "Bad Request"),
-  //      @ApiResponse(code = 401, message = "Unauthorized"),
-  //      @ApiResponse(code = 500, message = "Internal Server Error")})
-  //  @ApiImplicitParams(value = {
-  //      @ApiImplicitParam(name = "ontology", value = "Ontology. Example: NCIT",
-  //          required = true, dataType = "string", paramType = "path")})
   public Response findAllClassesForOntology(@PathParam("ontology") String ontology,
                                                    @QueryParam("page") @DefaultValue("1") int page,
                                                    @QueryParam("pageSize") int pageSize) throws CedarException {
@@ -135,22 +93,6 @@ public class ClassResource extends AbstractTerminologyServerResource {
 
   @GET
   @Path("ontologies/{ontology}/classes/{id}/tree")
-//  @ApiOperation(
-//      value = "Get class tree (only for regular classes)",
-//      httpMethod = "GET")
-//  @ApiResponses(value = {
-//      @ApiResponse(code = 200, message = "Success!"),
-//      @ApiResponse(code = 400, message = "Bad Request"),
-//      @ApiResponse(code = 401, message = "Unauthorized"),
-//      @ApiResponse(code = 404, message = "Not Found"),
-//      @ApiResponse(code = 500, message = "Internal Server Error")})
-//  @ApiImplicitParams(value = {
-//      @ApiImplicitParam(name = "id", value = "Class id. It must be encoded. Example: http%3A%2F%2Fdata.bioontology" +
-//          ".org%2Fprovisional_classes%2F4f82a7f0-bbba-0133-b23e-005056010074 (provisional), " +
-//          "http%3A%2F%2Fncicb.nci.nih.gov%2Fxml%2Fowl%2FEVS%2FThesaurus.owl%23C3224 (regular) ",
-//          required = true, dataType = "string", paramType = "path"),
-//      @ApiImplicitParam(name = "ontology", value = "Ontology. Example: NCIT",
-//          required = true, dataType = "string", paramType = "path")})
   public Response findClassTree(@PathParam("id") @Encoded String id, @PathParam("ontology") String ontology) throws
       CedarException {
     CedarRequestContext ctx = CedarRequestContextFactory.fromRequest(request);
@@ -168,23 +110,6 @@ public class ClassResource extends AbstractTerminologyServerResource {
 
   @GET
   @Path("ontologies/{ontology}/classes/{id}/children")
-  //  @ApiOperation(
-  //      value = "Get class children (only for regular classes)",
-  //      httpMethod = "GET")
-  //  @ApiResponses(value = {
-  //      @ApiResponse(code = 200, message = "Success!"),
-  //      @ApiResponse(code = 400, message = "Bad Request"),
-  //      @ApiResponse(code = 401, message = "Unauthorized"),
-  //      @ApiResponse(code = 404, message = "Not Found"),
-  //      @ApiResponse(code = 500, message = "Internal Server Error")})
-  //  @ApiImplicitParams(value = {
-  //      @ApiImplicitParam(name = "id", value = "Class id. It must be encoded. Example: http%3A%2F%2Fdata
-  // .bioontology" +
-  //          ".org%2Fprovisional_classes%2F4f82a7f0-bbba-0133-b23e-005056010074 (provisional), " +
-  //          "http%3A%2F%2Fncicb.nci.nih.gov%2Fxml%2Fowl%2FEVS%2FThesaurus.owl%23C3224 (regular) ",
-  //          required = true, dataType = "string", paramType = "path"),
-  //      @ApiImplicitParam(name = "ontology", value = "Ontology. Example: NCIT",
-  //          required = true, dataType = "string", paramType = "path")})
   public Response findClassChildren(@PathParam("id") @Encoded String id, @PathParam("ontology") String ontology,
                                            @QueryParam("page") @DefaultValue("1") int page, @QueryParam("pageSize")
                                              int pageSize) throws CedarException {
@@ -208,23 +133,6 @@ public class ClassResource extends AbstractTerminologyServerResource {
 
   @GET
   @Path("ontologies/{ontology}/classes/{id}/descendants")
-  //  @ApiOperation(
-  //      value = "Find descendants of a given class",
-  //      httpMethod = "GET")
-  //  @ApiResponses(value = {
-  //      @ApiResponse(code = 200, message = "Success!"),
-  //      @ApiResponse(code = 400, message = "Bad Request"),
-  //      @ApiResponse(code = 401, message = "Unauthorized"),
-  //      @ApiResponse(code = 404, message = "Not Found"),
-  //      @ApiResponse(code = 500, message = "Internal Server Error")})
-  //  @ApiImplicitParams(value = {
-  //      @ApiImplicitParam(name = "id", value = "Class id. It must be encoded. Example: http%3A%2F%2Fdata
-  // .bioontology" +
-  //          ".org%2Fprovisional_classes%2F4f82a7f0-bbba-0133-b23e-005056010074 (provisional), " +
-  //          "http%3A%2F%2Fncicb.nci.nih.gov%2Fxml%2Fowl%2FEVS%2FThesaurus.owl%23C3224 (regular) ",
-  //          required = true, dataType = "string", paramType = "path"),
-  //      @ApiImplicitParam(name = "ontology", value = "Ontology. Example: NCIT",
-  //          required = true, dataType = "string", paramType = "path")})
   public Response findClassDescendants(@PathParam("id") @Encoded String id, @PathParam("ontology") String ontology,
                                               @QueryParam("page") @DefaultValue("1") int page, @QueryParam("pageSize") int pageSize) throws CedarException {
     CedarRequestContext ctx = CedarRequestContextFactory.fromRequest(request);
@@ -246,22 +154,6 @@ public class ClassResource extends AbstractTerminologyServerResource {
 
   @GET
   @Path("ontologies/{ontology}/classes/{id}/parents")
-//  @ApiOperation(
-//      value = "Get class parents (only for regular classes)",
-//      httpMethod = "GET")
-//  @ApiResponses(value = {
-//      @ApiResponse(code = 200, message = "Success!"),
-//      @ApiResponse(code = 400, message = "Bad Request"),
-//      @ApiResponse(code = 401, message = "Unauthorized"),
-//      @ApiResponse(code = 404, message = "Not Found"),
-//      @ApiResponse(code = 500, message = "Internal Server Error")})
-//  @ApiImplicitParams(value = {
-//      @ApiImplicitParam(name = "id", value = "Class id. It must be encoded. Example: http%3A%2F%2Fdata.bioontology" +
-//          ".org%2Fprovisional_classes%2F4f82a7f0-bbba-0133-b23e-005056010074 (provisional), " +
-//          "http%3A%2F%2Fncicb.nci.nih.gov%2Fxml%2Fowl%2FEVS%2FThesaurus.owl%23C3224 (regular) ",
-//          required = true, dataType = "string", paramType = "path"),
-//      @ApiImplicitParam(name = "ontology", value = "Ontology. Example: NCIT",
-//          required = true, dataType = "string", paramType = "path")})
   public Response findClassParents(@PathParam("id") @Encoded String id, @PathParam("ontology") String ontology)
       throws CedarException {
     CedarRequestContext ctx = CedarRequestContextFactory.fromRequest(request);
@@ -278,14 +170,6 @@ public class ClassResource extends AbstractTerminologyServerResource {
 
   @GET
   @Path("classes/provisional")
-  //  @ApiOperation(
-  //      value = "Get all provisional classes (including provisional value sets and provisional values)",
-  //      httpMethod = "GET")
-  //  @ApiResponses(value = {
-  //      @ApiResponse(code = 200, message = "Success!"),
-  //      @ApiResponse(code = 400, message = "Bad Request"),
-  //      @ApiResponse(code = 401, message = "Unauthorized"),
-  //      @ApiResponse(code = 500, message = "Internal Server Error")})
   public Response findAllProvisionalClasses(@QueryParam("page") @DefaultValue("1") int page,
                                                    @QueryParam("pageSize") int pageSize) throws CedarException {
     CedarRequestContext ctx = CedarRequestContextFactory.fromRequest(request);
@@ -309,19 +193,6 @@ public class ClassResource extends AbstractTerminologyServerResource {
 
   @GET
   @Path("ontologies/{ontology}/classes/provisional")
-  //  @ApiOperation(
-  //      value = "Get all provisional classes for a specific ontology (including provisional value sets and
-  // provisional " +
-  //          "values)",
-  //      httpMethod = "GET")
-  //  @ApiResponses(value = {
-  //      @ApiResponse(code = 200, message = "Success!"),
-  //      @ApiResponse(code = 400, message = "Bad Request"),
-  //      @ApiResponse(code = 401, message = "Unauthorized"),
-  //      @ApiResponse(code = 500, message = "Internal Server Error")})
-  //  @ApiImplicitParams(value = {
-  //      @ApiImplicitParam(name = "ontology", value = "Ontology. Example: NCIT",
-  //          required = true, dataType = "string", paramType = "path")})
   public Response findAllProvisionalClassesForOntology(@PathParam("ontology") String ontology, @QueryParam
       ("page") @DefaultValue("1") int page, @QueryParam("pageSize") int pageSize) throws CedarException {
     CedarRequestContext ctx = CedarRequestContextFactory.fromRequest(request);
@@ -344,22 +215,6 @@ public class ClassResource extends AbstractTerminologyServerResource {
 
   @PUT
   @Path("classes/{id}")
-  //  @ApiOperation(
-  //      value = "Update a provisional class",
-  //      httpMethod = "PATCH")
-  //  @ApiResponses(value = {
-  //      @ApiResponse(code = 204, message = "Success! (No Content)"),
-  //      @ApiResponse(code = 400, message = "Bad Request"),
-  //      @ApiResponse(code = 401, message = "Unauthorized"),
-  //      @ApiResponse(code = 404, message = "Not Found"),
-  //      @ApiResponse(code = 500, message = "Internal Server Error")})
-  //  @ApiImplicitParams(value = {
-  //      @ApiImplicitParam(name = "id", value = "Provisional class id. Example: 720f50f0-ae6f-0133-848f-005056010073",
-  //          required = true, dataType = "string", paramType = "path"),
-  //      @ApiImplicitParam(value = "Updated information for the class", required = true, dataType = "org
-  // .metadatacenter" +
-  //          ".terms" +
-  //          ".domainObjects.OntologyClass", paramType = "body")})
   public Response updateClass(@PathParam("id") String id) throws CedarException {
     CedarRequestContext ctx = CedarRequestContextFactory.fromRequest(request);
     ctx.must(ctx.user()).be(LoggedIn);
@@ -377,18 +232,6 @@ public class ClassResource extends AbstractTerminologyServerResource {
 
   @DELETE
   @Path("classes/{id}")
-  //  @ApiOperation(
-  //      value = "Delete a provisional class",
-  //      httpMethod = "DELETE")
-  //  @ApiResponses(value = {
-  //      @ApiResponse(code = 204, message = "Success! (No Content)"),
-  //      @ApiResponse(code = 400, message = "Bad Request"),
-  //      @ApiResponse(code = 401, message = "Unauthorized"),
-  //      @ApiResponse(code = 404, message = "Not Found"),
-  //      @ApiResponse(code = 500, message = "Internal Server Error")})
-  //  @ApiImplicitParams(value = {
-  //      @ApiImplicitParam(name = "id", value = "Provisional class id. Example: 720f50f0-ae6f-0133-848f-005056010073",
-  //          required = true, dataType = "string", paramType = "path")})
   public Response deleteClass(@PathParam("id") String id) throws CedarException {
     CedarRequestContext ctx = CedarRequestContextFactory.fromRequest(request);
     ctx.must(ctx.user()).be(LoggedIn);
