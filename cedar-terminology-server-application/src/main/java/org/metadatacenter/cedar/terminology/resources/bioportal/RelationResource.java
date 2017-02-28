@@ -39,17 +39,6 @@ public class RelationResource extends AbstractTerminologyServerResource {
 
   @POST
   @Path("relations")
-  //  @ApiOperation(
-  //      value = "Create a provisional relation",
-  //      httpMethod = "POST")
-  //  @ApiResponses(value = {
-  //      @ApiResponse(code = 200, message = "Successful creation of a provisional relation"),
-  //      @ApiResponse(code = 400, message = "Bad Request"),
-  //      @ApiResponse(code = 401, message = "Unauthorized"),
-  //      @ApiResponse(code = 500, message = "Internal Server Error")})
-  //  @ApiImplicitParams(value = {
-  //      @ApiImplicitParam(value = "Relation to be created", required = true, dataType = "org.metadatacenter.terms" +
-  //          ".domainObjects.Relation", paramType = "body")})
   public Response createRelation() throws CedarException {
     CedarRequestContext ctx = CedarRequestContextFactory.fromRequest(request);
     ctx.must(ctx.user()).be(LoggedIn);
@@ -67,19 +56,6 @@ public class RelationResource extends AbstractTerminologyServerResource {
 
   @GET
   @Path("relations/{id}")
-  //  @ApiOperation(
-  //      value = "Find provisional relation by id",
-  //      httpMethod = "GET")
-  //  @ApiResponses(value = {
-  //      @ApiResponse(code = 200, message = "Success!"),
-  //      @ApiResponse(code = 400, message = "Bad Request"),
-  //      @ApiResponse(code = 401, message = "Unauthorized"),
-  //      @ApiResponse(code = 404, message = "Not Found"),
-  //      @ApiResponse(code = 500, message = "Internal Server Error")})
-  //  @ApiImplicitParams(value = {
-  //      @ApiImplicitParam(name = "id", value = "Provisional relation id. Example:
-  // 720f50f0-ae6f-0133-848f-005056010073",
-  //          required = true, dataType = "string", paramType = "path")})
   public Response findRelation(@PathParam("id") String id) throws CedarException {
     CedarRequestContext ctx = CedarRequestContextFactory.fromRequest(request);
     ctx.must(ctx.user()).be(LoggedIn);
@@ -130,19 +106,6 @@ public class RelationResource extends AbstractTerminologyServerResource {
 
   @DELETE
   @Path("relations/{id}")
-  //  @ApiOperation(
-  //      value = "Delete a provisional relation",
-  //      httpMethod = "DELETE")
-  //  @ApiResponses(value = {
-  //      @ApiResponse(code = 204, message = "Success! (No Content)"),
-  //      @ApiResponse(code = 400, message = "Bad Request"),
-  //      @ApiResponse(code = 401, message = "Unauthorized"),
-  //      @ApiResponse(code = 404, message = "Not Found"),
-  //      @ApiResponse(code = 500, message = "Internal Server Error")})
-  //  @ApiImplicitParams(value = {
-  //      @ApiImplicitParam(name = "id", value = "Provisional relation id. Example:
-  // 720f50f0-ae6f-0133-848f-005056010073",
-  //          required = true, dataType = "string", paramType = "path")})
   public Response deleteRelation(@PathParam("id") String id) throws CedarException {
     CedarRequestContext ctx = CedarRequestContextFactory.fromRequest(request);
     ctx.must(ctx.user()).be(LoggedIn);

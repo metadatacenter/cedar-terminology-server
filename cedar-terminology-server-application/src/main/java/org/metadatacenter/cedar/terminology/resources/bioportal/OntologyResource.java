@@ -36,15 +36,6 @@ public class OntologyResource extends AbstractTerminologyServerResource {
 
   @GET
   @Path("ontologies")
-  //  @ApiOperation(
-  //      value = "Find all ontologies (excluding value set collections)",
-  //      //notes = "This call is not paged",
-  //      httpMethod = "GET")
-  //  @ApiResponses(value = {
-  //      @ApiResponse(code = 200, message = "Success!"),
-  //      @ApiResponse(code = 400, message = "Bad Request"),
-  //      @ApiResponse(code = 401, message = "Unauthorized"),
-  //      @ApiResponse(code = 500, message = "Internal Server Error")})
   public Response findAllOntologies() throws CedarException {
     CedarRequestContext ctx = CedarRequestContextFactory.fromRequest(request);
     ctx.must(ctx.user()).be(LoggedIn);
@@ -60,18 +51,6 @@ public class OntologyResource extends AbstractTerminologyServerResource {
 
   @GET
   @Path("ontologies/{id}")
-  //  @ApiOperation(
-  //      value = "Find ontology by id. It returns ontology details, including number of classes and categories",
-  //      httpMethod = "GET")
-  //  @ApiResponses(value = {
-  //      @ApiResponse(code = 200, message = "Success!"),
-  //      @ApiResponse(code = 400, message = "Bad Request"),
-  //      @ApiResponse(code = 401, message = "Unauthorized"),
-  //      @ApiResponse(code = 404, message = "Not Found"),
-  //      @ApiResponse(code = 500, message = "Internal Server Error")})
-  //  @ApiImplicitParams(value = {
-  //      @ApiImplicitParam(name = "id", value = "Ontology id. Examples: NCIT, OBI, FMA",
-  //          required = true, dataType = "string", paramType = "path")})
   public Response findOntology(@PathParam("id") String id) throws CedarException {
     CedarRequestContext ctx = CedarRequestContextFactory.fromRequest(request);
     ctx.must(ctx.user()).be(LoggedIn);
@@ -92,20 +71,6 @@ public class OntologyResource extends AbstractTerminologyServerResource {
 
   @GET
   @Path("ontologies/{ontology}/classes/roots")
-  //  @ApiOperation(
-  //      value = "Get the root classes for a given ontology. If the ontology is CEDARPC, all provisional classes in
-  // this" +
-  //          " ontology will be returned",
-  //      httpMethod = "GET")
-  //  @ApiResponses(value = {
-  //      @ApiResponse(code = 200, message = "Success!"),
-  //      @ApiResponse(code = 400, message = "Bad Request"),
-  //      @ApiResponse(code = 401, message = "Unauthorized"),
-  //      @ApiResponse(code = 404, message = "Not Found"),
-  //      @ApiResponse(code = 500, message = "Internal Server Error")})
-  //  @ApiImplicitParams(value = {
-  //      @ApiImplicitParam(name = "ontology", value = "Ontology identifier. Example: NCIT",
-  //          required = true, dataType = "string", paramType = "path")})
   public Response findRootClasses(@PathParam("ontology") String ontology) throws CedarException {
     CedarRequestContext ctx = CedarRequestContextFactory.fromRequest(request);
     ctx.must(ctx.user()).be(LoggedIn);

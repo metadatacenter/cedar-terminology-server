@@ -45,7 +45,7 @@ public class TerminologyServerApplication extends CedarMicroserviceApplication<T
   @Override
   public void runApp(TerminologyServerConfiguration configuration, Environment environment) {
 
-    final IndexResource index = new IndexResource();
+    final IndexResource index = new IndexResource(cedarConfig);
 
     environment.jersey().register(index);
     // Register resources
