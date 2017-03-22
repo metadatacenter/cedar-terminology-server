@@ -18,13 +18,17 @@ notifications:
 before_install:
 - sleep 15
 - mongoimport --db cedar --collection users --file cedar-terminology-server-application/src/test/resources/test-user-1.json
+
 install: '[ ${TRAVIS_PULL_REQUEST} = ''false'' ] && mvn -DskipTests=false clean deploy --settings .m2/travis-settings.xml'
 
 before_script:
 #  - mongo cedar --eval 'db.addUser("${CEDAR_MONGO_USER_NAME}", "${CEDAR_MONGO_USER_PASSWORD}");'
-   - mongo cedar --eval 'db.addUser("fred", "fred");'
+ - mongo cedar --eval 'db.addUser("fred", "fred");'
+ - mongo cedar --eval 'db.getUsers()'
+  
 
 script: '[ ${TRAVIS_PULL_REQUEST} = ''false'' ] && mvn -DskipTests=true clean --settings .m2/travis-settings.xml'
+
 env:
   global:
   - CEDAR_HOME=${HOME}/
