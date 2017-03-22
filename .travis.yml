@@ -21,7 +21,7 @@ before_install:
 install: '[ ${TRAVIS_PULL_REQUEST} = ''false'' ] && mvn -DskipTests=false clean deploy --settings .m2/travis-settings.xml'
 
 before_script:
-- mongo cedar --eval 'db.createUser( { user: "${CEDAR_MONGO_USER_NAME}", pwd: "${CEDAR_MONGO_USER_PASSWORD}", roles: [ "readWrite"] });'
+  - mongo cedar --eval 'db.createUser( { user: "${CEDAR_MONGO_USER_NAME}", pwd: "${CEDAR_MONGO_USER_PASSWORD}", roles: [ "readWrite"] });'
 
 script: '[ ${TRAVIS_PULL_REQUEST} = ''false'' ] && mvn -DskipTests=true clean --settings .m2/travis-settings.xml'
 env:
