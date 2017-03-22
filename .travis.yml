@@ -19,7 +19,7 @@ notifications:
 before_install:
   - sleep 15
   - mongoimport --db cedar --collection users --file cedar-terminology-server-application/src/test/resources/test-user-1.json  
-  - mongo cedar --eval "db.createUser( { user:'fred', pwd:'fred', roles:[ 'readWrite'] })"
+  - mongo cedar --eval "db.createUser( { user:'${CEDAR_MONGO_USER_NAME}', pwd:'${CEDAR_MONGO_USER_PASSWORD}', roles:[ 'readWrite'] })"
 
 install: '[ ${TRAVIS_PULL_REQUEST} = ''false'' ] && mvn -DskipTests=false clean deploy --settings .m2/travis-settings.xml'
 
@@ -29,8 +29,8 @@ env:
   global:
   - CEDAR_HOME=${HOME}/
   - CEDAR_HOST=abc
-  - CEDAR_MONGO_USER_NAME=fred
-  - CEDAR_MONGO_USER_PASSWORD=fred
+  - CEDAR_MONGO_USER_NAME=cedarUser
+  - CEDAR_MONGO_USER_PASSWORD=password
   - CEDAR_LD_USER_BASE=https://metadatacenter.org/users/
   - CEDAR_TEST_USER1_ID=https://metadatacenter.org/users/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee
   - CEDAR_TEST_USER2_ID=abc
