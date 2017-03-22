@@ -5,8 +5,6 @@ import io.dropwizard.testing.ResourceHelpers;
 import io.dropwizard.testing.junit.DropwizardAppRule;
 import org.glassfish.jersey.client.ClientProperties;
 import org.junit.*;
-import org.metadatacenter.cedar.cache.Cache;
-import org.metadatacenter.cedar.terminology.TerminologyServerApplication;
 import org.metadatacenter.cedar.terminology.TerminologyServerApplicationTest;
 import org.metadatacenter.cedar.terminology.TerminologyServerConfiguration;
 import org.metadatacenter.config.CedarConfig;
@@ -15,7 +13,7 @@ import org.metadatacenter.terms.domainObjects.Relation;
 import org.metadatacenter.terms.domainObjects.Value;
 import org.metadatacenter.terms.domainObjects.ValueSet;
 import org.metadatacenter.terms.util.Util;
-import org.metadatacenter.util.test.TestUtil;
+import org.metadatacenter.util.test.TestUserUtil;
 
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.Entity;
@@ -78,7 +76,7 @@ public abstract class AbstractTerminologyServerResourceTest {
     client.property(ClientProperties.READ_TIMEOUT, cedarConfig.getTerminologyConfig().getBioPortal().getSocketTimeout
         ());
 
-    authHeader = TestUtil.getTestUser1AuthHeader(cedarConfig);
+    authHeader = TestUserUtil.getTestUser1AuthHeader(cedarConfig);
 
   }
 
