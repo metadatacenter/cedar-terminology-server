@@ -34,7 +34,6 @@ At the project root folder:
     mvn install
     cd cedar-terminology-server-application
     java \
-          -Dkeycloak.config.path="$CEDAR_HOME/keycloak.json" \
           -jar $CEDAR_HOME/cedar-terminology-server/cedar-terminology-server-application/target/cedar-terminology-server-application-*.jar \
           server \
           "$CEDAR_HOME/cedar-terminology-server/cedar-terminology-server-application/config.yml"

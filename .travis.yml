@@ -10,31 +10,35 @@ branches:
   - develop
   - master
 notifications:
-  email:
-    recipients:
-    - cedar-core-developers@lists.stanford.edu
-    on_success: never
+  slack:
+    on_success: change
     on_failure: always
+    secure: rN6+Ne6+w5r8uVjE7ZwTWxnW0VeA6dfrDB+jCPG+FeridUK6FF+MrAYlYOnCI3hIck2l/EtDaBvnGPUuzLJBo3N7HseFMZonSY+5nWZnk4XOGn1Xl6n7vQqv7ydQMxS/PgZlAbotvJ2Hgxj+r4oB9tANNt3LlJifl0rO+f9D7D0jblIUuu2sIckwBilxn6AjJV/nuolekhJcoRBszmEJKq5b9druau0MnaoJDIpxFSNeG2zZcjobMKdv6GJ37whB3gk3OZL4gTPsPNcWsOhNSc3dZjQA0kluaExXrGdRVXy6vxlXopQBs9WOSEc7SqnavvKo27qqUuDQGDBZyGkl2KzKtwoFYNyV/7Wu7UAGz8un64m/nLM8oZ3ZOaL5H9qRgS6+QfYwLKsTObAc9636eOTf2qB4Wm2ur7H7gTUGbntnzR0MrHiy0ob1tviAwKM/lMj+JCudey3xQmNu3p0L51yRSykNd1RbzZWk4wuS8OCaGZQ0ajQEqBYsAKrWZQb0X8iQodOmWcax83nbAMLSy2RRZ3ukc6+OD4NHw5NjE/JlaGKyb7Nu27OzoL8k/qtle3sk5H75aCjnVVDLkZVX8i9Wj6dUnJcadYqn8pyeWlIIYRn81xIhXlm32rJcBJA5xtDmKKbtUqeS1zmqTwByDUahEJbL8BfLIPxmbO6tx90=
 before_install:
 - sleep 15
 - mongoimport --db cedar --collection users --file cedar-terminology-server-application/src/test/resources/test-user-1.json
-install: '[ ${TRAVIS_PULL_REQUEST} = ''false'' ] && mvn -DskipTests=false clean deploy --settings .m2/travis-settings.xml'
-script: '[ ${TRAVIS_PULL_REQUEST} = ''false'' ] && mvn -DskipTests=true clean --settings .m2/travis-settings.xml'
+- mongo cedar --eval "db.createUser( { user:'${CEDAR_MONGO_USER_NAME}', pwd:'${CEDAR_MONGO_USER_PASSWORD}',
+  roles:[ 'readWrite'] })"
+install: '[ ${TRAVIS_PULL_REQUEST} = ''false'' ] && mvn -DskipTests=false clean deploy
+  --settings .m2/travis-settings.xml'
+script: '[ ${TRAVIS_PULL_REQUEST} = ''false'' ] && mvn -DskipTests=true clean --settings
+  .m2/travis-settings.xml'
 env:
   global:
   - CEDAR_HOME=${HOME}/
   - CEDAR_HOST=abc
-  - CEDAR_TEST_USER2_UUID=abc
+  - CEDAR_MONGO_USER_NAME=cedarUser
+  - CEDAR_MONGO_USER_PASSWORD=password
+  - CEDAR_LD_USER_BASE=https://metadatacenter.org/users/
+  - CEDAR_TEST_USER1_ID=https://metadatacenter.org/users/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee
+  - CEDAR_TEST_USER2_ID=abc
   - CEDAR_ADMIN_USER_UUID=abc
   - CEDAR_ADMIN_USER_PASSWORD=abc
   - CEDAR_NEO4J_TRANSACTION_URL=abc
   - CEDAR_NEO4J_AUTH_STRING=abc
-  - CEDAR_NEO4J_AUTH_STRING=abc
-  - CEDAR_TEST_USER3_UUID=abc
+  - CEDAR_SALT_API_KEY=fred
   - CEDAR_ADMIN_USER_API_KEY=abc
   - CEDAR_NCBI_SRA_FTP_PASSWORD=abc
-  - secure: TDXqUXpR3G5DIFQpQ8Ne2wQsj17P/G6wU2agw3ssSSuqCUIadOHwGFW8PD8Ffe1frQCq6axLouEGnnh+9hPxwIhr+kqZytwzP5lPJOxowwzhd1q6Z38hmLlBg6bKE/XwPTzZQhPUx0O5//pPCYHEE1HkB3dwIVN91Rro0Xy74Izb2RHuBUdC6ToOIzkJ9mleoozZFUbx0X2IdkrXgOc9bo+a9QfiKxHhpR3krhsie/CMHmZ032fZk7y2X5/hvKaqaXTo5XJj3lecxy5sLld/XK63lynih7ouCE7iiRTgobIPXM5cg/jexfaWwiCHoYat7Aq94nnlVwte+yXuxfAYUjLugcvVouDJ8fNodaxwrA+2QOsMJNOOBbmHCbqHJ8uwEQLtQYbzdqPPa9f63ObR5S1mJxgxRsXboqVCNNb4zvKm3c+5iAXd8xu0xdl/M/nEHEylrsel+pQfuPNXAvRNkgiEV+37wS1N77iwcnUMxuTMCBmUOcnw0V03SbmSHTrrpDEaUboEEiP+GYLIKgLySPE+TU/tE/lNGtCyUSu1vWeK4iaB/MkgRYzeFKrFoT//S83Q1hj/Mf0qTz9gOOIP66yfD2SDOhsd2d2FLILHB12ix9+1+7CYUUTuUSHa/djEogj17iJeag/QnMTRfNSonpfaVp79o4R80aggPR+IODg=
   - secure: a0xhJa+SWdsmyMVUofamTj54HH1x/6sq4JvWIjZdLR3XFNuT/OQHBTOcxX/kHMmNdCReI17AfY2pJcDgPWO/9n1r+NSjeEirLozrcoi/ObPwFZ5aJane5glc7YFYEeyKd32LNjqZXZcxMRaQNm+PchMm2kcNs1mxMTTq3hzadit6cY/NEgyH3fYaouVGbqCp/fkmKPAXHh9HCt0iOQnNTT89gGpJ/AC0Cl2Sp0PMazzkIDt5/F1BN7LBPimYI39Xd47Ylidwf5egUrY5wIcJ3DV+m6Cw0uTT2mGpYP776drjON+o0ZRowxuLJotXhBSH9QAR/k4FTQkOcktsyUES6IqHwHeF4RJodBYZ5pSQSOiNglbf0KhFPOpTd8F6iq5K33bm+6C2Oc2/6GAgs/EiwdkQEhATwolZbi9ExGIrIwpAWoAz/uHuFAEo5/v4rB392TuHMMA8YzeFi444B5+CQYKXzOn/aaA+m3u5b+9qFaz3aH49vgsnF9kCFhUIUqkK/VbM3eqp+QBDchuh0UohcxvdZTidQgG+uRgRd8OXYPUu3j/BvITWYlbbEZ1g2/RQlNtSRFu0sJAu67N8nrBVzUbdSBNQdVh55fafIdQi/Rkngw/dWc2akqlSVJpNjIJX5EaKuJAuvAjFI/tWEy1ECLrPqyjnF6Eqrx6tzcweAG4=
   - secure: uzagKDE0jk+LPvaVolf0jEQ00kCo5hUiik8ip0XOpqwrdJcw8/k6Qbl+MWVe4GciALDfj09WVlAX4a7Rghr5vPNQqudxZ1vnoR/2JX0b19FSJ7me6RioODliA1ZVXS0zPNqZZQnJGFyMOOqWUZOeyjSPDyrgvTgIjqGfU1ouSpPYW+ImwHSKwKpGRLuqwYqlLmDj8MVPFgktwf11kdMqMk1RlRiIdOxTrikX7SGBlh4U8Q8JLdEAgfgV5XZpO/oGXX2SD8oUlB33tNQe5JAL5WRrZ76Fbcgwo64hK77XUAqJue31tD9FWiQbec3sJBMSphH1P/w8q6+u9n+QXKeyAqs2DaXHi1dvmXq2Dm5WBkPDChYg7CN1Ed0R6SoR6Zx89qB5lTk2BInrjkP7/HGa6AKzGU8AZfdGed3vSO0y7i8DK8NkukFZXnCqBBBFUuQH7oMWIzsPsVXprzRmBmx5cTN5GcS4Ppq3U2Q2QuvjyVnWG07Ely8DYRlJ9/bsOU0bU9/7tlF2rsrJNFYAfzdklBWZkMeNjHtJZXXr0mT6UfRjWr58K81/m8WxEm8SNLReGeqlPnZ8LQYYhrczqHy7JFzGqZh5zhz21IOJ3FoPw65CxKHjtT2J9gXbAJQzaetjuIEQPTjBP8tOP4P97+RPmKLsfq/st14HUF1XK8xGAoQ=
   - secure: Jp6lSZpjSnpf3guoAeeVxD/6rTWVzh3afAz3UZoOuGYswdAVW008D2tRqRKbBuoZguF3HLy+LThHUDFLmt8kQqaGouQwC8J+vCIbrRvdwetABU33xlsibXcQgXLV97W3jIiLexBC4CfWZkCOm5L+EaF71KMyPgfaDQo0jfeHwUeto3Gueq9M2taHp89EGrzk+KKgS4zXugXZqOoO7f27avNixFJoJEoYUV3P5WghpcxTYcPJOnIhFw5p3hU49pu4/BEtcc7JOUpxNOQplF882SCKF91KmMIcL+O8G0W6SJ4A1lhECXJSKr6V/7XgLh3PTEnTYzjrduS8qVFaM+yHMIa3qMSohA+l2jNirpkjJ5vDJaxNYG2JcsDWX/a9Ok37+G5vPNjDdscGkRNQ1ul/rkWLTojhNFvF6clcLP8Tjk0zn7jrKi8ZTraJceRk6qnWb+a9bzSBV02ZF0UxTlD7stro8Vngazo9N+cCxbuLxIXQSSUDRulA11v54GlgPnY5VQ4lWzr3PrR2pMS989EtUAH7EfQ5EMMiOWqvtPaW9kb6uS/JIPeGYBAjs9Wd/hp5t5a6tECAeMd7weDEYAlnDI91ZoUSQ5mPPHZjPVSeYDwfufJB/GNPlbJo0kFo/Zali6e1lO9XPnKgBnBWpyHdKiui1ZxfMLNI6wy1rjowWu4=
-  - secure: EOd/FYcbCJ90CwqAgRztAGAy7XRS8SWE5Qbv7/mhkdXF9K0Ruoe5L2aZ7SPFcQOQ5DDLotpsKRfEXoQQ9YbSU6dRxGNXrivPCPl4R1THLsfRP5+ZYSup/HecM41lYTTmlcivUpxaOjfWf4cFH1TvoyaLvC1t8NMGK5OqPUWunLzAjwYIRFQIhxRoFPqm3kn76pHh4gHlqvtIT15WrQ+GU4t7cMK33ecH2KypeaFlCyPXNb4RvrT5jH1rpw0n3grvy7+DqeqJDK7gmzJ/MrDUSWrngL4ZC9cqXO0z3GlOJkdEFr3HP8ifv6+b1+zoXGF7IUManBlkNP+lE7n97XN6D0dGL4unplATiXpHgzBKqjQzL2xpSO7vBllD4siCKnosceRkxMO8K0w+HBKQtGSHYtLyjRkEEfgp/amOnD3cstc+7BWEcHcoVkEnZrIxlsHZknWX7FdVuyZyjwxWCU/pNKVAVP9YdcLLoBV4Wvnf5XdFjY7RXAlOPG6GNC+GroqP1IQOOSLvMCXP0ho1+SsZS7XTbpjoTzbOWLj33K+E2kUAjPWMXwRjSXQNUwrxKcgkgI0aMAUxCHiKvGz/kvBt65hha6XZucPAGk8rjhiYrQL+IlQWOxWAm4EkHW799qEsOImLpcx9SMxk5vhiHIHnbySu5VxQ0wuUkAncFfMDRgY=
