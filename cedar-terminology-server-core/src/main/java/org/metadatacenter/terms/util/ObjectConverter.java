@@ -10,11 +10,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
-import static org.metadatacenter.terms.util.Constants.BP_VS_COLLECTIONS_READ;
-import static org.metadatacenter.terms.util.Constants.BP_TYPE_BASE;
-import static org.metadatacenter.terms.util.Constants.BP_TYPE_CLASS;
-import static org.metadatacenter.terms.util.Constants.BP_TYPE_VALUE;
-import static org.metadatacenter.terms.util.Constants.BP_TYPE_VS;
+import static org.metadatacenter.terms.util.Constants.*;
 
 public class ObjectConverter {
   /**
@@ -207,6 +203,20 @@ public class ObjectConverter {
     }
     return new PagedResults<>(bpr.getPage(), bpr.getPageCount(), bpr.getCollection().size(), bpr.getPrevPage(),
         bpr.getNextPage(), results);
+  }
+
+  public static PagedResults<PropertySearchResult> toPropertySearchResults(BpPagedResults<BpProperty> bpr) {
+    List<PropertySearchResult> results = new ArrayList<>();
+    for (BpProperty p : bpr.getCollection()) {
+      // Assign information depending on the result type
+      String type = BP_TYPE_PROPERTY;
+      String ontology = Util.getShortIdentifier(p.getLinks().getOntology());
+      String source = p.getLinks().getOntology();
+      PropertySearchResult r = new PropertySearchResult(p.getId(), p.getId(), BP_TYPE_BASE + type, type,
+          p.getPropertyType(), p.getLabel(), p.getLabelGenerated(), source);
+      results.add(r);
+    }
+    return new PagedResults<>(bpr.getPage(), bpr.getPageCount(), bpr.getCollection().size(), bpr.getPrevPage(), bpr.getNextPage(), results);
   }
 
   public static TreeNode toTreeNode(BpTreeNode bpTreeNode) {

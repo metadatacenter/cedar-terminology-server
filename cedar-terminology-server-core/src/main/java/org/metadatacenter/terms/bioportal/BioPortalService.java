@@ -46,7 +46,7 @@ public class BioPortalService implements IBioPortalService
   }
 
   /**
-   * Search for ontology classes and value set items. Provisional classes are included.
+   * Search for ontology classes, value sets, and value set items. Provisional classes are included.
    */
   public BpPagedResults<BpClass> search(String q, List<String> scope, List<String> sources, boolean suggest, String source, String subtreeRootId, int maxDepth, int page, int pageSize,
     boolean displayContext, boolean displayLinks, String apiKey) throws IOException
@@ -132,6 +132,47 @@ public class BioPortalService implements IBioPortalService
       ObjectMapper mapper = new ObjectMapper();
       JsonNode bpResult = mapper.readTree(new String(EntityUtils.toByteArray(response.getEntity())));
       return mapper.readValue(mapper.treeAsTokens(bpResult), new TypeReference<BpPagedResults<BpClass>>() {});
+    } else {
+      throw new HTTPException(statusCode);
+    }
+  }
+
+  /**
+   * Search for ontology properties.
+   */
+  public BpPagedResults<BpProperty> propertySearch(String q, List<String> sources, int page, int pageSize,
+                                        boolean displayContext, boolean displayLinks, String apiKey) throws IOException
+  {
+    // Encode query
+    q = Util.encodeIfNeeded(q);
+    /** Build url **/
+    // TODO: use production url (BP_API_BASE)
+    //String url =  BP_API_BASE + BP_PROPERTY_SEARCH + "?q=" + q;
+    String url =  "http://stagedata.bioontology.org/" + BP_PROPERTY_SEARCH + "?q=" + q;
+
+    /** Add sources **/
+    if (sources.size() > 0) {
+      url += "&ontologies=" + (sources.stream().map(number -> String.valueOf(number)).collect(Collectors.joining(",")));
+    }
+
+    /** Add page and pageSize **/
+    url += "&page=" + page + "&pagesize=" + pageSize;
+
+    /** Add displayContext and DisplayLinks **/
+    url += "&display_context=" + displayContext + "&display_links=" + displayLinks;
+
+    System.out.println("Search url: " + url);
+
+    // Send request to the BioPortal API
+    HttpResponse response = Request.Get(url).addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
+        connectTimeout(connectTimeout).socketTimeout(socketTimeout).execute().returnResponse();
+
+    int statusCode = response.getStatusLine().getStatusCode();
+    // The request has succeeded
+    if (statusCode == 200) {
+      ObjectMapper mapper = new ObjectMapper();
+      JsonNode bpResult = mapper.readTree(new String(EntityUtils.toByteArray(response.getEntity())));
+      return mapper.readValue(mapper.treeAsTokens(bpResult), new TypeReference<BpPagedResults<BpProperty>>() {});
     } else {
       throw new HTTPException(statusCode);
     }

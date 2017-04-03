@@ -38,6 +38,14 @@ public class TerminologyService implements ITerminologyService {
     return ObjectConverter.toSearchResults(results, valueSetsIds);
   }
 
+  public PagedResults<PropertySearchResult> propertySearch(String q, List<String> sources, int page, int pageSize, boolean displayContext,
+                                                   boolean displayLinks, String apiKey) throws IOException {
+    BpPagedResults<BpProperty> results =
+        bpService.propertySearch(q, sources, page, pageSize, displayContext, displayLinks, apiKey);
+
+    return ObjectConverter.toPropertySearchResults(results);
+  }
+
   public List<Ontology> findAllOntologies(boolean includeDetails, String apiKey) throws IOException {
     List<BpOntology> bpOntologies = bpService.findAllOntologies(apiKey);
     List<Ontology> ontologies = new ArrayList<>();

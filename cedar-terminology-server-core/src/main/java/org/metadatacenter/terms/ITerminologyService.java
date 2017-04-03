@@ -7,11 +7,16 @@ import java.io.IOException;
 import java.util.List;
 
 public interface ITerminologyService {
-  // TODO: Adapt BioPortal to return provisional classes too
-  // TODO: Add attribute with result type on the BioPortal side
+
+  /**
+   * Search
+   */
   PagedResults<SearchResult> search(String q, List<String> scope, List<String> sources, boolean suggest, String source, String
       subtreeRootId, int maxDepth, int page, int pageSize, boolean displayContext,
                                     boolean displayLinks, String apiKey, List<String> valueSetsIds) throws IOException;
+
+  PagedResults<PropertySearchResult> propertySearch(String q, List<String> sources, int page, int pageSize, boolean displayContext,
+                                    boolean displayLinks, String apiKey) throws IOException;
 
   /**
    * Ontologies
