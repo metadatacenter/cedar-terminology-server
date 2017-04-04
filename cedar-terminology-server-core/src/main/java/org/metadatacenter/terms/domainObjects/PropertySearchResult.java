@@ -5,7 +5,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 
 import java.util.List;
 
-@JsonPropertyOrder({"id", "@id", "@type", "type", "prefLabel", "source"})
+@JsonPropertyOrder({"id", "@id", "@type", "type", "propertyType", "labels", "labelsGenerated", "definitions", "source"})
 public class PropertySearchResult {
   private String id;
   @JsonProperty("@id")
@@ -16,6 +16,7 @@ public class PropertySearchResult {
   private String propertyType;
   private List<String> labels;
   private List<String> labelsGenerated;
+  private List<String> definitions;
   private String source;
 
   // The default constructor is used by Jackson for deserialization
@@ -23,7 +24,7 @@ public class PropertySearchResult {
   }
 
   public PropertySearchResult(String id, String ldId, String ldType, String type, String propertyType, List<String>
-      labels, List<String> labelsGenerated, String source) {
+      labels, List<String> labelsGenerated, List<String> definitions, String source) {
     this.id = id;
     this.ldId = ldId;
     this.ldType = ldType;
@@ -31,6 +32,7 @@ public class PropertySearchResult {
     this.propertyType = propertyType;
     this.labels = labels;
     this.labelsGenerated = labelsGenerated;
+    this.definitions = definitions;
     this.source = source;
   }
 
@@ -82,13 +84,15 @@ public class PropertySearchResult {
     this.labels = labels;
   }
 
-  public List<String> getLabelsGenerated() {
-    return labelsGenerated;
-  }
+  public List<String> getLabelsGenerated() { return labelsGenerated; }
 
   public void setLabelsGenerated(List<String> labelsGenerated) {
     this.labelsGenerated = labelsGenerated;
   }
+
+  public List<String> getDefinitions() { return definitions; }
+
+  public void setDefinitions(List<String> definitions) { this.definitions = definitions; }
 
   public String getSource() {
     return source;
@@ -108,6 +112,7 @@ public class PropertySearchResult {
         ", propertyType='" + propertyType + '\'' +
         ", labels=" + labels +
         ", labelsGenerated=" + labelsGenerated +
+        ", definitions=" + definitions +
         ", source='" + source + '\'' +
         '}';
   }

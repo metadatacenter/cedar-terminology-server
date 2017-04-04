@@ -210,10 +210,12 @@ public class ObjectConverter {
     for (BpProperty p : bpr.getCollection()) {
       // Assign information depending on the result type
       String type = BP_TYPE_PROPERTY;
-      String ontology = Util.getShortIdentifier(p.getLinks().getOntology());
       String source = p.getLinks().getOntology();
+      // Note that for null lists, we return an empty list
       PropertySearchResult r = new PropertySearchResult(p.getId(), p.getId(), BP_TYPE_BASE + type, type,
-          p.getPropertyType(), p.getLabel(), p.getLabelGenerated(), source);
+          p.getPropertyType(), p.getLabel() == null ? new ArrayList<>() : p.getLabel(),
+          p.getLabelGenerated() == null ? new ArrayList<>() : p.getLabelGenerated(),
+          p.getDefinition() == null ? new ArrayList<>() : p.getDefinition(), source);
       results.add(r);
     }
     return new PagedResults<>(bpr.getPage(), bpr.getPageCount(), bpr.getCollection().size(), bpr.getPrevPage(), bpr.getNextPage(), results);

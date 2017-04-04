@@ -15,19 +15,21 @@ public class BpProperty {
   private String ontologyType;
   private List<String> label;
   private List<String> labelGenerated;
+  private List<String> definition;
   private BpLinks links;
 
   public BpProperty() {
   }
 
   public BpProperty(String id, String type, String propertyType, String ontologyType, List<String> label,
-                    List<String> labelGenerated, BpLinks links) {
+                    List<String> labelGenerated, List<String> definition, BpLinks links) {
     this.id = id;
     this.type = type;
     this.propertyType = propertyType;
     this.ontologyType = ontologyType;
     this.label = label;
     this.labelGenerated = labelGenerated;
+    this.definition = definition;
     this.links = links;
   }
 
@@ -79,6 +81,10 @@ public class BpProperty {
     this.labelGenerated = labelGenerated;
   }
 
+  public List<String> getDefinition() { return definition; }
+
+  public void setDefinition(List<String> definition) { this.definition = definition; }
+
   public BpLinks getLinks() {
     return links;
   }
@@ -96,8 +102,8 @@ public class BpProperty {
         ", ontologyType='" + ontologyType + '\'' +
         ", label=" + label +
         ", labelGenerated=" + labelGenerated +
+        ", definition=" + definition +
         ", links=" + links +
         '}';
   }
-
 }
