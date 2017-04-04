@@ -140,8 +140,8 @@ public class BioPortalService implements IBioPortalService
   /**
    * Search for ontology properties.
    */
-  public BpPagedResults<BpProperty> propertySearch(String q, List<String> sources, int page, int pageSize,
-                                        boolean displayContext, boolean displayLinks, String apiKey) throws IOException
+  public BpPagedResults<BpProperty> propertySearch(String q, List<String> sources, boolean exactMatch, boolean
+      requireDefinitions, int page, int pageSize, boolean displayContext, boolean displayLinks, String apiKey) throws IOException
   {
     // Encode query
     q = Util.encodeIfNeeded(q);
@@ -153,6 +153,16 @@ public class BioPortalService implements IBioPortalService
     /** Add sources **/
     if (sources.size() > 0) {
       url += "&ontologies=" + (sources.stream().map(number -> String.valueOf(number)).collect(Collectors.joining(",")));
+    }
+
+    /** Add exactMatch **/
+    if (exactMatch == true) {
+      url += "&require_exact_match=true";
+    }
+
+    /** Add requireDefinitions **/
+    if (requireDefinitions == true) {
+      url += "&require_definitions=true";
     }
 
     /** Add page and pageSize **/

@@ -38,10 +38,11 @@ public class TerminologyService implements ITerminologyService {
     return ObjectConverter.toSearchResults(results, valueSetsIds);
   }
 
-  public PagedResults<PropertySearchResult> propertySearch(String q, List<String> sources, int page, int pageSize, boolean displayContext,
-                                                   boolean displayLinks, String apiKey) throws IOException {
+  public PagedResults<PropertySearchResult> propertySearch(String q, List<String> sources, boolean exactMatch, boolean
+      requireDefinitions, int page, int pageSize, boolean displayContext, boolean displayLinks, String apiKey) throws IOException {
+
     BpPagedResults<BpProperty> results =
-        bpService.propertySearch(q, sources, page, pageSize, displayContext, displayLinks, apiKey);
+        bpService.propertySearch(q, sources, exactMatch, requireDefinitions, page, pageSize, displayContext, displayLinks, apiKey);
 
     return ObjectConverter.toPropertySearchResults(results);
   }

@@ -102,9 +102,11 @@ public class SearchResource extends AbstractTerminologyServerResource {
   @Timed
   @Path("/property_search")
   public Response propertySearch(@QueryParam("q") @NotEmpty String q,
-                         @QueryParam("sources") String sources,
-                         @QueryParam("page") @DefaultValue("1") int page,
-                         @QueryParam("page_size") int pageSize) throws CedarException {
+                                 @QueryParam("sources") String sources,
+                                 @QueryParam("exact_match") boolean exactMatch,
+                                 @QueryParam("require_definitions") boolean requireDefinitions,
+                                 @QueryParam("page") @DefaultValue("1") int page,
+                                 @QueryParam("page_size") int pageSize) throws CedarException {
 
     CedarRequestContext c = CedarRequestContextFactory.fromRequest(request);
     c.must(c.user()).be(LoggedIn);
@@ -119,8 +121,8 @@ public class SearchResource extends AbstractTerminologyServerResource {
       if (sources != null && sources.length() > 0) {
         sourcesList = Arrays.asList(sources.split("\\s*,\\s*"));
       }
-      PagedResults results = terminologyService.propertySearch(q, sourcesList, page, pageSize, false,
-          true, apiKey);
+      PagedResults results = terminologyService.propertySearch(q, sourcesList, exactMatch, requireDefinitions,
+          page, pageSize, false, true, apiKey);
       JsonNode output = JsonMapper.MAPPER.valueToTree(results);
       return Response.ok().entity(output).build();
     } catch (HTTPException e) {

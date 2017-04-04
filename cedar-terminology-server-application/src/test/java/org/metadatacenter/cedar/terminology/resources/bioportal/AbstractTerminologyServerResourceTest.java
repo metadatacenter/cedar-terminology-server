@@ -35,6 +35,7 @@ public abstract class AbstractTerminologyServerResourceTest {
   protected static final String BASE_URL = "http://localhost";
   protected static String baseUrlBp;
   protected static String baseUrlBpSearch;
+  protected static String baseUrlBpPropertySearch;
   protected static String baseUrlBpOntologies;
   protected static String baseUrlBpVSCollections;
 
@@ -67,6 +68,7 @@ public abstract class AbstractTerminologyServerResourceTest {
 
     baseUrlBp = BASE_URL + ":" + RULE.getLocalPort() + "/" + BP_ENDPOINT;
     baseUrlBpSearch = baseUrlBp + "/" + BP_SEARCH;
+    baseUrlBpPropertySearch = baseUrlBp + "/" + BP_PROPERTY_SEARCH;
     baseUrlBpOntologies = baseUrlBp + "/" + BP_ONTOLOGIES;
     baseUrlBpVSCollections = baseUrlBp + "/" + BP_VALUE_SET_COLLECTIONS;
 
