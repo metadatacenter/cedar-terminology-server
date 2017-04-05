@@ -269,7 +269,7 @@ public class SearchResourceTest extends AbstractTerminologyServerResourceTest {
     JsonNode jsonResponse = response.readEntity(JsonNode.class);
     JsonNode results = jsonResponse.get("collection");
     // Check that there are some results
-    Assert.assertTrue("No search results obtained for '" + q, results.size() > 0);
+    Assert.assertTrue("No search results obtained for '" + q + "'", results.size() > 0);
     // Check that all properties found contain at least one definition
     // TODO: We are just checking the first page of results. Check all of them.
     for (JsonNode r : results) {
