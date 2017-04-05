@@ -1,5 +1,6 @@
 package org.metadatacenter.cedar.terminology.resources.bioportal;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import io.dropwizard.client.JerseyClientBuilder;
 import io.dropwizard.testing.ResourceHelpers;
 import io.dropwizard.testing.junit.DropwizardAppRule;
@@ -8,15 +9,17 @@ import org.junit.*;
 import org.metadatacenter.cedar.terminology.TerminologyServerApplicationTest;
 import org.metadatacenter.cedar.terminology.TerminologyServerConfiguration;
 import org.metadatacenter.config.CedarConfig;
-import org.metadatacenter.terms.domainObjects.OntologyClass;
-import org.metadatacenter.terms.domainObjects.Relation;
-import org.metadatacenter.terms.domainObjects.Value;
-import org.metadatacenter.terms.domainObjects.ValueSet;
+import org.metadatacenter.terms.bioportal.customObjects.BpPagedResults;
+import org.metadatacenter.terms.customObjects.PagedResults;
+import org.metadatacenter.terms.domainObjects.*;
 import org.metadatacenter.terms.util.Util;
 import org.metadatacenter.util.test.TestUserUtil;
 
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.Entity;
+import javax.ws.rs.core.GenericType;
+import javax.ws.rs.core.HttpHeaders;
+import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
@@ -325,6 +328,19 @@ public abstract class AbstractTerminologyServerResourceTest {
         throw new Exception("Couldn't find value: Id = " + v.getId());
       }
     }
+  }
+
+  /* Properties */
+  protected static PagedResults<OntologyProperty> searchProperties(String q) {
+    // Service invocation
+    Response response = client.target(baseUrlBpPropertySearch).queryParam("q", q).request().header("Authorization", authHeader).get();
+    // Check HTTP response
+    Assert.assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+    // Check Content-Type
+    Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
+    // Check the number of results
+    PagedResults<OntologyProperty> properties = response.readEntity(new GenericType<PagedResults<OntologyProperty>>() {});
+    return properties;
   }
 
 }

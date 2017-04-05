@@ -13,6 +13,7 @@ import java.util.Objects;
 import static org.metadatacenter.terms.util.Constants.*;
 
 public class ObjectConverter {
+
   /**
    * To BioPortal objects
    **/
@@ -133,6 +134,16 @@ public class ObjectConverter {
         pc.getSynonym(), relations, provisional, pc.getCreated());
   }
 
+  public static OntologyProperty toOntologyProperty(BpProperty p) {
+    String type = BP_TYPE_PROPERTY;
+    String source = p.getLinks().getOntology();
+    // Note that for null lists, we return an empty list
+    return new OntologyProperty(p.getId(), p.getId(), BP_TYPE_BASE + type, type,
+        p.getPropertyType(), p.getLabel() == null ? new ArrayList<>() : p.getLabel(),
+        p.getLabelGenerated() == null ? new ArrayList<>() : p.getLabelGenerated(),
+        p.getDefinition() == null ? new ArrayList<>() : p.getDefinition(), source);
+  }
+
   public static PagedResults<ValueSet> toValueSetResults(BpPagedResults<BpClass> bpr) {
     List<ValueSet> valueSets = new ArrayList<>();
     for (BpClass c : bpr.getCollection()) {
@@ -205,20 +216,23 @@ public class ObjectConverter {
         bpr.getNextPage(), results);
   }
 
-  public static PagedResults<PropertySearchResult> toPropertySearchResults(BpPagedResults<BpProperty> bpr) {
-    List<PropertySearchResult> results = new ArrayList<>();
+  public static PagedResults<OntologyProperty> toPropertyResults(BpPagedResults<BpProperty> bpr) {
+    List<OntologyProperty> results = new ArrayList<>();
     for (BpProperty p : bpr.getCollection()) {
-      // Assign information depending on the result type
-      String type = BP_TYPE_PROPERTY;
-      String source = p.getLinks().getOntology();
       // Note that for null lists, we return an empty list
-      PropertySearchResult r = new PropertySearchResult(p.getId(), p.getId(), BP_TYPE_BASE + type, type,
-          p.getPropertyType(), p.getLabel() == null ? new ArrayList<>() : p.getLabel(),
-          p.getLabelGenerated() == null ? new ArrayList<>() : p.getLabelGenerated(),
-          p.getDefinition() == null ? new ArrayList<>() : p.getDefinition(), source);
+      OntologyProperty r = toOntologyProperty(p);
       results.add(r);
     }
     return new PagedResults<>(bpr.getPage(), bpr.getPageCount(), bpr.getCollection().size(), bpr.getPrevPage(), bpr.getNextPage(), results);
+  }
+
+  public static List<OntologyProperty> toPropertyListResults(List<BpProperty> bpr) {
+    List<OntologyProperty> results = new ArrayList<>();
+    for (BpProperty p : bpr) {
+      OntologyProperty r = toOntologyProperty(p);
+      results.add(r);
+    }
+    return results;
   }
 
   public static TreeNode toTreeNode(BpTreeNode bpTreeNode) {

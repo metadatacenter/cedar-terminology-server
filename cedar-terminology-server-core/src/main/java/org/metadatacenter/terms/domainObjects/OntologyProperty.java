@@ -6,7 +6,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import java.util.List;
 
 @JsonPropertyOrder({"id", "@id", "@type", "type", "propertyType", "labels", "labelsGenerated", "definitions", "source"})
-public class PropertySearchResult {
+public class OntologyProperty {
   private String id;
   @JsonProperty("@id")
   private String ldId;
@@ -20,10 +20,10 @@ public class PropertySearchResult {
   private String source;
 
   // The default constructor is used by Jackson for deserialization
-  public PropertySearchResult() {
+  public OntologyProperty() {
   }
 
-  public PropertySearchResult(String id, String ldId, String ldType, String type, String propertyType, List<String>
+  public OntologyProperty(String id, String ldId, String ldType, String type, String propertyType, List<String>
       labels, List<String> labelsGenerated, List<String> definitions, String source) {
     this.id = id;
     this.ldId = ldId;
@@ -104,7 +104,7 @@ public class PropertySearchResult {
 
   @Override
   public String toString() {
-    return "PropertySearchResult{" +
+    return "OntologyPropertySearchResult{" +
         "id='" + id + '\'' +
         ", ldId='" + ldId + '\'' +
         ", ldType='" + ldType + '\'' +

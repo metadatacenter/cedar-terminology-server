@@ -56,6 +56,7 @@ public class TerminologyServerApplication extends CedarMicroserviceApplication<T
     environment.jersey().register(new ValueSetCollectionResource(cedarConfig));
     environment.jersey().register(new ValueSetResource(cedarConfig));
     environment.jersey().register(new ValueResource(cedarConfig));
+    environment.jersey().register(new PropertyResource(cedarConfig));
 
     final TerminologyServerHealthCheck healthCheck = new TerminologyServerHealthCheck();
     environment.healthChecks().register("message", healthCheck);

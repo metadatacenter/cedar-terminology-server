@@ -7,10 +7,7 @@ import org.apache.http.HttpResponse;
 import org.apache.http.client.fluent.Request;
 import org.apache.http.util.EntityUtils;
 import org.metadatacenter.terms.bioportal.customObjects.BpPagedResults;
-import org.metadatacenter.terms.bioportal.dao.BpClassDAO;
-import org.metadatacenter.terms.bioportal.dao.BpOntologyDAO;
-import org.metadatacenter.terms.bioportal.dao.BpProvisionalClassDAO;
-import org.metadatacenter.terms.bioportal.dao.BpProvisionalRelationDAO;
+import org.metadatacenter.terms.bioportal.dao.*;
 import org.metadatacenter.terms.bioportal.domainObjects.*;
 import org.metadatacenter.terms.util.Util;
 
@@ -30,6 +27,7 @@ public class BioPortalService implements IBioPortalService
   private BpProvisionalRelationDAO bpProvRelationDAO;
   private BpClassDAO bpClassDAO;
   private BpOntologyDAO bpOntologyDAO;
+  private BpPropertyDAO bpPropertyDAO;
 
   /**
    * @param connectTimeout
@@ -43,6 +41,7 @@ public class BioPortalService implements IBioPortalService
     this.bpProvRelationDAO = new BpProvisionalRelationDAO(connectTimeout, socketTimeout);
     this.bpClassDAO = new BpClassDAO(connectTimeout, socketTimeout);
     this.bpOntologyDAO = new BpOntologyDAO(connectTimeout, socketTimeout);
+    this.bpPropertyDAO = new BpPropertyDAO(connectTimeout, socketTimeout);
   }
 
   /**
@@ -148,7 +147,7 @@ public class BioPortalService implements IBioPortalService
     /** Build url **/
     // TODO: use production url (BP_API_BASE)
     //String url =  BP_API_BASE + BP_PROPERTY_SEARCH + "?q=" + q;
-    String url =  "http://stagedata.bioontology.org/" + BP_PROPERTY_SEARCH + "?q=" + q;
+    String url =  BP_API_BASE_STAGING + BP_PROPERTY_SEARCH + "?q=" + q;
 
     /** Add sources **/
     if (sources.size() > 0) {
@@ -291,6 +290,14 @@ public class BioPortalService implements IBioPortalService
 
   public List<BpClass> getClassParents(String id, String ontology, String apiKey) throws IOException {
     return bpClassDAO.getParents(id, ontology, apiKey);
+  }
+
+  public BpProperty findBpPropertyById(String id, String ontology, String apiKey) throws IOException {
+    return bpPropertyDAO.find(id, ontology, apiKey);
+  }
+
+  public List<BpProperty> findAllPropertiesInOntology(String ontology, String apiKey) throws IOException {
+    return bpPropertyDAO.findAllPropertiesInOntology(ontology, apiKey);
   }
 
 }

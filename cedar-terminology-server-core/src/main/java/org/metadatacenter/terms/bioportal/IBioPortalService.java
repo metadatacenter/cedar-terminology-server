@@ -84,8 +84,16 @@ public interface IBioPortalService {
 
   BpProvisionalRelation findProvisionalRelationById(String id, String apiKey) throws IOException;
 
-//  void updateProvisionalRelation(BpProvisionalRelation r, String apiKey) throws IOException;
+  // void updateProvisionalRelation(BpProvisionalRelation r, String apiKey) throws IOException;
 
   void deleteProvisionalRelation(String id, String apiKey) throws IOException;
+
+  /**
+   * Properties
+   */
+
+  BpProperty findBpPropertyById(String id, String ontology, String apiKey) throws IOException;
+
+  List<BpProperty> findAllPropertiesInOntology(String ontology, String apiKey) throws IOException;
 
 }

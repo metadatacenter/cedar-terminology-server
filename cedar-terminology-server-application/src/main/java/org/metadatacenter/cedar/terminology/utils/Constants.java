@@ -13,6 +13,7 @@ public class Constants {
   public static final String BP_SEARCH = "search";
   public static final String BP_PROPERTY_SEARCH = "property_search";
   public static final String BP_CLASSES = "classes";
+  public static final String BP_PROPERTIES = "properties";
   public static final String BP_ONTOLOGIES = "ontologies";
   public static final String BP_TREE = "tree";
   public static final String BP_CHILDREN = "children";

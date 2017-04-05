@@ -16,7 +16,7 @@ public interface ITerminologyService {
       subtreeRootId, int maxDepth, int page, int pageSize, boolean displayContext,
                                     boolean displayLinks, String apiKey, List<String> valueSetsIds) throws IOException;
 
-  PagedResults<PropertySearchResult> propertySearch(String q, List<String> sources, boolean exactMatch, boolean
+  PagedResults<OntologyProperty> propertySearch(String q, List<String> sources, boolean exactMatch, boolean
       requireDefinitions, int page, int pageSize, boolean displayContext, boolean displayLinks, String apiKey) throws
       IOException;
 
@@ -125,4 +125,12 @@ public interface ITerminologyService {
   void updateProvisionalValue(Value v, String apiKey) throws IOException;
 
   void deleteProvisionalValue(String id, String apiKey) throws IOException;
+
+  /**
+   * Properties
+   */
+
+  OntologyProperty findProperty(String id, String ontology, String apiKey) throws IOException;
+
+  List<OntologyProperty> findAllPropertiesInOntology(String ontology, String apiKey) throws IOException;
 }

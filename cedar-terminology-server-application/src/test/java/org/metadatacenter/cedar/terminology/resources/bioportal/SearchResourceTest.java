@@ -8,7 +8,6 @@ import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
-import java.util.List;
 
 /**
  * Integration tests. They are done by starting a test server that makes it possible to test the real HTTP stack.
