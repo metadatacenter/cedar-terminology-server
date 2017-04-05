@@ -13,7 +13,6 @@ public class OntologyProperty {
   @JsonProperty("@type")
   private String ldType;
   private String type;
-  private String propertyType;
   private List<String> labels;
   private List<String> labelsGenerated;
   private List<String> definitions;
@@ -23,13 +22,12 @@ public class OntologyProperty {
   public OntologyProperty() {
   }
 
-  public OntologyProperty(String id, String ldId, String ldType, String type, String propertyType, List<String>
+  public OntologyProperty(String id, String ldId, String ldType, String type, List<String>
       labels, List<String> labelsGenerated, List<String> definitions, String source) {
     this.id = id;
     this.ldId = ldId;
     this.ldType = ldType;
     this.type = type;
-    this.propertyType = propertyType;
     this.labels = labels;
     this.labelsGenerated = labelsGenerated;
     this.definitions = definitions;
@@ -68,14 +66,6 @@ public class OntologyProperty {
     this.type = type;
   }
 
-  public String getPropertyType() {
-    return propertyType;
-  }
-
-  public void setPropertyType(String propertyType) {
-    this.propertyType = propertyType;
-  }
-
   public List<String> getLabels() {
     return labels;
   }
@@ -109,7 +99,6 @@ public class OntologyProperty {
         ", ldId='" + ldId + '\'' +
         ", ldType='" + ldType + '\'' +
         ", type='" + type + '\'' +
-        ", propertyType='" + propertyType + '\'' +
         ", labels=" + labels +
         ", labelsGenerated=" + labelsGenerated +
         ", definitions=" + definitions +

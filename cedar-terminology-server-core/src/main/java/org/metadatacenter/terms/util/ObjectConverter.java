@@ -135,11 +135,10 @@ public class ObjectConverter {
   }
 
   public static OntologyProperty toOntologyProperty(BpProperty p) {
-    String type = BP_TYPE_PROPERTY;
     String source = p.getLinks().getOntology();
     // Note that for null lists, we return an empty list
-    return new OntologyProperty(p.getId(), p.getId(), BP_TYPE_BASE + type, type,
-        p.getPropertyType(), p.getLabel() == null ? new ArrayList<>() : p.getLabel(),
+    return new OntologyProperty(p.getId(), p.getId(), p.getType(), Util.getShortPropertyType(p.getType()),
+        p.getLabel() == null ? new ArrayList<>() : p.getLabel(),
         p.getLabelGenerated() == null ? new ArrayList<>() : p.getLabelGenerated(),
         p.getDefinition() == null ? new ArrayList<>() : p.getDefinition(), source);
   }
