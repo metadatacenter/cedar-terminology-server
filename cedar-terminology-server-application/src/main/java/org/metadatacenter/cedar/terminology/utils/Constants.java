@@ -28,7 +28,6 @@ public class Constants {
   public static final String TEST_CACHE_FOLDER_NAME = "src/test/resources/test_cache";
   public static final String ONTOLOGIES_CACHE_FILE = "ontologies.cache";
   public static final String VALUE_SETS_CACHE_FILE = "value-sets.cache";
-  public static final String APP_NAME = "cedar-terminology-server";
   public static final String TEST_APP_NAME = "terminology-server-test";
 
   // PRIVATE //

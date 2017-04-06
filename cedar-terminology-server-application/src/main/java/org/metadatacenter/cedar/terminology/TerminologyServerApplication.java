@@ -8,9 +8,9 @@ import org.metadatacenter.cedar.terminology.resources.AbstractTerminologyServerR
 import org.metadatacenter.cedar.terminology.resources.IndexResource;
 import org.metadatacenter.cedar.terminology.resources.bioportal.*;
 import org.metadatacenter.cedar.util.dw.CedarMicroserviceApplication;
+import org.metadatacenter.model.ServerName;
 import org.metadatacenter.terms.TerminologyService;
 
-import static org.metadatacenter.cedar.terminology.utils.Constants.APP_NAME;
 import static org.metadatacenter.cedar.terminology.utils.Constants.TEST_APP_NAME;
 
 public class TerminologyServerApplication extends CedarMicroserviceApplication<TerminologyServerConfiguration> {
@@ -22,8 +22,8 @@ public class TerminologyServerApplication extends CedarMicroserviceApplication<T
   }
 
   @Override
-  public String getName() {
-    return APP_NAME;
+  protected ServerName getServerName() {
+    return ServerName.TERMINOLOGY;
   }
 
   @Override
