@@ -54,6 +54,26 @@ public class SearchResourceTest extends AbstractTerminologyServerResourceTest {
   }
 
   @Test
+  public void searchClassesAndValuesTest() {
+    // Query parameters
+    String q = "white blood cell";
+    String scope = "classes,values";
+    // Service invocation
+    Response response = client.target(baseUrlBpSearch).queryParam("q", q).queryParam("scope", scope).request()
+        .header("Authorization", authHeader).get();
+    // Check HTTP response
+    Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
+    // Check Content-Type
+    Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
+    // Check the number of results
+    JsonNode jsonResponse = response.readEntity(JsonNode.class);
+    int pageCount = jsonResponse.get("pageCount").asInt();
+    int lowLimitPageCount = 2000;
+    Assert.assertTrue("The number of search results for '" + q + "' is lower than expected", pageCount >
+        lowLimitPageCount);
+  }
+
+  @Test
   public void searchClassesBySourceTest() {
     // Query parameters
     String q = "cell";
