@@ -7,10 +7,7 @@ import org.apache.http.HttpResponse;
 import org.apache.http.client.fluent.Request;
 import org.apache.http.util.EntityUtils;
 import org.metadatacenter.terms.bioportal.customObjects.BpPagedResults;
-import org.metadatacenter.terms.bioportal.dao.BpClassDAO;
-import org.metadatacenter.terms.bioportal.dao.BpOntologyDAO;
-import org.metadatacenter.terms.bioportal.dao.BpProvisionalClassDAO;
-import org.metadatacenter.terms.bioportal.dao.BpProvisionalRelationDAO;
+import org.metadatacenter.terms.bioportal.dao.*;
 import org.metadatacenter.terms.bioportal.domainObjects.*;
 import org.metadatacenter.terms.util.Util;
 
@@ -30,6 +27,7 @@ public class BioPortalService implements IBioPortalService
   private BpProvisionalRelationDAO bpProvRelationDAO;
   private BpClassDAO bpClassDAO;
   private BpOntologyDAO bpOntologyDAO;
+  private BpPropertyDAO bpPropertyDAO;
 
   /**
    * @param connectTimeout
@@ -43,10 +41,11 @@ public class BioPortalService implements IBioPortalService
     this.bpProvRelationDAO = new BpProvisionalRelationDAO(connectTimeout, socketTimeout);
     this.bpClassDAO = new BpClassDAO(connectTimeout, socketTimeout);
     this.bpOntologyDAO = new BpOntologyDAO(connectTimeout, socketTimeout);
+    this.bpPropertyDAO = new BpPropertyDAO(connectTimeout, socketTimeout);
   }
 
   /**
-   * Search for ontology classes and value set items. Provisional classes are included.
+   * Search for ontology classes, value sets, and value set items. Provisional classes are included.
    */
   public BpPagedResults<BpClass> search(String q, List<String> scope, List<String> sources, boolean suggest, String source, String subtreeRootId, int maxDepth, int page, int pageSize,
     boolean displayContext, boolean displayLinks, String apiKey) throws IOException
@@ -132,6 +131,55 @@ public class BioPortalService implements IBioPortalService
       ObjectMapper mapper = new ObjectMapper();
       JsonNode bpResult = mapper.readTree(new String(EntityUtils.toByteArray(response.getEntity())));
       return mapper.readValue(mapper.treeAsTokens(bpResult), new TypeReference<BpPagedResults<BpClass>>() {});
+    } else {
+      throw new HTTPException(statusCode);
+    }
+  }
+
+  /**
+   * Search for ontology properties.
+   */
+  public BpPagedResults<BpProperty> propertySearch(String q, List<String> sources, boolean exactMatch, boolean
+      requireDefinitions, int page, int pageSize, boolean displayContext, boolean displayLinks, String apiKey) throws IOException
+  {
+    // Encode query
+    q = Util.encodeIfNeeded(q);
+    /** Build url **/
+    String url =  BP_API_BASE + BP_PROPERTY_SEARCH + "?q=" + q;
+
+    /** Add sources **/
+    if (sources.size() > 0) {
+      url += "&ontologies=" + (sources.stream().map(number -> String.valueOf(number)).collect(Collectors.joining(",")));
+    }
+
+    /** Add exactMatch **/
+    if (exactMatch == true) {
+      url += "&require_exact_match=true";
+    }
+
+    /** Add requireDefinitions **/
+    if (requireDefinitions == true) {
+      url += "&require_definitions=true";
+    }
+
+    /** Add page and pageSize **/
+    url += "&page=" + page + "&pagesize=" + pageSize;
+
+    /** Add displayContext and DisplayLinks **/
+    url += "&display_context=" + displayContext + "&display_links=" + displayLinks;
+
+    System.out.println("Search url: " + url);
+
+    // Send request to the BioPortal API
+    HttpResponse response = Request.Get(url).addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
+        connectTimeout(connectTimeout).socketTimeout(socketTimeout).execute().returnResponse();
+
+    int statusCode = response.getStatusLine().getStatusCode();
+    // The request has succeeded
+    if (statusCode == 200) {
+      ObjectMapper mapper = new ObjectMapper();
+      JsonNode bpResult = mapper.readTree(new String(EntityUtils.toByteArray(response.getEntity())));
+      return mapper.readValue(mapper.treeAsTokens(bpResult), new TypeReference<BpPagedResults<BpProperty>>() {});
     } else {
       throw new HTTPException(statusCode);
     }
@@ -240,6 +288,14 @@ public class BioPortalService implements IBioPortalService
 
   public List<BpClass> getClassParents(String id, String ontology, String apiKey) throws IOException {
     return bpClassDAO.getParents(id, ontology, apiKey);
+  }
+
+  public BpProperty findBpPropertyById(String id, String ontology, String apiKey) throws IOException {
+    return bpPropertyDAO.find(id, ontology, apiKey);
+  }
+
+  public List<BpProperty> findAllPropertiesInOntology(String ontology, String apiKey) throws IOException {
+    return bpPropertyDAO.findAllPropertiesInOntology(ontology, apiKey);
   }
 
 }

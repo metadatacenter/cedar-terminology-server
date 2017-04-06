@@ -75,4 +75,14 @@ public class Util
     return id;
   }
 
+  /**
+   * http://www.w3.org/2002/07/owl#ObjectProperty" -> ObjectProperty
+   */
+  public static String getShortPropertyType(String propertyType) {
+    if (isUrl(propertyType)) {
+      return propertyType.substring(propertyType.lastIndexOf("#") + 1, propertyType.length());
+    }
+    return propertyType;
+  }
+
 }

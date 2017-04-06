@@ -5,10 +5,7 @@ swagger: "2.0"
 info:
   title: CEDAR Terminology Server API
   description: CEDAR Terminology Server API
-  version: "1.0.0"
-# host: terminology.metadatacenter.orgx
-# host: terminology.staging.metadatacenter.net
-# host: terminology.metadatacenter.net
+  version: "1.0.6"
 basePath: /bioportal
 schemes:
   - https
@@ -42,14 +39,14 @@ parameters:
   page:
     name: page
     in: query
-    description: Page to be returned. Example&#58; 7
+    description: Page to be returned. Example&#58; 7.
     type: integer
     required: false
     default: 1
   page_size:
     name: page_size
     in: query
-    description: Number of results per page. Example&#58; 10
+    description: Number of results per page. Example&#58; 10.
     type: integer
     required: false
     default: 50
@@ -68,19 +65,19 @@ parameters:
   class_id:
     name: id
     in: path
-    description: Class identifier. It must be URL encoded. Examples&#58; http%3A%2F%2Fdata.bioontology.org%2Fprovisional_classes%2F4f82a7f0-bbba-0133-b23e-005056010074 (provisional class). http%3A%2F%2Fncicb.nci.nih.gov%2Fxml%2Fowl%2FEVS%2FThesaurus.owl%23C3224 (regular class).
+    description: Class identifier. Examples&#58; http://data.bioontology.org/provisional_classes/4f82a7f0-bbba-0133-b23e-005056010074 (provisional class). http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C3224 (regular class).
     required: true
     type: string
   class_id_regular:
     name: id
     in: path
-    description: Class identifier. It must be URL encoded. Example&#58; http%3A%2F%2Fncicb.nci.nih.gov%2Fxml%2Fowl%2FEVS%2FThesaurus.owl%23C3224.
+    description: Class identifier. Example&#58; http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C3224.
     required: true
     type: string
   class_id_provisional:
     name: id
     in: path
-    description: Provisional class identifier. It must be URL encoded. Example&#58; http%3A%2F%2Fdata.bioontology.org%2Fprovisional_classes%2F4f82a7f0-bbba-0133-b23e-005056010074.
+    description: Provisional class identifier. Example&#58; http://data.bioontology.org/provisional_classes/4f82a7f0-bbba-0133-b23e-005056010074.
     required: true
     type: string
   relation_id:
@@ -104,13 +101,19 @@ parameters:
   vs:
     name: vs
     in: path
-    description: Value set identifier. Example&#58; http%3A%2F%2Fwww.semanticweb.org%2Fjgraybeal%2Fontologies%2F2015%2F7%2Fcedarvaluesets%23Study_File_Type
+    description: Value set identifier. Example&#58; http://www.semanticweb.org/jgraybeal/ontologies/2015/7/cedarvaluesets#Study_File_Type
     required: true
     type: string
   value_id:
     name: id
     in: path
     description: Value identifier. Example&#58; 42f22880-b04b-0133-848f-005056010073
+    required: true
+    type: string
+  property_id:
+    name: id
+    in: path
+    description: Property identifier. Examples&#58; http://id.loc.gov/ontologies/bibframe/place.
     required: true
     type: string
 ################################################################################
@@ -179,6 +182,46 @@ paths:
           required: false
           type: integer
           default: 1
+        - $ref: '#/parameters/page'
+        - $ref: '#/parameters/page_size'
+      responses:
+        200:
+          $ref: '#/responses/ok'
+        400:
+          $ref: '#/responses/bad_request'
+        401:
+          $ref: '#/responses/unauthorized'
+        500:
+          $ref: '#/responses/internal_error'
+      security:
+        - api_key: []
+  /property_search:
+    get:
+      summary: Property search
+      tags:
+        - Properties
+      description: Search for properties.
+      parameters:
+        - name: q
+          in: query
+          description: Search query. Example&#58; title.
+          required: true
+          type: string
+        - name: sources
+          in: query
+          description: Comma-separated list of target ontologies. Example&#58; 'ontologies=BIBFRAME'. By default, all BioPortal ontologies and value sets are considered.
+          required: false
+          type: string
+        - name: exact_match
+          in: query
+          description:  Restricts results only to the exact matches of the query in the property id, label, or the generated label (a label, auto-generated from the id). Default&#58; false.
+          required: false
+          type: boolean
+        - name: require_definitions
+          in: query
+          description: Filter results only to those that include definitions.
+          required: false
+          type: boolean
         - $ref: '#/parameters/page'
         - $ref: '#/parameters/page_size'
       responses:
@@ -877,9 +920,48 @@ paths:
           $ref: '#/responses/internal_error'
       security:
         - api_key: []
+  /ontologies/{ontology}/properties:
+    get:
+      summary: Get properties
+      tags:
+        - Properties
+      description: Get all properties from a specific ontology.
+      parameters:
+        - $ref: '#/parameters/ontology'
+      responses:
+        200:
+          $ref: '#/responses/ok'
+        400:
+          $ref: '#/responses/bad_request'
+        401:
+          $ref: '#/responses/unauthorized'
+        500:
+          $ref: '#/responses/internal_error'
+      security:
+        - api_key: []
+  /ontologies/{ontology}/properties/{id}:
+    get:
+      summary: Find property
+      tags:
+        - Properties
+      description: Find property by id.
+      parameters:
+        - $ref: '#/parameters/ontology'
+        - $ref: '#/parameters/property_id'
+      responses:
+        200:
+          $ref: '#/responses/ok'
+        400:
+          $ref: '#/responses/bad_request'
+        401:
+          $ref: '#/responses/unauthorized'
+        404:
+          $ref: '#/responses/not_found'
+        500:
+          $ref: '#/responses/internal_error'
+      security:
+        - api_key: []
 ################################################################################
 #                              Definitions                                     #
 ################################################################################
 # TODO: Object definitions.
-
-

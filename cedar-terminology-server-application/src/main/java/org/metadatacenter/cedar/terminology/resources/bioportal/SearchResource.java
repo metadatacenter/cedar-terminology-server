@@ -36,6 +36,9 @@ public class SearchResource extends AbstractTerminologyServerResource {
     super(cedarConfig);
   }
 
+  /**
+   * Search for classes, value sets and values
+   */
   @GET
   @Timed
   @Path("/search")
@@ -92,4 +95,40 @@ public class SearchResource extends AbstractTerminologyServerResource {
     }
   }
 
+  /**
+   * Search for properties
+   */
+  @GET
+  @Timed
+  @Path("/property_search")
+  public Response propertySearch(@QueryParam("q") @NotEmpty String q,
+                                 @QueryParam("sources") String sources,
+                                 @QueryParam("exact_match") boolean exactMatch,
+                                 @QueryParam("require_definitions") boolean requireDefinitions,
+                                 @QueryParam("page") @DefaultValue("1") int page,
+                                 @QueryParam("page_size") int pageSize) throws CedarException {
+
+    CedarRequestContext c = CedarRequestContextFactory.fromRequest(request);
+    c.must(c.user()).be(LoggedIn);
+
+    try {
+      // If pageSize not defined, set default value
+      if (pageSize == 0) {
+        pageSize = defaultPageSize;
+      }
+      // Sources list
+      List<String> sourcesList = new ArrayList<>();
+      if (sources != null && sources.length() > 0) {
+        sourcesList = Arrays.asList(sources.split("\\s*,\\s*"));
+      }
+      PagedResults results = terminologyService.propertySearch(q, sourcesList, exactMatch, requireDefinitions,
+          page, pageSize, false, true, apiKey);
+      JsonNode output = JsonMapper.MAPPER.valueToTree(results);
+      return Response.ok().entity(output).build();
+    } catch (HTTPException e) {
+      return Response.status(e.getStatusCode()).build();
+    } catch (IOException e) {
+      throw new CedarAssertionException(e);
+    }
+  }
 }

@@ -17,14 +17,10 @@ import static org.metadatacenter.terms.util.Constants.*;
 
 public class TerminologyService implements ITerminologyService {
 
-  private final int connectTimeout;
-  private final int socketTimeout;
   private BioPortalService bpService;
 
   public TerminologyService(String bpApiBasePath, int connectTimeout, int socketTimeout) {
     BP_API_BASE = bpApiBasePath;
-    this.connectTimeout = connectTimeout;
-    this.socketTimeout = socketTimeout;
     this.bpService = new BioPortalService(connectTimeout, socketTimeout);
   }
 
@@ -36,6 +32,15 @@ public class TerminologyService implements ITerminologyService {
         page, pageSize, displayContext, displayLinks, apiKey);
 
     return ObjectConverter.toSearchResults(results, valueSetsIds);
+  }
+
+  public PagedResults<OntologyProperty> propertySearch(String q, List<String> sources, boolean exactMatch, boolean
+      requireDefinitions, int page, int pageSize, boolean displayContext, boolean displayLinks, String apiKey) throws IOException {
+
+    BpPagedResults<BpProperty> results =
+        bpService.propertySearch(q, sources, exactMatch, requireDefinitions, page, pageSize, displayContext, displayLinks, apiKey);
+
+    return ObjectConverter.toPropertyResults(results);
   }
 
   public List<Ontology> findAllOntologies(boolean includeDetails, String apiKey) throws IOException {
@@ -530,5 +535,15 @@ public class TerminologyService implements ITerminologyService {
 
   public void deleteProvisionalValue(String id, String apiKey) throws IOException {
     bpService.deleteProvisionalClass(id, apiKey);
+  }
+
+  public OntologyProperty findProperty(String id, String ontology, String apiKey) throws IOException {
+    BpProperty bp = bpService.findBpPropertyById(id, ontology, apiKey);
+    return ObjectConverter.toOntologyProperty(bp);
+  }
+
+  public List<OntologyProperty> findAllPropertiesInOntology(String ontology, String apiKey) throws IOException {
+    List<BpProperty> properties = bpService.findAllPropertiesInOntology(ontology, apiKey);
+    return ObjectConverter.toPropertyListResults(properties);
   }
 }
