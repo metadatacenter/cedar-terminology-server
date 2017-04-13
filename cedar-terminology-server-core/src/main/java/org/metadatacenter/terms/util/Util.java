@@ -1,5 +1,7 @@
 package org.metadatacenter.terms.util;
 
+import org.metadatacenter.terms.bioportal.domainObjects.BpProperty;
+
 import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -83,6 +85,21 @@ public class Util
       return propertyType.substring(propertyType.lastIndexOf("#") + 1, propertyType.length());
     }
     return propertyType;
+  }
+
+  /**
+   * Generates the preferred label of a BioPortal property
+   */
+  public static String generatePropertyPreferredLabel(BpProperty property) {
+    if (property.getLabel() != null && property.getLabel().size() > 0) {
+      return property.getLabel().get(0);
+    }
+    else if (property.getLabelGenerated() != null && property.getLabelGenerated().size() > 0) {
+      return property.getLabelGenerated().get(0);
+    }
+    else {
+      return "Not available";
+    }
   }
 
 }

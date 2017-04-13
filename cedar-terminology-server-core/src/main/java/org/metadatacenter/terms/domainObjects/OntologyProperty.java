@@ -5,7 +5,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 
 import java.util.List;
 
-@JsonPropertyOrder({"id", "@id", "@type", "type", "propertyType", "labels", "labelsGenerated", "definitions", "source"})
+@JsonPropertyOrder({"id", "@id", "@type", "type", "prefLabel", "labels", "labelsGenerated", "definitions", "source"})
 public class OntologyProperty {
   private String id;
   @JsonProperty("@id")
@@ -13,21 +13,22 @@ public class OntologyProperty {
   @JsonProperty("@type")
   private String ldType;
   private String type;
+  private String prefLabel;
   private List<String> labels;
   private List<String> labelsGenerated;
   private List<String> definitions;
   private String source;
 
   // The default constructor is used by Jackson for deserialization
-  public OntologyProperty() {
-  }
+  public OntologyProperty() {}
 
-  public OntologyProperty(String id, String ldId, String ldType, String type, List<String>
-      labels, List<String> labelsGenerated, List<String> definitions, String source) {
+  public OntologyProperty(String id, String ldId, String ldType, String type, String prefLabel,
+                          List<String> labels, List<String> labelsGenerated, List<String> definitions, String source) {
     this.id = id;
     this.ldId = ldId;
     this.ldType = ldType;
     this.type = type;
+    this.prefLabel = prefLabel;
     this.labels = labels;
     this.labelsGenerated = labelsGenerated;
     this.definitions = definitions;
@@ -66,6 +67,14 @@ public class OntologyProperty {
     this.type = type;
   }
 
+  public String getPrefLabel() {
+    return prefLabel;
+  }
+
+  public void setPrefLabel(String prefLabel) {
+    this.prefLabel = prefLabel;
+  }
+
   public List<String> getLabels() {
     return labels;
   }
@@ -74,15 +83,21 @@ public class OntologyProperty {
     this.labels = labels;
   }
 
-  public List<String> getLabelsGenerated() { return labelsGenerated; }
+  public List<String> getLabelsGenerated() {
+    return labelsGenerated;
+  }
 
   public void setLabelsGenerated(List<String> labelsGenerated) {
     this.labelsGenerated = labelsGenerated;
   }
 
-  public List<String> getDefinitions() { return definitions; }
+  public List<String> getDefinitions() {
+    return definitions;
+  }
 
-  public void setDefinitions(List<String> definitions) { this.definitions = definitions; }
+  public void setDefinitions(List<String> definitions) {
+    this.definitions = definitions;
+  }
 
   public String getSource() {
     return source;
@@ -94,15 +109,17 @@ public class OntologyProperty {
 
   @Override
   public String toString() {
-    return "OntologyPropertySearchResult{" +
+    return "OntologyProperty{" +
         "id='" + id + '\'' +
         ", ldId='" + ldId + '\'' +
         ", ldType='" + ldType + '\'' +
         ", type='" + type + '\'' +
+        ", prefLabel='" + prefLabel + '\'' +
         ", labels=" + labels +
         ", labelsGenerated=" + labelsGenerated +
         ", definitions=" + definitions +
         ", source='" + source + '\'' +
         '}';
   }
+
 }
