@@ -138,6 +138,7 @@ public class ObjectConverter {
     String source = p.getLinks().getOntology();
     // Note that for null lists, we return an empty list
     return new OntologyProperty(p.getId(), p.getId(), p.getType(), Util.getShortPropertyType(p.getType()),
+        Util.generatePropertyPreferredLabel(p),
         p.getLabel() == null ? new ArrayList<>() : p.getLabel(),
         p.getLabelGenerated() == null ? new ArrayList<>() : p.getLabelGenerated(),
         p.getDefinition() == null ? new ArrayList<>() : p.getDefinition(), source);
@@ -307,6 +308,5 @@ public class ObjectConverter {
     }
     return strings;
   }
-
 
 }
