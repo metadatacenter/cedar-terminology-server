@@ -1,7 +1,6 @@
 package org.metadatacenter.terms.bioportal.dao;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.fluent.Request;
 import org.apache.http.util.EntityUtils;
@@ -15,9 +14,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.metadatacenter.terms.util.Constants.BP_API_BASE;
-import static org.metadatacenter.terms.util.Constants.BP_INCLUDE_ALL;
-import static org.metadatacenter.terms.util.Constants.BP_ONTOLOGIES;
+import static org.metadatacenter.terms.util.Constants.*;
+import static org.metadatacenter.util.json.JsonMapper.MAPPER;
 
 public class BpOntologyDAO {
 
@@ -39,9 +37,8 @@ public class BpOntologyDAO {
     int statusCode = response.getStatusLine().getStatusCode();
     // The ontology was successfully retrieved
     if (statusCode == 200) {
-      ObjectMapper mapper = new ObjectMapper();
-      JsonNode bpResult = mapper.readTree(new String(EntityUtils.toByteArray(response.getEntity())));
-      return mapper.convertValue(bpResult, BpOntology.class);
+      JsonNode bpResult = MAPPER.readTree(new String(EntityUtils.toByteArray(response.getEntity())));
+      return MAPPER.convertValue(bpResult, BpOntology.class);
     } else {
       throw new HTTPException(statusCode);
     }
@@ -57,9 +54,8 @@ public class BpOntologyDAO {
     int statusCode = response.getStatusLine().getStatusCode();
     // The ontology was successfully retrieved
     if (statusCode == 200) {
-      ObjectMapper mapper = new ObjectMapper();
-      JsonNode bpResult = mapper.readTree(new String(EntityUtils.toByteArray(response.getEntity())));
-      return mapper.convertValue(bpResult, BpOntologySubmission.class);
+      JsonNode bpResult = MAPPER.readTree(new String(EntityUtils.toByteArray(response.getEntity())));
+      return MAPPER.convertValue(bpResult, BpOntologySubmission.class);
     } else {
       throw new HTTPException(statusCode);
     }
@@ -75,11 +71,10 @@ public class BpOntologyDAO {
     int statusCode = response.getStatusLine().getStatusCode();
     // The ontologies were successfully retrieved
     if (statusCode == 200) {
-      ObjectMapper mapper = new ObjectMapper();
-      JsonNode bpResult = mapper.readTree(new String(EntityUtils.toByteArray(response.getEntity())));
+      JsonNode bpResult = MAPPER.readTree(new String(EntityUtils.toByteArray(response.getEntity())));
       List<BpOntology> ontologies = new ArrayList<>();
       for (JsonNode n : bpResult) {
-        ontologies.add(mapper.convertValue(n, BpOntology.class));
+        ontologies.add(MAPPER.convertValue(n, BpOntology.class));
       }
       return ontologies;
     } else {
@@ -97,9 +92,8 @@ public class BpOntologyDAO {
     int statusCode = response.getStatusLine().getStatusCode();
     // The ontology was successfully retrieved
     if (statusCode == 200) {
-      ObjectMapper mapper = new ObjectMapper();
-      JsonNode bpResult = mapper.readTree(new String(EntityUtils.toByteArray(response.getEntity())));
-      return mapper.convertValue(bpResult, BpOntologyMetrics.class);
+      JsonNode bpResult = MAPPER.readTree(new String(EntityUtils.toByteArray(response.getEntity())));
+      return MAPPER.convertValue(bpResult, BpOntologyMetrics.class);
     } else {
       throw new HTTPException(statusCode);
     }
@@ -115,11 +109,10 @@ public class BpOntologyDAO {
     int statusCode = response.getStatusLine().getStatusCode();
     // The ontology was successfully retrieved
     if (statusCode == 200) {
-      ObjectMapper mapper = new ObjectMapper();
-      JsonNode bpResult = mapper.readTree(new String(EntityUtils.toByteArray(response.getEntity())));
+      JsonNode bpResult = MAPPER.readTree(new String(EntityUtils.toByteArray(response.getEntity())));
       List<BpOntologyCategory> categories = new ArrayList<>();
       for (JsonNode n : bpResult) {
-        categories.add(mapper.convertValue(n, BpOntologyCategory.class));
+        categories.add(MAPPER.convertValue(n, BpOntologyCategory.class));
       }
       return categories;
     } else {
@@ -137,11 +130,31 @@ public class BpOntologyDAO {
     int statusCode = response.getStatusLine().getStatusCode();
     // Success
     if (statusCode == 200) {
-      ObjectMapper mapper = new ObjectMapper();
-      JsonNode bpResult = mapper.readTree(new String(EntityUtils.toByteArray(response.getEntity())));
+      JsonNode bpResult = MAPPER.readTree(new String(EntityUtils.toByteArray(response.getEntity())));
       List<BpClass> roots = new ArrayList<>();
       for (JsonNode n : bpResult) {
-        roots.add(mapper.convertValue(n, BpClass.class));
+        roots.add(MAPPER.convertValue(n, BpClass.class));
+      }
+      return roots;
+    } else {
+      throw new HTTPException(statusCode);
+    }
+  }
+
+  public List<BpProperty> getRootProperties(String id, String apiKey) throws IOException {
+    String url = BP_API_BASE + BP_ONTOLOGIES + id + "/" + Constants.BP_PROPERTIES + "roots";
+
+    HttpResponse response = HttpUtil.makeHttpRequest(Request.Get(url)
+        .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
+            connectTimeout(connectTimeout).socketTimeout(socketTimeout));
+
+    int statusCode = response.getStatusLine().getStatusCode();
+    // Success
+    if (statusCode == 200) {
+      JsonNode bpResult = MAPPER.readTree(new String(EntityUtils.toByteArray(response.getEntity())));
+      List<BpProperty> roots = new ArrayList<>();
+      for (JsonNode n : bpResult) {
+        roots.add(MAPPER.convertValue(n, BpProperty.class));
       }
       return roots;
     } else {

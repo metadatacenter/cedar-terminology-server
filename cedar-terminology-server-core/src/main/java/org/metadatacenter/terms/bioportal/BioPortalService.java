@@ -2,7 +2,6 @@ package org.metadatacenter.terms.bioportal;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.fluent.Request;
 import org.apache.http.util.EntityUtils;
@@ -17,6 +16,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import static org.metadatacenter.terms.util.Constants.*;
+import static org.metadatacenter.util.json.JsonMapper.MAPPER;
 
 
 public class BioPortalService implements IBioPortalService
@@ -128,9 +128,8 @@ public class BioPortalService implements IBioPortalService
     int statusCode = response.getStatusLine().getStatusCode();
     // The request has succeeded
     if (statusCode == 200) {
-      ObjectMapper mapper = new ObjectMapper();
-      JsonNode bpResult = mapper.readTree(new String(EntityUtils.toByteArray(response.getEntity())));
-      return mapper.readValue(mapper.treeAsTokens(bpResult), new TypeReference<BpPagedResults<BpClass>>() {});
+      JsonNode bpResult = MAPPER.readTree(new String(EntityUtils.toByteArray(response.getEntity())));
+      return MAPPER.readValue(MAPPER.treeAsTokens(bpResult), new TypeReference<BpPagedResults<BpClass>>() {});
     } else {
       throw new HTTPException(statusCode);
     }
@@ -177,9 +176,8 @@ public class BioPortalService implements IBioPortalService
     int statusCode = response.getStatusLine().getStatusCode();
     // The request has succeeded
     if (statusCode == 200) {
-      ObjectMapper mapper = new ObjectMapper();
-      JsonNode bpResult = mapper.readTree(new String(EntityUtils.toByteArray(response.getEntity())));
-      return mapper.readValue(mapper.treeAsTokens(bpResult), new TypeReference<BpPagedResults<BpProperty>>() {});
+      JsonNode bpResult = MAPPER.readTree(new String(EntityUtils.toByteArray(response.getEntity())));
+      return MAPPER.readValue(MAPPER.treeAsTokens(bpResult), new TypeReference<BpPagedResults<BpProperty>>() {});
     } else {
       throw new HTTPException(statusCode);
     }
