@@ -1,6 +1,5 @@
 package org.metadatacenter.cedar.terminology;
 
-import io.dropwizard.setup.Bootstrap;
 import io.dropwizard.setup.Environment;
 import org.metadatacenter.cedar.cache.Cache;
 import org.metadatacenter.cedar.terminology.health.TerminologyServerHealthCheck;
@@ -10,8 +9,6 @@ import org.metadatacenter.cedar.terminology.resources.bioportal.*;
 import org.metadatacenter.cedar.util.dw.CedarMicroserviceApplication;
 import org.metadatacenter.model.ServerName;
 import org.metadatacenter.terms.TerminologyService;
-
-import static org.metadatacenter.cedar.terminology.utils.Constants.TEST_APP_NAME;
 
 public class TerminologyServerApplication extends CedarMicroserviceApplication<TerminologyServerConfiguration> {
 
@@ -26,8 +23,12 @@ public class TerminologyServerApplication extends CedarMicroserviceApplication<T
     return ServerName.TERMINOLOGY;
   }
 
+  public boolean isTestMode() {
+    return false;
+  }
+
   @Override
-  public void initializeApp(Bootstrap<TerminologyServerConfiguration> bootstrap) {
+  public void initializeApp() {
     terminologyService = new TerminologyService(cedarConfig.getTerminologyConfig().getBioPortal().getBasePath(),
         cedarConfig.getTerminologyConfig().getBioPortal().getConnectTimeout(),
         cedarConfig.getTerminologyConfig().getBioPortal().getSocketTimeout());
@@ -35,11 +36,7 @@ public class TerminologyServerApplication extends CedarMicroserviceApplication<T
     // Initialize cache (note that this must be done after initializing the terminologyService)
     // When running the application on testing mode, the cache is loaded from the files stored into the test
     // resources folder
-    boolean testMode = false;
-    if (bootstrap.getApplication().getName().equals(TEST_APP_NAME)) {
-      testMode = true;
-    }
-    Cache.init(testMode);
+    Cache.init(isTestMode());
   }
 
   @Override
@@ -61,4 +58,5 @@ public class TerminologyServerApplication extends CedarMicroserviceApplication<T
     final TerminologyServerHealthCheck healthCheck = new TerminologyServerHealthCheck();
     environment.healthChecks().register("message", healthCheck);
   }
+
 }

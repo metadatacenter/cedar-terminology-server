@@ -1,6 +1,5 @@
 package org.metadatacenter.cedar.terminology.resources.bioportal;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import io.dropwizard.client.JerseyClientBuilder;
 import io.dropwizard.testing.ResourceHelpers;
 import io.dropwizard.testing.junit.DropwizardAppRule;
@@ -9,7 +8,8 @@ import org.junit.*;
 import org.metadatacenter.cedar.terminology.TerminologyServerApplicationTest;
 import org.metadatacenter.cedar.terminology.TerminologyServerConfiguration;
 import org.metadatacenter.config.CedarConfig;
-import org.metadatacenter.terms.bioportal.customObjects.BpPagedResults;
+import org.metadatacenter.config.environment.CedarEnvironmentVariableProvider;
+import org.metadatacenter.model.SystemComponent;
 import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.terms.domainObjects.*;
 import org.metadatacenter.terms.util.Util;
@@ -24,6 +24,7 @@ import javax.ws.rs.core.Response;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import static org.metadatacenter.cedar.terminology.utils.Constants.*;
 
@@ -65,7 +66,9 @@ public abstract class AbstractTerminologyServerResourceTest {
    */
   @BeforeClass
   public static void oneTimeSetUpAbstract() {
-    CedarConfig cedarConfig = CedarConfig.getInstance();
+    SystemComponent systemComponent = SystemComponent.SERVER_TERMINOLOGY;
+    Map<String, String> environment = CedarEnvironmentVariableProvider.getFor(systemComponent);
+    CedarConfig cedarConfig = CedarConfig.getInstance(environment);
 
     AbstractTerminologyServerResourceTest.cedarConfig = cedarConfig;
 
@@ -333,13 +336,15 @@ public abstract class AbstractTerminologyServerResourceTest {
   /* Properties */
   protected static PagedResults<OntologyProperty> searchProperties(String q) {
     // Service invocation
-    Response response = client.target(baseUrlBpPropertySearch).queryParam("q", q).request().header("Authorization", authHeader).get();
+    Response response = client.target(baseUrlBpPropertySearch).queryParam("q", q).request().header("Authorization",
+        authHeader).get();
     // Check HTTP response
     Assert.assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
     // Check Content-Type
     Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check the number of results
-    PagedResults<OntologyProperty> properties = response.readEntity(new GenericType<PagedResults<OntologyProperty>>() {});
+    PagedResults<OntologyProperty> properties = response.readEntity(new GenericType<PagedResults<OntologyProperty>>() {
+    });
     return properties;
   }
 
