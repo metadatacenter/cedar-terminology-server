@@ -9,6 +9,7 @@ import org.metadatacenter.rest.context.CedarRequestContextFactory;
 import org.metadatacenter.rest.exception.CedarAssertionException;
 import org.metadatacenter.terms.domainObjects.Ontology;
 import org.metadatacenter.terms.domainObjects.OntologyClass;
+import org.metadatacenter.terms.domainObjects.OntologyProperty;
 import org.metadatacenter.util.http.CedarResponse;
 import org.metadatacenter.util.json.JsonMapper;
 
@@ -55,7 +56,6 @@ public class OntologyResource extends AbstractTerminologyServerResource {
     CedarRequestContext ctx = CedarRequestContextFactory.fromRequest(request);
     ctx.must(ctx.user()).be(LoggedIn);
     try {
-      //Cache.apiKeyCache = apiKey;
       // Retrieve ontology from ontologies cache
       Ontology ontologies = Cache.ontologiesCache.get("ontologies").get(id);
       if (ontologies == null) {
@@ -81,6 +81,21 @@ public class OntologyResource extends AbstractTerminologyServerResource {
     } catch (HTTPException e) {
       return Response.status(e.getStatusCode()).build();
     } catch (IOException | ExecutionException e) {
+      throw new CedarAssertionException(e);
+    }
+  }
+
+  @GET
+  @Path("ontologies/{ontology}/properties/roots")
+  public Response findRootProperties(@PathParam("ontology") String ontology) throws CedarException {
+    CedarRequestContext ctx = CedarRequestContextFactory.fromRequest(request);
+    ctx.must(ctx.user()).be(LoggedIn);
+    try {
+      List<OntologyProperty> roots = terminologyService.getRootProperties(ontology, apiKey);
+      return Response.ok().entity(JsonMapper.MAPPER.valueToTree(roots)).build();
+    } catch (HTTPException e) {
+      return Response.status(e.getStatusCode()).build();
+    } catch (IOException e) {
       throw new CedarAssertionException(e);
     }
   }
