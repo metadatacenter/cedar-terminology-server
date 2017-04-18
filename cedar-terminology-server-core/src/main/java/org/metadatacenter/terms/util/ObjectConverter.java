@@ -1,5 +1,6 @@
 package org.metadatacenter.terms.util;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import org.metadatacenter.terms.bioportal.customObjects.BpPagedResults;
 import org.metadatacenter.terms.bioportal.domainObjects.*;
 import org.metadatacenter.terms.customObjects.PagedResults;
@@ -11,6 +12,7 @@ import java.util.List;
 import java.util.Objects;
 
 import static org.metadatacenter.terms.util.Constants.*;
+import static org.metadatacenter.util.json.JsonMapper.MAPPER;
 
 public class ObjectConverter {
 
@@ -57,6 +59,14 @@ public class ObjectConverter {
   public static BpProvisionalRelation toBpProvisionalRelation(Relation r) {
     return new BpProvisionalRelation(r.getId(), r.getSourceClassId(), r.getRelationType(), r.getTargetClassId(),
         r.getTargetClassOntology(), r.getCreated(), r.getCreator());
+  }
+
+  public static List toBpObjectsFromJsonNodes(JsonNode nodes, Class targetClass) {
+    List bpObjects = new ArrayList<>();
+    for (JsonNode node : nodes) {
+      bpObjects.add(MAPPER.convertValue(node, targetClass));
+    }
+    return bpObjects;
   }
 
   /**
