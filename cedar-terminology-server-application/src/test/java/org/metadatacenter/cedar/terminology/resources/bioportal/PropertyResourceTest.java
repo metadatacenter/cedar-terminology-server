@@ -211,7 +211,6 @@ public class PropertyResourceTest extends AbstractTerminologyServerResourceTest 
     Assert.assertTrue("Descendant " + descendant2PropertyId + " not found for the given property " + propertyId, descendant2Found);
   }
 
-
   @Test
   public void findClassParentsTest() {
     String ontology = "BIBFRAME";
@@ -242,5 +241,5 @@ public class PropertyResourceTest extends AbstractTerminologyServerResourceTest 
     }
     Assert.assertTrue("Parent " + parentPropertyId + " not found for the given property " + propertyId, parentFound);
   }
-  
+
 }

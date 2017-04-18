@@ -556,7 +556,7 @@
         "tags": [
           "Classes"
         ],
-        "description": "Get class descendants.",
+        "description": "Get class parents.",
         "parameters": [
           {
             "$ref": "#/parameters/ontology"
@@ -804,6 +804,43 @@
         "description": "Get root classes in a particular ontology. For the CEDARPC ontology, all provisional classes in it will be returned.",
         "tags": [
           "Classes",
+          "Ontologies"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/parameters/ontology"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/ok"
+          },
+          "400": {
+            "$ref": "#/responses/bad_request"
+          },
+          "401": {
+            "$ref": "#/responses/unauthorized"
+          },
+          "404": {
+            "$ref": "#/responses/not_found"
+          },
+          "500": {
+            "$ref": "#/responses/internal_error"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/ontologies/{ontology}/properties/roots": {
+      "get": {
+        "summary": "Get root properties",
+        "description": "Get root properties in a particular ontology.",
+        "tags": [
+          "Properties",
           "Ontologies"
         ],
         "parameters": [
@@ -1558,6 +1595,162 @@
           "Properties"
         ],
         "description": "Find property by id.",
+        "parameters": [
+          {
+            "$ref": "#/parameters/ontology"
+          },
+          {
+            "$ref": "#/parameters/property_id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/ok"
+          },
+          "400": {
+            "$ref": "#/responses/bad_request"
+          },
+          "401": {
+            "$ref": "#/responses/unauthorized"
+          },
+          "404": {
+            "$ref": "#/responses/not_found"
+          },
+          "500": {
+            "$ref": "#/responses/internal_error"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/ontologies/{ontology}/properties/{id}/tree": {
+      "get": {
+        "summary": "Get property tree",
+        "tags": [
+          "Properties"
+        ],
+        "description": "Get property tree.",
+        "parameters": [
+          {
+            "$ref": "#/parameters/ontology"
+          },
+          {
+            "$ref": "#/parameters/property_id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/ok"
+          },
+          "400": {
+            "$ref": "#/responses/bad_request"
+          },
+          "401": {
+            "$ref": "#/responses/unauthorized"
+          },
+          "404": {
+            "$ref": "#/responses/not_found"
+          },
+          "500": {
+            "$ref": "#/responses/internal_error"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/ontologies/{ontology}/properties/{id}/children": {
+      "get": {
+        "summary": "Get property children",
+        "tags": [
+          "Properties"
+        ],
+        "description": "Get property children (only for regular classes).",
+        "parameters": [
+          {
+            "$ref": "#/parameters/ontology"
+          },
+          {
+            "$ref": "#/parameters/property_id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/ok"
+          },
+          "400": {
+            "$ref": "#/responses/bad_request"
+          },
+          "401": {
+            "$ref": "#/responses/unauthorized"
+          },
+          "404": {
+            "$ref": "#/responses/not_found"
+          },
+          "500": {
+            "$ref": "#/responses/internal_error"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/ontologies/{ontology}/properties/{id}/descendants": {
+      "get": {
+        "summary": "Get property descendants",
+        "tags": [
+          "Properties"
+        ],
+        "description": "Get property descendants.",
+        "parameters": [
+          {
+            "$ref": "#/parameters/ontology"
+          },
+          {
+            "$ref": "#/parameters/property_id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/ok"
+          },
+          "400": {
+            "$ref": "#/responses/bad_request"
+          },
+          "401": {
+            "$ref": "#/responses/unauthorized"
+          },
+          "404": {
+            "$ref": "#/responses/not_found"
+          },
+          "500": {
+            "$ref": "#/responses/internal_error"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/ontologies/{ontology}/properties/{id}/parents": {
+      "get": {
+        "summary": "Get property parents",
+        "tags": [
+          "Properties"
+        ],
+        "description": "Get property parents.",
         "parameters": [
           {
             "$ref": "#/parameters/ontology"
