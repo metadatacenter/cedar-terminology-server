@@ -12,6 +12,7 @@ import org.metadatacenter.terms.util.Constants;
 import org.metadatacenter.terms.util.HttpUtil;
 import org.metadatacenter.terms.util.Util;
 
+import javax.ws.rs.core.Response.Status;
 import javax.xml.ws.http.HTTPException;
 import java.io.IOException;
 import java.util.List;
@@ -37,7 +38,7 @@ public class BpProvisionalClassDAO {
 
     int statusCode = response.getStatusLine().getStatusCode();
     // The class was successfully created
-    if (statusCode == 201) {
+    if (statusCode == Status.CREATED.getStatusCode()) {
       JsonNode bpResult = MAPPER.readTree(new String(EntityUtils.toByteArray(response.getEntity())));
       return MAPPER.convertValue(bpResult, BpProvisionalClass.class);
     } else {
@@ -55,7 +56,7 @@ public class BpProvisionalClassDAO {
 
     int statusCode = response.getStatusLine().getStatusCode();
     // The class was successfully retrieved
-    if (statusCode == 200) {
+    if (statusCode == Status.OK.getStatusCode()) {
       JsonNode bpResult = MAPPER.readTree(new String(EntityUtils.toByteArray(response.getEntity())));
       return MAPPER.convertValue(bpResult, BpProvisionalClass.class);
     } else {
@@ -77,7 +78,7 @@ public class BpProvisionalClassDAO {
             connectTimeout(connectTimeout).socketTimeout(socketTimeout));
 
     int statusCode = response.getStatusLine().getStatusCode();
-    if (statusCode == 200) {
+    if (statusCode == Status.OK.getStatusCode()) {
       JsonNode bpResult = MAPPER.readTree(new String(EntityUtils.toByteArray(response.getEntity())));
       if (ontology != null) {
         // If the ontology is specified, BioPortal does not return paged results, so we have to build them.

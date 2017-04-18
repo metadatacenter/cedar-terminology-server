@@ -13,7 +13,7 @@ public interface ITerminologyService {
    */
   PagedResults<SearchResult> search(String q, List<String> scope, List<String> sources, boolean suggest, String
       source, String
-      subtreeRootId, int maxDepth, int page, int pageSize, boolean displayContext,
+                                        subtreeRootId, int maxDepth, int page, int pageSize, boolean displayContext,
                                     boolean displayLinks, String apiKey, List<String> valueSetsIds) throws IOException;
 
   PagedResults<OntologyProperty> propertySearch(String q, List<String> sources, boolean exactMatch, boolean
@@ -28,6 +28,8 @@ public interface ITerminologyService {
   Ontology findOntology(String id, boolean includeDetails, String apiKey) throws IOException;
 
   List<OntologyClass> getRootClasses(String ontologyId, boolean isFlat, String apiKey) throws IOException;
+
+  List<OntologyProperty> getRootProperties(String ontologyId, String apiKey) throws IOException;
 
   /**
    * Classes
@@ -133,4 +135,15 @@ public interface ITerminologyService {
   OntologyProperty findProperty(String id, String ontology, String apiKey) throws IOException;
 
   List<OntologyProperty> findAllPropertiesInOntology(String ontology, String apiKey) throws IOException;
+
+  List<TreeNode> getPropertyTree(String id, String ontology, String apiKey) throws IOException;
+
+  PagedResults<OntologyProperty> getPropertyChildren(String id, String ontology, int page, int pageSize, String apiKey)
+      throws IOException;
+
+  PagedResults<OntologyProperty> getPropertyDescendants(String id, String ontology, int page, int pageSize, String apiKey)
+      throws IOException;
+
+  List<OntologyProperty> getPropertyParents(String id, String ontology, String apiKey) throws IOException;
+
 }

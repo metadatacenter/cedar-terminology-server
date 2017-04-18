@@ -11,6 +11,7 @@ import org.metadatacenter.terms.bioportal.domainObjects.BpTreeNode;
 import org.metadatacenter.terms.util.HttpUtil;
 import org.metadatacenter.terms.util.Util;
 
+import javax.ws.rs.core.Response.Status;
 import javax.xml.ws.http.HTTPException;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -39,7 +40,7 @@ public class BpClassDAO
 
     int statusCode = response.getStatusLine().getStatusCode();
     // The class was successfully retrieved
-    if (statusCode == 200) {
+    if (statusCode == Status.OK.getStatusCode()) {
       JsonNode bpResult = MAPPER.readTree(new String(EntityUtils.toByteArray(response.getEntity())));
       return MAPPER.convertValue(bpResult, BpClass.class);
     } else {
@@ -57,7 +58,7 @@ public class BpClassDAO
 
     int statusCode = response.getStatusLine().getStatusCode();
     // The classes were successfully retrieved
-    if (statusCode == 200) {
+    if (statusCode == Status.OK.getStatusCode()) {
       JsonNode bpResult = MAPPER.readTree(new String(EntityUtils.toByteArray(response.getEntity())));
       return MAPPER.readValue(MAPPER.treeAsTokens(bpResult), new TypeReference<BpPagedResults<BpClass>>() {});
     } else {
@@ -74,7 +75,7 @@ public class BpClassDAO
 
     int statusCode = response.getStatusLine().getStatusCode();
     // The tree was successfully retrieved
-    if (statusCode == 200) {
+    if (statusCode == Status.OK.getStatusCode()) {
       JsonNode bpResult = MAPPER.readTree(new String(EntityUtils.toByteArray(response.getEntity())));
       List<BpTreeNode> nodes = new ArrayList<>();
       for (JsonNode n : bpResult) {
@@ -97,7 +98,7 @@ public class BpClassDAO
 
     int statusCode = response.getStatusLine().getStatusCode();
     // Success
-    if (statusCode == 200) {
+    if (statusCode == Status.OK.getStatusCode()) {
       JsonNode bpResult = MAPPER.readTree(new String(EntityUtils.toByteArray(response.getEntity())));
       return MAPPER.readValue(MAPPER.treeAsTokens(bpResult), new TypeReference<BpPagedResults<BpClass>>() {});
     } else {
@@ -115,7 +116,7 @@ public class BpClassDAO
 
     int statusCode = response.getStatusLine().getStatusCode();
     // The class was successfully retrieved
-    if (statusCode == 200) {
+    if (statusCode == Status.OK.getStatusCode()) {
       JsonNode bpResult = MAPPER.readTree(new String(EntityUtils.toByteArray(response.getEntity())));
       return MAPPER.readValue(MAPPER.treeAsTokens(bpResult), new TypeReference<BpPagedResults<BpClass>>() {});
     } else {
@@ -134,7 +135,7 @@ public class BpClassDAO
 
     int statusCode = response.getStatusLine().getStatusCode();
     // Success
-    if (statusCode == 200) {
+    if (statusCode == Status.OK.getStatusCode()) {
       JsonNode bpResult = MAPPER.readTree(new String(EntityUtils.toByteArray(response.getEntity())));
       List<BpClass> children = new ArrayList<>();
       for (JsonNode n : bpResult) {
@@ -159,7 +160,7 @@ public class BpClassDAO
 
     int statusCode = response.getStatusLine().getStatusCode();
     // Success
-    if (statusCode == 200) {
+    if (statusCode == Status.OK.getStatusCode()) {
       JsonNode bpResult = MAPPER.readTree(new String(EntityUtils.toByteArray(response.getEntity())));
       return MAPPER.readValue(MAPPER.treeAsTokens(bpResult), new TypeReference<BpPagedResults<BpClass>>() {});
     } else {
@@ -179,7 +180,7 @@ public class BpClassDAO
 
     int statusCode = response.getStatusLine().getStatusCode();
     // Success
-    if (statusCode == 200) {
+    if (statusCode == Status.OK.getStatusCode()) {
       JsonNode bpResult = MAPPER.readTree(new String(EntityUtils.toByteArray(response.getEntity())));
       return MAPPER.readValue(MAPPER.treeAsTokens(bpResult), new TypeReference<BpPagedResults<BpClass>>() {});
     } else {

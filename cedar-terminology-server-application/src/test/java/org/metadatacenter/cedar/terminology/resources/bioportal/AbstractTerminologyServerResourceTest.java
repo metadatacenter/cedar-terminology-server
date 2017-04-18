@@ -66,6 +66,7 @@ public abstract class AbstractTerminologyServerResourceTest {
    */
   @BeforeClass
   public static void oneTimeSetUpAbstract() {
+
     SystemComponent systemComponent = SystemComponent.SERVER_TERMINOLOGY;
     Map<String, String> environment = CedarEnvironmentVariableProvider.getFor(systemComponent);
     CedarConfig cedarConfig = CedarConfig.getInstance(environment);

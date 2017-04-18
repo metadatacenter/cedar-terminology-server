@@ -10,6 +10,7 @@ import org.metadatacenter.terms.bioportal.dao.*;
 import org.metadatacenter.terms.bioportal.domainObjects.*;
 import org.metadatacenter.terms.util.Util;
 
+import javax.ws.rs.core.Response;
 import javax.xml.ws.http.HTTPException;
 import java.io.IOException;
 import java.util.List;
@@ -127,7 +128,7 @@ public class BioPortalService implements IBioPortalService
 
     int statusCode = response.getStatusLine().getStatusCode();
     // The request has succeeded
-    if (statusCode == 200) {
+    if (statusCode == Response.Status.OK.getStatusCode()) {
       JsonNode bpResult = MAPPER.readTree(new String(EntityUtils.toByteArray(response.getEntity())));
       return MAPPER.readValue(MAPPER.treeAsTokens(bpResult), new TypeReference<BpPagedResults<BpClass>>() {});
     } else {
@@ -175,13 +176,17 @@ public class BioPortalService implements IBioPortalService
 
     int statusCode = response.getStatusLine().getStatusCode();
     // The request has succeeded
-    if (statusCode == 200) {
+    if (statusCode == Response.Status.OK.getStatusCode()) {
       JsonNode bpResult = MAPPER.readTree(new String(EntityUtils.toByteArray(response.getEntity())));
       return MAPPER.readValue(MAPPER.treeAsTokens(bpResult), new TypeReference<BpPagedResults<BpProperty>>() {});
     } else {
       throw new HTTPException(statusCode);
     }
   }
+
+  /**
+   * Ontologies
+   */
 
   public BpOntology findBpOntologyById(String id, String apiKey) throws IOException {
     return bpOntologyDAO.find(id, apiKey);
@@ -207,6 +212,14 @@ public class BioPortalService implements IBioPortalService
     return bpOntologyDAO.getRootClasses(ontologyId, apiKey);
   }
 
+  public List<BpProperty> getRootProperties(String ontologyId, String apiKey) throws IOException {
+    return bpOntologyDAO.getRootProperties(ontologyId, apiKey);
+  }
+
+  /**
+   * Classes
+   */
+
   public BpClass findBpClassById(String id, String ontology, String apiKey) throws IOException {
     return bpClassDAO.find(id, ontology, apiKey);
   }
@@ -219,9 +232,17 @@ public class BioPortalService implements IBioPortalService
     return bpClassDAO.getTree(id, ontology, apiKey);
   }
 
-  /**
-   * Provisional Classes
-   **/
+  public BpPagedResults<BpClass> getClassChildren(String id, String ontology, int page, int pageSize, String apiKey) throws IOException {
+    return bpClassDAO.getChildren(id, ontology, page, pageSize, apiKey);
+  }
+
+  public BpPagedResults<BpClass> getClassDescendants(String id, String ontology, int page, int pageSize, String apiKey) throws IOException {
+    return bpClassDAO.getDescendants(id, ontology, page, pageSize, apiKey);
+  }
+
+  public List<BpClass> getClassParents(String id, String ontology, String apiKey) throws IOException {
+    return bpClassDAO.getParents(id, ontology, apiKey);
+  }
 
   public BpProvisionalClass createBpProvisionalClass(BpProvisionalClass c, String apiKey) throws IOException
   {
@@ -246,6 +267,10 @@ public class BioPortalService implements IBioPortalService
     bpProvClassDAO.delete(id, apiKey);
   }
 
+  /**
+   * Relations
+   */
+
   public BpProvisionalRelation createBpProvisionalRelation(BpProvisionalRelation pr, String apiKey) throws IOException
   {
     return bpProvRelationDAO.create(pr, apiKey);
@@ -264,6 +289,10 @@ public class BioPortalService implements IBioPortalService
     bpProvRelationDAO.delete(id, apiKey);
   }
 
+  /**
+   * Value Sets
+   */
+
   public BpPagedResults<BpClass> findValueSetsByValueSetCollection(String vsCollection, int page, int pageSize, String apiKey)
     throws IOException
   {
@@ -276,17 +305,9 @@ public class BioPortalService implements IBioPortalService
     return bpClassDAO.findValuesByValueSet(vsId, vsCollection, page, pageSize, apiKey);
   }
 
-  public BpPagedResults<BpClass> getClassChildren(String id, String ontology, int page, int pageSize, String apiKey) throws IOException {
-    return bpClassDAO.getChildren(id, ontology, page, pageSize, apiKey);
-  }
-
-  public BpPagedResults<BpClass> getClassDescendants(String id, String ontology, int page, int pageSize, String apiKey) throws IOException {
-    return bpClassDAO.getDescendants(id, ontology, page, pageSize, apiKey);
-  }
-
-  public List<BpClass> getClassParents(String id, String ontology, String apiKey) throws IOException {
-    return bpClassDAO.getParents(id, ontology, apiKey);
-  }
+  /**
+   * Properties
+   */
 
   public BpProperty findBpPropertyById(String id, String ontology, String apiKey) throws IOException {
     return bpPropertyDAO.find(id, ontology, apiKey);
@@ -294,6 +315,22 @@ public class BioPortalService implements IBioPortalService
 
   public List<BpProperty> findAllPropertiesInOntology(String ontology, String apiKey) throws IOException {
     return bpPropertyDAO.findAllPropertiesInOntology(ontology, apiKey);
+  }
+
+  public List<BpTreeNode> getPropertyTree(String id, String ontology, String apiKey) throws IOException {
+    return bpPropertyDAO.getTree(id, ontology, apiKey);
+  }
+
+  public BpPagedResults<BpProperty> getPropertyChildren(String id, String ontology, int page, int pageSize, String apiKey) throws IOException {
+    return bpPropertyDAO.getChildren(id, ontology, page, pageSize, apiKey);
+  }
+
+  public BpPagedResults<BpProperty> getPropertyDescendants(String id, String ontology, int page, int pageSize, String apiKey) throws IOException {
+    return bpPropertyDAO.getDescendants(id, ontology, page, pageSize, apiKey);
+  }
+
+  public List<BpProperty> getPropertyParents(String id, String ontology, String apiKey) throws IOException {
+    return bpPropertyDAO.getParents(id, ontology, apiKey);
   }
 
 }

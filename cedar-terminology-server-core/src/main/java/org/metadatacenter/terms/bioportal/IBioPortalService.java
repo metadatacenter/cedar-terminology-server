@@ -36,6 +36,8 @@ public interface IBioPortalService {
 
   List<BpClass> getRootClasses(String ontologyId, String apiKey) throws IOException;
 
+  List<BpProperty> getRootProperties(String ontologyId, String apiKey) throws IOException;
+
   /**
    * Classes
    **/
@@ -95,5 +97,15 @@ public interface IBioPortalService {
   BpProperty findBpPropertyById(String id, String ontology, String apiKey) throws IOException;
 
   List<BpProperty> findAllPropertiesInOntology(String ontology, String apiKey) throws IOException;
+
+  List<BpTreeNode> getPropertyTree(String id, String ontology, String apiKey) throws IOException;
+
+  BpPagedResults<BpProperty> getPropertyChildren(String id, String ontology, int page, int pageSize, String apiKey) throws
+      IOException;
+
+  BpPagedResults<BpProperty> getPropertyDescendants(String id, String ontology, int page, int pageSize, String apiKey)
+      throws IOException;
+
+  List<BpProperty> getPropertyParents(String id, String ontology, String apiKey) throws IOException;
 
 }

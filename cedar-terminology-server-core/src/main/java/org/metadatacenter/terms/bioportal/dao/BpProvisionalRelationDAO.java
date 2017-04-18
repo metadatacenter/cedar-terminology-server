@@ -9,6 +9,7 @@ import org.metadatacenter.terms.bioportal.domainObjects.BpProvisionalRelation;
 import org.metadatacenter.terms.util.HttpUtil;
 import org.metadatacenter.terms.util.Util;
 
+import javax.ws.rs.core.Response.Status;
 import javax.xml.ws.http.HTTPException;
 import java.io.IOException;
 
@@ -37,7 +38,7 @@ public class BpProvisionalRelationDAO {
     //EntityUtils.toString(response.getEntity(), "UTF-8");
     int statusCode = response.getStatusLine().getStatusCode();
     // The relation was successfully created
-    if (statusCode == 201) {
+    if (statusCode == Status.CREATED.getStatusCode()) {
       JsonNode bpResult = MAPPER.readTree(new String(EntityUtils.toByteArray(response.getEntity())));
       return MAPPER.convertValue(bpResult, BpProvisionalRelation.class);
     } else {
@@ -54,7 +55,7 @@ public class BpProvisionalRelationDAO {
 
     int statusCode = response.getStatusLine().getStatusCode();
     // The relation was successfully retrieved
-    if (statusCode == 200) {
+    if (statusCode == Status.OK.getStatusCode()) {
       JsonNode bpResult = MAPPER.readTree(new String(EntityUtils.toByteArray(response.getEntity())));
       return MAPPER.convertValue(bpResult, BpProvisionalRelation.class);
     } else {
