@@ -5,7 +5,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 
 import java.util.List;
 
-@JsonPropertyOrder({"id", "@id", "@type", "type", "prefLabel", "labels", "labelsGenerated", "definitions", "source"})
+@JsonPropertyOrder({"id", "@id", "@type", "type", "prefLabel", "labels", "labelsGenerated", "definitions", "source", "hasChildren"})
 public class OntologyProperty {
   private String id;
   @JsonProperty("@id")
@@ -18,12 +18,13 @@ public class OntologyProperty {
   private List<String> labelsGenerated;
   private List<String> definitions;
   private String source;
+  private Boolean hasChildren;
 
   // The default constructor is used by Jackson for deserialization
   public OntologyProperty() {}
 
-  public OntologyProperty(String id, String ldId, String ldType, String type, String prefLabel,
-                          List<String> labels, List<String> labelsGenerated, List<String> definitions, String source) {
+  public OntologyProperty(String id, String ldId, String ldType, String type, String prefLabel, List<String> labels,
+                          List<String> labelsGenerated, List<String> definitions, String source, Boolean hasChildren) {
     this.id = id;
     this.ldId = ldId;
     this.ldType = ldType;
@@ -33,6 +34,7 @@ public class OntologyProperty {
     this.labelsGenerated = labelsGenerated;
     this.definitions = definitions;
     this.source = source;
+    this.hasChildren = hasChildren;
   }
 
   public String getId() {
@@ -107,6 +109,14 @@ public class OntologyProperty {
     this.source = source;
   }
 
+  public Boolean getHasChildren() {
+    return hasChildren;
+  }
+
+  public void setHasChildren(Boolean hasChildren) {
+    this.hasChildren = hasChildren;
+  }
+
   @Override
   public String toString() {
     return "OntologyProperty{" +
@@ -119,7 +129,7 @@ public class OntologyProperty {
         ", labelsGenerated=" + labelsGenerated +
         ", definitions=" + definitions +
         ", source='" + source + '\'' +
+        ", hasChildren=" + hasChildren +
         '}';
   }
-
 }

@@ -61,12 +61,14 @@ public class ObjectConverter {
         r.getTargetClassOntology(), r.getCreated(), r.getCreator());
   }
 
-  public static List toBpObjectsFromJsonNodes(JsonNode nodes, Class targetClass) {
-    List bpObjects = new ArrayList<>();
+  public static List<BpTreeNode> toBpTreeNodesFromPropertyJsonNodes(JsonNode nodes) {
+    List bpTreeNodes =  new ArrayList();
     for (JsonNode node : nodes) {
-      bpObjects.add(MAPPER.convertValue(node, targetClass));
+      BpTreeNode bpTreeNode = MAPPER.convertValue(node, BpTreeNode.class);
+      bpTreeNode.setPrefLabel(Util.generatePreferredLabel(node));
+      bpTreeNodes.add(bpTreeNode);
     }
-    return bpObjects;
+    return bpTreeNodes;
   }
 
   /**
@@ -147,11 +149,11 @@ public class ObjectConverter {
   public static OntologyProperty toOntologyProperty(BpProperty p) {
     String source = p.getLinks().getOntology();
     // Note that for null lists, we return an empty list
-    return new OntologyProperty(p.getId(), p.getId(), p.getType(), Util.getShortPropertyType(p.getType()),
-        Util.generatePropertyPreferredLabel(p),
+    return new OntologyProperty(p.getId(), p.getId(), p.getType(), Util.getShortType(p.getType()),
+        Util.generatePreferredLabel(p),
         p.getLabel() == null ? new ArrayList<>() : p.getLabel(),
         p.getLabelGenerated() == null ? new ArrayList<>() : p.getLabelGenerated(),
-        p.getDefinition() == null ? new ArrayList<>() : p.getDefinition(), source);
+        p.getDefinition() == null ? new ArrayList<>() : p.getDefinition(), source, p.getHasChildren());
   }
 
   public static PagedResults<ValueSet> toValueSetResults(BpPagedResults<BpClass> bpr) {

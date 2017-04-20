@@ -80,17 +80,11 @@ public class PropertyResource extends AbstractTerminologyServerResource {
 
   @GET
   @Path("ontologies/{ontology}/properties/{id}/children")
-  public Response findPropertyChildren(@PathParam("id") @Encoded String id, @PathParam("ontology") String ontology,
-                                    @QueryParam("page") @DefaultValue("1") int page, @QueryParam("pageSize")
-                                        int pageSize) throws CedarException {
+  public Response findPropertyChildren(@PathParam("id") @Encoded String id, @PathParam("ontology") String ontology) throws CedarException {
     CedarRequestContext ctx = CedarRequestContextFactory.fromRequest(request);
     ctx.must(ctx.user()).be(LoggedIn);
-    // If pageSize not defined, set default value
-    if (pageSize == 0) {
-      pageSize = defaultPageSize;
-    }
     try {
-      PagedResults<OntologyProperty> children = terminologyService.getPropertyChildren(id, ontology, page, pageSize, apiKey);
+      List<OntologyProperty> children = terminologyService.getPropertyChildren(id, ontology, apiKey);
       return Response.ok().entity(JsonMapper.MAPPER.valueToTree(children)).build();
     } catch (HTTPException e) {
       return Response.status(e.getStatusCode()).build();
@@ -101,17 +95,11 @@ public class PropertyResource extends AbstractTerminologyServerResource {
 
   @GET
   @Path("ontologies/{ontology}/properties/{id}/descendants")
-  public Response findPropertyDescendants(@PathParam("id") @Encoded String id, @PathParam("ontology") String ontology,
-                                       @QueryParam("page") @DefaultValue("1") int page, @QueryParam("pageSize") int pageSize) throws CedarException {
+  public Response findPropertyDescendants(@PathParam("id") @Encoded String id, @PathParam("ontology") String ontology) throws CedarException {
     CedarRequestContext ctx = CedarRequestContextFactory.fromRequest(request);
     ctx.must(ctx.user()).be(LoggedIn);
-    // If pageSize not defined, set default value
-    if (pageSize == 0) {
-      pageSize = defaultPageSize;
-    }
     try {
-      PagedResults<OntologyProperty> descendants = terminologyService.getPropertyDescendants(id, ontology,
-          page, pageSize, apiKey);
+      List<OntologyProperty> descendants = terminologyService.getPropertyDescendants(id, ontology, apiKey);
       return Response.ok().entity(JsonMapper.MAPPER.valueToTree(descendants)).build();
     } catch (HTTPException e) {
       return Response.status(e.getStatusCode()).build();

@@ -321,12 +321,12 @@ public class BioPortalService implements IBioPortalService
     return bpPropertyDAO.getTree(id, ontology, apiKey);
   }
 
-  public BpPagedResults<BpProperty> getPropertyChildren(String id, String ontology, int page, int pageSize, String apiKey) throws IOException {
-    return bpPropertyDAO.getChildren(id, ontology, page, pageSize, apiKey);
+  public List<BpProperty> getPropertyChildren(String id, String ontology, String apiKey) throws IOException {
+    return bpPropertyDAO.getChildren(id, ontology, apiKey);
   }
 
-  public BpPagedResults<BpProperty> getPropertyDescendants(String id, String ontology, int page, int pageSize, String apiKey) throws IOException {
-    return bpPropertyDAO.getDescendants(id, ontology, page, pageSize, apiKey);
+  public List<BpProperty> getPropertyDescendants(String id, String ontology, String apiKey) throws IOException {
+    return bpPropertyDAO.getDescendants(id, ontology, apiKey);
   }
 
   public List<BpProperty> getPropertyParents(String id, String ontology, String apiKey) throws IOException {

@@ -100,10 +100,10 @@ public interface IBioPortalService {
 
   List<BpTreeNode> getPropertyTree(String id, String ontology, String apiKey) throws IOException;
 
-  BpPagedResults<BpProperty> getPropertyChildren(String id, String ontology, int page, int pageSize, String apiKey) throws
+  List<BpProperty> getPropertyChildren(String id, String ontology, String apiKey) throws
       IOException;
 
-  BpPagedResults<BpProperty> getPropertyDescendants(String id, String ontology, int page, int pageSize, String apiKey)
+  List<BpProperty> getPropertyDescendants(String id, String ontology, String apiKey)
       throws IOException;
 
   List<BpProperty> getPropertyParents(String id, String ontology, String apiKey) throws IOException;

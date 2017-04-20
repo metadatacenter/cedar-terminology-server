@@ -16,7 +16,7 @@ public class Constants
 
   /** BioPortal API endpoints */
   public static String BP_API_BASE;
-  //public static String BP_API_BASE_STAGING = "http://stagedata.bioontology.org/";
+  public static String BP_API_BASE_STAGING = "http://stagedata.bioontology.org/";
   public static final String BP_SEARCH = "search";
   public static final String BP_PROPERTY_SEARCH = "property_search";
   public static final String BP_ONTOLOGIES = "ontologies/";
@@ -53,6 +53,11 @@ public class Constants
   public static final String BP_TYPE_VALUE = "Value";
   public static final String BP_TYPE_ONTOLOGY = "Ontology";
   public static final String BP_TYPE_VS_COLLECTION = "ValueSetCollection";
+
+  /** Object Types **/
+  public static final String DATATYPE_PROPERTY = "DatatypeProperty";
+  public static final String OBJECT_PROPERTY = "ObjectProperty";
+  public static final String ANNOTATION_PROPERTY = "AnnotationProperty";
 
   // PRIVATE //
 

@@ -67,8 +67,8 @@ public class BpPropertyDAO
   }
 
   public List<BpTreeNode> getTree(String id, String ontology, String apiKey) throws IOException {
-    String url = BP_API_BASE + BP_ONTOLOGIES + ontology + "/" + BP_PROPERTIES + id + "/tree";
-
+    String url = BP_API_BASE_STAGING + BP_ONTOLOGIES + ontology + "/" + BP_PROPERTIES + id + "/tree";
+    System.out.println("BioPortal url: " + url);
     HttpResponse response = HttpUtil.makeHttpRequest(Request.Get(url)
         .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
             connectTimeout(connectTimeout).socketTimeout(socketTimeout));
@@ -77,16 +77,15 @@ public class BpPropertyDAO
     // The tree was successfully retrieved
     if (statusCode == Status.OK.getStatusCode()) {
       JsonNode bpResult = MAPPER.readTree(new String(EntityUtils.toByteArray(response.getEntity())));
-      return ObjectConverter.toBpObjectsFromJsonNodes(bpResult, BpTreeNode.class);
+      return ObjectConverter.toBpTreeNodesFromPropertyJsonNodes(bpResult);
     } else {
       throw new HTTPException(statusCode);
     }
   }
 
-  public BpPagedResults<BpProperty> getChildren(String id, String ontology, int page, int pageSize, String apiKey) throws IOException
+  public List<BpProperty> getChildren(String id, String ontology, String apiKey) throws IOException
   {
-    String url = BP_API_BASE + BP_ONTOLOGIES + ontology + "/" + BP_PROPERTIES + id + "/children?"
-        + "&page=" + page + "&pagesize=" + pageSize;
+    String url = BP_API_BASE_STAGING + BP_ONTOLOGIES + ontology + "/" + BP_PROPERTIES + id + "/children";
 
     HttpResponse response = HttpUtil.makeHttpRequest(Request.Get(url)
         .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
@@ -96,15 +95,14 @@ public class BpPropertyDAO
     // Success
     if (statusCode == Status.OK.getStatusCode()) {
       JsonNode bpResult = MAPPER.readTree(new String(EntityUtils.toByteArray(response.getEntity())));
-      return MAPPER.readValue(MAPPER.treeAsTokens(bpResult), new TypeReference<BpPagedResults<BpProperty>>() {});
+      return MAPPER.readValue(MAPPER.treeAsTokens(bpResult), new TypeReference<List<BpProperty>>() {});
     } else {
       throw new HTTPException(statusCode);
     }
   }
 
-  public BpPagedResults<BpProperty> getDescendants(String id, String ontology, int page, int pageSize, String apiKey) throws HTTPException, IOException {
-    String url = BP_API_BASE + BP_ONTOLOGIES + ontology + "/" + BP_PROPERTIES + id + "/descendants?"
-        + "&page=" + page + "&pagesize=" + pageSize;
+  public List<BpProperty> getDescendants(String id, String ontology, String apiKey) throws HTTPException, IOException {
+    String url = BP_API_BASE_STAGING + BP_ONTOLOGIES + ontology + "/" + BP_PROPERTIES + id + "/descendants";
 
     HttpResponse response = HttpUtil.makeHttpRequest(Request.Get(url)
         .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
@@ -114,7 +112,7 @@ public class BpPropertyDAO
     // The class was successfully retrieved
     if (statusCode == Status.OK.getStatusCode()) {
       JsonNode bpResult = MAPPER.readTree(new String(EntityUtils.toByteArray(response.getEntity())));
-      return MAPPER.readValue(MAPPER.treeAsTokens(bpResult), new TypeReference<BpPagedResults<BpProperty>>() {});
+      return MAPPER.readValue(MAPPER.treeAsTokens(bpResult), new TypeReference<List<BpProperty>>() {});
     } else {
       throw new HTTPException(statusCode);
     }
@@ -122,7 +120,7 @@ public class BpPropertyDAO
 
   public List<BpProperty> getParents(String id, String ontology, String apiKey) throws IOException
   {
-    String url = BP_API_BASE + BP_ONTOLOGIES + ontology + "/" + BP_PROPERTIES + id + "/parents";
+    String url = BP_API_BASE_STAGING + BP_ONTOLOGIES + ontology + "/" + BP_PROPERTIES + id + "/parents";
 
     HttpResponse response = HttpUtil.makeHttpRequest(Request.Get(url)
         .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
@@ -131,8 +129,8 @@ public class BpPropertyDAO
     int statusCode = response.getStatusLine().getStatusCode();
     // Success
     if (statusCode == Status.OK.getStatusCode()) {
-      JsonNode bpResult = MAPPER.readTree(new String(EntityUtils.toByteArray(response.getEntity())));
-      return ObjectConverter.toBpObjectsFromJsonNodes(bpResult, BpProperty.class);
+      JsonNode bpResult = JsonMapper.MAPPER.readTree(new String(EntityUtils.toByteArray(response.getEntity())));
+      return JsonMapper.MAPPER.readValue(JsonMapper.MAPPER.treeAsTokens(bpResult), new TypeReference<List<BpProperty>>() {});
     } else {
       throw new HTTPException(statusCode);
     }

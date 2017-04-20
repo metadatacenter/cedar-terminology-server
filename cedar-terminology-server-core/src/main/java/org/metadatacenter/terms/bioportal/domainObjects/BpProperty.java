@@ -17,12 +17,13 @@ public class BpProperty {
   private List<String> labelGenerated;
   private List<String> definition;
   private BpLinks links;
+  private boolean hasChildren;
 
   public BpProperty() {
   }
 
   public BpProperty(String id, String type, String propertyType, String ontologyType, List<String> label,
-                    List<String> labelGenerated, List<String> definition, BpLinks links) {
+                    List<String> labelGenerated, List<String> definition, BpLinks links, boolean hasChildren) {
     this.id = id;
     this.type = type;
     this.propertyType = propertyType;
@@ -31,6 +32,7 @@ public class BpProperty {
     this.labelGenerated = labelGenerated;
     this.definition = definition;
     this.links = links;
+    this.hasChildren = hasChildren;
   }
 
   public String getId() {
@@ -81,9 +83,13 @@ public class BpProperty {
     this.labelGenerated = labelGenerated;
   }
 
-  public List<String> getDefinition() { return definition; }
+  public List<String> getDefinition() {
+    return definition;
+  }
 
-  public void setDefinition(List<String> definition) { this.definition = definition; }
+  public void setDefinition(List<String> definition) {
+    this.definition = definition;
+  }
 
   public BpLinks getLinks() {
     return links;
@@ -91,6 +97,14 @@ public class BpProperty {
 
   public void setLinks(BpLinks links) {
     this.links = links;
+  }
+
+  public boolean getHasChildren() {
+    return hasChildren;
+  }
+
+  public void setHasChildren(boolean hasChildren) {
+    this.hasChildren = hasChildren;
   }
 
   @Override
@@ -104,6 +118,7 @@ public class BpProperty {
         ", labelGenerated=" + labelGenerated +
         ", definition=" + definition +
         ", links=" + links +
+        ", hasChildren=" + hasChildren +
         '}';
   }
 }

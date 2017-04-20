@@ -101,7 +101,7 @@ public class PropertyResourceTest extends AbstractTerminologyServerResourceTest 
     String ontology = "BIBFRAME";
     // Property "Copyright date" from BIBFRAME (The parent property is "Date")
     String propertyId = "http://id.loc.gov/ontologies/bibframe/copyrightDate";
-    String parentPropertyId = "http://id.loc.gov/ontologies/bibframe/date ";
+    String parentPropertyId = "http://id.loc.gov/ontologies/bibframe/date";
     String encodedPropertyId = null;
     try {
       encodedPropertyId = URLEncoder.encode(propertyId, "UTF-8");
@@ -130,8 +130,6 @@ public class PropertyResourceTest extends AbstractTerminologyServerResourceTest 
             propertyFound = true;
           }
         }
-      } else {
-        Assert.assertTrue("The number of children returned for this node should be 0", node.getChildren().size() == 0);
       }
     }
     Assert.assertTrue("Given property not found in the returned tree", propertyFound);
@@ -159,10 +157,10 @@ public class PropertyResourceTest extends AbstractTerminologyServerResourceTest 
     // Check that the call returns some children and that one of them is "Copyright date".
     // Note that this check is done with a property that has less children than the default page size. Otherwise,
     // we should iterate over all pages.
-    PagedResults<OntologyProperty> children = response.readEntity(new GenericType<PagedResults<OntologyProperty>>() {});
-    Assert.assertTrue("No children returned", children.getCollection().size() > 0);
+    List<OntologyProperty> children = response.readEntity(new GenericType<List<OntologyProperty>>() {});
+    Assert.assertTrue("No children returned", children.size() > 0);
     boolean childFound = false;
-    for (OntologyProperty property : children.getCollection()) {
+    for (OntologyProperty property : children) {
       if (property.getLdId().equals(childPropertyId)) {
         childFound = true;
       }
@@ -195,11 +193,11 @@ public class PropertyResourceTest extends AbstractTerminologyServerResourceTest 
     // Check that the call returns some children and that those are right.
     // Note that this check is done with a class that has less descendants than the default page size. Otherwise,
     // we should iterate over all pages.
-    PagedResults<OntologyProperty> descendants = response.readEntity(new GenericType<PagedResults<OntologyProperty>>() {});
-    Assert.assertTrue("No descendants returned", descendants.getCollection().size() > 0);
+    List<OntologyProperty> descendants = response.readEntity(new GenericType<List<OntologyProperty>>() {});
+    Assert.assertTrue("No descendants returned", descendants.size() > 0);
     boolean descendant1Found = false;
     boolean descendant2Found = false;
-    for (OntologyProperty property : descendants.getCollection()) {
+    for (OntologyProperty property : descendants) {
       if (property.getLdId().equals(descendant1PropertyId)) {
         descendant1Found = true;
       }

@@ -138,10 +138,10 @@ public interface ITerminologyService {
 
   List<TreeNode> getPropertyTree(String id, String ontology, String apiKey) throws IOException;
 
-  PagedResults<OntologyProperty> getPropertyChildren(String id, String ontology, int page, int pageSize, String apiKey)
+  List<OntologyProperty> getPropertyChildren(String id, String ontology, String apiKey)
       throws IOException;
 
-  PagedResults<OntologyProperty> getPropertyDescendants(String id, String ontology, int page, int pageSize, String apiKey)
+  List<OntologyProperty> getPropertyDescendants(String id, String ontology, String apiKey)
       throws IOException;
 
   List<OntologyProperty> getPropertyParents(String id, String ontology, String apiKey) throws IOException;

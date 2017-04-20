@@ -143,7 +143,7 @@ public class BpOntologyDAO {
   }
 
   public List<BpProperty> getRootProperties(String id, String apiKey) throws IOException {
-    String url = BP_API_BASE + BP_ONTOLOGIES + id + "/" + Constants.BP_PROPERTIES + "roots";
+    String url = BP_API_BASE_STAGING + BP_ONTOLOGIES + id + "/" + Constants.BP_PROPERTIES + "roots";
 
     HttpResponse response = HttpUtil.makeHttpRequest(Request.Get(url)
         .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).

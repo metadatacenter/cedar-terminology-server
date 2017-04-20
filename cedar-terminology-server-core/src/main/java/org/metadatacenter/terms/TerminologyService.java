@@ -580,14 +580,14 @@ public class TerminologyService implements ITerminologyService {
     return nodes;
   }
 
-  public PagedResults<OntologyProperty> getPropertyChildren(String id, String ontology, int page, int pageSize, String apiKey) throws IOException {
-    BpPagedResults<BpProperty> bpChildren = bpService.getPropertyChildren(id, ontology, page, pageSize, apiKey);
-    return ObjectConverter.toPropertyResults(bpChildren);
+  public List<OntologyProperty> getPropertyChildren(String id, String ontology, String apiKey) throws IOException {
+    List<BpProperty> bpChildren = bpService.getPropertyChildren(id, ontology, apiKey);
+    return ObjectConverter.toPropertyListResults(bpChildren);
   }
 
-  public PagedResults<OntologyProperty> getPropertyDescendants(String id, String ontology, int page, int pageSize, String apiKey) throws IOException {
-    BpPagedResults<BpProperty> bpDescendants = bpService.getPropertyDescendants(id, ontology, page, pageSize, apiKey);
-    return ObjectConverter.toPropertyResults(bpDescendants);
+  public List<OntologyProperty> getPropertyDescendants(String id, String ontology, String apiKey) throws IOException {
+    List<BpProperty> bpDescendants = bpService.getPropertyDescendants(id, ontology, apiKey);
+    return ObjectConverter.toPropertyListResults(bpDescendants);
   }
 
   public List<OntologyProperty> getPropertyParents(String id, String ontology, String apiKey) throws IOException {
