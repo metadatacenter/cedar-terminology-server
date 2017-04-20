@@ -118,7 +118,7 @@ public class PropertyResourceTest extends AbstractTerminologyServerResourceTest 
     // Check that the tree is not empty and that it is correctly expanded to the given class
     List<TreeNode> tree = response.readEntity(new GenericType<List<TreeNode>>() {});
     Assert.assertTrue("Empty tree", tree.size() > 0);
-    boolean propertyFound = false;
+    TreeNode foundChild = null;
     for (TreeNode node : tree) {
       // If "Date"
       if (node.getLdId().equals(parentPropertyId)) {
@@ -127,12 +127,14 @@ public class PropertyResourceTest extends AbstractTerminologyServerResourceTest 
         for (TreeNode childrenNode : node.getChildren()) {
           // If "Copyright date"
           if (childrenNode.getLdId().equals(propertyId)) {
-            propertyFound = true;
+            foundChild = childrenNode;
+            break;
           }
         }
       }
     }
-    Assert.assertTrue("Given property not found in the returned tree", propertyFound);
+    Assert.assertTrue("Given property not found in the returned tree", foundChild != null);
+    Assert.assertTrue("Preferred label not found for child property", foundChild.getPrefLabel() != null && foundChild.getPrefLabel().length() > 0);
   }
 
   @Test
