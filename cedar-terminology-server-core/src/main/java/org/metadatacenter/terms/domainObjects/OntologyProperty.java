@@ -5,7 +5,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 
 import java.util.List;
 
-@JsonPropertyOrder({"id", "@id", "@type", "type", "prefLabel", "labels", "labelsGenerated", "definitions", "source", "hasChildren"})
+@JsonPropertyOrder({"id", "@id", "@type", "type", "prefLabel", "labels", "labelsGenerated", "definitions", "ontology", "hasChildren"})
 public class OntologyProperty {
   private String id;
   @JsonProperty("@id")
@@ -17,14 +17,15 @@ public class OntologyProperty {
   private List<String> labels;
   private List<String> labelsGenerated;
   private List<String> definitions;
-  private String source;
+  private String ontology;
   private Boolean hasChildren;
 
   // The default constructor is used by Jackson for deserialization
   public OntologyProperty() {}
 
   public OntologyProperty(String id, String ldId, String ldType, String type, String prefLabel, List<String> labels,
-                          List<String> labelsGenerated, List<String> definitions, String source, Boolean hasChildren) {
+                          List<String> labelsGenerated, List<String> definitions, String ontology, Boolean
+                              hasChildren) {
     this.id = id;
     this.ldId = ldId;
     this.ldType = ldType;
@@ -33,7 +34,7 @@ public class OntologyProperty {
     this.labels = labels;
     this.labelsGenerated = labelsGenerated;
     this.definitions = definitions;
-    this.source = source;
+    this.ontology = ontology;
     this.hasChildren = hasChildren;
   }
 
@@ -101,12 +102,12 @@ public class OntologyProperty {
     this.definitions = definitions;
   }
 
-  public String getSource() {
-    return source;
+  public String getOntology() {
+    return ontology;
   }
 
-  public void setSource(String source) {
-    this.source = source;
+  public void setOntology(String ontology) {
+    this.ontology = ontology;
   }
 
   public Boolean getHasChildren() {
@@ -128,7 +129,7 @@ public class OntologyProperty {
         ", labels=" + labels +
         ", labelsGenerated=" + labelsGenerated +
         ", definitions=" + definitions +
-        ", source='" + source + '\'' +
+        ", ontology='" + ontology + '\'' +
         ", hasChildren=" + hasChildren +
         '}';
   }

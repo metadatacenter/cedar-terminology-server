@@ -63,7 +63,7 @@ public class PropertyResourceTest extends AbstractTerminologyServerResourceTest 
     } catch (UnsupportedEncodingException e) {
       e.printStackTrace();
     }
-    String url = baseUrlBpOntologies + "/" + Util.getShortIdentifier(p.getSource()) + "/" + BP_PROPERTIES + "/" + encodedPropertyId;
+    String url = baseUrlBpOntologies + "/" + Util.getShortIdentifier(p.getOntology()) + "/" + BP_PROPERTIES + "/" + encodedPropertyId;
     // Service invocation
     Response findResponse = client.target(url).request().header("Authorization", authHeader).get();
     // Check HTTP response

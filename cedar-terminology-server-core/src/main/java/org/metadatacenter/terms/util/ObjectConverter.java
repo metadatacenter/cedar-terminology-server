@@ -146,13 +146,13 @@ public class ObjectConverter {
   }
 
   public static OntologyProperty toOntologyProperty(BpProperty p) {
-    String source = p.getLinks().getOntology();
+    String ontology = p.getLinks().getOntology();
     // Note that for null lists, we return an empty list
     return new OntologyProperty(p.getId(), p.getId(), p.getType(), Util.getShortType(p.getType()),
         Util.generatePreferredLabel(p),
         p.getLabel() == null ? new ArrayList<>() : p.getLabel(),
         p.getLabelGenerated() == null ? new ArrayList<>() : p.getLabelGenerated(),
-        p.getDefinition() == null ? new ArrayList<>() : p.getDefinition(), source, p.getHasChildren());
+        p.getDefinition() == null ? new ArrayList<>() : p.getDefinition(), ontology, p.getHasChildren());
   }
 
   public static PagedResults<ValueSet> toValueSetResults(BpPagedResults<BpClass> bpr) {
