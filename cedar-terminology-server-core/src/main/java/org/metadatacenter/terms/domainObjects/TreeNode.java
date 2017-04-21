@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import java.util.List;
 
-@JsonPropertyOrder({"id", "@id", "@type", "prefLabel", "ontology", "hasChildren", "children", "obsolete"})
+@JsonPropertyOrder({"id", "@id", "@type", "type", "prefLabel", "ontology", "hasChildren", "children", "obsolete"})
 public class TreeNode {
   private String id;
   @JsonProperty("@id")
@@ -28,18 +28,6 @@ public class TreeNode {
     this.ldId = ldId;
     this.ldtype = ldtype;
     this.type = type;
-    this.prefLabel = prefLabel;
-    this.ontology = ontology;
-    this.hasChildren = hasChildren;
-    this.children = children;
-    this.obsolete = obsolete;
-  }
-
-  public TreeNode(String id, String ldId, String ldtype, String prefLabel, String ontology, boolean hasChildren,
-                  List<TreeNode> children, boolean obsolete) {
-    this.id = id;
-    this.ldId = ldId;
-    this.ldtype = ldtype;
     this.prefLabel = prefLabel;
     this.ontology = ontology;
     this.hasChildren = hasChildren;

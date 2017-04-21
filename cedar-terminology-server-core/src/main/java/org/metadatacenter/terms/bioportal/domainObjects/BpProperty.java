@@ -2,19 +2,21 @@ package org.metadatacenter.terms.bioportal.domainObjects;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import org.metadatacenter.terms.bioportal.domainObjects.jackson.BpPropertyDeserializer;
+import org.metadatacenter.terms.bioportal.domainObjects.jackson.BpTreeNodeDeserializer;
 
 import java.util.List;
 
+@JsonDeserialize(using = BpPropertyDeserializer.class)
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class BpProperty {
-  @JsonProperty("@id")
   private String id;
-  @JsonProperty("@type")
   private String type;
   private String propertyType;
   private String ontologyType;
+  private String prefLabel;
   private List<String> label;
-  private List<String> labelGenerated;
   private List<String> definition;
   private BpLinks links;
   private boolean hasChildren;
@@ -22,14 +24,14 @@ public class BpProperty {
   public BpProperty() {
   }
 
-  public BpProperty(String id, String type, String propertyType, String ontologyType, List<String> label,
-                    List<String> labelGenerated, List<String> definition, BpLinks links, boolean hasChildren) {
+  public BpProperty(String id, String type, String propertyType, String ontologyType, String prefLabel, List<String>
+      label, List<String> definition, BpLinks links, boolean hasChildren) {
     this.id = id;
     this.type = type;
     this.propertyType = propertyType;
     this.ontologyType = ontologyType;
+    this.prefLabel = prefLabel;
     this.label = label;
-    this.labelGenerated = labelGenerated;
     this.definition = definition;
     this.links = links;
     this.hasChildren = hasChildren;
@@ -67,20 +69,20 @@ public class BpProperty {
     this.ontologyType = ontologyType;
   }
 
+  public String getPrefLabel() {
+    return prefLabel;
+  }
+
+  public void setPrefLabel(String prefLabel) {
+    this.prefLabel = prefLabel;
+  }
+
   public List<String> getLabel() {
     return label;
   }
 
   public void setLabel(List<String> label) {
     this.label = label;
-  }
-
-  public List<String> getLabelGenerated() {
-    return labelGenerated;
-  }
-
-  public void setLabelGenerated(List<String> labelGenerated) {
-    this.labelGenerated = labelGenerated;
   }
 
   public List<String> getDefinition() {
@@ -114,8 +116,8 @@ public class BpProperty {
         ", type='" + type + '\'' +
         ", propertyType='" + propertyType + '\'' +
         ", ontologyType='" + ontologyType + '\'' +
+        ", prefLabel='" + prefLabel + '\'' +
         ", label=" + label +
-        ", labelGenerated=" + labelGenerated +
         ", definition=" + definition +
         ", links=" + links +
         ", hasChildren=" + hasChildren +

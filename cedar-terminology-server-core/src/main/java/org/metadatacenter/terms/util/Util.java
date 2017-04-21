@@ -90,27 +90,11 @@ public class Util
   /**
    * http://www.w3.org/2002/07/owl#ObjectProperty" -> ObjectProperty
    */
-  public static String getShortType(String propertyType) {
-    if (isUrl(propertyType)) {
-      return propertyType.substring(propertyType.lastIndexOf("#") + 1, propertyType.length());
+  public static String getShortType(String type) {
+    if (isUrl(type)) {
+      return type.substring(type.lastIndexOf("#") + 1, type.length());
     }
-    return propertyType;
-  }
-
-  /**
-   * Generates the preferred label of a BioPortal property
-   */
-  public static String generatePreferredLabel(BpProperty property) {
-    if (property.getLabel() != null && property.getLabel().size() > 0) {
-      return property.getLabel().get(0);
-    }
-    // We don't want to return the labelGenerated because it's just used for search purposes
-//    else if (property.getLabelGenerated() != null && property.getLabelGenerated().size() > 0) {
-//      return property.getLabelGenerated().get(0);
-//    }
-    else {
-      return getShortIdentifier(property.getId());
-    }
+    return type;
   }
 
   /**

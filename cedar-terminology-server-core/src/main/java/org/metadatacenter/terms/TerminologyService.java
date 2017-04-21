@@ -36,16 +36,16 @@ public class TerminologyService implements ITerminologyService {
     BpPagedResults<BpClass> results = bpService.search(q, scope, sources, suggest, source, subtreeRootId, maxDepth,
         page, pageSize, displayContext, displayLinks, apiKey);
 
-    return ObjectConverter.toSearchResults(results, valueSetsIds);
+    return ObjectConverter.toPagedSearchResults(results, valueSetsIds);
   }
 
-  public PagedResults<OntologyProperty> propertySearch(String q, List<String> sources, boolean exactMatch, boolean
+  public PagedResults<SearchResult> propertySearch(String q, List<String> sources, boolean exactMatch, boolean
       requireDefinitions, int page, int pageSize, boolean displayContext, boolean displayLinks, String apiKey) throws IOException {
 
     BpPagedResults<BpProperty> results =
         bpService.propertySearch(q, sources, exactMatch, requireDefinitions, page, pageSize, displayContext, displayLinks, apiKey);
 
-    return ObjectConverter.toPropertyResults(results);
+    return ObjectConverter.toPagedSearchResults(results);
   }
 
   /**

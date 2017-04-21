@@ -15,7 +15,7 @@ public class OntologyClass {
   @JsonProperty("@id")
   private String ldId;
   @JsonProperty("@type")
-  private String ldType = BP_TYPE_BASE + BP_TYPE_CLASS;
+  private String ldType;
   private String type = BP_TYPE_CLASS;
   private String prefLabel;
   private String creator;

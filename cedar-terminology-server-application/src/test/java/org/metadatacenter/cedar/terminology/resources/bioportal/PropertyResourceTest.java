@@ -4,6 +4,7 @@ import org.junit.*;
 import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.terms.domainObjects.OntologyClass;
 import org.metadatacenter.terms.domainObjects.OntologyProperty;
+import org.metadatacenter.terms.domainObjects.SearchResult;
 import org.metadatacenter.terms.domainObjects.TreeNode;
 import org.metadatacenter.terms.util.Util;
 
@@ -47,15 +48,14 @@ public class PropertyResourceTest extends AbstractTerminologyServerResourceTest 
   public void tearDown() {
   }
 
-  // TODO: test regular classes
   @Test
   public void findPropertyTest() {
     // First we do a search to retrieve some properties and pick the first one. Then we try to retrieve it by id
     String q = "title";
-    PagedResults<OntologyProperty> properties = searchProperties(q);
+    PagedResults<SearchResult> properties = searchProperties(q);
     Assert.assertTrue("No properties found to perform the test", properties.getCollection().size() > 0);
     // Pick the first one
-    OntologyProperty p = properties.getCollection().get(0);
+    SearchResult p = properties.getCollection().get(0);
     // Find it by id
     String encodedPropertyId = null;
     try {
@@ -63,7 +63,7 @@ public class PropertyResourceTest extends AbstractTerminologyServerResourceTest 
     } catch (UnsupportedEncodingException e) {
       e.printStackTrace();
     }
-    String url = baseUrlBpOntologies + "/" + Util.getShortIdentifier(p.getOntology()) + "/" + BP_PROPERTIES + "/" + encodedPropertyId;
+    String url = baseUrlBpOntologies + "/" + Util.getShortIdentifier(p.getSource()) + "/" + BP_PROPERTIES + "/" + encodedPropertyId;
     // Service invocation
     Response findResponse = client.target(url).request().header("Authorization", authHeader).get();
     // Check HTTP response

@@ -5,7 +5,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 
 import java.util.List;
 
-@JsonPropertyOrder({"id", "@id", "@type", "type", "prefLabel", "labels", "labelsGenerated", "definitions", "ontology", "hasChildren"})
+@JsonPropertyOrder({"id", "@id", "@type", "type", "prefLabel", "labels", "definitions", "ontology", "hasChildren"})
 public class OntologyProperty {
   private String id;
   @JsonProperty("@id")
@@ -15,7 +15,6 @@ public class OntologyProperty {
   private String type;
   private String prefLabel;
   private List<String> labels;
-  private List<String> labelsGenerated;
   private List<String> definitions;
   private String ontology;
   private Boolean hasChildren;
@@ -24,15 +23,13 @@ public class OntologyProperty {
   public OntologyProperty() {}
 
   public OntologyProperty(String id, String ldId, String ldType, String type, String prefLabel, List<String> labels,
-                          List<String> labelsGenerated, List<String> definitions, String ontology, Boolean
-                              hasChildren) {
+                          List<String> definitions, String ontology, Boolean hasChildren) {
     this.id = id;
     this.ldId = ldId;
     this.ldType = ldType;
     this.type = type;
     this.prefLabel = prefLabel;
     this.labels = labels;
-    this.labelsGenerated = labelsGenerated;
     this.definitions = definitions;
     this.ontology = ontology;
     this.hasChildren = hasChildren;
@@ -86,14 +83,6 @@ public class OntologyProperty {
     this.labels = labels;
   }
 
-  public List<String> getLabelsGenerated() {
-    return labelsGenerated;
-  }
-
-  public void setLabelsGenerated(List<String> labelsGenerated) {
-    this.labelsGenerated = labelsGenerated;
-  }
-
   public List<String> getDefinitions() {
     return definitions;
   }
@@ -127,7 +116,6 @@ public class OntologyProperty {
         ", type='" + type + '\'' +
         ", prefLabel='" + prefLabel + '\'' +
         ", labels=" + labels +
-        ", labelsGenerated=" + labelsGenerated +
         ", definitions=" + definitions +
         ", ontology='" + ontology + '\'' +
         ", hasChildren=" + hasChildren +

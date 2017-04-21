@@ -335,7 +335,7 @@ public abstract class AbstractTerminologyServerResourceTest {
   }
 
   /* Properties */
-  protected static PagedResults<OntologyProperty> searchProperties(String q) {
+  protected static PagedResults<SearchResult> searchProperties(String q) {
     // Service invocation
     Response response = client.target(baseUrlBpPropertySearch).queryParam("q", q).request().header("Authorization",
         authHeader).get();
@@ -344,7 +344,7 @@ public abstract class AbstractTerminologyServerResourceTest {
     // Check Content-Type
     Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check the number of results
-    PagedResults<OntologyProperty> properties = response.readEntity(new GenericType<PagedResults<OntologyProperty>>() {
+    PagedResults<SearchResult> properties = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
     });
     return properties;
   }

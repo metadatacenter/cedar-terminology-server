@@ -221,7 +221,7 @@ public class SearchResourceTest extends AbstractTerminologyServerResourceTest {
     Assert.assertTrue("The number of search results for '" + q + "' is higher than expected", approxResultsCount < upperLimitResultsCount);
     // Check that the retrieved classes are from the right source
     for (JsonNode r : results) {
-      String resultSource = r.get("ontology").asText();
+      String resultSource = r.get("source").asText();
       String shortResultSource = resultSource.substring(resultSource.lastIndexOf("/") + 1);
       Assert.assertTrue("Class source does not match the expected source",
           source.compareTo(shortResultSource) == 0);
@@ -251,7 +251,7 @@ public class SearchResourceTest extends AbstractTerminologyServerResourceTest {
     Assert.assertTrue("The number of search results for '" + q + "' is different than expected", results.size() == 1);
     // Check that the retrieved classes are from the right source
     for (JsonNode r : results) {
-      String resultSource = r.get("ontology").asText();
+      String resultSource = r.get("source").asText();
       String shortResultSource = resultSource.substring(resultSource.lastIndexOf("/") + 1);
       Assert.assertTrue("Class source does not match the expected source",
           source.compareTo(shortResultSource) == 0);
@@ -293,8 +293,8 @@ public class SearchResourceTest extends AbstractTerminologyServerResourceTest {
     // Check that all properties found contain at least one definition
     // TODO: We are just checking the first page of results. Check all of them.
     for (JsonNode r : results) {
-      JsonNode definitions = r.get("definitions");
-      Assert.assertTrue("A property with no definitions has been returned", definitions.size() > 0);
+      Assert.assertTrue("A property with no definitions has been returned", r.get("definition") != null);
+      Assert.assertTrue("A property with no definitions has been returned", r.get("definition").asText().length() > 0);
     }
   }
 

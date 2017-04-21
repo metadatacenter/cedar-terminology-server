@@ -16,7 +16,7 @@ public interface ITerminologyService {
                                         subtreeRootId, int maxDepth, int page, int pageSize, boolean displayContext,
                                     boolean displayLinks, String apiKey, List<String> valueSetsIds) throws IOException;
 
-  PagedResults<OntologyProperty> propertySearch(String q, List<String> sources, boolean exactMatch, boolean
+  PagedResults<SearchResult> propertySearch(String q, List<String> sources, boolean exactMatch, boolean
       requireDefinitions, int page, int pageSize, boolean displayContext, boolean displayLinks, String apiKey) throws
       IOException;
 

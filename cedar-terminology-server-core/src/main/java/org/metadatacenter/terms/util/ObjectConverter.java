@@ -1,7 +1,6 @@
 package org.metadatacenter.terms.util;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import org.apache.http.util.EntityUtils;
 import org.metadatacenter.terms.bioportal.customObjects.BpPagedResults;
 import org.metadatacenter.terms.bioportal.domainObjects.*;
 import org.metadatacenter.terms.customObjects.PagedResults;
@@ -149,9 +148,8 @@ public class ObjectConverter {
     String ontology = p.getLinks().getOntology();
     // Note that for null lists, we return an empty list
     return new OntologyProperty(p.getId(), p.getId(), p.getType(), Util.getShortType(p.getType()),
-        Util.generatePreferredLabel(p),
+        p.getPrefLabel(),
         p.getLabel() == null ? new ArrayList<>() : p.getLabel(),
-        p.getLabelGenerated() == null ? new ArrayList<>() : p.getLabelGenerated(),
         p.getDefinition() == null ? new ArrayList<>() : p.getDefinition(), ontology, p.getHasChildren());
   }
 
@@ -191,7 +189,7 @@ public class ObjectConverter {
         bpr.getNextPage(), classes);
   }
 
-  public static PagedResults<SearchResult> toSearchResults(BpPagedResults<BpClass> bpr, List<String> valueSetsIds) {
+  public static PagedResults<SearchResult> toPagedSearchResults(BpPagedResults<BpClass> bpr, List<String> valueSetsIds) {
     List<SearchResult> results = new ArrayList<>();
     for (BpClass c : bpr.getCollection()) {
       // Assign information depending on the result type
@@ -227,14 +225,20 @@ public class ObjectConverter {
         bpr.getNextPage(), results);
   }
 
-  public static PagedResults<OntologyProperty> toPropertyResults(BpPagedResults<BpProperty> bpr) {
-    List<OntologyProperty> results = new ArrayList<>();
-    for (BpProperty p : bpr.getCollection()) {
-      // Note that for null lists, we return an empty list
-      OntologyProperty r = toOntologyProperty(p);
-      results.add(r);
+  public static PagedResults<SearchResult> toPagedSearchResults(BpPagedResults<BpProperty> bpProperties) {
+    List<SearchResult> results = new ArrayList<>();
+    for (BpProperty bpProperty : bpProperties.getCollection()) {
+      String definition = null;
+      if (bpProperty.getDefinition() != null && bpProperty.getDefinition().size() > 0) {
+        definition = bpProperty.getDefinition().get(0);
+      }
+      String source = bpProperty.getLinks().getOntology();
+      SearchResult searchResult = new SearchResult(bpProperty.getId(), bpProperty.getId(), bpProperty.getType(),
+          Util.getShortType(bpProperty.getType()), bpProperty.getPrefLabel(), definition, source);
+      results.add(searchResult);
     }
-    return new PagedResults<>(bpr.getPage(), bpr.getPageCount(), bpr.getCollection().size(), bpr.getPrevPage(), bpr.getNextPage(), results);
+    return new PagedResults<>(bpProperties.getPage(), bpProperties.getPageCount(), bpProperties.getCollection().size(),
+        bpProperties.getPrevPage(), bpProperties.getNextPage(), results);
   }
 
   public static List<OntologyProperty> toPropertyListResults(List<BpProperty> bpr) {
@@ -253,7 +257,12 @@ public class ObjectConverter {
         children.add(toTreeNode(child));
       }
     }
-    return new TreeNode(bpTreeNode.getId(), bpTreeNode.getId(), bpTreeNode.getType(), bpTreeNode.getPrefLabel(), bpTreeNode.getLinks().getOntology(), bpTreeNode.getHasChildren(), children, bpTreeNode.isObsolete());
+    String ldType = bpTreeNode.getType();
+    String type = Util.getShortType(ldType);
+    if (type.equals("Class")) {
+      type = BP_TYPE_CLASS;
+    }
+    return new TreeNode(bpTreeNode.getId(), bpTreeNode.getId(), ldType, type, bpTreeNode.getPrefLabel(), bpTreeNode.getLinks().getOntology(), bpTreeNode.getHasChildren(), children, bpTreeNode.isObsolete());
   }
 
   // Transforms a value set and its values into a tree node
