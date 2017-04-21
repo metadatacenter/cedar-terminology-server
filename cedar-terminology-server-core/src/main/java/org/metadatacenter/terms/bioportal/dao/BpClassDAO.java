@@ -9,6 +9,7 @@ import org.metadatacenter.terms.bioportal.customObjects.BpPagedResults;
 import org.metadatacenter.terms.bioportal.domainObjects.BpClass;
 import org.metadatacenter.terms.bioportal.domainObjects.BpTreeNode;
 import org.metadatacenter.terms.util.HttpUtil;
+import org.metadatacenter.terms.util.ObjectConverter;
 import org.metadatacenter.terms.util.Util;
 
 import javax.ws.rs.core.Response.Status;
@@ -77,11 +78,7 @@ public class BpClassDAO
     // The tree was successfully retrieved
     if (statusCode == Status.OK.getStatusCode()) {
       JsonNode bpResult = MAPPER.readTree(new String(EntityUtils.toByteArray(response.getEntity())));
-      List<BpTreeNode> nodes = new ArrayList<>();
-      for (JsonNode n : bpResult) {
-        nodes.add(MAPPER.convertValue(n, BpTreeNode.class));
-      }
-      return nodes;
+      return ObjectConverter.toBpTreeNodeList(bpResult);
     } else {
       throw new HTTPException(statusCode);
     }

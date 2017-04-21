@@ -2,14 +2,9 @@ package org.metadatacenter.terms.domainObjects;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
-//import com.wordnik.swagger.annotations.ApiModel;
-
 import java.util.List;
 
-import static org.metadatacenter.terms.util.Constants.BP_TYPE_CLASS;
-
-//@ApiModel
-@JsonPropertyOrder({"id", "@id", "@type", "type", "prefLabel", "ontology", "hasChildren", "children", "obsolete"})
+@JsonPropertyOrder({"id", "@id", "@type", "prefLabel", "ontology", "hasChildren", "children", "obsolete"})
 public class TreeNode {
   private String id;
   @JsonProperty("@id")

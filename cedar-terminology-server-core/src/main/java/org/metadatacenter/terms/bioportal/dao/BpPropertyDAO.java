@@ -16,6 +16,7 @@ import org.metadatacenter.util.json.JsonMapper;
 import javax.ws.rs.core.Response.Status;
 import javax.xml.ws.http.HTTPException;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.metadatacenter.terms.util.Constants.*;
@@ -76,8 +77,9 @@ public class BpPropertyDAO
     int statusCode = response.getStatusLine().getStatusCode();
     // The tree was successfully retrieved
     if (statusCode == Status.OK.getStatusCode()) {
+
       JsonNode bpResult = MAPPER.readTree(new String(EntityUtils.toByteArray(response.getEntity())));
-      return ObjectConverter.toBpTreeNodesFromPropertyJsonNodes(bpResult);
+      return ObjectConverter.toBpTreeNodeList(bpResult);
     } else {
       throw new HTTPException(statusCode);
     }
