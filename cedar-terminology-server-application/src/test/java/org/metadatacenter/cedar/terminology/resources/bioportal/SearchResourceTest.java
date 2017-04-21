@@ -221,7 +221,7 @@ public class SearchResourceTest extends AbstractTerminologyServerResourceTest {
     Assert.assertTrue("The number of search results for '" + q + "' is higher than expected", approxResultsCount < upperLimitResultsCount);
     // Check that the retrieved classes are from the right source
     for (JsonNode r : results) {
-      String resultSource = r.get("source").asText();
+      String resultSource = r.get("ontology").asText();
       String shortResultSource = resultSource.substring(resultSource.lastIndexOf("/") + 1);
       Assert.assertTrue("Class source does not match the expected source",
           source.compareTo(shortResultSource) == 0);
@@ -251,7 +251,7 @@ public class SearchResourceTest extends AbstractTerminologyServerResourceTest {
     Assert.assertTrue("The number of search results for '" + q + "' is different than expected", results.size() == 1);
     // Check that the retrieved classes are from the right source
     for (JsonNode r : results) {
-      String resultSource = r.get("source").asText();
+      String resultSource = r.get("ontology").asText();
       String shortResultSource = resultSource.substring(resultSource.lastIndexOf("/") + 1);
       Assert.assertTrue("Class source does not match the expected source",
           source.compareTo(shortResultSource) == 0);
