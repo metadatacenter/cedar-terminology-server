@@ -117,8 +117,12 @@ public class Util
    * Generates  property preferred label from a JsonNode that contains a property tree node
    */
   public static String generatePreferredLabel(JsonNode propertyNode) {
+    final String prefLabelProperty = "prefLabel";
     final String labelsProperty = "label";
     final String idProperty = "@id";
+    if (propertyNode.hasNonNull(prefLabelProperty) && propertyNode.get(prefLabelProperty).asText().length() > 0) {
+      return propertyNode.get(prefLabelProperty).asText();
+    }
     if (propertyNode.hasNonNull(labelsProperty) && propertyNode.get(labelsProperty).size() > 0) {
       return propertyNode.get(labelsProperty).get(0).asText();
     }
