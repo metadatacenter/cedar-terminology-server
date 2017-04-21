@@ -145,7 +145,7 @@ public class BioPortalService implements IBioPortalService
     // Encode query
     q = Util.encodeIfNeeded(q);
     /** Build url **/
-    String url =  BP_API_BASE + BP_PROPERTY_SEARCH + "?q=" + q;
+    String url =  BP_API_BASE_STAGING + BP_PROPERTY_SEARCH + "?q=" + q;
 
     /** Add sources **/
     if (sources.size() > 0) {

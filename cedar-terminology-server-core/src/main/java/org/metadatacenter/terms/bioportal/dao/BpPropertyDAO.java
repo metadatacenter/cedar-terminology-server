@@ -34,7 +34,7 @@ public class BpPropertyDAO
   }
 
   public BpProperty find(String id, String ontology, String apiKey) throws HTTPException, IOException {
-    String url = BP_API_BASE + BP_ONTOLOGIES + ontology + "/" + BP_PROPERTIES + id;
+    String url = BP_API_BASE_STAGING + BP_ONTOLOGIES + ontology + "/" + BP_PROPERTIES + id;
 
     HttpResponse response = HttpUtil.makeHttpRequest(Request.Get(url)
         .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
@@ -51,7 +51,7 @@ public class BpPropertyDAO
   }
 
   public List<BpProperty> findAllPropertiesInOntology(String ontology, String apiKey) throws HTTPException, IOException {
-    String url = BP_API_BASE + BP_ONTOLOGIES + ontology + "/" + BP_PROPERTIES;
+    String url = BP_API_BASE_STAGING + BP_ONTOLOGIES + ontology + "/" + BP_PROPERTIES;
     System.out.println("BioPortal url: " + url);
     HttpResponse response = HttpUtil.makeHttpRequest(Request.Get(url)
         .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).

@@ -79,8 +79,8 @@ public class PropertyResourceTest extends AbstractTerminologyServerResourceTest 
   @Test
   public void findAllPropertiesForOntologyTest() {
     String ontology = "BIBFRAME";
-    //int approxPropertiesCount = 480;
-    int approxPropertiesCount = 198;
+    int approxPropertiesCount = 480;
+    //int approxPropertiesCount = 198;
     String url = baseUrlBpOntologies + "/" + ontology + "/" + BP_PROPERTIES;
     // Service invocation
     Response findResponse = client.target(url).request().header("Authorization", authHeader).get();
