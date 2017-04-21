@@ -1,16 +1,22 @@
 package org.metadatacenter.terms.util;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import org.metadatacenter.terms.bioportal.domainObjects.BpProperty;
+import org.metadatacenter.terms.bioportal.domainObjects.BpTreeNode;
 
 import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
 
 import static org.metadatacenter.terms.util.Constants.*;
+import static org.metadatacenter.util.json.JsonMapper.MAPPER;
 
 public class Util
 {
@@ -72,7 +78,11 @@ public class Util
    */
   public static String getShortIdentifier(String id) {
     if (isUrl(id)) {
-        return id.substring(id.lastIndexOf("/") + 1, id.length());
+      String shortId = id.substring(id.lastIndexOf("/") + 1, id.length());
+      if (shortId.contains("#")) {
+        shortId = shortId.substring(shortId.lastIndexOf("#") + 1, shortId.length());
+      }
+      return shortId;
     }
     return id;
   }
@@ -80,25 +90,39 @@ public class Util
   /**
    * http://www.w3.org/2002/07/owl#ObjectProperty" -> ObjectProperty
    */
-  public static String getShortPropertyType(String propertyType) {
-    if (isUrl(propertyType)) {
-      return propertyType.substring(propertyType.lastIndexOf("#") + 1, propertyType.length());
+  public static String getShortType(String type) {
+    if (isUrl(type)) {
+      return type.substring(type.lastIndexOf("#") + 1, type.length());
     }
-    return propertyType;
+    return type;
   }
 
   /**
-   * Generates the preferred label of a BioPortal property
+   * Generates  property preferred label from a JsonNode that contains a property tree node
    */
-  public static String generatePropertyPreferredLabel(BpProperty property) {
-    if (property.getLabel() != null && property.getLabel().size() > 0) {
-      return property.getLabel().get(0);
+  public static String generatePreferredLabel(JsonNode propertyNode) {
+    final String prefLabelProperty = "prefLabel";
+    final String labelsProperty = "label";
+    final String idProperty = "@id";
+    if (propertyNode.hasNonNull(prefLabelProperty) && propertyNode.get(prefLabelProperty).asText().length() > 0) {
+      return propertyNode.get(prefLabelProperty).asText();
     }
-    else if (property.getLabelGenerated() != null && property.getLabelGenerated().size() > 0) {
-      return property.getLabelGenerated().get(0);
+    if (propertyNode.hasNonNull(labelsProperty) && propertyNode.get(labelsProperty).size() > 0) {
+      return propertyNode.get(labelsProperty).get(0).asText();
+    }
+    else if (propertyNode.hasNonNull(idProperty)) {
+      return Util.getShortIdentifier(propertyNode.get(idProperty).asText());
+    }
+    else return "Label not available";
+  }
+
+  public static boolean isProperty(String type) {
+    type = getShortType(type);
+    if (type.equals(OBJECT_PROPERTY) || type.equals(ANNOTATION_PROPERTY) || type.equals(DATATYPE_PROPERTY)) {
+      return true;
     }
     else {
-      return "Not available";
+      return false;
     }
   }
 

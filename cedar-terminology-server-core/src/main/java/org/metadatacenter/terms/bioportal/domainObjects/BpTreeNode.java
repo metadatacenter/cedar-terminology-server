@@ -1,16 +1,16 @@
 package org.metadatacenter.terms.bioportal.domainObjects;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import org.metadatacenter.terms.bioportal.domainObjects.jackson.BpTreeNodeDeserializer;
 
 import java.util.List;
 
+@JsonDeserialize(using = BpTreeNodeDeserializer.class)
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class BpTreeNode {
 
-  @JsonProperty("@id")
   private String id;
-  @JsonProperty("@type")
   private String type;
   private String prefLabel;
   private boolean hasChildren;

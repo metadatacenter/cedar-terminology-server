@@ -16,6 +16,11 @@
 
   <dependencies>
 
+    <dependency>
+      <groupId>org.metadatacenter</groupId>
+      <artifactId>cedar-server-utils-core</artifactId>
+    </dependency>
+
     <!-- HTTPClient Fluent API-->
     <dependency>
       <groupId>org.apache.httpcomponents</groupId>
