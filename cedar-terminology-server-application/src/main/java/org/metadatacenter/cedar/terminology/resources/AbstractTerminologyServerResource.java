@@ -6,9 +6,9 @@ import org.metadatacenter.terms.TerminologyService;
 
 public abstract class AbstractTerminologyServerResource extends CedarMicroserviceResource {
 
+  public static TerminologyService terminologyService;
   protected static String apiKey;
   protected static int defaultPageSize;
-  public static TerminologyService terminologyService;
 
   protected AbstractTerminologyServerResource(CedarConfig cedarConfig) {
     super(cedarConfig);
