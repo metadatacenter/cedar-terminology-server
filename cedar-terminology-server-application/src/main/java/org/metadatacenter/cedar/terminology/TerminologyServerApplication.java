@@ -6,6 +6,8 @@ import org.metadatacenter.cedar.terminology.health.TerminologyServerHealthCheck;
 import org.metadatacenter.cedar.terminology.resources.AbstractTerminologyServerResource;
 import org.metadatacenter.cedar.terminology.resources.IndexResource;
 import org.metadatacenter.cedar.terminology.resources.bioportal.*;
+import org.metadatacenter.cedar.terminology.utils.logging.LogRequestFilter;
+import org.metadatacenter.cedar.terminology.utils.logging.LogResponseFilter;
 import org.metadatacenter.cedar.util.dw.CedarMicroserviceApplication;
 import org.metadatacenter.model.ServerName;
 import org.metadatacenter.terms.TerminologyService;
@@ -54,6 +56,11 @@ public class TerminologyServerApplication extends CedarMicroserviceApplication<T
     environment.jersey().register(new ValueSetResource(cedarConfig));
     environment.jersey().register(new ValueResource(cedarConfig));
     environment.jersey().register(new PropertyResource(cedarConfig));
+
+    // Register logging filters
+
+    //environment.jersey().register(new LogRequestFilter());
+    environment.jersey().register(new LogResponseFilter());
 
     final TerminologyServerHealthCheck healthCheck = new TerminologyServerHealthCheck();
     environment.healthChecks().register("message", healthCheck);
