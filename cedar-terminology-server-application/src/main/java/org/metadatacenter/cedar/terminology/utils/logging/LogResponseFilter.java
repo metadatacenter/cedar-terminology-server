@@ -18,7 +18,11 @@ protected final Logger log = LoggerFactory.getLogger("Requests");
       containerResponseContext) throws IOException {
     int statusCode = containerResponseContext.getStatus();
     String message = "[*** Response ***]: ";
-    message += containerResponseContext.getEntity().toString();
+    message += "Status: " + containerResponseContext.getStatus();
+
+    if (containerResponseContext.getEntity() != null) {
+      message += "; " + containerResponseContext.getEntity().toString();
+    }
 
     if (statusCode == Response.Status.INTERNAL_SERVER_ERROR.getStatusCode()) {
       log.error(message);
