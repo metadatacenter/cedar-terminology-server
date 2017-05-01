@@ -11,14 +11,13 @@ import java.io.IOException;
 
 public class LogResponseFilter implements ContainerResponseFilter {
 
-protected final Logger log = LoggerFactory.getLogger("Requests");
+protected final Logger log = LoggerFactory.getLogger("HTTP Response");
 
   @Override
   public void filter(ContainerRequestContext containerRequestContext, ContainerResponseContext
       containerResponseContext) throws IOException {
     int statusCode = containerResponseContext.getStatus();
-    String message = "[*** Response ***]: ";
-    message += "Status: " + containerResponseContext.getStatus();
+    String message = "Status: " + containerResponseContext.getStatus();
 
     if (containerResponseContext.getEntity() != null) {
       message += "; " + containerResponseContext.getEntity().toString();

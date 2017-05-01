@@ -9,12 +9,11 @@ import java.io.IOException;
 
 public class LogRequestFilter implements ContainerRequestFilter {
 
-protected final Logger log = LoggerFactory.getLogger("Requests");
+protected final Logger log = LoggerFactory.getLogger("HTTP Request");
 
   @Override
   public void filter(ContainerRequestContext containerRequestContext) throws IOException {
-    String message = "[*** Request ***]: ";
-    message += containerRequestContext.getMethod() + " ";
+    String message = containerRequestContext.getMethod() + " ";
     message += containerRequestContext.getUriInfo().getAbsolutePath();
     log.info(message);
   }
