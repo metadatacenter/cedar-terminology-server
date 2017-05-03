@@ -34,7 +34,7 @@ public class BpPropertyDAO
   }
 
   public BpProperty find(String id, String ontology, String apiKey) throws HTTPException, IOException {
-    String url = BP_API_BASE_STAGING + BP_ONTOLOGIES + ontology + "/" + BP_PROPERTIES + id;
+    String url = BP_API_BASE + BP_ONTOLOGIES + ontology + "/" + BP_PROPERTIES + id;
 
     HttpResponse response = HttpUtil.makeHttpRequest(Request.Get(url)
         .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
@@ -51,7 +51,7 @@ public class BpPropertyDAO
   }
 
   public List<BpProperty> findAllPropertiesInOntology(String ontology, String apiKey) throws HTTPException, IOException {
-    String url = BP_API_BASE_STAGING + BP_ONTOLOGIES + ontology + "/" + BP_PROPERTIES;
+    String url = BP_API_BASE + BP_ONTOLOGIES + ontology + "/" + BP_PROPERTIES;
     System.out.println("BioPortal url: " + url);
     HttpResponse response = HttpUtil.makeHttpRequest(Request.Get(url)
         .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
@@ -68,7 +68,7 @@ public class BpPropertyDAO
   }
 
   public List<BpTreeNode> getTree(String id, String ontology, String apiKey) throws IOException {
-    String url = BP_API_BASE_STAGING + BP_ONTOLOGIES + ontology + "/" + BP_PROPERTIES + id + "/tree";
+    String url = BP_API_BASE + BP_ONTOLOGIES + ontology + "/" + BP_PROPERTIES + id + "/tree";
     System.out.println("BioPortal url: " + url);
     HttpResponse response = HttpUtil.makeHttpRequest(Request.Get(url)
         .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
@@ -87,7 +87,7 @@ public class BpPropertyDAO
 
   public List<BpProperty> getChildren(String id, String ontology, String apiKey) throws IOException
   {
-    String url = BP_API_BASE_STAGING + BP_ONTOLOGIES + ontology + "/" + BP_PROPERTIES + id + "/children";
+    String url = BP_API_BASE + BP_ONTOLOGIES + ontology + "/" + BP_PROPERTIES + id + "/children";
 
     HttpResponse response = HttpUtil.makeHttpRequest(Request.Get(url)
         .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
@@ -104,7 +104,7 @@ public class BpPropertyDAO
   }
 
   public List<BpProperty> getDescendants(String id, String ontology, String apiKey) throws HTTPException, IOException {
-    String url = BP_API_BASE_STAGING + BP_ONTOLOGIES + ontology + "/" + BP_PROPERTIES + id + "/descendants";
+    String url = BP_API_BASE + BP_ONTOLOGIES + ontology + "/" + BP_PROPERTIES + id + "/descendants";
 
     HttpResponse response = HttpUtil.makeHttpRequest(Request.Get(url)
         .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
@@ -122,7 +122,7 @@ public class BpPropertyDAO
 
   public List<BpProperty> getParents(String id, String ontology, String apiKey) throws IOException
   {
-    String url = BP_API_BASE_STAGING + BP_ONTOLOGIES + ontology + "/" + BP_PROPERTIES + id + "/parents";
+    String url = BP_API_BASE + BP_ONTOLOGIES + ontology + "/" + BP_PROPERTIES + id + "/parents";
 
     HttpResponse response = HttpUtil.makeHttpRequest(Request.Get(url)
         .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).

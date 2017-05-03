@@ -16,7 +16,7 @@ public class Constants
 
   /** BioPortal API endpoints */
   public static String BP_API_BASE;
-  public static String BP_API_BASE_STAGING = "http://stagedata.bioontology.org/";
+  //public static String BP_API_BASE_STAGING = "http://stagedata.bioontology.org/";
   public static final String BP_SEARCH = "search";
   public static final String BP_PROPERTY_SEARCH = "property_search";
   public static final String BP_ONTOLOGIES = "ontologies/";
