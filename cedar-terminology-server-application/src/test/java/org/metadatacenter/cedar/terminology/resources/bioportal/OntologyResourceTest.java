@@ -3,6 +3,7 @@ package org.metadatacenter.cedar.terminology.resources.bioportal;
 import org.junit.*;
 import org.metadatacenter.terms.domainObjects.Ontology;
 import org.metadatacenter.terms.domainObjects.OntologyClass;
+import org.metadatacenter.terms.domainObjects.OntologyProperty;
 
 import javax.ws.rs.core.GenericType;
 import javax.ws.rs.core.HttpHeaders;
@@ -101,6 +102,29 @@ public class OntologyResourceTest extends AbstractTerminologyServerResourceTest 
     Assert.assertTrue("Expected root class not found", found);
   }
 
-
+  @Test
+  public void findRootPropertiesTest() {
+    String ontology = "BIBFRAME";
+    String url = baseUrlBpOntologies + "/" + ontology + "/" + BP_PROPERTIES + "/" + BP_ROOTS;
+    // Service invocation
+    Response response = client.target(url).request().header("Authorization", authHeader).get();
+    // Check HTTP response
+    Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
+    // Check Content-Type
+    Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
+    // Check results
+    List<OntologyProperty> roots = response.readEntity(new GenericType<List<OntologyProperty>>() {});
+    Assert.assertTrue("No roots returned", roots.size() > 0);
+    // Basic check to see if the "Administrative metadata" root property is found
+    String rootId = "http://id.loc.gov/ontologies/bibframe/adminMetadata";
+    boolean found = false;
+    for (OntologyProperty property : roots) {
+      if (property.getLdId().equals(rootId)) {
+        found = true;
+        break;
+      }
+    }
+    Assert.assertTrue("Expected root property not found", found);
+  }
 
 }

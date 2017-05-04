@@ -2,21 +2,16 @@ package org.metadatacenter.terms.domainObjects;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
-//import com.wordnik.swagger.annotations.ApiModel;
-
 import java.util.List;
 
-import static org.metadatacenter.terms.util.Constants.BP_TYPE_CLASS;
-
-//@ApiModel
-@JsonPropertyOrder({"id", "@id", "@type", "prefLabel", "ontology", "hasChildren", "children", "obsolete"})
+@JsonPropertyOrder({"id", "@id", "@type", "type", "prefLabel", "ontology", "hasChildren", "children", "obsolete"})
 public class TreeNode {
   private String id;
   @JsonProperty("@id")
   private String ldId;
   @JsonProperty("@type")
   private String ldtype;
-  private String type = BP_TYPE_CLASS;
+  private String type;
   private String prefLabel;
   private String ontology;
   private boolean hasChildren;
@@ -33,18 +28,6 @@ public class TreeNode {
     this.ldId = ldId;
     this.ldtype = ldtype;
     this.type = type;
-    this.prefLabel = prefLabel;
-    this.ontology = ontology;
-    this.hasChildren = hasChildren;
-    this.children = children;
-    this.obsolete = obsolete;
-  }
-
-  public TreeNode(String id, String ldId, String ldtype, String prefLabel, String ontology, boolean hasChildren,
-                  List<TreeNode> children, boolean obsolete) {
-    this.id = id;
-    this.ldId = ldId;
-    this.ldtype = ldtype;
     this.prefLabel = prefLabel;
     this.ontology = ontology;
     this.hasChildren = hasChildren;

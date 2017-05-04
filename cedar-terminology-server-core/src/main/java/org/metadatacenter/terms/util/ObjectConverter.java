@@ -1,5 +1,6 @@
 package org.metadatacenter.terms.util;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import org.metadatacenter.terms.bioportal.customObjects.BpPagedResults;
 import org.metadatacenter.terms.bioportal.domainObjects.*;
 import org.metadatacenter.terms.customObjects.PagedResults;
@@ -10,13 +11,11 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
-import static org.metadatacenter.terms.util.Constants.BP_VS_COLLECTIONS_READ;
-import static org.metadatacenter.terms.util.Constants.BP_TYPE_BASE;
-import static org.metadatacenter.terms.util.Constants.BP_TYPE_CLASS;
-import static org.metadatacenter.terms.util.Constants.BP_TYPE_VALUE;
-import static org.metadatacenter.terms.util.Constants.BP_TYPE_VS;
+import static org.metadatacenter.terms.util.Constants.*;
+import static org.metadatacenter.util.json.JsonMapper.MAPPER;
 
 public class ObjectConverter {
+
   /**
    * To BioPortal objects
    **/
@@ -60,6 +59,14 @@ public class ObjectConverter {
   public static BpProvisionalRelation toBpProvisionalRelation(Relation r) {
     return new BpProvisionalRelation(r.getId(), r.getSourceClassId(), r.getRelationType(), r.getTargetClassId(),
         r.getTargetClassOntology(), r.getCreated(), r.getCreator());
+  }
+
+  public static List<BpTreeNode> toBpTreeNodeList(JsonNode nodes) {
+    List<BpTreeNode> treeNodes = new ArrayList<>();
+    for (JsonNode node : nodes) {
+      treeNodes.add(MAPPER.convertValue(node, BpTreeNode.class));
+    }
+    return treeNodes;
   }
 
   /**
@@ -137,6 +144,15 @@ public class ObjectConverter {
         pc.getSynonym(), relations, provisional, pc.getCreated());
   }
 
+  public static OntologyProperty toOntologyProperty(BpProperty p) {
+    String ontology = p.getLinks().getOntology();
+    // Note that for null lists, we return an empty list
+    return new OntologyProperty(p.getId(), p.getId(), p.getType(), Util.getShortType(p.getType()),
+        p.getPrefLabel(),
+        p.getLabel() == null ? new ArrayList<>() : p.getLabel(),
+        p.getDefinition() == null ? new ArrayList<>() : p.getDefinition(), ontology, p.getHasChildren());
+  }
+
   public static PagedResults<ValueSet> toValueSetResults(BpPagedResults<BpClass> bpr) {
     List<ValueSet> valueSets = new ArrayList<>();
     for (BpClass c : bpr.getCollection()) {
@@ -173,7 +189,7 @@ public class ObjectConverter {
         bpr.getNextPage(), classes);
   }
 
-  public static PagedResults<SearchResult> toSearchResults(BpPagedResults<BpClass> bpr, List<String> valueSetsIds) {
+  public static PagedResults<SearchResult> toPagedSearchResults(BpPagedResults<BpClass> bpr, List<String> valueSetsIds) {
     List<SearchResult> results = new ArrayList<>();
     for (BpClass c : bpr.getCollection()) {
       // Assign information depending on the result type
@@ -209,6 +225,31 @@ public class ObjectConverter {
         bpr.getNextPage(), results);
   }
 
+  public static PagedResults<SearchResult> toPagedSearchResults(BpPagedResults<BpProperty> bpProperties) {
+    List<SearchResult> results = new ArrayList<>();
+    for (BpProperty bpProperty : bpProperties.getCollection()) {
+      String definition = null;
+      if (bpProperty.getDefinition() != null && bpProperty.getDefinition().size() > 0) {
+        definition = bpProperty.getDefinition().get(0);
+      }
+      String source = bpProperty.getLinks().getOntology();
+      SearchResult searchResult = new SearchResult(bpProperty.getId(), bpProperty.getId(), bpProperty.getType(),
+          Util.getShortType(bpProperty.getType()), bpProperty.getPrefLabel(), definition, source);
+      results.add(searchResult);
+    }
+    return new PagedResults<>(bpProperties.getPage(), bpProperties.getPageCount(), bpProperties.getCollection().size(),
+        bpProperties.getPrevPage(), bpProperties.getNextPage(), results);
+  }
+
+  public static List<OntologyProperty> toPropertyListResults(List<BpProperty> bpr) {
+    List<OntologyProperty> results = new ArrayList<>();
+    for (BpProperty p : bpr) {
+      OntologyProperty r = toOntologyProperty(p);
+      results.add(r);
+    }
+    return results;
+  }
+
   public static TreeNode toTreeNode(BpTreeNode bpTreeNode) {
     List<TreeNode> children = new ArrayList<>();
     if (bpTreeNode.getHasChildren()) {
@@ -216,7 +257,12 @@ public class ObjectConverter {
         children.add(toTreeNode(child));
       }
     }
-    return new TreeNode(bpTreeNode.getId(), bpTreeNode.getId(), bpTreeNode.getType(), bpTreeNode.getPrefLabel(), bpTreeNode.getLinks().getOntology(), bpTreeNode.getHasChildren(), children, bpTreeNode.isObsolete());
+    String ldType = bpTreeNode.getType();
+    String type = Util.getShortType(ldType);
+    if (type.equals("Class")) {
+      type = BP_TYPE_CLASS;
+    }
+    return new TreeNode(bpTreeNode.getId(), bpTreeNode.getId(), ldType, type, bpTreeNode.getPrefLabel(), bpTreeNode.getLinks().getOntology(), bpTreeNode.getHasChildren(), children, bpTreeNode.isObsolete());
   }
 
   // Transforms a value set and its values into a tree node
@@ -282,6 +328,5 @@ public class ObjectConverter {
     }
     return strings;
   }
-
 
 }

@@ -8,19 +8,23 @@ import org.junit.*;
 import org.metadatacenter.cedar.terminology.TerminologyServerApplicationTest;
 import org.metadatacenter.cedar.terminology.TerminologyServerConfiguration;
 import org.metadatacenter.config.CedarConfig;
-import org.metadatacenter.terms.domainObjects.OntologyClass;
-import org.metadatacenter.terms.domainObjects.Relation;
-import org.metadatacenter.terms.domainObjects.Value;
-import org.metadatacenter.terms.domainObjects.ValueSet;
+import org.metadatacenter.config.environment.CedarEnvironmentVariableProvider;
+import org.metadatacenter.model.SystemComponent;
+import org.metadatacenter.terms.customObjects.PagedResults;
+import org.metadatacenter.terms.domainObjects.*;
 import org.metadatacenter.terms.util.Util;
 import org.metadatacenter.util.test.TestUserUtil;
 
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.Entity;
+import javax.ws.rs.core.GenericType;
+import javax.ws.rs.core.HttpHeaders;
+import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import static org.metadatacenter.cedar.terminology.utils.Constants.*;
 
@@ -35,6 +39,7 @@ public abstract class AbstractTerminologyServerResourceTest {
   protected static final String BASE_URL = "http://localhost";
   protected static String baseUrlBp;
   protected static String baseUrlBpSearch;
+  protected static String baseUrlBpPropertySearch;
   protected static String baseUrlBpOntologies;
   protected static String baseUrlBpVSCollections;
 
@@ -61,12 +66,16 @@ public abstract class AbstractTerminologyServerResourceTest {
    */
   @BeforeClass
   public static void oneTimeSetUpAbstract() {
-    CedarConfig cedarConfig = CedarConfig.getInstance();
+
+    SystemComponent systemComponent = SystemComponent.SERVER_TERMINOLOGY;
+    Map<String, String> environment = CedarEnvironmentVariableProvider.getFor(systemComponent);
+    CedarConfig cedarConfig = CedarConfig.getInstance(environment);
 
     AbstractTerminologyServerResourceTest.cedarConfig = cedarConfig;
 
     baseUrlBp = BASE_URL + ":" + RULE.getLocalPort() + "/" + BP_ENDPOINT;
     baseUrlBpSearch = baseUrlBp + "/" + BP_SEARCH;
+    baseUrlBpPropertySearch = baseUrlBp + "/" + BP_PROPERTY_SEARCH;
     baseUrlBpOntologies = baseUrlBp + "/" + BP_ONTOLOGIES;
     baseUrlBpVSCollections = baseUrlBp + "/" + BP_VALUE_SET_COLLECTIONS;
 
@@ -323,6 +332,21 @@ public abstract class AbstractTerminologyServerResourceTest {
         throw new Exception("Couldn't find value: Id = " + v.getId());
       }
     }
+  }
+
+  /* Properties */
+  protected static PagedResults<SearchResult> searchProperties(String q) {
+    // Service invocation
+    Response response = client.target(baseUrlBpPropertySearch).queryParam("q", q).request().header("Authorization",
+        authHeader).get();
+    // Check HTTP response
+    Assert.assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+    // Check Content-Type
+    Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
+    // Check the number of results
+    PagedResults<SearchResult> properties = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
+    });
+    return properties;
   }
 
 }

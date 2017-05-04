@@ -6,14 +6,19 @@ import org.metadatacenter.terms.bioportal.domainObjects.*;
 import java.io.IOException;
 import java.util.List;
 
-public interface IBioPortalService
-{
+public interface IBioPortalService {
+
   /**
    * Search
    **/
 
-  BpPagedResults<BpClass> search(String q, List<String> scope, List<String> sources, boolean suggest, String source, String subtreeRootId, int maxDepth, int page, int pageSize, boolean displayContext,
-    boolean displayLinks, String apiKey) throws IOException;
+  BpPagedResults<BpClass> search(String q, List<String> scope, List<String> sources, boolean suggest, String source,
+                                 String subtreeRootId, int maxDepth, int page, int pageSize, boolean displayContext,
+                                 boolean displayLinks, String apiKey) throws IOException;
+
+  BpPagedResults<BpProperty> propertySearch(String q, List<String> sources, boolean exactMatch, boolean
+      requireDefinitions, int page, int pageSize, boolean displayContext, boolean displayLinks, String apiKey) throws
+      IOException;
 
   /**
    * Ontologies
@@ -31,23 +36,30 @@ public interface IBioPortalService
 
   List<BpClass> getRootClasses(String ontologyId, String apiKey) throws IOException;
 
+  List<BpProperty> getRootProperties(String ontologyId, String apiKey) throws IOException;
+
   /**
    * Classes
    **/
 
   BpClass findBpClassById(String id, String ontology, String apiKey) throws IOException;
 
-  BpPagedResults<BpClass> findAllClassesInOntology(String ontology, int page, int pageSize, String apiKey) throws IOException;
+  BpPagedResults<BpClass> findAllClassesInOntology(String ontology, int page, int pageSize, String apiKey) throws
+      IOException;
 
   List<BpTreeNode> getClassTree(String id, String ontology, String apiKey) throws IOException;
 
-  BpPagedResults<BpClass> findValueSetsByValueSetCollection(String vsCollection, int page, int pageSize, String apiKey) throws IOException;
+  BpPagedResults<BpClass> findValueSetsByValueSetCollection(String vsCollection, int page, int pageSize, String
+      apiKey) throws IOException;
 
-  BpPagedResults<BpClass> findValuesByValueSet(String vsId, String vsCollection, int page, int pageSize, String apiKey) throws IOException;
+  BpPagedResults<BpClass> findValuesByValueSet(String vsId, String vsCollection, int page, int pageSize, String
+      apiKey) throws IOException;
 
-  BpPagedResults<BpClass> getClassChildren(String id, String ontology, int page, int pageSize, String apiKey) throws IOException;
+  BpPagedResults<BpClass> getClassChildren(String id, String ontology, int page, int pageSize, String apiKey) throws
+      IOException;
 
-  BpPagedResults<BpClass> getClassDescendants(String id, String ontology, int page, int pageSize, String apiKey) throws IOException;
+  BpPagedResults<BpClass> getClassDescendants(String id, String ontology, int page, int pageSize, String apiKey)
+      throws IOException;
 
   List<BpClass> getClassParents(String id, String ontology, String apiKey) throws IOException;
 
@@ -59,7 +71,8 @@ public interface IBioPortalService
 
   BpProvisionalClass findBpProvisionalClassById(String id, String apiKey) throws IOException;
 
-  BpPagedResults<BpProvisionalClass> findAllProvisionalClasses(String ontology, int page, int pageSize, String apiKey) throws IOException;
+  BpPagedResults<BpProvisionalClass> findAllProvisionalClasses(String ontology, int page, int pageSize, String
+      apiKey) throws IOException;
 
   void updateProvisionalClass(BpProvisionalClass c, String apiKey) throws IOException;
 
@@ -73,8 +86,26 @@ public interface IBioPortalService
 
   BpProvisionalRelation findProvisionalRelationById(String id, String apiKey) throws IOException;
 
-//  void updateProvisionalRelation(BpProvisionalRelation r, String apiKey) throws IOException;
+  // void updateProvisionalRelation(BpProvisionalRelation r, String apiKey) throws IOException;
 
   void deleteProvisionalRelation(String id, String apiKey) throws IOException;
+
+  /**
+   * Properties
+   */
+
+  BpProperty findBpPropertyById(String id, String ontology, String apiKey) throws IOException;
+
+  List<BpProperty> findAllPropertiesInOntology(String ontology, String apiKey) throws IOException;
+
+  List<BpTreeNode> getPropertyTree(String id, String ontology, String apiKey) throws IOException;
+
+  List<BpProperty> getPropertyChildren(String id, String ontology, String apiKey) throws
+      IOException;
+
+  List<BpProperty> getPropertyDescendants(String id, String ontology, String apiKey)
+      throws IOException;
+
+  List<BpProperty> getPropertyParents(String id, String ontology, String apiKey) throws IOException;
 
 }

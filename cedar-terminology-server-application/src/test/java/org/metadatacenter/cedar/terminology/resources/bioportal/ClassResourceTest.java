@@ -222,7 +222,7 @@ public class ClassResourceTest extends AbstractTerminologyServerResourceTest {
     Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
     // Check Content-Type
     Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
-    // Check that the call returns some children and that one of them is "Cellular Process".
+    // Check that the call returns some children and that those children are the expected ones.
     // Note that this check is done with a class that has less descendants than the default page size. Otherwise,
     // we should iterate over all pages.
     PagedResults<OntologyClass> descendants = response.readEntity(new GenericType<PagedResults<OntologyClass>>() {});

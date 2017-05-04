@@ -7,11 +7,18 @@ import java.io.IOException;
 import java.util.List;
 
 public interface ITerminologyService {
-  // TODO: Adapt BioPortal to return provisional classes too
-  // TODO: Add attribute with result type on the BioPortal side
-  PagedResults<SearchResult> search(String q, List<String> scope, List<String> sources, boolean suggest, String source, String
-      subtreeRootId, int maxDepth, int page, int pageSize, boolean displayContext,
+
+  /**
+   * Search
+   */
+  PagedResults<SearchResult> search(String q, List<String> scope, List<String> sources, boolean suggest, String
+      source, String
+                                        subtreeRootId, int maxDepth, int page, int pageSize, boolean displayContext,
                                     boolean displayLinks, String apiKey, List<String> valueSetsIds) throws IOException;
+
+  PagedResults<SearchResult> propertySearch(String q, List<String> sources, boolean exactMatch, boolean
+      requireDefinitions, int page, int pageSize, boolean displayContext, boolean displayLinks, String apiKey) throws
+      IOException;
 
   /**
    * Ontologies
@@ -21,6 +28,8 @@ public interface ITerminologyService {
   Ontology findOntology(String id, boolean includeDetails, String apiKey) throws IOException;
 
   List<OntologyClass> getRootClasses(String ontologyId, boolean isFlat, String apiKey) throws IOException;
+
+  List<OntologyProperty> getRootProperties(String ontologyId, String apiKey) throws IOException;
 
   /**
    * Classes
@@ -34,9 +43,11 @@ public interface ITerminologyService {
 
   OntologyClass findClass(String id, String ontology, String apiKey) throws IOException;
 
-  PagedResults<OntologyClass> findAllClassesInOntology(String ontology, int page, int pageSize, String apiKey) throws IOException;
+  PagedResults<OntologyClass> findAllClassesInOntology(String ontology, int page, int pageSize, String apiKey) throws
+      IOException;
 
-  PagedResults<OntologyClass> findAllProvisionalClasses(String ontology, int page, int pageSize, String apiKey) throws IOException;
+  PagedResults<OntologyClass> findAllProvisionalClasses(String ontology, int page, int pageSize, String apiKey)
+      throws IOException;
 
   void updateProvisionalClass(OntologyClass c, String apiKey) throws IOException;
 
@@ -110,9 +121,29 @@ public interface ITerminologyService {
 
   TreeNode getValueSetTree(String id, String vsCollection, String apiKey) throws IOException;
 
-  PagedResults<Value> findAllValuesInValueSetByValue(String id, String ontology, int page, int pageSize, String apiKey) throws IOException;
+  PagedResults<Value> findAllValuesInValueSetByValue(String id, String ontology, int page, int pageSize, String
+      apiKey) throws IOException;
 
   void updateProvisionalValue(Value v, String apiKey) throws IOException;
 
   void deleteProvisionalValue(String id, String apiKey) throws IOException;
+
+  /**
+   * Properties
+   */
+
+  OntologyProperty findProperty(String id, String ontology, String apiKey) throws IOException;
+
+  List<OntologyProperty> findAllPropertiesInOntology(String ontology, String apiKey) throws IOException;
+
+  List<TreeNode> getPropertyTree(String id, String ontology, String apiKey) throws IOException;
+
+  List<OntologyProperty> getPropertyChildren(String id, String ontology, String apiKey)
+      throws IOException;
+
+  List<OntologyProperty> getPropertyDescendants(String id, String ontology, String apiKey)
+      throws IOException;
+
+  List<OntologyProperty> getPropertyParents(String id, String ontology, String apiKey) throws IOException;
+
 }
