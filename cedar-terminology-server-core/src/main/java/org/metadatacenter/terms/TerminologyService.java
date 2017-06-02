@@ -7,6 +7,8 @@ import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.terms.domainObjects.*;
 import org.metadatacenter.terms.util.ObjectConverter;
 import org.metadatacenter.terms.util.Util;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.ws.rs.core.Response;
 import javax.xml.ws.http.HTTPException;
@@ -17,6 +19,8 @@ import java.util.List;
 import static org.metadatacenter.terms.util.Constants.*;
 
 public class TerminologyService implements ITerminologyService {
+
+  private static final Logger log = LoggerFactory.getLogger(TerminologyService.class);
 
   private BioPortalService bpService;
 
@@ -40,10 +44,12 @@ public class TerminologyService implements ITerminologyService {
   }
 
   public PagedResults<SearchResult> propertySearch(String q, List<String> sources, boolean exactMatch, boolean
-      requireDefinitions, int page, int pageSize, boolean displayContext, boolean displayLinks, String apiKey) throws IOException {
+      requireDefinitions, int page, int pageSize, boolean displayContext, boolean displayLinks, String apiKey) throws
+      IOException {
 
     BpPagedResults<BpProperty> results =
-        bpService.propertySearch(q, sources, exactMatch, requireDefinitions, page, pageSize, displayContext, displayLinks, apiKey);
+        bpService.propertySearch(q, sources, exactMatch, requireDefinitions, page, pageSize, displayContext,
+            displayLinks, apiKey);
 
     return ObjectConverter.toPagedSearchResults(results);
   }
@@ -56,6 +62,7 @@ public class TerminologyService implements ITerminologyService {
     List<BpOntology> bpOntologies = bpService.findAllOntologies(apiKey);
     List<Ontology> ontologies = new ArrayList<>();
     int i = 1;
+    int total = bpOntologies.size();
     for (BpOntology o : bpOntologies) {
       // Only keep ontologies. Value set collections will be excluded
       if (o.getType() == null || o.getType().compareTo(BP_API_BASE + BP_ONTOLOGY_TYPE_VS_COLLECTION) != 0) {
@@ -65,7 +72,9 @@ public class TerminologyService implements ITerminologyService {
         }
         //System.out.println(ont);
         ontologies.add(ont);
-        System.out.println(ont.getId() + " loaded (" + i++ + ")");
+        String message = ont.getId() + " loaded (" + i + "/" + total + ")";
+        log.info(message);
+        i++;
       }
     }
     return ontologies;
@@ -86,17 +95,15 @@ public class TerminologyService implements ITerminologyService {
     // Get number of classes
     try {
       // CEDARPC has only one level so the number of classes will be the number of root classes
-      if (ontologyId.compareTo(CEDAR_PROVISIONAL_CLASSES_ONTOLOGY)==0) {
+      if (ontologyId.compareTo(CEDAR_PROVISIONAL_CLASSES_ONTOLOGY) == 0) {
         int numClasses = getRootClasses(ontologyId, false, apiKey).size();
         details.setNumberOfClasses(numClasses);
-      }
-      else {
+      } else {
         BpOntologyMetrics metrics = bpService.findOntologyMetrics(ontologyId, apiKey);
         if (metrics.getClasses() != null) {
           details.setNumberOfClasses(Integer.parseInt(metrics.getClasses()));
-        }
-        else {
-          System.out.println("Number of classes is 'null' for " + ontologyId + ". It has been set to 0");
+        } else {
+          log.warn("Number of classes is 'null' for " + ontologyId + ". It has been set to 0");
           details.setNumberOfClasses(0);
         }
       }
@@ -139,18 +146,20 @@ public class TerminologyService implements ITerminologyService {
 
   public List<OntologyClass> getRootClasses(String ontologyId, boolean isFlat, String apiKey) throws IOException {
     List<OntologyClass> roots = new ArrayList<>();
-    // If it is a flat ontology BioPortal will return a timeout. An empty list will be returned to avoid calling BioPortal
+    // If it is a flat ontology BioPortal will return a timeout. An empty list will be returned to avoid calling
+    // BioPortal
     if (isFlat) {
       return roots;
     }
     // If CEDARPC ontology
-    if (ontologyId.compareTo(CEDAR_PROVISIONAL_CLASSES_ONTOLOGY)==0) {
+    if (ontologyId.compareTo(CEDAR_PROVISIONAL_CLASSES_ONTOLOGY) == 0) {
       // Iterate to retrieve all provisional classes
       boolean finished = false;
       int page = FIRST_PAGE;
       int pageSize = PAGE_SIZE;
       while (!finished) {
-        BpPagedResults<BpProvisionalClass> provClasses = bpService.findAllProvisionalClasses(ontologyId, page, pageSize, apiKey);
+        BpPagedResults<BpProvisionalClass> provClasses = bpService.findAllProvisionalClasses(ontologyId, page,
+            pageSize, apiKey);
         for (BpProvisionalClass c : provClasses.getCollection()) {
           OntologyClass oc = ObjectConverter.toOntologyClass(c);
           oc.setHasChildren(false);
@@ -158,8 +167,7 @@ public class TerminologyService implements ITerminologyService {
         }
         if (provClasses.getPage() == provClasses.getPageCount()) {
           finished = true;
-        }
-        else {
+        } else {
           page++;
         }
       }
@@ -216,13 +224,16 @@ public class TerminologyService implements ITerminologyService {
     return c;
   }
 
-  public PagedResults<OntologyClass> findAllClassesInOntology(String ontology, int page, int pageSize, String apiKey) throws IOException {
+  public PagedResults<OntologyClass> findAllClassesInOntology(String ontology, int page, int pageSize, String apiKey)
+      throws IOException {
     BpPagedResults<BpClass> classes = bpService.findAllClassesInOntology(ontology, page, pageSize, apiKey);
     return ObjectConverter.toClassResults(classes);
   }
 
-  public PagedResults<OntologyClass> findAllProvisionalClasses(String ontology, int page, int pageSize, String apiKey) throws IOException {
-    BpPagedResults<BpProvisionalClass> provClasses = bpService.findAllProvisionalClasses(ontology, page, pageSize, apiKey);
+  public PagedResults<OntologyClass> findAllProvisionalClasses(String ontology, int page, int pageSize, String
+      apiKey) throws IOException {
+    BpPagedResults<BpProvisionalClass> provClasses = bpService.findAllProvisionalClasses(ontology, page, pageSize,
+        apiKey);
     List<OntologyClass> classes = new ArrayList<>();
     for (BpProvisionalClass pc : provClasses.getCollection()) {
       classes.add(ObjectConverter.toOntologyClass(pc));
@@ -237,13 +248,13 @@ public class TerminologyService implements ITerminologyService {
     int page = FIRST_PAGE;
     int pageSize = LARGE_PAGE_SIZE;
     while (!finished) {
-      BpPagedResults<BpProvisionalClass> provClasses = bpService.findAllProvisionalClasses(ontology, page, pageSize, apiKey);
+      BpPagedResults<BpProvisionalClass> provClasses = bpService.findAllProvisionalClasses(ontology, page, pageSize,
+          apiKey);
       PagedResults<OntologyClass> classes = ObjectConverter.toClassResultsFromProvClassResults(provClasses);
       result.addAll(classes.getCollection());
       if (provClasses.getPage() == provClasses.getPageCount()) {
         finished = true;
-      }
-      else {
+      } else {
         page++;
       }
     }
@@ -260,20 +271,20 @@ public class TerminologyService implements ITerminologyService {
   }
 
   public List<TreeNode> getClassTree(String id, String ontology, boolean isFlat, String apiKey) throws IOException {
-    // If it is a flat ontology BioPortal will return a timeout. An empty list will be returned to avoid calling BioPortal
+    // If it is a flat ontology BioPortal will return a timeout. An empty list will be returned to avoid calling
+    // BioPortal
     if (isFlat) {
       return new ArrayList<>();
     }
     List<TreeNode> nodes = new ArrayList<>();
     // If it is a class in the CEDARPC ontology...
-    if (ontology.compareTo(CEDAR_PROVISIONAL_CLASSES_ONTOLOGY)==0) {
+    if (ontology.compareTo(CEDAR_PROVISIONAL_CLASSES_ONTOLOGY) == 0) {
       // Get all classes in the ontology and build tree nodes from them
       List<OntologyClass> classes = findAllProvisionalClasses(ontology, apiKey);
       for (OntologyClass c : classes) {
         nodes.add(ObjectConverter.toTreeNodeNoChildren(c));
       }
-    }
-    else {
+    } else {
       List<BpTreeNode> bpNodes = bpService.getClassTree(id, ontology, apiKey);
       for (BpTreeNode n : bpNodes) {
         nodes.add(ObjectConverter.toTreeNode(n));
@@ -282,12 +293,14 @@ public class TerminologyService implements ITerminologyService {
     return nodes;
   }
 
-  public PagedResults<OntologyClass> getClassChildren(String id, String ontology, int page, int pageSize, String apiKey) throws IOException {
+  public PagedResults<OntologyClass> getClassChildren(String id, String ontology, int page, int pageSize, String
+      apiKey) throws IOException {
     BpPagedResults<BpClass> bpChildren = bpService.getClassChildren(id, ontology, page, pageSize, apiKey);
     return ObjectConverter.toClassResults(bpChildren);
   }
 
-  public PagedResults<OntologyClass> getClassDescendants(String id, String ontology, int page, int pageSize, String apiKey) throws IOException {
+  public PagedResults<OntologyClass> getClassDescendants(String id, String ontology, int page, int pageSize, String
+      apiKey) throws IOException {
     BpPagedResults<BpClass> bpDescendants = bpService.getClassDescendants(id, ontology, page, pageSize, apiKey);
     return ObjectConverter.toClassResults(bpDescendants);
   }
@@ -306,7 +319,8 @@ public class TerminologyService implements ITerminologyService {
    **/
 
   public Relation createProvisionalRelation(Relation r, String apiKey) throws IOException {
-    BpProvisionalRelation pr = bpService.createBpProvisionalRelation(ObjectConverter.toBpProvisionalRelation(r), apiKey);
+    BpProvisionalRelation pr = bpService.createBpProvisionalRelation(ObjectConverter.toBpProvisionalRelation(r),
+        apiKey);
     return ObjectConverter.toRelation(pr);
   }
 
@@ -369,8 +383,7 @@ public class TerminologyService implements ITerminologyService {
     if (vsCollection.compareTo(CEDAR_VALUE_SETS_ONTOLOGY) == 0) {
       Value v = findProvisionalValue(id, apiKey);
       vs = findValueSet(v.getVsId(), vsCollection, apiKey);
-    }
-    else {
+    } else {
       List<BpClass> bpParents = bpService.getClassParents(id, vsCollection, apiKey);
       // Keep only the first parent
       for (int i = 0; i < 1; i++) {
@@ -401,7 +414,8 @@ public class TerminologyService implements ITerminologyService {
     }
   }
 
-  public PagedResults<Value> findValuesByValueSet(String vsId, String vsCollection, int page, int pageSize, String apiKey) throws IOException {
+  public PagedResults<Value> findValuesByValueSet(String vsId, String vsCollection, int page, int pageSize, String
+      apiKey) throws IOException {
     // Check that vsCollection is a valid Value Set Collection
     if (Util.validVsCollection(vsCollection, false)) {
       PagedResults<Value> results = null;
@@ -544,7 +558,8 @@ public class TerminologyService implements ITerminologyService {
     return ObjectConverter.toTreeNode(vs, values);
   }
 
-  public PagedResults<Value> findAllValuesInValueSetByValue(String id, String vsCollection, int page, int pageSize, String apiKey) throws IOException {
+  public PagedResults<Value> findAllValuesInValueSetByValue(String id, String vsCollection, int page, int pageSize,
+                                                            String apiKey) throws IOException {
     ValueSet vs = findValueSetByValue(id, vsCollection, apiKey);
     return findValuesByValueSet(Util.encodeIfNeeded(vs.getLdId()), vsCollection, page, pageSize, apiKey);
   }

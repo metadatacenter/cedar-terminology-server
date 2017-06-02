@@ -17,7 +17,7 @@ notifications:
 before_install:
 - sleep 15
 - mongoimport --db cedar --collection users --file cedar-terminology-server-application/src/test/resources/test-user-1.json
-- mongo cedar --eval "db.createUser( { user:'${CEDAR_MONGO_USER_NAME}', pwd:'${CEDAR_MONGO_USER_PASSWORD}',
+- mongo cedar --eval "db.createUser( { user:'${CEDAR_MONGO_APP_USER_NAME}', pwd:'${CEDAR_MONGO_APP_USER_PASSWORD}',
   roles:[ 'readWrite'] })"
 install: '[ ${TRAVIS_PULL_REQUEST} = ''false'' ] && mvn -DskipTests=false clean deploy
   --settings .m2/travis-settings.xml'
@@ -27,8 +27,8 @@ env:
   global:
   - CEDAR_HOST=metadatacenter.orgx
   - CEDAR_KEYCLOAK_CLIENT_ID=cedar-angular-app
-  - CEDAR_MONGO_USER_NAME=cedarUser
-  - CEDAR_MONGO_USER_PASSWORD=password
+  - CEDAR_MONGO_APP_USER_NAME=cedarUser
+  - CEDAR_MONGO_APP_USER_PASSWORD=password
   - CEDAR_LD_USER_BASE=https://metadatacenter.org/users/
   - CEDAR_TEST_USER1_ID=https://metadatacenter.org/users/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee
   - secure: a0xhJa+SWdsmyMVUofamTj54HH1x/6sq4JvWIjZdLR3XFNuT/OQHBTOcxX/kHMmNdCReI17AfY2pJcDgPWO/9n1r+NSjeEirLozrcoi/ObPwFZ5aJane5glc7YFYEeyKd32LNjqZXZcxMRaQNm+PchMm2kcNs1mxMTTq3hzadit6cY/NEgyH3fYaouVGbqCp/fkmKPAXHh9HCt0iOQnNTT89gGpJ/AC0Cl2Sp0PMazzkIDt5/F1BN7LBPimYI39Xd47Ylidwf5egUrY5wIcJ3DV+m6Cw0uTT2mGpYP776drjON+o0ZRowxuLJotXhBSH9QAR/k4FTQkOcktsyUES6IqHwHeF4RJodBYZ5pSQSOiNglbf0KhFPOpTd8F6iq5K33bm+6C2Oc2/6GAgs/EiwdkQEhATwolZbi9ExGIrIwpAWoAz/uHuFAEo5/v4rB392TuHMMA8YzeFi444B5+CQYKXzOn/aaA+m3u5b+9qFaz3aH49vgsnF9kCFhUIUqkK/VbM3eqp+QBDchuh0UohcxvdZTidQgG+uRgRd8OXYPUu3j/BvITWYlbbEZ1g2/RQlNtSRFu0sJAu67N8nrBVzUbdSBNQdVh55fafIdQi/Rkngw/dWc2akqlSVJpNjIJX5EaKuJAuvAjFI/tWEy1ECLrPqyjnF6Eqrx6tzcweAG4=
