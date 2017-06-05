@@ -6,8 +6,11 @@ import com.google.common.cache.LoadingCache;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.ListenableFutureTask;
 import org.metadatacenter.cedar.terminology.resources.AbstractTerminologyServerResource;
+import org.metadatacenter.terms.TerminologyService;
 import org.metadatacenter.terms.domainObjects.Ontology;
 import org.metadatacenter.terms.domainObjects.ValueSet;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.util.LinkedHashMap;
@@ -29,6 +32,8 @@ public class Cache {
   private static String ontologiesCachePath;
   private static boolean firstLoadValueSets = true;
   private static boolean firstLoadOntologies = true;
+
+  private static final Logger log = LoggerFactory.getLogger(Cache.class);
 
   static {
     valueSetsCachePath = getCacheObjectsPath() + "/" + VALUE_SETS_CACHE_FILE;
@@ -109,10 +114,10 @@ public class Cache {
   private static LinkedHashMap<String, ValueSet> getAllValueSetsAsMap() throws IOException {
     List<ValueSet> valueSets = null;
     if (firstLoadValueSets && new File(valueSetsCachePath).isFile()) {
-      //Logger.info("Loading value sets from file");
+      log.info("Loading value sets from file");
       valueSets = readValueSetsFromFile();
     } else {
-      //Logger.info("Loading value sets from BioPortal");
+      log.info("Loading value sets from BioPortal");
       valueSets = AbstractTerminologyServerResource.terminologyService.findAllValueSets(BP_PUBLIC_API_KEY);
       saveValueSetsToFile(valueSets);
     }
@@ -121,17 +126,17 @@ public class Cache {
     for (ValueSet vs : valueSets) {
       lhm.put(vs.getId(), vs);
     }
-    //Logger.info("Value sets loaded");
+    log.info("Value sets loaded");
     return lhm;
   }
 
   private static LinkedHashMap<String, Ontology> getAllOntologiesAsMap() throws IOException {
     List<Ontology> ontologies = null;
     if (firstLoadOntologies && new File(ontologiesCachePath).isFile()) {
-      //Logger.info("Loading ontologies from file");
+      log.info("Loading ontologies from file");
       ontologies = readOntologiesFromFile();
     } else {
-      //Logger.info("Loading ontologies from BioPortal");
+      log.info("Loading ontologies from BioPortal");
       ontologies = AbstractTerminologyServerResource.terminologyService.findAllOntologies(true, BP_PUBLIC_API_KEY);
       saveOntologiesToFile(ontologies);
     }
@@ -140,7 +145,7 @@ public class Cache {
     for (Ontology o : ontologies) {
       lhm.put(o.getId(), o);
     }
-    //Logger.info("Ontologies loaded");
+    log.info("Ontologies loaded");
     return lhm;
   }
 
@@ -221,7 +226,7 @@ public class Cache {
   }
 
   private static String getCacheObjectsPath() {
-    String path = System.getenv("CEDAR_HOME") + CACHE_FOLDER_NAME;
+    String path = System.getenv("CEDAR_HOME") + "/" + CACHE_FOLDER_NAME;
     return path;
   }
 
