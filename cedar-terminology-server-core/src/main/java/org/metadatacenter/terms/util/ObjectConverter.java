@@ -197,8 +197,8 @@ public class ObjectConverter {
       String ontology = Util.getShortIdentifier(c.getLinks().getOntology());
       // If the ontology is a value set collection
       if (Arrays.asList(BP_VS_COLLECTIONS_READ).contains(ontology)) {
+        String shortId = Util.getShortIdentifier(c.getId());
         // It is a Value Set
-        String shortId = c.getId().substring(c.getId().lastIndexOf('/') + 1);
         if (valueSetsIds.contains(shortId)) {
           type = BP_TYPE_VS;
         }
