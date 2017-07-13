@@ -1,5 +1,6 @@
 package org.metadatacenter.cedar.terminology;
 
+import io.dropwizard.setup.Bootstrap;
 import io.dropwizard.setup.Environment;
 import org.metadatacenter.cedar.cache.Cache;
 import org.metadatacenter.cedar.terminology.health.TerminologyServerHealthCheck;
@@ -23,6 +24,10 @@ public class TerminologyServerApplication extends CedarMicroserviceApplication<T
   @Override
   protected ServerName getServerName() {
     return ServerName.TERMINOLOGY;
+  }
+
+  @Override
+  protected void initializeWithBootsrap(Bootstrap<TerminologyServerConfiguration> bootstrap) {
   }
 
   public boolean isTestMode() {
