@@ -27,7 +27,7 @@ public class TerminologyServerApplication extends CedarMicroserviceApplication<T
   }
 
   @Override
-  protected void initializeWithBootsrap(Bootstrap<TerminologyServerConfiguration> bootstrap) {
+  protected void initializeWithBootstrap(Bootstrap<TerminologyServerConfiguration> bootstrap) {
   }
 
   public boolean isTestMode() {
