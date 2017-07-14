@@ -5,14 +5,14 @@
   <parent>
     <groupId>org.metadatacenter</groupId>
     <artifactId>cedar-parent</artifactId>
-    <version>1.3.3-SNAPSHOT</version>
+    <version>1.3.2-SNAPSHOT</version>
   </parent>
 
   <groupId>org.metadatacenter</groupId>
   <artifactId>cedar-terminology-server</artifactId>
   <name>CEDAR Terminology Server</name>
   <description>A wrapper for the BioPortal API that simplifies the access to BioPortal resources</description>
-  <version>1.3.3-SNAPSHOT</version>
+  <version>1.3.2-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <scm>
