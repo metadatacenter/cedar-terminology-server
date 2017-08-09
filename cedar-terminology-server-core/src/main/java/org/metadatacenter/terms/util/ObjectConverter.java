@@ -174,7 +174,9 @@ public class ObjectConverter {
   public static PagedResults<OntologyClass> toClassResults(BpPagedResults<BpClass> bpr) {
     List<OntologyClass> classes = new ArrayList<>();
     for (BpClass c : bpr.getCollection()) {
-      classes.add(toOntologyClass(c));
+      if (isValid(c)) {
+        classes.add(toOntologyClass(c));
+      }
     }
     return new PagedResults<>(bpr.getPage(), bpr.getPageCount(), bpr.getCollection().size(), bpr.getPrevPage(),
         bpr.getNextPage(), classes);
@@ -317,7 +319,9 @@ public class ObjectConverter {
         .getSynonyms(), c.getRelations(), c.isProvisional(), c.getCreated());
   }
 
-  // Utils
+  /**
+   * Utils
+   */
 
   public static List<String> toListOfString(List<Object> objects) {
     List<String> strings = new ArrayList<>();
@@ -327,6 +331,17 @@ public class ObjectConverter {
       }
     }
     return strings;
+  }
+
+  // Checks if the class is valid to be accepted by CEDAR. For instance, classes with null values are considered invalid
+  // (BiPortal issue: https://github.com/ncbo/ontologies_linked_data/issues/81)
+  public static boolean isValid(BpClass c) {
+    if (c.getPrefLabel() == null) {
+      return false;
+    }
+    else {
+      return true;
+    }
   }
 
 }
