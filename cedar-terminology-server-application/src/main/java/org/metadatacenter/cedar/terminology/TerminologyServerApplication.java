@@ -1,14 +1,15 @@
 package org.metadatacenter.cedar.terminology;
 
+import io.dropwizard.setup.Bootstrap;
 import io.dropwizard.setup.Environment;
 import org.metadatacenter.cedar.cache.Cache;
 import org.metadatacenter.cedar.terminology.health.TerminologyServerHealthCheck;
 import org.metadatacenter.cedar.terminology.resources.AbstractTerminologyServerResource;
 import org.metadatacenter.cedar.terminology.resources.IndexResource;
 import org.metadatacenter.cedar.terminology.resources.bioportal.*;
-import org.metadatacenter.cedar.terminology.utils.logging.LogRequestFilter;
 import org.metadatacenter.cedar.terminology.utils.logging.LogResponseFilter;
 import org.metadatacenter.cedar.util.dw.CedarMicroserviceApplication;
+import org.metadatacenter.config.CedarConfig;
 import org.metadatacenter.model.ServerName;
 import org.metadatacenter.terms.TerminologyService;
 
@@ -23,6 +24,10 @@ public class TerminologyServerApplication extends CedarMicroserviceApplication<T
   @Override
   protected ServerName getServerName() {
     return ServerName.TERMINOLOGY;
+  }
+
+  @Override
+  protected void initializeWithBootstrap(Bootstrap<TerminologyServerConfiguration> bootstrap, CedarConfig cedarConfig) {
   }
 
   public boolean isTestMode() {

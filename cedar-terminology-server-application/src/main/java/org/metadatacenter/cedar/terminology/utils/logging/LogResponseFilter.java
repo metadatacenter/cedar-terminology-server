@@ -27,7 +27,7 @@ protected final Logger log = LoggerFactory.getLogger("HTTP Response");
       log.error(message);
     }
     else {
-      log.info(message);
+      //log.info(message);
     }
 
   }
