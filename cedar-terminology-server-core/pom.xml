@@ -6,7 +6,7 @@
   <parent>
     <groupId>org.metadatacenter</groupId>
     <artifactId>cedar-terminology-server</artifactId>
-    <version>1.4.2</version>
+    <version>1.5.0</version>
   </parent>
 
   <groupId>org.metadatacenter</groupId>
@@ -19,6 +19,11 @@
     <dependency>
       <groupId>org.metadatacenter</groupId>
       <artifactId>cedar-server-utils-core</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>javax.xml.ws</groupId>
+      <artifactId>jaxws-api</artifactId>
     </dependency>
 
     <!-- HTTPClient Fluent API-->
