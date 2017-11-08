@@ -19,7 +19,6 @@
     <connection>scm:git:git@github.com:metadatacenter/cedar-terminology-server.git</connection>
     <developerConnection>scm:git:git@github.com:metadatacenter/cedar-terminology-server.git</developerConnection>
     <url>https://github.com/metadatacenter/cedar-terminology-server</url>
-    <tag></tag>
   </scm>
 
   <modules>
