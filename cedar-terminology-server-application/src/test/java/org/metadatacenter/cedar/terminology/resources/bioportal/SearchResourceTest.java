@@ -76,7 +76,7 @@ public class SearchResourceTest extends AbstractTerminologyServerResourceTest {
     int lowLimitPageCount = 1;
     Assert.assertTrue("The number of search results for '" + q + "' is lower than expected", pageCount >= lowLimitPageCount);
   }
-  
+
   @Test
   public void searchClassesAndValuesTest() {
     // Query parameters
