@@ -111,6 +111,11 @@ public class BioPortalService implements IBioPortalService
       }
     }
 
+    /** Enable 'also_search_properties' for a more flexible search. Enabling this feature makes it possible to find,
+     * for example, the 'Audio Disc' class from BIBLIOTEK-O (http://bibliotek-o.org/1.1/ontology/AudioDisc) when
+     * searching for 'audiodisc' **/
+    url += "&also_search_properties=true";
+
     /** Include additional information **/
     url += "&include=prefLabel,definition";
 
