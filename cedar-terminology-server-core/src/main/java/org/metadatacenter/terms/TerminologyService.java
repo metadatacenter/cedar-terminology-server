@@ -92,6 +92,8 @@ public class TerminologyService implements ITerminologyService {
 
   private OntologyDetails getOntologyDetails(String ontologyId, String apiKey) throws IOException {
     OntologyDetails details = new OntologyDetails();
+    boolean hasSubmissions = true;
+    boolean metricsAvailable = true;
     // Get number of classes
     try {
       // CEDARPC has only one level so the number of classes will be the number of root classes
@@ -100,16 +102,21 @@ public class TerminologyService implements ITerminologyService {
         details.setNumberOfClasses(numClasses);
       } else {
         BpOntologyMetrics metrics = bpService.findOntologyMetrics(ontologyId, apiKey);
-        if (metrics.getClasses() != null) {
+        if (metrics.getId() != null) { // Metrics not available for that ontology
           details.setNumberOfClasses(Integer.parseInt(metrics.getClasses()));
         } else {
-          log.warn("Number of classes is 'null' for " + ontologyId + ". It has been set to 0");
-          details.setNumberOfClasses(0);
+          metricsAvailable = false;
         }
       }
     } catch (HTTPException e) {
       if (e.getStatusCode() == Response.Status.NOT_FOUND.getStatusCode()) {
-        // Do nothing
+        // When the metrics are not found, we also assume that it is because either there are no submissions for the
+        // ontology or the latest submission failed to process, so submissions are not available either.
+        hasSubmissions = false;
+        metricsAvailable = false;
+      }
+      else {
+        throw(e);
       }
     }
     // Get categories
@@ -122,7 +129,10 @@ public class TerminologyService implements ITerminologyService {
       details.setCategories(categories);
     } catch (HTTPException e) {
       if (e.getStatusCode() == Response.Status.NOT_FOUND.getStatusCode()) {
-        // Do nothing
+        log.error("Categories not found for " + ontologyId + " ontology");
+      }
+      else {
+        throw(e);
       }
     }
     // Get latest submission details
@@ -136,10 +146,21 @@ public class TerminologyService implements ITerminologyService {
       details.setPublication(bpSubmission.getPublication());
       details.setDocumentation(bpSubmission.getDocumentation());
       details.setVersion(bpSubmission.getVersion());
+      details.setHasSubmissions(hasSubmissions);
+      details.setMetricsAvailable(metricsAvailable);
     } catch (HTTPException e) {
       if (e.getStatusCode() == Response.Status.NOT_FOUND.getStatusCode()) {
-        // Do nothing
+        log.error("Latest submission not found for " + ontologyId + " ontology");
       }
+      else {
+        throw(e);
+      }
+    }
+    if (!hasSubmissions) {
+      log.warn("No submissions available for " + ontologyId);
+    }
+    if (!metricsAvailable) {
+      log.warn("No metrics available for " + ontologyId);
     }
     return details;
   }

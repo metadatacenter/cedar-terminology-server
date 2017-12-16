@@ -83,7 +83,7 @@ public abstract class AbstractTerminologyServerResourceTest {
     client.property(ClientProperties.CONNECT_TIMEOUT, cedarConfig.getTerminologyConfig().getBioPortal()
         .getConnectTimeout());
     client.property(ClientProperties.READ_TIMEOUT, cedarConfig.getTerminologyConfig().getBioPortal().getSocketTimeout
-        ());
+        () * 20); // enough time to build the ontologies and value sets cache if it has not been created yet
 
     authHeader = TestUserUtil.getTestUser1AuthHeader(cedarConfig);
 
