@@ -1,14 +1,12 @@
 package org.metadatacenter.terms.domainObjects;
 
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
-//import com.wordnik.swagger.annotations.ApiModel;
 
 import java.io.Serializable;
 import java.util.List;
 
-//@ApiModel
 @JsonPropertyOrder({"description", "numberOfClasses", "categories", "hasOntologyLanguage", "released",
-    "creationDate", "homepage", "publication", "documentation", "version"})
+    "creationDate", "homepage", "publication", "documentation", "version", "metricsAvailable", "hasSubmissions"})
 public class OntologyDetails implements Serializable {
 
   private String description;
@@ -21,13 +19,15 @@ public class OntologyDetails implements Serializable {
   private String publication;
   private String documentation;
   private String version;
+  private boolean metricsAvailable;
+  private boolean hasSubmissions;
 
   public OntologyDetails() {
   }
 
   public OntologyDetails(String description, int numberOfClasses, List<String> categories, String
       hasOntologyLanguage, String released, String creationDate, String homepage, String publication, String
-                             documentation, String version) {
+                             documentation, String version, boolean metricsAvailable, boolean hasSubmissions) {
     this.description = description;
     this.numberOfClasses = numberOfClasses;
     this.categories = categories;
@@ -38,6 +38,8 @@ public class OntologyDetails implements Serializable {
     this.publication = publication;
     this.documentation = documentation;
     this.version = version;
+    this.metricsAvailable = metricsAvailable;
+    this.hasSubmissions = hasSubmissions;
   }
 
   public String getDescription() {
@@ -119,4 +121,13 @@ public class OntologyDetails implements Serializable {
   public void setVersion(String version) {
     this.version = version;
   }
+
+  public boolean getMetricsAvailable() { return metricsAvailable; }
+
+  public void setMetricsAvailable(boolean metricsAvailable) { this.metricsAvailable = metricsAvailable; }
+
+  public boolean getHasSubmissions() { return hasSubmissions; }
+
+  public void setHasSubmissions(boolean hasSubmissions) { this.hasSubmissions = hasSubmissions; }
+
 }
