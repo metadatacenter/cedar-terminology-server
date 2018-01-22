@@ -123,4 +123,21 @@ public class BpOntologyMetrics {
   public void setClassesWithNoDefinition(String classesWithNoDefinition) {
     this.classesWithNoDefinition = classesWithNoDefinition;
   }
+
+  @Override
+  public String toString() {
+    return "BpOntologyMetrics{" +
+        "id='" + id + '\'' +
+        ", created='" + created + '\'' +
+        ", classes='" + classes + '\'' +
+        ", individuals='" + individuals + '\'' +
+        ", properties='" + properties + '\'' +
+        ", maxDepth='" + maxDepth + '\'' +
+        ", maxChildCount='" + maxChildCount + '\'' +
+        ", averageChildCount='" + averageChildCount + '\'' +
+        ", classesWithOneChild='" + classesWithOneChild + '\'' +
+        ", classesWithMoreThan25Children='" + classesWithMoreThan25Children + '\'' +
+        ", classesWithNoDefinition='" + classesWithNoDefinition + '\'' +
+        '}';
+  }
 }
