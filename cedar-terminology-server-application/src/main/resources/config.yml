@@ -8,6 +8,7 @@ logging:
   loggers:
     org.metadatacenter: DEBUG
     org.metadatacenter.server.neo4j.proxy.AbstractNeo4JProxy: INFO
+    o.m.s.neo4j.proxy.AbstractNeo4JProxy: INFO
   appenders:
     - type: console
       threshold: ALL
