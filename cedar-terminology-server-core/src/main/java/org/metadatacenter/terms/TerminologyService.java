@@ -68,9 +68,13 @@ public class TerminologyService implements ITerminologyService {
       if (o.getType() == null || o.getType().compareTo(BP_API_BASE + BP_ONTOLOGY_TYPE_VS_COLLECTION) != 0) {
         Ontology ont = ObjectConverter.toOntology(o);
         if (includeDetails) {
-          ont.setDetails(getOntologyDetails(ont.getId(), apiKey));
+          try {
+            ont.setDetails(getOntologyDetails(ont.getId(), apiKey));
+          }
+          catch (Exception e) {
+            log.error("Error retrieving ontology details for: " + ont.getId(), e);
+          }
         }
-        //System.out.println(ont);
         ontologies.add(ont);
         String message = ont.getId() + " loaded (" + i + "/" + total + ")";
         log.info(message);
