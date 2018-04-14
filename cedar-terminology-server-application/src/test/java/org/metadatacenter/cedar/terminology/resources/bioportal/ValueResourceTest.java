@@ -138,7 +138,7 @@ public class ValueResourceTest extends AbstractTerminologyServerResourceTest {
 //    // Service invocation
 //    Response response = client.target(url).request().header("Authorization", authHeader).get();
 //    // Check HTTP response
-//    Assert.assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+//    Assert.assertEquals(Response.Status.OK.getStatusCode(), response.getPublicationStatus());
 //    // Check Content-Type
 //    Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
 //    // Check that the tree is not empty
