@@ -106,7 +106,7 @@ public class TerminologyService implements ITerminologyService {
         details.setNumberOfClasses(numClasses);
       } else {
         BpOntologyMetrics metrics = bpService.findOntologyMetrics(ontologyId, apiKey);
-        if (metrics.getId() != null) { // Metrics not available for that ontology
+        if (metrics.getId() != null && metrics.getClasses() != null) { // Metrics not available for that ontology
           details.setNumberOfClasses(Integer.parseInt(metrics.getClasses()));
         } else {
           metricsAvailable = false;
