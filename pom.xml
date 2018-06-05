@@ -5,21 +5,21 @@
   <parent>
     <groupId>org.metadatacenter</groupId>
     <artifactId>cedar-parent</artifactId>
-    <version>1.8.2</version>
+    <version>1.8.3</version>
   </parent>
 
   <groupId>org.metadatacenter</groupId>
   <artifactId>cedar-terminology-server</artifactId>
   <name>CEDAR Terminology Server</name>
   <description>A wrapper for the BioPortal API that simplifies the access to BioPortal resources</description>
-  <version>1.8.2</version>
+  <version>1.8.3</version>
   <packaging>pom</packaging>
 
   <scm>
     <connection>scm:git:git@github.com:metadatacenter/cedar-terminology-server.git</connection>
     <developerConnection>scm:git:git@github.com:metadatacenter/cedar-terminology-server.git</developerConnection>
     <url>https://github.com/metadatacenter/cedar-terminology-server</url>
-    <tag>release-1.8.2</tag>
+    <tag>release-1.8.3</tag>
   </scm>
 
   <modules>
