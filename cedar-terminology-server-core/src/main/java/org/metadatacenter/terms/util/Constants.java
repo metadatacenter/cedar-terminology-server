@@ -39,7 +39,7 @@ public class Constants
   public static final String CEDAR_PROVISIONAL_CLASSES_ONTOLOGY = "CEDARPC";
   public static final String CEDAR_VALUE_SETS_ONTOLOGY = "CEDARVS";
   // BioPortal VS collections
-  public static final String[] BP_VS_COLLECTIONS_READ = {CEDAR_VALUE_SETS_ONTOLOGY, "NLMVS", "CDESVS"};
+  public static final String[] BP_VS_COLLECTIONS_READ = {CEDAR_VALUE_SETS_ONTOLOGY, "NLMVS", "CADSR-VS"};
   // Creation of value sets is restricted to this VS collections
   public static final String[] BP_VS_COLLECTIONS_WRITE = {CEDAR_VALUE_SETS_ONTOLOGY};
 

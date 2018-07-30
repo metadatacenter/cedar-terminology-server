@@ -8,6 +8,8 @@ import org.metadatacenter.terms.bioportal.domainObjects.*;
 import org.metadatacenter.terms.util.Constants;
 import org.metadatacenter.terms.util.HttpUtil;
 import org.metadatacenter.terms.util.Util;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.ws.rs.core.Response.Status;
 import javax.xml.ws.http.HTTPException;
@@ -23,6 +25,8 @@ public class BpOntologyDAO {
   private final int connectTimeout;
   private final int socketTimeout;
 
+  private static final Logger logger = LoggerFactory.getLogger(BpOntologyDAO.class);
+
   public BpOntologyDAO(int connectTimeout, int socketTimeout) {
     this.connectTimeout = connectTimeout;
     this.socketTimeout = socketTimeout;
@@ -30,6 +34,7 @@ public class BpOntologyDAO {
 
   public BpOntology find(String id, String apiKey) throws HTTPException, IOException {
     String url = BP_API_BASE + BP_ONTOLOGIES + id + "?" + BP_INCLUDE_ALL;
+    logger.info("Url: " + url);
 
     HttpResponse response = HttpUtil.makeHttpRequest(Request.Get(url)
         .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
@@ -47,6 +52,7 @@ public class BpOntologyDAO {
 
   public BpOntologySubmission getLatestSubmission(String id, String apiKey) throws HTTPException, IOException {
     String url = BP_API_BASE + BP_ONTOLOGIES + id + "/latest_submission";
+    logger.info("Url: " + url);
 
     HttpResponse response = HttpUtil.makeHttpRequest(Request.Get(url)
         .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
@@ -64,6 +70,7 @@ public class BpOntologyDAO {
 
   public List<BpOntology> findAll(String apiKey) throws HTTPException, IOException {
     String url = BP_API_BASE + BP_ONTOLOGIES + "?" + BP_INCLUDE_ALL;
+    logger.info("Url: " + url);
 
     HttpResponse response = HttpUtil.makeHttpRequest(Request.Get(url)
         .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
@@ -85,6 +92,7 @@ public class BpOntologyDAO {
 
   public BpOntologyMetrics getOntologyMetrics(String id, String apiKey) throws IOException {
     String url = BP_API_BASE + BP_ONTOLOGIES + id + "/metrics";
+    logger.info("Url: " + url);
 
     HttpResponse response = HttpUtil.makeHttpRequest(Request.Get(url)
         .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
@@ -102,6 +110,7 @@ public class BpOntologyDAO {
 
   public List<BpOntologyCategory> getOntologyCategories(String id, String apiKey) throws IOException {
     String url = BP_API_BASE + BP_ONTOLOGIES + id + "/categories";
+    logger.info("Url: " + url);
 
     HttpResponse response = HttpUtil.makeHttpRequest(Request.Get(url)
         .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
@@ -123,6 +132,7 @@ public class BpOntologyDAO {
 
   public List<BpClass> getRootClasses(String id, String apiKey) throws IOException {
     String url = BP_API_BASE + BP_ONTOLOGIES + id + "/" + Constants.BP_CLASSES + "roots?include=prefLabel,hasChildren,created,synonym,definition";
+    logger.info("Url: " + url);
 
     HttpResponse response = HttpUtil.makeHttpRequest(Request.Get(url)
         .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
@@ -144,6 +154,7 @@ public class BpOntologyDAO {
 
   public List<BpProperty> getRootProperties(String id, String apiKey) throws IOException {
     String url = BP_API_BASE + BP_ONTOLOGIES + id + "/" + Constants.BP_PROPERTIES + "roots";
+    logger.info("Url: " + url);
 
     HttpResponse response = HttpUtil.makeHttpRequest(Request.Get(url)
         .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
