@@ -11,8 +11,7 @@ import static org.metadatacenter.terms.util.Constants.BP_TYPE_VALUE;
 import java.util.List;
 
 //@ApiModel
-@JsonPropertyOrder({"id", "@id", "@type", "type", "prefLabel", "creator", "vsId", "vsCollection", "definitions", "synonyms",
-    "relations", "provisional", "created"})
+@JsonPropertyOrder({"id", "@id", "@type", "type", "prefLabel", "notation", "relatedMatch", "creator", "vsId", "vsCollection", "definitions", "synonyms", "relations", "provisional", "created"})
 public class Value
 {
   //@ApiModelProperty(hidden = true)
@@ -25,6 +24,12 @@ public class Value
   private String type = BP_TYPE_VALUE;
   //@ApiModelProperty(required = true)
   private String prefLabel;
+  private String notation; // Used when retrieving values from the CADSR value sets ontology. This attribute
+  // stores the VALIDVALUE, which is the value that needs to be stored in JSON-LD, while the prefLabel is the label
+  // that needs to be shown in the UI
+  private String relatedMatch; // Used when retrieving value sets from the CADSR value sets ontology. This attribute
+  // stores the URI of the concept associated to the value (MEANINGCONCEPTS xml property), which is the id that
+  // needs to be stored in JSON-LD as @id
   //@ApiModelProperty(required = true)
   private String creator;
   //@ApiModelProperty(required = true)
@@ -45,11 +50,14 @@ public class Value
   // The default constructor is used by Jackson for deserialization
   public Value() {}
 
-  public Value(String id, String ldId, String prefLabel, String creator, String vsId, String vsCollection, List<String>
+  public Value(String id, String ldId, String prefLabel, String notation, String relatedMatch,
+               String creator, String vsId, String vsCollection, List<String>
       definitions, List<String> synonyms, List<Relation> relations, boolean provisional, String created) {
     this.id = id;
     this.ldId = ldId;
     this.prefLabel = prefLabel;
+    this.notation = notation;
+    this.relatedMatch = relatedMatch;
     this.creator = creator;
     this.vsId = vsId;
     this.vsCollection = vsCollection;
@@ -99,6 +107,14 @@ public class Value
   public void setPrefLabel(String prefLabel) {
     this.prefLabel = prefLabel;
   }
+
+  public String getNotation() { return notation; }
+
+  public void setNotation(String notation) { this.notation = notation; }
+
+  public String getRelatedMatch() { return relatedMatch; }
+
+  public void setRelatedMatch(String relatedMatch) { this.relatedMatch = relatedMatch; }
 
   public String getCreator() {
     return creator;

@@ -181,6 +181,12 @@ public class BpClassDAO
   {
     String url = BP_API_BASE + BP_ONTOLOGIES + vsCollection + "/classes/" + vsId + "/children?"
         + "page=" + page + "&pagesize=" + pageSize + "&include=prefLabel,hasChildren,created,synonym,definition";
+    // In the case of the CADSR value sets collection, we also need to return the properties to be able to access to the
+    // source terminology URI, which is stored using the property skos:relatedMatch, and to the VALIDVALUE, which is
+    // stored using the skos:notation property.
+    if (vsCollection.equals(CADSR_VALUE_SETS_ONTOLOGY)) {
+      url = url + ",properties";
+    }
     logger.info("Url: " + url);
 
     HttpResponse response = HttpUtil.makeHttpRequest(Request.Get(url)

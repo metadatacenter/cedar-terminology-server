@@ -38,10 +38,16 @@ public class Constants
   public static final String BP_VS_COLLECTIONS = BP_ONTOLOGIES;
   public static final String CEDAR_PROVISIONAL_CLASSES_ONTOLOGY = "CEDARPC";
   public static final String CEDAR_VALUE_SETS_ONTOLOGY = "CEDARVS";
+  public static final String NLM_VALUE_SETS_ONTOLOGY = "NLMVS";
+  public static final String CADSR_VALUE_SETS_ONTOLOGY = "CADSR-VS";
   // BioPortal VS collections
-  public static final String[] BP_VS_COLLECTIONS_READ = {CEDAR_VALUE_SETS_ONTOLOGY, "NLMVS", "CADSR-VS"};
+  public static final String[] BP_VS_COLLECTIONS_READ = {CEDAR_VALUE_SETS_ONTOLOGY, NLM_VALUE_SETS_ONTOLOGY, CADSR_VALUE_SETS_ONTOLOGY};
   // Creation of value sets is restricted to this VS collections
   public static final String[] BP_VS_COLLECTIONS_WRITE = {CEDAR_VALUE_SETS_ONTOLOGY};
+  // Used by the values in the CADSR value sets ontology
+  public static final String SKOS_IRI = "http://www.w3.org/2004/02/skos/core#";
+  public static final String SKOS_NOTATION_IRI = SKOS_IRI + "notation";
+  public static final String SKOS_RELATEDMATCH_IRI = SKOS_IRI + "relatedMatch";
 
   /** Resource types **/
   //public static final String BP_ONTOLOGY_TYPE_ONTOLOGY = "ontology_types/ONTOLOGY";
