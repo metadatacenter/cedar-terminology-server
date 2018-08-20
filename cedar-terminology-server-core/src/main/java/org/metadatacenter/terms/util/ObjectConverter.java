@@ -94,10 +94,10 @@ public class ObjectConverter {
         pc.getSynonym(), pc.getSubclassOf(), relations, provisional, pc.getCreated(), hasChildren);
   }
 
-  public static OntologyClass toOntologyClass(BpClass pc) {
-    return new OntologyClass(Util.getShortIdentifier(pc.getId()), pc.getId(), pc.getPrefLabel(), null, pc.getLinks()
-        .getOntology(), toListOfString(pc.getDefinition()),
-        pc.getSynonym(), null, null, pc.isProvisional(), null, pc.getHasChildren());
+  public static OntologyClass toOntologyClass(BpClass c) {
+    return new OntologyClass(Util.getShortIdentifier(c.getId()), c.getId(), c.getPrefLabel(),
+        null, c.getLinks().getOntology(), toListOfString(c.getDefinition()),
+        c.getSynonym(), null, null, c.isProvisional(), null, c.getHasChildren());
   }
 
   public static ValueSet toValueSet(BpProvisionalClass pc) {
@@ -126,21 +126,35 @@ public class ObjectConverter {
   }
 
   public static Value toValue(BpClass c) {
-    return new Value(Util.getShortIdentifier(c.getId()), c.getId(), c.getPrefLabel(), null, null, c.getLinks()
-        .getOntology(), toListOfString(c.getDefinition()),
+    String notation = null;
+    String relatedMatch = null;
+    if (Util.getShortIdentifier(c.getLinks().getOntology()).equals(CADSR_VALUE_SETS_ONTOLOGY)) {
+      if (c.getProperties() != null) {
+        if (c.getProperties().containsKey(SKOS_NOTATION_IRI) && c.getProperties().get(SKOS_NOTATION_IRI).size() > 0) {
+          notation = c.getProperties().get(SKOS_NOTATION_IRI).get(0);
+        }
+        if (c.getProperties().containsKey(SKOS_RELATEDMATCH_IRI) && c.getProperties().get(SKOS_RELATEDMATCH_IRI).size() > 0) {
+          relatedMatch = c.getProperties().get(SKOS_RELATEDMATCH_IRI).get(0);
+        }
+      }
+    }
+    return new Value(Util.getShortIdentifier(c.getId()), c.getId(), c.getPrefLabel(), notation, relatedMatch,
+        null, null, c.getLinks().getOntology(), toListOfString(c.getDefinition()),
         c.getSynonym(), null, c.isProvisional(), null);
   }
 
   public static Value toValue(BpProvisionalClass pc) {
     boolean provisional = true;
+    String notation = null;
+    String relatedMatch = null;
     List<Relation> relations = new ArrayList<>();
     if (pc.getRelations() != null) {
       for (BpProvisionalRelation pr : pc.getRelations()) {
         relations.add(toRelation(pr));
       }
     }
-    return new Value(Util.getShortIdentifier(pc.getId()), pc.getId(), pc.getLabel(), pc.getCreator(), pc
-        .getSubclassOf(), pc.getOntology(), pc.getDefinition(),
+    return new Value(Util.getShortIdentifier(pc.getId()), pc.getId(), pc.getLabel(), notation, relatedMatch,
+        pc.getCreator(), pc.getSubclassOf(), pc.getOntology(), pc.getDefinition(),
         pc.getSynonym(), relations, provisional, pc.getCreated());
   }
 
@@ -296,8 +310,10 @@ public class ObjectConverter {
    */
 
   public static Value toValue(OntologyClass c) {
-    return new Value(c.getId(), c.getLdId(), c.getPrefLabel(), c.getCreator(), c.getSubclassOf(), c.getOntology(), c
-        .getDefinitions(),
+    String notation = null;
+    String relatedMatch = null;
+    return new Value(c.getId(), c.getLdId(), c.getPrefLabel(), notation, relatedMatch, c.getCreator(),
+        c.getSubclassOf(), c.getOntology(), c.getDefinitions(),
         c.getSynonyms(), c.getRelations(), c.isProvisional(), c.getCreated());
   }
 

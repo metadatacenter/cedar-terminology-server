@@ -2,12 +2,14 @@ package org.metadatacenter.terms.domainObjects;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+
 import static org.metadatacenter.terms.util.Constants.BP_TYPE_BASE;
 import static org.metadatacenter.terms.util.Constants.BP_TYPE_CLASS;
 
 import java.util.List;
 
-@JsonPropertyOrder({"id", "@id", "@type", "type", "prefLabel", "creator", "ontology", "definitions", "synonyms", "subclassOf", "relations", "provisional", "created", "hasChildren"})
+@JsonPropertyOrder({"id", "@id", "@type", "type", "prefLabel", "creator", "ontology", "definitions",
+    "synonyms", "subclassOf", "relations", "provisional", "created", "hasChildren"})
 public class OntologyClass {
 
   private String id;
@@ -32,9 +34,8 @@ public class OntologyClass {
   public OntologyClass() {
   }
 
-  public OntologyClass(String id, String ldId, String prefLabel, String creator, String ontology, List<String>
-      definitions, List<String> synonyms, String subclassOf, List<Relation> relations, boolean provisional, String
-                           created, Boolean hasChildren) {
+  public OntologyClass(String id, String ldId, String prefLabel, String creator, String ontology,
+                       List<String> definitions, List<String> synonyms, String subclassOf, List<Relation> relations, boolean provisional, String created, Boolean hasChildren) {
     this.id = id;
     this.ldId = ldId;
     this.prefLabel = prefLabel;

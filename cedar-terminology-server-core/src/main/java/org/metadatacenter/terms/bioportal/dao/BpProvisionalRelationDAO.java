@@ -8,6 +8,8 @@ import org.apache.http.util.EntityUtils;
 import org.metadatacenter.terms.bioportal.domainObjects.BpProvisionalRelation;
 import org.metadatacenter.terms.util.HttpUtil;
 import org.metadatacenter.terms.util.Util;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.ws.rs.core.Response.Status;
 import javax.xml.ws.http.HTTPException;
@@ -21,6 +23,8 @@ public class BpProvisionalRelationDAO {
   private final int connectTimeout;
   private final int socketTimeout;
 
+  private static final Logger logger = LoggerFactory.getLogger(BpProvisionalRelationDAO.class);
+
   public BpProvisionalRelationDAO(int connectTimeout, int socketTimeout) {
     this.connectTimeout = connectTimeout;
     this.socketTimeout = socketTimeout;
@@ -28,6 +32,8 @@ public class BpProvisionalRelationDAO {
 
   public BpProvisionalRelation create(BpProvisionalRelation relation, String apiKey) throws IOException {
     String url = BP_API_BASE + BP_PROVISIONAL_RELATIONS;
+    logger.info("Url: " + url);
+
     // Send request to the BioPortal API
     HttpResponse response = HttpUtil.makeHttpRequest(Request.Post(url)
         .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
@@ -48,6 +54,7 @@ public class BpProvisionalRelationDAO {
 
   public BpProvisionalRelation find(String id, String apiKey) throws IOException {
     String url = BP_API_BASE + BP_PROVISIONAL_RELATIONS + id;
+    logger.info("Url: " + url);
 
     HttpResponse response = HttpUtil.makeHttpRequest(Request.Get(url)
         .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
@@ -79,6 +86,8 @@ public class BpProvisionalRelationDAO {
 
   public void delete(String id, String apiKey) throws IOException {
     String url = BP_API_BASE + BP_PROVISIONAL_RELATIONS + id;
+    logger.info("Url: " + url);
+
     // Send request to the BioPortal API
     HttpResponse response = HttpUtil.makeHttpRequest(Request.Delete(url)
         .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).

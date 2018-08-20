@@ -160,7 +160,7 @@ public abstract class AbstractTerminologyServerResourceTest {
     value1Synonyms.add("value1Synonym1");
     value1Synonyms.add("value1Synonym2");
     List valueRelations = new ArrayList<>();
-    value1 = new Value(null, null, value1Label, value1Creator, null, value1VsCollection, value1Definitions,
+    value1 = new Value(null, null, value1Label, null, null, value1Creator, null, value1VsCollection, value1Definitions,
         value1Synonyms, valueRelations, true, null);
 
     // Initialize test value 2 - the vsId will be set later
@@ -174,7 +174,7 @@ public abstract class AbstractTerminologyServerResourceTest {
     value2Synonyms.add("value2Synonym1");
     value2Synonyms.add("value2Synonym2");
     List value2Relations = new ArrayList<>();
-    value2 = new Value(null, null, value2Label, value2Creator, null, value2VsCollection, value2Definitions,
+    value2 = new Value(null, null, value2Label, null, null, value2Creator, null, value2VsCollection, value2Definitions,
         value2Synonyms, value2Relations, true, null);
   }
 

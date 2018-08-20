@@ -205,7 +205,7 @@ public class ValueResourceTest extends AbstractTerminologyServerResourceTest {
     // Create a provisional value
     ValueSet createdValueSet = createValueSet(vs1);
     Value createdValue = createValue(createdValueSet.getLdId(), value1);
-    Value updatedValue = new Value(createdValue.getId(), createdValue.getLdId(), "new label",
+    Value updatedValue = new Value(createdValue.getId(), createdValue.getLdId(), "new label", null, null,
         createdValue.getCreator(), createdValue.getVsId(), createdValue.getVsCollection(), createdValue.getDefinitions(),
         createdValue.getSynonyms(), createdValue.getRelations(), createdValue.isProvisional(), createdValue.getCreated());
     String url = baseUrlBp + "/" + BP_VALUES + "/" + createdValue.getId();

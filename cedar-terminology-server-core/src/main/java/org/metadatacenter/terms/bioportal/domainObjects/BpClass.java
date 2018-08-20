@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.List;
+import java.util.Map;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class BpClass {
@@ -20,12 +21,13 @@ public class BpClass {
   private boolean provisional;
   private BpLinks links;
   private boolean hasChildren;
+  private Map<String, List<String>> properties;
 
   public BpClass() {
   }
 
   public BpClass(String id, String type, String prefLabel, List<Object> definition, List<String> synonym,
-                 boolean provisional, BpLinks links, boolean hasChildren) {
+                 boolean provisional, BpLinks links, boolean hasChildren, Map<String, List<String>> properties) {
     this.id = id;
     this.type = type;
     this.prefLabel = prefLabel;
@@ -34,6 +36,7 @@ public class BpClass {
     this.provisional = provisional;
     this.links = links;
     this.hasChildren = hasChildren;
+    this.properties = properties;
   }
 
   public String getId() {
@@ -100,6 +103,14 @@ public class BpClass {
     this.hasChildren = hasChildren;
   }
 
+  public Map<String, List<String>> getProperties() {
+    return properties;
+  }
+
+  public void setProperties(Map<String, List<String>> properties) {
+    this.properties = properties;
+  }
+
   @Override
   public String toString() {
     return "BpClass{" +
@@ -111,6 +122,7 @@ public class BpClass {
         ", provisional=" + provisional +
         ", links=" + links +
         ", hasChildren=" + hasChildren +
+        ", properties=" + properties +
         '}';
   }
 }
