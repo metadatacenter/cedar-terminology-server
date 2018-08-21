@@ -12,6 +12,8 @@ import org.metadatacenter.terms.util.HttpUtil;
 import org.metadatacenter.terms.util.ObjectConverter;
 import org.metadatacenter.terms.util.Util;
 import org.metadatacenter.util.json.JsonMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.ws.rs.core.Response.Status;
 import javax.xml.ws.http.HTTPException;
@@ -26,6 +28,8 @@ public class BpPropertyDAO
 {
   private final int connectTimeout;
   private final int socketTimeout;
+
+  private static final Logger logger = LoggerFactory.getLogger(BpPropertyDAO.class);
 
   public BpPropertyDAO(int connectTimeout, int socketTimeout)
   {

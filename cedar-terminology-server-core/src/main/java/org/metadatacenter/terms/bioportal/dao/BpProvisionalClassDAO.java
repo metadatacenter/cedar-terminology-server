@@ -11,6 +11,8 @@ import org.metadatacenter.terms.bioportal.domainObjects.BpProvisionalClass;
 import org.metadatacenter.terms.util.Constants;
 import org.metadatacenter.terms.util.HttpUtil;
 import org.metadatacenter.terms.util.Util;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.ws.rs.core.Response.Status;
 import javax.xml.ws.http.HTTPException;
@@ -23,6 +25,8 @@ import static org.metadatacenter.util.json.JsonMapper.MAPPER;
 public class BpProvisionalClassDAO {
   private final int connectTimeout;
   private final int socketTimeout;
+
+  private static final Logger logger = LoggerFactory.getLogger(BpProvisionalClassDAO.class);
 
   public BpProvisionalClassDAO(int connectTimeout, int socketTimeout) {
     this.connectTimeout = connectTimeout;
@@ -49,6 +53,7 @@ public class BpProvisionalClassDAO {
   // TODO: Issue: not able to retrieve provisional classes from bioportal using the full id
   public BpProvisionalClass find(String id, String apiKey) throws IOException {
     String url = BP_API_BASE + BP_PROVISIONAL_CLASSES + id;
+    logger.info("Url: " + url);
 
     HttpResponse response = HttpUtil.makeHttpRequest(Request.Get(url)
         .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
@@ -73,6 +78,8 @@ public class BpProvisionalClassDAO {
       url = BP_API_BASE + BP_PROVISIONAL_CLASSES;
     }
     url = url + "?page=" + page + "&pagesize=" + pageSize;
+    logger.info("Url: " + url);
+
     HttpResponse response = HttpUtil.makeHttpRequest(Request.Get(url)
         .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
             connectTimeout(connectTimeout).socketTimeout(socketTimeout));
@@ -97,6 +104,7 @@ public class BpProvisionalClassDAO {
 
   public void update(BpProvisionalClass c, String apiKey) throws IOException {
     String url = BP_API_BASE + BP_PROVISIONAL_CLASSES + Util.getShortIdentifier(c.getId());
+    logger.info("Url: " + url);
 
     // Send request to the BioPortal API
     HttpResponse response = HttpUtil.makeHttpRequest(Request.Patch(url)
@@ -110,6 +118,7 @@ public class BpProvisionalClassDAO {
 
   public void delete(String id, String apiKey) throws IOException {
     String url = BP_API_BASE + BP_PROVISIONAL_CLASSES + id;
+    logger.info("Url: " + url);
 
     // Send request to the BioPortal API
     HttpResponse response = HttpUtil.makeHttpRequest(Request.Delete(url)

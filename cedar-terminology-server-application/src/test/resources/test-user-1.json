@@ -1,5 +1,5 @@
 {
-  "id": "https://metadatacenter.org/users/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+  "@id": "https://metadatacenter.org/users/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
   "firstName": "Test1",
   "lastName": "User",
   "email": "test1@test.com",
@@ -30,15 +30,22 @@
     "permission_folder_delete",
     "permission_folder_read",
     "permission_folder_update",
+    "permission_group_create",
+    "permission_group_delete",
+    "permission_group_read",
+    "permission_group_update",
     "permission_instance_create",
     "permission_instance_delete",
     "permission_instance_read",
     "permission_instance_update",
+    "permission_process_message_create",
     "permission_logged_in_read",
     "permission_template_create",
     "permission_template_delete",
     "permission_template_read",
-    "permission_template_update"
+    "permission_template_update",
+    "permission_user_read",
+    "permission_user_update"
   ],
   "uiPreferences": {
     "folderView": {
@@ -53,8 +60,15 @@
       "template": true,
       "instance": true
     },
+    "resourcePublicationStatusFilter": {
+      "publicationStatus": "all"
+    },
+    "resourceVersionFilter": {
+      "version": "all"
+    },
     "infoPanel": {
-      "opened": false
+      "opened": false,
+      "activeTab": "info"
     },
     "templateEditor": {
       "templateJsonViewer": false
