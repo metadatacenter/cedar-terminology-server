@@ -491,40 +491,22 @@ public class TerminologyService implements ITerminologyService {
 
   public List<ValueSet> findAllValueSets(String apiKey) throws IOException {
     List<ValueSet> valueSets = new ArrayList<>();
-    int page = FIRST_PAGE;
-    // We need to retrieve all value sets in one call so we set a higher limit for pageSize. Higher values are not
-    // accepted by BioPortal. Bad request is returned
-    int pageSize = LARGE_PAGE_SIZE;
-    //int pageSize = Integer.MAX_VALUE;
     for (String vs : BP_VS_COLLECTIONS_READ) {
-      List<ValueSet> vsTmp = findValueSetsByVsCollection(vs, page, pageSize, apiKey).getCollection();
-      valueSets.addAll(vsTmp);
+      int page = FIRST_PAGE;
+      int pageSize = LARGE_PAGE_SIZE;
+      boolean finished = false;
+      while (!finished) {
+        List<ValueSet> vsTmp = findValueSetsByVsCollection(vs, page, pageSize, apiKey).getCollection();
+        if (vsTmp.size() > 0) {
+          valueSets.addAll(vsTmp);
+          page++;
+        } else {
+          finished = true;
+        }
+      }
     }
     return valueSets;
   }
-
-//  public List<ValueSet> findAllValueSets(String vsCollection, String apiKey) throws IOException {
-//    List<String> vsCollectionIds = new ArrayList<>();
-//    List<ValueSet> valueSets = new ArrayList<>();
-//    // If the vsCollection has not been specified
-//    if (vsCollection == null || vsCollection.isEmpty()) {
-//      List<VSCollection> vsCollections = findAllVSCollections(false, apiKey);
-//      for (VSCollection c : vsCollections) {
-//        vsCollectionIds.add(c.getId());
-//      }
-//    }
-//    else {
-//      vsCollectionIds.add(vsCollection);
-//    }
-//    // Retrieve valueSets
-//    for (String vscId : vsCollectionIds) {
-//      List<OntologyClass> rootClasses = getRootClasses(vscId, apiKey);
-//      for (OntologyClass c : rootClasses) {
-//        valueSets.add(ObjectConverter.toValueSet(c));
-//      }
-//    }
-//    return valueSets;
-//  }
 
   /**
    * Values
