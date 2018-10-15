@@ -9,7 +9,6 @@ import org.metadatacenter.config.CedarConfig;
 import org.metadatacenter.error.CedarErrorKey;
 import org.metadatacenter.exception.CedarException;
 import org.metadatacenter.rest.context.CedarRequestContext;
-import org.metadatacenter.rest.context.CedarRequestContextFactory;
 import org.metadatacenter.rest.exception.CedarAssertionException;
 import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.util.http.CedarResponse;
@@ -52,7 +51,7 @@ public class SearchResource extends AbstractTerminologyServerResource {
                          @QueryParam("page") @DefaultValue("1") int page,
                          @QueryParam("page_size") int pageSize) throws CedarException {
 
-    CedarRequestContext c = CedarRequestContextFactory.fromRequest(request);
+    CedarRequestContext c = buildRequestContext();
     c.must(c.user()).be(LoggedIn);
 
     try {
@@ -108,7 +107,7 @@ public class SearchResource extends AbstractTerminologyServerResource {
                                  @QueryParam("page") @DefaultValue("1") int page,
                                  @QueryParam("page_size") int pageSize) throws CedarException {
 
-    CedarRequestContext c = CedarRequestContextFactory.fromRequest(request);
+    CedarRequestContext c = buildRequestContext();
     c.must(c.user()).be(LoggedIn);
 
     try {

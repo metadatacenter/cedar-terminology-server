@@ -9,7 +9,6 @@ import org.metadatacenter.config.CedarConfig;
 import org.metadatacenter.exception.CedarException;
 import org.metadatacenter.exception.CedarProcessingException;
 import org.metadatacenter.rest.context.CedarRequestContext;
-import org.metadatacenter.rest.context.CedarRequestContextFactory;
 import org.metadatacenter.rest.exception.CedarAssertionException;
 import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.terms.domainObjects.OntologyClass;
@@ -39,7 +38,7 @@ public class ClassResource extends AbstractTerminologyServerResource {
   @POST
   @Path("ontologies/{ontology}/classes")
   public Response createClass(@PathParam("ontology") String ontology) throws CedarException {
-    CedarRequestContext ctx = CedarRequestContextFactory.fromRequest(request);
+    CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
     try {
       OntologyClass c = JsonMapper.MAPPER.convertValue(ctx.request().getRequestBody().asJson(), OntologyClass.class);
@@ -58,7 +57,7 @@ public class ClassResource extends AbstractTerminologyServerResource {
   @Path("ontologies/{ontology}/classes/{id}")
   public Response findClass(@PathParam("id") @Encoded String id, @PathParam("ontology") String ontology) throws
       CedarException {
-    CedarRequestContext ctx = CedarRequestContextFactory.fromRequest(request);
+    CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
     try {
       OntologyClass c = terminologyService.findClass(id, ontology, apiKey);
@@ -73,16 +72,17 @@ public class ClassResource extends AbstractTerminologyServerResource {
   @GET
   @Path("ontologies/{ontology}/classes")
   public Response findAllClassesForOntology(@PathParam("ontology") String ontology,
-                                                   @QueryParam("page") @DefaultValue("1") int page,
-                                                   @QueryParam("pageSize") int pageSize) throws CedarException {
-    CedarRequestContext ctx = CedarRequestContextFactory.fromRequest(request);
+                                            @QueryParam("page") @DefaultValue("1") int page,
+                                            @QueryParam("pageSize") int pageSize) throws CedarException {
+    CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
     // If pageSize not defined, set default value
     if (pageSize == 0) {
       pageSize = defaultPageSize;
     }
     try {
-      PagedResults<OntologyClass> classes = terminologyService.findAllClassesInOntology(ontology, page, pageSize, apiKey);
+      PagedResults<OntologyClass> classes =
+          terminologyService.findAllClassesInOntology(ontology, page, pageSize, apiKey);
       return Response.ok().entity(JsonMapper.MAPPER.valueToTree(classes)).build();
     } catch (HTTPException e) {
       return Response.status(e.getStatusCode()).build();
@@ -95,7 +95,7 @@ public class ClassResource extends AbstractTerminologyServerResource {
   @Path("ontologies/{ontology}/classes/{id}/tree")
   public Response findClassTree(@PathParam("id") @Encoded String id, @PathParam("ontology") String ontology) throws
       CedarException {
-    CedarRequestContext ctx = CedarRequestContextFactory.fromRequest(request);
+    CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
     try {
       boolean isFlat = Cache.ontologiesCache.get("ontologies").get(ontology).getIsFlat();
@@ -111,9 +111,9 @@ public class ClassResource extends AbstractTerminologyServerResource {
   @GET
   @Path("ontologies/{ontology}/classes/{id}/children")
   public Response findClassChildren(@PathParam("id") @Encoded String id, @PathParam("ontology") String ontology,
-                                           @QueryParam("page") @DefaultValue("1") int page, @QueryParam("pageSize")
-                                             int pageSize) throws CedarException {
-    CedarRequestContext ctx = CedarRequestContextFactory.fromRequest(request);
+                                    @QueryParam("page") @DefaultValue("1") int page, @QueryParam("pageSize")
+                                        int pageSize) throws CedarException {
+    CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
     // If pageSize not defined, set default value
     if (pageSize == 0) {
@@ -134,8 +134,10 @@ public class ClassResource extends AbstractTerminologyServerResource {
   @GET
   @Path("ontologies/{ontology}/classes/{id}/descendants")
   public Response findClassDescendants(@PathParam("id") @Encoded String id, @PathParam("ontology") String ontology,
-                                              @QueryParam("page") @DefaultValue("1") int page, @QueryParam("pageSize") int pageSize) throws CedarException {
-    CedarRequestContext ctx = CedarRequestContextFactory.fromRequest(request);
+                                       @QueryParam("page") @DefaultValue("1") int page,
+                                       @QueryParam("pageSize") int pageSize)
+      throws CedarException {
+    CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
     // If pageSize not defined, set default value
     if (pageSize == 0) {
@@ -156,7 +158,7 @@ public class ClassResource extends AbstractTerminologyServerResource {
   @Path("ontologies/{ontology}/classes/{id}/parents")
   public Response findClassParents(@PathParam("id") @Encoded String id, @PathParam("ontology") String ontology)
       throws CedarException {
-    CedarRequestContext ctx = CedarRequestContextFactory.fromRequest(request);
+    CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
     try {
       List<OntologyClass> descendants = terminologyService.getClassParents(id, ontology, apiKey);
@@ -171,8 +173,8 @@ public class ClassResource extends AbstractTerminologyServerResource {
   @GET
   @Path("classes/provisional")
   public Response findAllProvisionalClasses(@QueryParam("page") @DefaultValue("1") int page,
-                                                   @QueryParam("pageSize") int pageSize) throws CedarException {
-    CedarRequestContext ctx = CedarRequestContextFactory.fromRequest(request);
+                                            @QueryParam("pageSize") int pageSize) throws CedarException {
+    CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
     // If pageSize not defined, set default value
     if (pageSize == 0) {
@@ -195,16 +197,18 @@ public class ClassResource extends AbstractTerminologyServerResource {
   @Path("ontologies/{ontology}/classes/provisional")
   public Response findAllProvisionalClassesForOntology(@PathParam("ontology") String ontology, @QueryParam
       ("page") @DefaultValue("1") int page, @QueryParam("pageSize") int pageSize) throws CedarException {
-    CedarRequestContext ctx = CedarRequestContextFactory.fromRequest(request);
+    CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
     // If pageSize not defined, set default value
     if (pageSize == 0) {
       pageSize = defaultPageSize;
     }
     try {
-      PagedResults<OntologyClass> classes = terminologyService.findAllProvisionalClasses(ontology, page, pageSize, apiKey);
+      PagedResults<OntologyClass> classes =
+          terminologyService.findAllProvisionalClasses(ontology, page, pageSize, apiKey);
       // This line ensures that @class type annotations are included for each element in the list
-      ObjectWriter writer = JsonMapper.MAPPER.writerFor(new TypeReference<PagedResults<OntologyClass>>() {});
+      ObjectWriter writer = JsonMapper.MAPPER.writerFor(new TypeReference<PagedResults<OntologyClass>>() {
+      });
       return Response.ok().entity(JsonMapper.MAPPER.readTree(writer.writeValueAsString(classes))).build();
     } catch (HTTPException e) {
       return Response.status(e.getStatusCode()).build();
@@ -216,7 +220,7 @@ public class ClassResource extends AbstractTerminologyServerResource {
   @PUT
   @Path("classes/{id}")
   public Response updateClass(@PathParam("id") String id) throws CedarException {
-    CedarRequestContext ctx = CedarRequestContextFactory.fromRequest(request);
+    CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
     try {
       OntologyClass c = JsonMapper.MAPPER.readValue(request.getInputStream(), OntologyClass.class);
@@ -233,7 +237,7 @@ public class ClassResource extends AbstractTerminologyServerResource {
   @DELETE
   @Path("classes/{id}")
   public Response deleteClass(@PathParam("id") String id) throws CedarException {
-    CedarRequestContext ctx = CedarRequestContextFactory.fromRequest(request);
+    CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
     try {
       terminologyService.deleteProvisionalClass(id, apiKey);
