@@ -5,6 +5,7 @@ jdk:
 - openjdk10
 services:
 - mongodb
+- redis-server
 branches:
   only:
   - develop
