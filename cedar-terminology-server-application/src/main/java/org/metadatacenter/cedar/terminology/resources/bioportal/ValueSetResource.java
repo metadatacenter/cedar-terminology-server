@@ -7,12 +7,9 @@ import org.metadatacenter.config.CedarConfig;
 import org.metadatacenter.exception.CedarException;
 import org.metadatacenter.exception.CedarProcessingException;
 import org.metadatacenter.rest.context.CedarRequestContext;
-import org.metadatacenter.rest.context.CedarRequestContextFactory;
 import org.metadatacenter.rest.exception.CedarAssertionException;
 import org.metadatacenter.terms.customObjects.PagedResults;
-import org.metadatacenter.terms.domainObjects.Ontology;
 import org.metadatacenter.terms.domainObjects.TreeNode;
-import org.metadatacenter.terms.domainObjects.Value;
 import org.metadatacenter.terms.domainObjects.ValueSet;
 import org.metadatacenter.util.json.JsonMapper;
 
@@ -40,7 +37,7 @@ public class ValueSetResource extends AbstractTerminologyServerResource {
   @POST
   @Path("vs-collections/{vs_collection}/value-sets")
   public Response createValueSet(@PathParam("vs_collection") String vsCollection) throws CedarException {
-    CedarRequestContext ctx = CedarRequestContextFactory.fromRequest(request);
+    CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
     try {
       ValueSet vs = JsonMapper.MAPPER.convertValue(ctx.request().getRequestBody().asJson(), ValueSet.class);
@@ -61,7 +58,7 @@ public class ValueSetResource extends AbstractTerminologyServerResource {
   @Path("vs-collections/{vs_collection}/value-sets/{id}")
   public Response findValueSet(@PathParam("id") @Encoded String id, @PathParam("vs_collection") String vsCollection)
       throws CedarException {
-    CedarRequestContext ctx = CedarRequestContextFactory.fromRequest(request);
+    CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
     try {
       ValueSet vs = terminologyService.findValueSet(id, vsCollection, apiKey);
@@ -78,14 +75,15 @@ public class ValueSetResource extends AbstractTerminologyServerResource {
   public Response findValueSetsByVsCollection(@PathParam("vs_collection") String vsCollection,
                                               @QueryParam("page") @DefaultValue("1") int page,
                                               @QueryParam("pageSize") int pageSize) throws CedarException {
-    CedarRequestContext ctx = CedarRequestContextFactory.fromRequest(request);
+    CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
     // If pageSize not defined, set default value
     if (pageSize == 0) {
       pageSize = defaultPageSize;
     }
     try {
-      PagedResults<ValueSet> valueSets = terminologyService.findValueSetsByVsCollection(vsCollection, page, pageSize, apiKey);
+      PagedResults<ValueSet> valueSets =
+          terminologyService.findValueSetsByVsCollection(vsCollection, page, pageSize, apiKey);
       // This line ensures that @class type annotations are included for each element in the collection
       //ObjectWriter writer = JsonMapper.MAPPER.writerFor(new TypeReference<PagedResults<ValueSet>>() {});
       //return Response.ok().entity(JsonMapper.MAPPER.valueToTree(writer.writeValueAsString(valueSets))).build();
@@ -115,7 +113,7 @@ public class ValueSetResource extends AbstractTerminologyServerResource {
   @Path("vs-collections/{vs_collection}/value-sets/{id}/tree")
   public Response findValueSetTree(@PathParam("id") @Encoded String id, @PathParam("vs_collection") String vsCollection)
       throws CedarException {
-    CedarRequestContext ctx = CedarRequestContextFactory.fromRequest(request);
+    CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
     try {
       TreeNode tree = terminologyService.getValueSetTree(id, vsCollection, apiKey);
@@ -130,7 +128,7 @@ public class ValueSetResource extends AbstractTerminologyServerResource {
   @GET
   @Path("value-sets")
   public Response findAllValueSets() throws CedarException {
-    CedarRequestContext ctx = CedarRequestContextFactory.fromRequest(request);
+    CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
     try {
       List<ValueSet> valueSets = new ArrayList<>(Cache.valueSetsCache.get("value-sets").values());
@@ -145,7 +143,7 @@ public class ValueSetResource extends AbstractTerminologyServerResource {
   @PUT
   @Path("value-sets/{id}")
   public Response updateValueSet(@PathParam("id") String id) throws CedarException {
-    CedarRequestContext ctx = CedarRequestContextFactory.fromRequest(request);
+    CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
     try {
       ValueSet vs = JsonMapper.MAPPER.readValue(request.getInputStream(), ValueSet.class);
@@ -161,7 +159,7 @@ public class ValueSetResource extends AbstractTerminologyServerResource {
   @DELETE
   @Path("value-sets/{id}")
   public Response deleteValueSet(@PathParam("id") String id) throws CedarException {
-    CedarRequestContext ctx = CedarRequestContextFactory.fromRequest(request);
+    CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
     try {
       terminologyService.deleteProvisionalValueSet(id, apiKey);

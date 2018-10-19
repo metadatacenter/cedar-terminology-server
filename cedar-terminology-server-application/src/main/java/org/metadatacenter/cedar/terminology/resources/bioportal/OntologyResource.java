@@ -5,7 +5,6 @@ import org.metadatacenter.cedar.terminology.resources.AbstractTerminologyServerR
 import org.metadatacenter.config.CedarConfig;
 import org.metadatacenter.exception.CedarException;
 import org.metadatacenter.rest.context.CedarRequestContext;
-import org.metadatacenter.rest.context.CedarRequestContextFactory;
 import org.metadatacenter.rest.exception.CedarAssertionException;
 import org.metadatacenter.terms.domainObjects.Ontology;
 import org.metadatacenter.terms.domainObjects.OntologyClass;
@@ -38,7 +37,7 @@ public class OntologyResource extends AbstractTerminologyServerResource {
   @GET
   @Path("ontologies")
   public Response findAllOntologies() throws CedarException {
-    CedarRequestContext ctx = CedarRequestContextFactory.fromRequest(request);
+    CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
     try {
       List<Ontology> ontologies = new ArrayList<>(Cache.ontologiesCache.get("ontologies").values());
@@ -53,7 +52,7 @@ public class OntologyResource extends AbstractTerminologyServerResource {
   @GET
   @Path("ontologies/{id}")
   public Response findOntology(@PathParam("id") String id) throws CedarException {
-    CedarRequestContext ctx = CedarRequestContextFactory.fromRequest(request);
+    CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
     try {
       // Retrieve ontology from ontologies cache
@@ -72,7 +71,7 @@ public class OntologyResource extends AbstractTerminologyServerResource {
   @GET
   @Path("ontologies/{ontology}/classes/roots")
   public Response findRootClasses(@PathParam("ontology") String ontology) throws CedarException {
-    CedarRequestContext ctx = CedarRequestContextFactory.fromRequest(request);
+    CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
     try {
       boolean isFlat = Cache.ontologiesCache.get("ontologies").get(ontology).getIsFlat();
@@ -88,7 +87,7 @@ public class OntologyResource extends AbstractTerminologyServerResource {
   @GET
   @Path("ontologies/{ontology}/properties/roots")
   public Response findRootProperties(@PathParam("ontology") String ontology) throws CedarException {
-    CedarRequestContext ctx = CedarRequestContextFactory.fromRequest(request);
+    CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
     try {
       List<OntologyProperty> roots = terminologyService.getRootProperties(ontology, apiKey);
@@ -99,5 +98,5 @@ public class OntologyResource extends AbstractTerminologyServerResource {
       throw new CedarAssertionException(e);
     }
   }
-  
+
 }
