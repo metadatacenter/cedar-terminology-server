@@ -4,7 +4,6 @@ import org.metadatacenter.cedar.terminology.resources.AbstractTerminologyServerR
 import org.metadatacenter.config.CedarConfig;
 import org.metadatacenter.exception.CedarException;
 import org.metadatacenter.rest.context.CedarRequestContext;
-import org.metadatacenter.rest.context.CedarRequestContextFactory;
 import org.metadatacenter.rest.exception.CedarAssertionException;
 import org.metadatacenter.terms.domainObjects.ValueSetCollection;
 import org.metadatacenter.util.json.JsonMapper;
@@ -30,7 +29,7 @@ public class ValueSetCollectionResource extends AbstractTerminologyServerResourc
   @Path("vs-collections")
   public Response findAllVSCollections(@QueryParam("include_details") @DefaultValue("false") boolean includeDetails)
       throws CedarException {
-    CedarRequestContext ctx = CedarRequestContextFactory.fromRequest(request);
+    CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
     try {
       List<ValueSetCollection> vsCollections = terminologyService.findAllVSCollections(includeDetails, apiKey);

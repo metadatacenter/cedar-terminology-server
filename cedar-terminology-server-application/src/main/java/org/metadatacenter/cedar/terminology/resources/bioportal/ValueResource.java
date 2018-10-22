@@ -6,7 +6,6 @@ import org.metadatacenter.config.CedarConfig;
 import org.metadatacenter.exception.CedarException;
 import org.metadatacenter.exception.CedarProcessingException;
 import org.metadatacenter.rest.context.CedarRequestContext;
-import org.metadatacenter.rest.context.CedarRequestContextFactory;
 import org.metadatacenter.rest.exception.CedarAssertionException;
 import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.terms.domainObjects.TreeNode;
@@ -33,8 +32,9 @@ public class ValueResource extends AbstractTerminologyServerResource {
 
   @POST
   @Path("vs-collections/{vs_collection}/value-sets/{vs}/values")
-  public Response createValue(@PathParam("vs_collection") String vsCollection, @PathParam("vs") String vs) throws CedarException {
-    CedarRequestContext ctx = CedarRequestContextFactory.fromRequest(request);
+  public Response createValue(@PathParam("vs_collection") String vsCollection, @PathParam("vs") String vs)
+      throws CedarException {
+    CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
     try {
       Value v = JsonMapper.MAPPER.convertValue(ctx.request().getRequestBody().asJson(), Value.class);
@@ -54,7 +54,7 @@ public class ValueResource extends AbstractTerminologyServerResource {
   @Path("vs-collections/{vs_collection}/values/{id}")
   public Response findValue(@PathParam("id") @Encoded String id, @PathParam("vs_collection") String vsCollection) throws
       CedarException {
-    CedarRequestContext ctx = CedarRequestContextFactory.fromRequest(request);
+    CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
     try {
       Value v = terminologyService.findValue(id, vsCollection, apiKey);
@@ -70,7 +70,7 @@ public class ValueResource extends AbstractTerminologyServerResource {
   @Path("vs-collections/{vs_collection}/values/{id}/tree")
   public Response findValueTree(@PathParam("id") @Encoded String id, @PathParam("vs_collection") String vsCollection)
       throws CedarException {
-    CedarRequestContext ctx = CedarRequestContextFactory.fromRequest(request);
+    CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
     try {
       TreeNode tree = terminologyService.getValueTree(id, vsCollection, apiKey);
@@ -88,7 +88,7 @@ public class ValueResource extends AbstractTerminologyServerResource {
                                        @PathParam("vs") @Encoded String vsId,
                                        @QueryParam("page") @DefaultValue("1") int page,
                                        @QueryParam("pageSize") int pageSize) throws CedarException {
-    CedarRequestContext ctx = CedarRequestContextFactory.fromRequest(request);
+    CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
     // If pageSize not defined, set default value
     if (pageSize == 0) {
@@ -110,14 +110,15 @@ public class ValueResource extends AbstractTerminologyServerResource {
                                                  @PathParam("vs_collection") String vsCollection,
                                                  @QueryParam("page") @DefaultValue("1") int page,
                                                  @QueryParam("pageSize") int pageSize) throws CedarException {
-    CedarRequestContext ctx = CedarRequestContextFactory.fromRequest(request);
+    CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
     // If pageSize not defined, set default value
     if (pageSize == 0) {
       pageSize = defaultPageSize;
     }
     try {
-      PagedResults<Value> values = terminologyService.findAllValuesInValueSetByValue(id, vsCollection, page, pageSize, apiKey);
+      PagedResults<Value> values =
+          terminologyService.findAllValuesInValueSetByValue(id, vsCollection, page, pageSize, apiKey);
       return Response.ok().entity(JsonMapper.MAPPER.valueToTree(values)).build();
     } catch (HTTPException e) {
       return Response.status(e.getStatusCode()).build();
@@ -129,7 +130,7 @@ public class ValueResource extends AbstractTerminologyServerResource {
   @PUT
   @Path("values/{id}")
   public Response updateValue(@PathParam("id") String id) throws CedarException {
-    CedarRequestContext ctx = CedarRequestContextFactory.fromRequest(request);
+    CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
     try {
       Value v = JsonMapper.MAPPER.readValue(request.getInputStream(), Value.class);
@@ -145,7 +146,7 @@ public class ValueResource extends AbstractTerminologyServerResource {
   @DELETE
   @Path("values/{id}")
   public Response deleteValue(@PathParam("id") String id) throws CedarException {
-    CedarRequestContext ctx = CedarRequestContextFactory.fromRequest(request);
+    CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
     try {
       terminologyService.deleteProvisionalValue(id, apiKey);
