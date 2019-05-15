@@ -121,8 +121,8 @@ public class PropertyResourceTest extends AbstractTerminologyServerResourceTest 
     for (TreeNode node : tree) {
       // If "Date"
       if (node.getLdId().equals(parentPropertyId)) {
-        Assert.assertTrue("The 'hasChildren' property for this node should be set to 'true'", node.getHasChildren() == true);
-        Assert.assertTrue("The number of children returned for this node should be greater than 0", node.getChildren().size() > 0);
+        Assert.assertTrue("The 'hasChildren' property for this resource should be set to 'true'", node.getHasChildren() == true);
+        Assert.assertTrue("The number of children returned for this resource should be greater than 0", node.getChildren().size() > 0);
         for (TreeNode childrenNode : node.getChildren()) {
           // If "Copyright date"
           if (childrenNode.getLdId().equals(propertyId)) {
@@ -172,7 +172,7 @@ public class PropertyResourceTest extends AbstractTerminologyServerResourceTest 
   @Test
   public void findPropertyDescendantsTest() {
     String ontology = "BIBFRAME";
-    // Property "Related resource" from BIBFRAME (http://id.loc.gov/ontologies/bibframe/relatedTo)
+    // Property "Related artifact" from BIBFRAME (http://id.loc.gov/ontologies/bibframe/relatedTo)
     //   - 1st level descendant: "Accompanied by" (http://id.loc.gov/ontologies/bibframe/accompaniedBy)
     //   - 2nd level descendant: "Supplement" (http://id.loc.gov/ontologies/bibframe/supplement)
     String propertyId = "http://id.loc.gov/ontologies/bibframe/relatedTo";
