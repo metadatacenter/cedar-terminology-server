@@ -150,8 +150,8 @@ public class ClassResourceTest extends AbstractTerminologyServerResourceTest {
     for (TreeNode node : tree) {
       // If "Biological Process"
       if (node.getLdId().equals(parentClassId)) {
-        Assert.assertTrue("The 'hasChildren' property for this node should be set to 'true'", node.getHasChildren() == true);
-        Assert.assertTrue("The number of children returned for this node shouldn't be 0", node.getChildren().size() > 0);
+        Assert.assertTrue("The 'hasChildren' property for this resource should be set to 'true'", node.getHasChildren() == true);
+        Assert.assertTrue("The number of children returned for this resource shouldn't be 0", node.getChildren().size() > 0);
         for (TreeNode childrenNode : node.getChildren()) {
           // If "Cellular Process"
           if (childrenNode.getLdId().equals(classId)) {
@@ -159,7 +159,7 @@ public class ClassResourceTest extends AbstractTerminologyServerResourceTest {
           }
         }
       } else {
-        Assert.assertTrue("The number of children returned for this node should be 0", node.getChildren().size() == 0);
+        Assert.assertTrue("The number of children returned for this resource should be 0", node.getChildren().size() == 0);
       }
     }
     Assert.assertTrue("Given class not found in the returned tree", classFound);

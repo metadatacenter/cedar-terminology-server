@@ -149,10 +149,10 @@ public class ValueResourceTest extends AbstractTerminologyServerResourceTest {
 //    // Check that the children correspond to the created values
 //    boolean v1Found = false;
 //    boolean v2Found = false;
-//    for (TreeNode node : tree.getChildren()) {
-//      if (node.getId().equals(createdValue1.getId())) {
+//    for (TreeNode resource : tree.getChildren()) {
+//      if (resource.getId().equals(createdValue1.getId())) {
 //        v1Found = true;
-//      } else if (node.getId().equals(createdValue2.getId())) {
+//      } else if (resource.getId().equals(createdValue2.getId())) {
 //        v2Found = true;
 //      }
 //    }
