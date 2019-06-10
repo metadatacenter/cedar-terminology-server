@@ -12,14 +12,14 @@
   <artifactId>cedar-terminology-server</artifactId>
   <name>CEDAR Terminology Server</name>
   <description>A wrapper for the BioPortal API that simplifies the access to BioPortal resources</description>
-  <version>2.3.4-SNAPSHOT</version>
+  <version>2.3.4</version>
   <packaging>pom</packaging>
 
   <scm>
     <connection>scm:git:git@github.com:metadatacenter/cedar-terminology-server.git</connection>
     <developerConnection>scm:git:git@github.com:metadatacenter/cedar-terminology-server.git</developerConnection>
     <url>https://github.com/metadatacenter/cedar-terminology-server</url>
-    <tag>HEAD</tag>
+    <tag>release-2.3.4</tag>
   </scm>
 
   <modules>
