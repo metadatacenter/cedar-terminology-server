@@ -52,7 +52,8 @@ public class SearchResource extends AbstractTerminologyServerResource {
                          @QueryParam("page_size") int pageSize) throws CedarException {
 
     CedarRequestContext c = buildRequestContext();
-    c.must(c.user()).be(LoggedIn);
+//    open frontend needs this call
+//    c.must(ctx.user()).be(LoggedIn);
 
     try {
       // If pageSize not defined, set default value
