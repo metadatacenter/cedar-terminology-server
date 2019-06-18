@@ -34,9 +34,7 @@ public class ValueResource extends AbstractTerminologyServerResource {
   @Path("vs-collections/{vs_collection}/value-sets/{vs}/values")
   public Response createValue(@PathParam("vs_collection") String vsCollection, @PathParam("vs") String vs)
       throws CedarException {
-    CedarRequestContext ctx = buildRequestContext();
-//    open frontend needs this call
-//    ctx.must(ctx.user()).be(LoggedIn);
+    CedarRequestContext ctx = buildAnonymousRequestContext();
     try {
       Value v = JsonMapper.MAPPER.convertValue(ctx.request().getRequestBody().asJson(), Value.class);
       v.setVsCollection(vsCollection);

@@ -38,9 +38,7 @@ public class ClassResource extends AbstractTerminologyServerResource {
   @POST
   @Path("ontologies/{ontology}/classes")
   public Response createClass(@PathParam("ontology") String ontology) throws CedarException {
-    CedarRequestContext ctx = buildRequestContext();
-    //open frontend needs this call
-    //ctx.must(ctx.user()).be(LoggedIn);
+    CedarRequestContext ctx = buildAnonymousRequestContext();
     try {
       OntologyClass c = JsonMapper.MAPPER.convertValue(ctx.request().getRequestBody().asJson(), OntologyClass.class);
       c.setOntology(ontology);
@@ -138,9 +136,7 @@ public class ClassResource extends AbstractTerminologyServerResource {
                                        @QueryParam("page") @DefaultValue("1") int page,
                                        @QueryParam("pageSize") int pageSize)
       throws CedarException {
-    CedarRequestContext ctx = buildRequestContext();
-    //open frontend needs this call
-    //ctx.must(ctx.user()).be(LoggedIn);
+    CedarRequestContext ctx = buildAnonymousRequestContext();
     // If pageSize not defined, set default value
     if (pageSize == 0) {
       pageSize = defaultPageSize;
