@@ -25,11 +25,16 @@ public class Constants
   public static final String BP_PROVISIONAL_CLASSES = "provisional_classes/";
   public static final String BP_PROVISIONAL_RELATIONS = "provisional_relations/";
 
-  /** BioPortal Search endpoint - Search scopes */
+  /** Search endpoint - Search scopes */
   public static final String BP_SEARCH_SCOPE_ALL = "all";
   public static final String BP_SEARCH_SCOPE_CLASSES = "classes";
   public static final String BP_SEARCH_SCOPE_VALUE_SETS = "value_sets";
   public static final String BP_SEARCH_SCOPE_VALUES = "values";
+
+  /** CEDAR Integrated Search - Request **/
+  public static final String BP_INTEGRATED_SEARCH_PARAMS_FIELD = "parameterObject";
+  public static final String BP_INTEGRATED_SEARCH_PARAM_VALUE_CONSTRAINTS = "valueConstraints";
+  public static final String BP_INTEGRATED_SEARCH_PARAM_INPUT_TEXT = "inputText";
 
   /** BioPortal API endpoint parameters **/
   public static final String BP_INCLUDE_ALL = "include=all";

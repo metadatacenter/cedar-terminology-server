@@ -54,6 +54,7 @@ public class TerminologyServerApplication extends CedarMicroserviceApplication<T
     environment.jersey().register(index);
     // Register resources
     environment.jersey().register(new SearchResource(cedarConfig));
+    environment.jersey().register(new IntegratedSearchResource(cedarConfig));
     environment.jersey().register(new ClassResource(cedarConfig));
     environment.jersey().register(new OntologyResource(cedarConfig));
     environment.jersey().register(new RelationResource(cedarConfig));
