@@ -1,22 +1,16 @@
 package org.metadatacenter.terms.util;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
-import org.metadatacenter.terms.bioportal.domainObjects.BpProperty;
-import org.metadatacenter.terms.bioportal.domainObjects.BpTreeNode;
 
 import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Iterator;
 import java.util.List;
 
 import static org.metadatacenter.terms.util.Constants.*;
-import static org.metadatacenter.util.json.JsonMapper.MAPPER;
 
 public class Util
 {

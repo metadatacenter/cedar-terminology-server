@@ -1,21 +1,15 @@
-package org.metadatacenter.cedar.terminology.utils.validation.integratedsearch;
+package org.metadatacenter.cedar.terminology.validation.integratedsearch;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import org.hibernate.validator.constraints.NotEmpty;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class VCOntology {
+public class OntologyValueConstraint {
 
-  @NotEmpty
-  private String uri;
   @NotEmpty
   private String acronym;
 
-  public VCOntology() { }
-
-  public String getUri() {
-    return uri;
-  }
+  public OntologyValueConstraint() { }
 
   public String getAcronym() {
     return acronym;

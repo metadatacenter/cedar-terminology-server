@@ -112,7 +112,7 @@ public class BpClassDAO
   }
 
   public BpPagedResults<BpClass> getDescendants(String id, String ontology, int page, int pageSize, String apiKey) throws HTTPException, IOException {
-    String url = BP_API_BASE + BP_ONTOLOGIES + ontology + "/" + BP_CLASSES + id + "/descendants?"
+    String url = BP_API_BASE + BP_ONTOLOGIES + ontology + "/" + BP_CLASSES + Util.encodeIfNeeded(id) + "/descendants?"
     + "&page=" + page + "&pagesize=" + pageSize + "&include=prefLabel,hasChildren,created,synonym,definition";
     logger.info("Url: " + url);
 

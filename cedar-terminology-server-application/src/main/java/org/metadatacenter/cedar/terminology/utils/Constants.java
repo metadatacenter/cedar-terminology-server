@@ -31,9 +31,6 @@ public class Constants {
   public static final String ONTOLOGIES_CACHE_FILE = "ontologies.cache";
   public static final String VALUE_SETS_CACHE_FILE = "value-sets.cache";
 
-  // Validation
-
-
   // PRIVATE //
 
   /**

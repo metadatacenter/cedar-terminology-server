@@ -17,7 +17,7 @@ import static org.metadatacenter.util.json.JsonMapper.MAPPER;
 public class ObjectConverter {
 
   /**
-   * To BioPortal objects
+   * From Terminology Server objects to BioPortal objects
    **/
 
   public static BpProvisionalClass toBpProvisionalClass(OntologyClass c) {
@@ -70,7 +70,7 @@ public class ObjectConverter {
   }
 
   /**
-   * From BioPortal objects
+   * From BioPortal objects to Terminology Server objects
    **/
 
   public static Ontology toOntology(BpOntology o) {
@@ -306,7 +306,7 @@ public class ObjectConverter {
   }
 
   /**
-   * From API object to API object
+   * From Terminology Server object to a different Terminology Server object
    */
 
   public static Value toValue(OntologyClass c) {
@@ -333,6 +333,25 @@ public class ObjectConverter {
   public static ValueSet toValueSet(OntologyClass c) {
     return new ValueSet(c.getId(), c.getLdId(), c.getPrefLabel(), c.getCreator(), c.getOntology(), c.getDefinitions(), c
         .getSynonyms(), c.getRelations(), c.isProvisional(), c.getCreated());
+  }
+
+  public static PagedResults<SearchResult> toPagedSearchResults(PagedResults<OntologyClass> classPagedResults) {
+
+    List<SearchResult>  results = new ArrayList<>();
+    for (OntologyClass c : classPagedResults.getCollection()) {
+
+      String definition = null;
+      if (c.getDefinitions() != null && c.getDefinitions().size() > 0) {
+        definition = c.getDefinitions().get(0);
+      }
+
+      results.add(new SearchResult(c.getId(), c.getLdId(), c.getLdType(), c.getType(), c.getPrefLabel(),
+          definition, c.getOntology()));
+    }
+
+    return new PagedResults<>(classPagedResults.getPage(), classPagedResults.getPageCount(),
+        classPagedResults.getCollection().size(), classPagedResults.getPrevPage(),
+        classPagedResults.getNextPage(), results);
   }
 
   /**

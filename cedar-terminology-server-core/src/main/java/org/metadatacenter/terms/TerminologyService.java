@@ -1,10 +1,12 @@
 package org.metadatacenter.terms;
 
+import org.metadatacenter.cedar.terminology.validation.integratedsearch.*;
 import org.metadatacenter.terms.bioportal.BioPortalService;
 import org.metadatacenter.terms.bioportal.customObjects.BpPagedResults;
 import org.metadatacenter.terms.bioportal.domainObjects.*;
 import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.terms.domainObjects.*;
+import org.metadatacenter.terms.util.IntegratedSearchUtil;
 import org.metadatacenter.terms.util.ObjectConverter;
 import org.metadatacenter.terms.util.Util;
 import org.slf4j.Logger;
@@ -14,7 +16,9 @@ import javax.ws.rs.core.Response;
 import javax.xml.ws.http.HTTPException;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 
 import static org.metadatacenter.terms.util.Constants.*;
 
@@ -55,6 +59,77 @@ public class TerminologyService implements ITerminologyService {
   }
 
   /**
+   * CEDAR Integrated Search
+   */
+  public PagedResults<SearchResult> cedarIntegratedSearch(Optional<String> q, ValueConstraints valueConstraints,
+                                                          int page, int pageSize, String apiKey) throws IOException {
+
+    PagedResults<SearchResult> results = null;
+
+    /* Ontology constraints */
+    if (valueConstraints.getOntologies().size() > 0) {
+
+      if (q.isPresent()) { // Find classes by name in a given list of ontologies
+
+        results = search(q.get(), Arrays.asList(BP_SEARCH_SCOPE_CLASSES),
+            IntegratedSearchUtil.extractOntologyAcronyms(valueConstraints.getOntologies()), true, null,
+            null, 1, page, pageSize,
+            false, true, apiKey, new ArrayList<>());
+
+      } else { // Retrieve all classes from a given list of ontologies
+
+        String ontologyAcronym = valueConstraints.getOntologies().get(0).getAcronym();
+        PagedResults<OntologyClass> pagedClassResults = findAllClassesInOntology(ontologyAcronym, page, pageSize, apiKey);
+        results = ObjectConverter.toPagedSearchResults(pagedClassResults);
+
+      }
+    }
+    /* Branch constraints */
+    if (valueConstraints.getBranches().size() > 0) {
+
+      String rootClassUri = valueConstraints.getBranches().get(0).getUri();
+      String ontologyAcronym = valueConstraints.getBranches().get(0).getAcronym();
+
+      if (q.isPresent()) { // Find classes by name in a given list of ontology branches
+
+        results = search(q.get(), Arrays.asList(BP_SEARCH_SCOPE_CLASSES),
+            new ArrayList<>(), true, ontologyAcronym,
+            rootClassUri, 0, page, pageSize,
+            false, true, apiKey, new ArrayList<>());
+
+      } else { // Retrieve all classes from a given list of ontology branches
+       
+        PagedResults<OntologyClass> pagedClassResults =
+            getClassDescendants(rootClassUri, ontologyAcronym, page, pageSize, apiKey);
+        results = ObjectConverter.toPagedSearchResults(pagedClassResults);
+
+      }
+    }
+
+    /* Class constraints */
+    if (valueConstraints.getClasses().size() > 0) {
+
+      if (q.isPresent()) {
+      } else {
+      }
+
+    }
+
+    /* Value set constraints */
+    if (valueConstraints.getValueSets().size() > 0) {
+
+      if (q.isPresent()) {
+      } else {
+      }
+
+    }
+
+    return results;
+
+  }
+
+
+  /**
    * Ontologies
    */
 
@@ -70,8 +145,7 @@ public class TerminologyService implements ITerminologyService {
         if (includeDetails) {
           try {
             ont.setDetails(getOntologyDetails(ont.getId(), apiKey));
-          }
-          catch (Exception e) {
+          } catch (Exception e) {
             log.error("Error retrieving ontology details for: " + ont.getId(), e);
           }
         }
@@ -118,9 +192,8 @@ public class TerminologyService implements ITerminologyService {
         // ontology or the latest submission failed to process, so submissions are not available either.
         hasSubmissions = false;
         metricsAvailable = false;
-      }
-      else {
-        throw(e);
+      } else {
+        throw (e);
       }
     }
     // Get categories
@@ -134,9 +207,8 @@ public class TerminologyService implements ITerminologyService {
     } catch (HTTPException e) {
       if (e.getStatusCode() == Response.Status.NOT_FOUND.getStatusCode()) {
         log.error("Categories not found for " + ontologyId + " ontology");
-      }
-      else {
-        throw(e);
+      } else {
+        throw (e);
       }
     }
     // Get latest submission details
@@ -155,9 +227,8 @@ public class TerminologyService implements ITerminologyService {
     } catch (HTTPException e) {
       if (e.getStatusCode() == Response.Status.NOT_FOUND.getStatusCode()) {
         log.error("Latest submission not found for " + ontologyId + " ontology");
-      }
-      else {
-        throw(e);
+      } else {
+        throw (e);
       }
     }
     if (!hasSubmissions) {

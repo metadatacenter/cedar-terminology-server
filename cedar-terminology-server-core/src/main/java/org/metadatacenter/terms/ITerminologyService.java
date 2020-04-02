@@ -1,10 +1,12 @@
 package org.metadatacenter.terms;
 
+import org.metadatacenter.cedar.terminology.validation.integratedsearch.ValueConstraints;
 import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.terms.domainObjects.*;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Optional;
 
 public interface ITerminologyService {
 
@@ -19,6 +21,12 @@ public interface ITerminologyService {
   PagedResults<SearchResult> propertySearch(String q, List<String> sources, boolean exactMatch, boolean
       requireDefinitions, int page, int pageSize, boolean displayContext, boolean displayLinks, String apiKey) throws
       IOException;
+
+  /**
+   * CEDAR Integrated Search
+   */
+  PagedResults<SearchResult> cedarIntegratedSearch(Optional<String> q, ValueConstraints valueConstraints,
+                        int page, int pageSize, String apiKey) throws IOException;
 
   /**
    * Ontologies

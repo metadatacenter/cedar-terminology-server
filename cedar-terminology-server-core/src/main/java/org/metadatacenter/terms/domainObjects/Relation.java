@@ -5,6 +5,9 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 
 import java.io.Serializable;
 
+import static org.metadatacenter.terms.util.Constants.BP_TYPE_BASE;
+import static org.metadatacenter.terms.util.Constants.BP_TYPE_RELATION;
+
 @JsonPropertyOrder({"id", "@id", "@type", "type", "sourceClassId", "relationType", "targetClassId", "targetClassOntology", "created"})
 public class Relation implements Serializable
 {
@@ -12,8 +15,8 @@ public class Relation implements Serializable
   @JsonProperty("@id")
   private String ldId;
   @JsonProperty("@type")
-  private String ldType = "http://data.bioontology.org/metadata/Relation";
-  private String type = "Relation";
+  private String ldType = BP_TYPE_BASE + BP_TYPE_RELATION;
+  private String type = BP_TYPE_RELATION;
   private String sourceClassId;
   private String relationType;
   private String targetClassId;

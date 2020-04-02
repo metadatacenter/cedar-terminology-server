@@ -2,17 +2,29 @@ package org.metadatacenter.cedar.terminology.resources.bioportal;
 
 import com.codahale.metrics.annotation.Timed;
 import org.metadatacenter.cedar.terminology.resources.AbstractTerminologyServerResource;
-import org.metadatacenter.cedar.terminology.utils.validation.integratedsearch.IntegratedSearchBody;
+import org.metadatacenter.cedar.terminology.validation.integratedsearch.*;
 import org.metadatacenter.config.CedarConfig;
 import org.metadatacenter.exception.CedarException;
 import org.metadatacenter.rest.context.CedarRequestContext;
+import org.metadatacenter.rest.exception.CedarAssertionException;
+import org.metadatacenter.terms.customObjects.PagedResults;
+import org.metadatacenter.terms.domainObjects.OntologyClass;
+import org.metadatacenter.util.json.JsonMapper;
 
 import javax.validation.Valid;
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import javax.xml.ws.http.HTTPException;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Optional;
 
 import static org.metadatacenter.rest.assertion.GenericAssertions.LoggedIn;
+import static org.metadatacenter.terms.util.Constants.BP_SEARCH_SCOPE_CLASSES;
 
 @Path("/bioportal")
 @Produces(MediaType.APPLICATION_JSON)
@@ -34,57 +46,54 @@ public class IntegratedSearchResource extends AbstractTerminologyServerResource 
     CedarRequestContext c = buildRequestContext();
     c.must(c.user()).be(LoggedIn);
 
-    return Response.ok().build();
+    try {
+      int page = extractPage(body);
+      int pageSize = extractPageSize(body);
+      String inputText = extractInputText(body);
+      Optional<String> q = inputText != null? Optional.of(inputText) : Optional.empty();
 
-//    CedarRequestContext c = buildAnonymousRequestContext();
-//    JsonNode requestBody = c.request().getRequestBody().asJson();
-//
-//    if ((!requestBody.hasNonNull(BP_INTEGRATED_SEARCH_PARAMS_FIELD)) ||
-//        (!requestBody.hasNonNull(BP_INTEGRATED_SEARCH_PARAMS_FIELD)))
-//
-//
-//
-//      public static final String BP_INTEGRATED_SEARCH_PARAM_VALUE_CONSTRAINTS = "valueConstraints";
-//    public static final String BP_INTEGRATED_SEARCH_PARAM_INPUT_TEXT = "inputText";
-//
-//
-//    try {
-//      // If pageSize not defined, set default value
-//      if (pageSize == 0) {
-//        pageSize = defaultPageSize;
-//      }
-//      // Review and clean scope
-//      List<String> scopeList = new ArrayList<>();
-//      List<String> referenceScopeList = Arrays
-//          .asList(BP_SEARCH_SCOPE_ALL, BP_SEARCH_SCOPE_CLASSES, BP_SEARCH_SCOPE_VALUE_SETS, BP_SEARCH_SCOPE_VALUES);
-//      for (String s : Arrays.asList(scope.split("\\s*,\\s*"))) {
-//        if (!referenceScopeList.contains(s)) {
-//          return CedarResponse.badRequest()
-//              .errorKey(CedarErrorKey.INVALID_INPUT)
-//              .errorMessage("Wrong scope. Accepted values = {all, classes, value_sets, values}")
-//              .build();
-//        } else {
-//          scopeList.add(s);
-//        }
-//      }
-//      // Sources list
-//      List<String> sourcesList = new ArrayList<>();
-//      if (sources != null && sources.length() > 0) {
-//        sourcesList = Arrays.asList(sources.split("\\s*,\\s*"));
-//      }
-//      List<String> valueSetsIds = new ArrayList<>(Cache.valueSetsCache.get("value-sets").keySet());
-//      // TODO: The valueSetsIds parameter is passed to the service to avoid making additional calls to BioPortal.
-//      // These ids are used to know if a particular result returned by BioPortal is a value or a value set.
-//      // BioPortal should provide this information and this parameter should be removed
-//      PagedResults results = terminologyService.search(q, scopeList, sourcesList, suggest, source, subtreeRootId,
-//          maxDepth,
-//          page, pageSize, false, true, apiKey, valueSetsIds);
-//      JsonNode output = JsonMapper.MAPPER.valueToTree(results);
-//      return Response.ok().entity(output).build();
-//    } catch (HTTPException e) {
-//      return Response.status(e.getStatusCode()).build();
-//    } catch (IOException | ExecutionException e) {
-//      throw new CedarAssertionException(e);
-//    }
+      PagedResults results =
+          terminologyService.cedarIntegratedSearch(q, body.getParameterObject().getValueConstraints(),
+              page, pageSize, apiKey);
+
+      return Response.ok().entity(JsonMapper.MAPPER.valueToTree(results)).build();
+
+    } catch (HTTPException e) {
+      return Response.status(e.getStatusCode()).build();
+    } catch (IOException /*| ExecutionException*/ e) {
+      throw new CedarAssertionException(e);
+    }
   }
+
+  /**
+   * Utility Methods
+   **/
+
+  public int extractPage(IntegratedSearchBody body) {
+    int page = body.getPage();
+    // If page not defined or invalid, set it to the first page
+    if (page <= 0) {
+      page = 1;
+    }
+    return page;
+  }
+
+  public int extractPageSize(IntegratedSearchBody body) {
+    int pageSize = body.getPageSize();
+    // If pageSize not defined or invalid, set it to the default value
+    if (pageSize <= 0) {
+      pageSize = defaultPageSize;
+    }
+    return pageSize;
+  }
+
+  public String extractInputText(IntegratedSearchBody body) {
+    String inputText = body.getParameterObject().getInputText();
+    if (inputText != null && inputText.trim().length() > 0) {
+      return inputText;
+    } else {
+      return null;
+    }
+  }
+
 }

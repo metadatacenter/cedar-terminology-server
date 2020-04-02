@@ -64,6 +64,7 @@ public class Constants
   public static final String BP_TYPE_VALUE = "Value";
   public static final String BP_TYPE_ONTOLOGY = "Ontology";
   public static final String BP_TYPE_VS_COLLECTION = "ValueSetCollection";
+  public static final String BP_TYPE_RELATION = "Relation";
 
   /** Object Types **/
   public static final String DATATYPE_PROPERTY = "DatatypeProperty";

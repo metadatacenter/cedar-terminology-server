@@ -1,4 +1,4 @@
-package org.metadatacenter.cedar.terminology.utils.validation.integratedsearch;
+package org.metadatacenter.cedar.terminology.validation.integratedsearch;
 
 import org.hibernate.validator.constraints.NotEmpty;
 import javax.validation.Valid;

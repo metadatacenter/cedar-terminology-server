@@ -25,6 +25,7 @@
   <modules>
     <module>cedar-terminology-server-core</module>
     <module>cedar-terminology-server-application</module>
+    <module>cedar-terminology-server-common</module>
   </modules>
 
   <build>

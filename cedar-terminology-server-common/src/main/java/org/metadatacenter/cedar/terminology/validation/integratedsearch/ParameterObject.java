@@ -1,4 +1,4 @@
-package org.metadatacenter.cedar.terminology.utils.validation.integratedsearch;
+package org.metadatacenter.cedar.terminology.validation.integratedsearch;
 
 import org.hibernate.validator.constraints.NotEmpty;
 
@@ -11,8 +11,7 @@ public class ParameterObject {
   @NotNull
   private ValueConstraints valueConstraints;
 
-  @NotEmpty
-  private String inputText;
+  private String inputText; // Note that inputText can be empty or null
 
   public ParameterObject() { }
 
