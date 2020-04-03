@@ -98,7 +98,7 @@ public class TerminologyService implements ITerminologyService {
             false, true, apiKey, new ArrayList<>());
 
       } else { // Retrieve all classes from a given list of ontology branches
-       
+
         PagedResults<OntologyClass> pagedClassResults =
             getClassDescendants(rootClassUri, ontologyAcronym, page, pageSize, apiKey);
         results = ObjectConverter.toPagedSearchResults(pagedClassResults);

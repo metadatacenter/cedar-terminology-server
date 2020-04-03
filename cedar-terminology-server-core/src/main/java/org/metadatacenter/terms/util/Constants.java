@@ -31,6 +31,10 @@ public class Constants
   public static final String BP_SEARCH_SCOPE_VALUE_SETS = "value_sets";
   public static final String BP_SEARCH_SCOPE_VALUES = "values";
 
+  /** CEDAR pagination parameters **/
+  public static final String BP_PAGE_PARAM = "page";
+  public static final String BP_PAGE_SIZE_PARAM = "pageSize";
+
   /** CEDAR Integrated Search - Request **/
   public static final String BP_INTEGRATED_SEARCH_PARAMS_FIELD = "parameterObject";
   public static final String BP_INTEGRATED_SEARCH_PARAM_VALUE_CONSTRAINTS = "valueConstraints";

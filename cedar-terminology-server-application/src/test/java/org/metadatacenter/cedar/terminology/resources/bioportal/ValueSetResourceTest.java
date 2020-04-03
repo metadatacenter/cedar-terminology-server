@@ -15,6 +15,7 @@ import java.util.HashSet;
 import java.util.List;
 
 import static org.metadatacenter.cedar.terminology.utils.Constants.BP_VALUE_SETS;
+import static org.metadatacenter.constant.HttpConstants.HTTP_HEADER_AUTHORIZATION;
 
 /**
  * Integration tests. They are done by starting a test server that makes it possible to test the real HTTP stack.
@@ -49,7 +50,7 @@ public class ValueSetResourceTest extends AbstractTerminologyServerResourceTest 
   public void createValueSetTest() {
     String url = baseUrlBpVSCollections + "/" + Util.getShortIdentifier(vs1.getVsCollection()) + "/" + BP_VALUE_SETS;
     // Service invocation
-    Response response = client.target(url).request().header("Authorization", authHeader).post(Entity.json(vs1));
+    Response response = client.target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(vs1));
     // Check HTTP response
     Assert.assertEquals(Status.CREATED.getStatusCode(), response.getStatus());
     // Check Content-Type
@@ -79,7 +80,7 @@ public class ValueSetResourceTest extends AbstractTerminologyServerResourceTest 
     String url = baseUrlBpVSCollections + "/" + Util.getShortIdentifier(created.getVsCollection()) + "/" +
         BP_VALUE_SETS + "/" + created.getId();
     // Service invocation
-    Response findResponse = client.target(url).request().header("Authorization", authHeader).get();
+    Response findResponse = client.target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), findResponse.getStatus());
     // Check Content-Type
@@ -108,7 +109,7 @@ public class ValueSetResourceTest extends AbstractTerminologyServerResourceTest 
     String url = baseUrlBpVSCollections + "/" + Util.getShortIdentifier(created1.getVsCollection()) + "/" +
         BP_VALUE_SETS;
     // Service invocation
-    Response findResponse = client.target(url).request().header("Authorization", authHeader).get();
+    Response findResponse = client.target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), findResponse.getStatus());
     // Check Content-Type
@@ -129,13 +130,10 @@ public class ValueSetResourceTest extends AbstractTerminologyServerResourceTest 
 
   @Test
   public void findAllValueSetsTest() {
-    // Create two provisional value sets
-    createValueSet(vs1);
-    createValueSet(vs2);
     // Find url
     String url = baseUrlBp + "/" + BP_VALUE_SETS;
     // Service invocation
-    Response response = client.target(url).request().header("Authorization", authHeader).get();
+    Response response = client.target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
     // Check Content-Type
@@ -156,14 +154,14 @@ public class ValueSetResourceTest extends AbstractTerminologyServerResourceTest 
         created.getVsCollection(), created.getDefinitions(), created.getSynonyms(),
         created.getRelations(), created.isProvisional(), created.getCreated());
     // Service invocation
-    Response updateResponse = client.target(url).request().header("Authorization", authHeader).put(Entity.json
+    Response updateResponse = client.target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).put(Entity.json
         (updatedValueSet));
     // Check HTTP response
     Assert.assertEquals(Status.NO_CONTENT.getStatusCode(), updateResponse.getStatus());
     String findUrl = baseUrlBpVSCollections + "/" + Util.getShortIdentifier(created.getVsCollection()) + "/" +
         BP_VALUE_SETS + "/" + created.getId();
     // Service invocation
-    Response findResponse = client.target(findUrl).request().header("Authorization", authHeader).get();
+    Response findResponse = client.target(findUrl).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check the element retrieved
     ValueSet found = findResponse.readEntity(ValueSet.class);
     // Check fields
@@ -186,13 +184,13 @@ public class ValueSetResourceTest extends AbstractTerminologyServerResourceTest 
     ValueSet created = createValueSet(vs1);
     // Delete the vs that has been created
     String url = baseUrlBp + "/" + BP_VALUE_SETS + "/" + created.getId();
-    Response deleteResponse = client.target(url).request().header("Authorization", authHeader).delete();
+    Response deleteResponse = client.target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).delete();
     // Check HTTP response
     Assert.assertEquals(Status.NO_CONTENT.getStatusCode(), deleteResponse.getStatus());
     // Try to retrieve the vs to check that it has been deleted correctly
     String findUrl = baseUrlBpVSCollections + "/" + Util.getShortIdentifier(created.getVsCollection()) +
         "/" + BP_VALUE_SETS + "/" + created.getId();
-    Response findResponse = client.target(findUrl).request().header("Authorization", authHeader).get();
+    Response findResponse = client.target(findUrl).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check not found
     Assert.assertEquals(Status.NOT_FOUND.getStatusCode(), findResponse.getStatus());
   }

@@ -10,6 +10,8 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 import java.util.List;
 
+import static org.metadatacenter.constant.HttpConstants.HTTP_HEADER_AUTHORIZATION;
+
 /**
  * Integration tests. They are done by starting a test server that makes it possible to test the real HTTP stack.
  */
@@ -43,7 +45,7 @@ public class ValueSetCollectionResourceTest extends AbstractTerminologyServerRes
   public void findAllVSCollectionsTest() {
     String url = baseUrlBpVSCollections;
     // Service invocation
-    Response response = client.target(url).request().header("Authorization", authHeader).get();
+    Response response = client.target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
     // Check Content-Type

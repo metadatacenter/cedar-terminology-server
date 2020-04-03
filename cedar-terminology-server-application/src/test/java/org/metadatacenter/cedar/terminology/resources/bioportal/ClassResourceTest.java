@@ -18,6 +18,7 @@ import java.util.HashSet;
 import java.util.List;
 
 import static org.metadatacenter.cedar.terminology.utils.Constants.*;
+import static org.metadatacenter.constant.HttpConstants.HTTP_HEADER_AUTHORIZATION;
 
 /**
  * Integration tests. They are done by starting a test server that makes it possible to test the real HTTP stack.
@@ -52,7 +53,7 @@ public class ClassResourceTest extends AbstractTerminologyServerResourceTest {
   public void createClassTest() {
     String url = baseUrlBpOntologies + "/" + Util.getShortIdentifier(class1.getOntology()) + "/" + BP_CLASSES;
     // Service invocation
-    Response response = client.target(url).request().header("Authorization", authHeader).post(Entity.json(class1));
+    Response response = client.target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(class1));
     // Check HTTP response
     Assert.assertEquals(Status.CREATED.getStatusCode(), response.getStatus());
     // Check Content-Type
@@ -83,7 +84,7 @@ public class ClassResourceTest extends AbstractTerminologyServerResourceTest {
     // Find the provisional class by id
     String classUrl = baseUrlBpOntologies + "/" + Util.getShortIdentifier(class1.getOntology()) + "/" + BP_CLASSES + "/" + created.getId();
     // Service invocation
-    Response findResponse = client.target(classUrl).request().header("Authorization", authHeader).get();
+    Response findResponse = client.target(classUrl).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), findResponse.getStatus());
     // Check Content-Type
@@ -109,10 +110,10 @@ public class ClassResourceTest extends AbstractTerminologyServerResourceTest {
   @Test
   public void findAllClassesForOntologyTest() {
     String ontology = "NCIT";
-    int ontologySize = 108000;
+    int ontologySize = 157000;
     String url = baseUrlBpOntologies + "/" + ontology + "/" + BP_CLASSES;
     // Service invocation
-    Response findResponse = client.target(url).request().header("Authorization", authHeader).get();
+    Response findResponse = client.target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), findResponse.getStatus());
     // Check Content-Type
@@ -138,7 +139,7 @@ public class ClassResourceTest extends AbstractTerminologyServerResourceTest {
     }
     String url = baseUrlBpOntologies + "/" + ontology + "/" + BP_CLASSES + "/" + encodedClassId + "/" + BP_TREE;
     // Service invocation
-    Response response = client.target(url).request().header("Authorization", authHeader).get();
+    Response response = client.target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
     // Check Content-Type
@@ -180,7 +181,7 @@ public class ClassResourceTest extends AbstractTerminologyServerResourceTest {
     }
     String url = baseUrlBpOntologies + "/" + ontology + "/" + BP_CLASSES + "/" + encodedClassId + "/" + BP_CHILDREN;
     // Service invocation
-    Response response = client.target(url).request().header("Authorization", authHeader).get();
+    Response response = client.target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
     // Check Content-Type
@@ -217,7 +218,7 @@ public class ClassResourceTest extends AbstractTerminologyServerResourceTest {
     }
     String url = baseUrlBpOntologies + "/" + ontology + "/" + BP_CLASSES + "/" + encodedClassId + "/" + BP_DESCENDANTS;
     // Service invocation
-    Response response = client.target(url).request().header("Authorization", authHeader).get();
+    Response response = client.target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
     // Check Content-Type
@@ -256,7 +257,7 @@ public class ClassResourceTest extends AbstractTerminologyServerResourceTest {
     }
     String url = baseUrlBpOntologies + "/" + ontology + "/" + BP_CLASSES + "/" + encodedClassId + "/" + BP_PARENTS;
     // Service invocation
-    Response response = client.target(url).request().header("Authorization", authHeader).get();
+    Response response = client.target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
     // Check Content-Type
@@ -277,7 +278,7 @@ public class ClassResourceTest extends AbstractTerminologyServerResourceTest {
   public void findAllProvisionalClassesTest() {
     String url = baseUrlBp + "/" + BP_PROVISIONAL_CLASSES;
     // Service invocation
-    Response response = client.target(url).request().header("Authorization", authHeader).get();
+    Response response = client.target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
     // Check Content-Type
@@ -297,7 +298,7 @@ public class ClassResourceTest extends AbstractTerminologyServerResourceTest {
     OntologyClass createdClass = createClass(class1);
     String url = baseUrlBpOntologies + "/" + Util.getShortIdentifier(createdClass.getOntology()) + "/" + BP_PROVISIONAL_CLASSES;
     // Service invocation
-    Response response = client.target(url).request().header("Authorization", authHeader).get();
+    Response response = client.target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
     // Check Content-Type
@@ -321,14 +322,14 @@ public class ClassResourceTest extends AbstractTerminologyServerResourceTest {
         createdClass.getHasChildren());
     String url = baseUrlBp + "/" + BP_CLASSES + "/" + createdClass.getId();
     // Service invocation
-    Response updateResponse = client.target(url).request().header("Authorization", authHeader).put(Entity.json
+    Response updateResponse = client.target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).put(Entity.json
         (updatedClass));
     // Check HTTP response
     Assert.assertEquals(Status.NO_CONTENT.getStatusCode(), updateResponse.getStatus());
     // Retrieve the class
     String findUrl = baseUrlBpOntologies + "/" + Util.getShortIdentifier(createdClass.getOntology())
         + "/" + BP_CLASSES + "/" + createdClass.getId();
-    Response findResponse = client.target(findUrl).request().header("Authorization", authHeader).get();
+    Response findResponse = client.target(findUrl).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     OntologyClass found = findResponse.readEntity(OntologyClass.class);
     // Check that the modifications have been done correctly
     OntologyClass expected = updatedClass;
@@ -352,14 +353,14 @@ public class ClassResourceTest extends AbstractTerminologyServerResourceTest {
     OntologyClass createdClass = createClass(class1);
     // Delete the class that has been created
     String classUrl = baseUrlBp + "/" + BP_CLASSES + "/" + createdClass.getId();
-    Response deleteResponse = client.target(classUrl).request().header("Authorization", authHeader).delete();
+    Response deleteResponse = client.target(classUrl).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).delete();
     // Check HTTP response
     Assert.assertEquals(Status.NO_CONTENT.getStatusCode(), deleteResponse.getStatus());
     // Remove class from the list of created classes
     createdClasses.remove(createdClass);
     // Try to retrieve the class to check that it has been deleted correctly
     String findUrl = baseUrlBpOntologies + "/" + Util.getShortIdentifier(createdClass.getOntology()) + "/" + BP_CLASSES + "/" + createdClass.getId();
-    Response findResponse = client.target(findUrl).request().header("Authorization", authHeader).get();
+    Response findResponse = client.target(findUrl).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check not found
     Assert.assertEquals(Status.NOT_FOUND.getStatusCode(), findResponse.getStatus());
   }
