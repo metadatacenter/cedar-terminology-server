@@ -5,7 +5,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 
 import java.util.List;
 
-import static org.metadatacenter.terms.util.Constants.*;
+import static org.metadatacenter.cedar.terminology.util.Constants.*;
 
 @JsonPropertyOrder({"id", "@id", "@type", "type", "prefLabel", "creator", "ontology", "definitions",
     "synonyms", "subclassOf", "relations", "provisional", "created", "hasChildren"})

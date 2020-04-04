@@ -24,7 +24,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.metadatacenter.rest.assertion.GenericAssertions.LoggedIn;
-import static org.metadatacenter.terms.util.Constants.BP_SEARCH_SCOPE_CLASSES;
+import static org.metadatacenter.cedar.terminology.util.Constants.*;
 
 @Path("/bioportal")
 @Produces(MediaType.APPLICATION_JSON)

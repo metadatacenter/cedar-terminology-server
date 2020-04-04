@@ -20,7 +20,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
-import static org.metadatacenter.terms.util.Constants.*;
+import static org.metadatacenter.cedar.terminology.util.Constants.*;
 
 public class TerminologyService implements ITerminologyService {
 
@@ -106,6 +106,17 @@ public class TerminologyService implements ITerminologyService {
       }
     }
 
+    /* Value set constraints */
+    if (valueConstraints.getValueSets().size() > 0) {
+
+      if (q.isPresent()) { // Find value sets by name in a given list of ontology branches
+
+      }
+      else { // Retrieve all values from a given value set
+      }
+
+    }
+
     /* Class constraints */
     if (valueConstraints.getClasses().size() > 0) {
 
@@ -115,14 +126,7 @@ public class TerminologyService implements ITerminologyService {
 
     }
 
-    /* Value set constraints */
-    if (valueConstraints.getValueSets().size() > 0) {
 
-      if (q.isPresent()) {
-      } else {
-      }
-
-    }
 
     return results;
 

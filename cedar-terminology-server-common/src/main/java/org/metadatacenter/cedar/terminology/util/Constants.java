@@ -1,4 +1,4 @@
-package org.metadatacenter.terms.util;
+package org.metadatacenter.cedar.terminology.util;
 
 /**
  * Constants of general utility.
@@ -51,6 +51,7 @@ public class Constants
   public static final String CADSR_VALUE_SETS_ONTOLOGY = "CADSR-VS";
   // BioPortal VS collections
   public static final String[] BP_VS_COLLECTIONS_READ = {CEDAR_VALUE_SETS_ONTOLOGY, NLM_VALUE_SETS_ONTOLOGY, CADSR_VALUE_SETS_ONTOLOGY};
+  public static final String BP_VS_COLLECTIONS_READ_REGEX = CEDAR_VALUE_SETS_ONTOLOGY + "|" + NLM_VALUE_SETS_ONTOLOGY + '|' + CADSR_VALUE_SETS_ONTOLOGY;
   // Creation of value sets is restricted to this VS collections
   public static final String[] BP_VS_COLLECTIONS_WRITE = {CEDAR_VALUE_SETS_ONTOLOGY};
   // Used by the values in the CADSR value sets ontology

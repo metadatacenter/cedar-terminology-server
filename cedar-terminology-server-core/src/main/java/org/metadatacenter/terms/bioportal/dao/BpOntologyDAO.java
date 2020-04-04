@@ -5,7 +5,7 @@ import org.apache.http.HttpResponse;
 import org.apache.http.client.fluent.Request;
 import org.apache.http.util.EntityUtils;
 import org.metadatacenter.terms.bioportal.domainObjects.*;
-import org.metadatacenter.terms.util.Constants;
+import static org.metadatacenter.cedar.terminology.util.Constants.*;
 import org.metadatacenter.terms.util.HttpUtil;
 import org.metadatacenter.terms.util.Util;
 import org.slf4j.Logger;
@@ -17,7 +17,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.metadatacenter.terms.util.Constants.*;
+import static org.metadatacenter.cedar.terminology.util.Constants.*;
 import static org.metadatacenter.util.json.JsonMapper.MAPPER;
 
 public class BpOntologyDAO {
@@ -131,7 +131,7 @@ public class BpOntologyDAO {
   }
 
   public List<BpClass> getRootClasses(String id, String apiKey) throws IOException {
-    String url = BP_API_BASE + BP_ONTOLOGIES + id + "/" + Constants.BP_CLASSES + "roots?include=prefLabel,hasChildren,created,synonym,definition";
+    String url = BP_API_BASE + BP_ONTOLOGIES + id + "/" + BP_CLASSES + "roots?include=prefLabel,hasChildren,created,synonym,definition";
     logger.info("Url: " + url);
 
     HttpResponse response = HttpUtil.makeHttpRequest(Request.Get(url)
@@ -153,7 +153,7 @@ public class BpOntologyDAO {
   }
 
   public List<BpProperty> getRootProperties(String id, String apiKey) throws IOException {
-    String url = BP_API_BASE + BP_ONTOLOGIES + id + "/" + Constants.BP_PROPERTIES + "roots";
+    String url = BP_API_BASE + BP_ONTOLOGIES + id + "/" + BP_PROPERTIES + "roots";
     logger.info("Url: " + url);
 
     HttpResponse response = HttpUtil.makeHttpRequest(Request.Get(url)

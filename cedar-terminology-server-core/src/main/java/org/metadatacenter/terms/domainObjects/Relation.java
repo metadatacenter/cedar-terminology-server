@@ -5,8 +5,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 
 import java.io.Serializable;
 
-import static org.metadatacenter.terms.util.Constants.BP_TYPE_BASE;
-import static org.metadatacenter.terms.util.Constants.BP_TYPE_RELATION;
+import static org.metadatacenter.cedar.terminology.util.Constants.*;
 
 @JsonPropertyOrder({"id", "@id", "@type", "type", "sourceClassId", "relationType", "targetClassId", "targetClassOntology", "created"})
 public class Relation implements Serializable

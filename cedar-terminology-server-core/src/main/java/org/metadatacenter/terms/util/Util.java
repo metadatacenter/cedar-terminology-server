@@ -10,7 +10,7 @@ import java.net.URLEncoder;
 import java.util.Arrays;
 import java.util.List;
 
-import static org.metadatacenter.terms.util.Constants.*;
+import static org.metadatacenter.cedar.terminology.util.Constants.*;
 
 public class Util
 {

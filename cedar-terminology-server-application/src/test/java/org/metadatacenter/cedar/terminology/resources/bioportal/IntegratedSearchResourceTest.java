@@ -17,7 +17,7 @@ import javax.ws.rs.core.Response.Status;
 import static org.metadatacenter.constant.HttpConstants.BAD_REQUEST;
 import static org.metadatacenter.constant.HttpConstants.HTTP_HEADER_AUTHORIZATION;
 import static org.metadatacenter.model.ModelNodeNames.*;
-import static org.metadatacenter.terms.util.Constants.*;
+import static org.metadatacenter.cedar.terminology.util.Constants.*;
 
 /**
  * Integration tests. They are done by starting a test server that makes it possible to test the real HTTP stack.
