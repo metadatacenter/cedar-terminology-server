@@ -39,7 +39,7 @@ public class IntegratedSearchResource extends AbstractTerminologyServerResource 
    */
   @POST
   @Timed
-  @Path("/cedar-integrated-search")
+  @Path("/integrated-search")
   @Consumes(MediaType.APPLICATION_JSON)
   public Response cedarIntegratedSearch(@Valid IntegratedSearchBody body) throws CedarException {
 
