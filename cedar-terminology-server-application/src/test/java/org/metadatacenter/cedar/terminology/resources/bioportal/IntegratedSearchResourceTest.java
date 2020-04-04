@@ -1,5 +1,6 @@
 package org.metadatacenter.cedar.terminology.resources.bioportal;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.junit.*;
@@ -28,8 +29,8 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
   /* Objects used by the test methods */
   private static ObjectNode branch1;
   private static ObjectNode ontology1;
-  private static int ontology1Size = 157000;
-
+  private static int ontology1Size = 157000; // Approx size of NCIT (slightly lower than the actual size)
+  private static int branch1Size = 240; // Approx size of branch (slightly lower than the actual size)
 
   /**
    * One-time initialization code.
@@ -109,29 +110,10 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
   }
 
   @Test
-  public void searchOntologyEmptyInputText() { // It should retrieve all the ontology classes
-    // Ontology constraints
-    ArrayNode ontologies = mapper.createArrayNode().add(ontology1);
-    // Branch constraints
-    ArrayNode branches = mapper.createArrayNode();
-    // Value set constraints
-    ArrayNode valueSets = mapper.createArrayNode();
-    // Class constraints
-    ArrayNode classes = mapper.createArrayNode();
-
-    // valueConstraints object
-    ObjectNode valueConstraints = mapper.createObjectNode();
-    valueConstraints.set(VALUE_CONSTRAINTS_ONTOLOGIES, ontologies);
-    valueConstraints.set(VALUE_CONSTRAINTS_BRANCHES, branches);
-    valueConstraints.set(VALUE_CONSTRAINTS_VALUE_SETS, valueSets);
-    valueConstraints.set(VALUE_CONSTRAINTS_CLASSES, classes);
-    // parameterObject object
-    ObjectNode parameterObject = mapper.createObjectNode();
-    parameterObject.set(BP_INTEGRATED_SEARCH_PARAM_VALUE_CONSTRAINTS, valueConstraints);
-    parameterObject.put(BP_INTEGRATED_SEARCH_PARAM_INPUT_TEXT, "");
-    // Request body
-    ObjectNode requestBody = mapper.createObjectNode();
-    requestBody.set(BP_INTEGRATED_SEARCH_PARAMS_FIELD, parameterObject);
+  public void searchClassesInOntologyEmptyInputText() { // It should retrieve all the ontology classes
+    ObjectNode requestBody = generateRequestBody("", mapper.createArrayNode().add(ontology1),
+        mapper.createArrayNode(), mapper.createArrayNode(), mapper.createArrayNode());
+    requestBody.put(BP_PAGE_SIZE_PARAM, 1); // Minimum page size allowed to speed up test execution
 
     // Service invocation
     Response response = client.target(baseUrlBpIntegratedSearch).request()
@@ -148,28 +130,9 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
   }
 
   @Test
-  public void searchOntologyMissingInputText() { // It should retrieve all the ontology classes
-    // Ontology constraints
-    ArrayNode ontologies = mapper.createArrayNode().add(ontology1);
-    // Branch constraints
-    ArrayNode branches = mapper.createArrayNode();
-    // Value set constraints
-    ArrayNode valueSets = mapper.createArrayNode();
-    // Class constraints
-    ArrayNode classes = mapper.createArrayNode();
-
-    // valueConstraints object
-    ObjectNode valueConstraints = mapper.createObjectNode();
-    valueConstraints.set(VALUE_CONSTRAINTS_ONTOLOGIES, ontologies);
-    valueConstraints.set(VALUE_CONSTRAINTS_BRANCHES, branches);
-    valueConstraints.set(VALUE_CONSTRAINTS_VALUE_SETS, valueSets);
-    valueConstraints.set(VALUE_CONSTRAINTS_CLASSES, classes);
-    // parameterObject object
-    ObjectNode parameterObject = mapper.createObjectNode();
-    parameterObject.set(BP_INTEGRATED_SEARCH_PARAM_VALUE_CONSTRAINTS, valueConstraints);
-    // Request body
-    ObjectNode requestBody = mapper.createObjectNode();
-    requestBody.set(BP_INTEGRATED_SEARCH_PARAMS_FIELD, parameterObject);
+  public void searchClassesInOntologyMissingInputText() { // It should retrieve all the ontology classes
+    ObjectNode requestBody = generateRequestBody(null, mapper.createArrayNode().add(ontology1),
+        mapper.createArrayNode(), mapper.createArrayNode(), mapper.createArrayNode());
     requestBody.put(BP_PAGE_SIZE_PARAM, 1); // Minimum page size allowed to speed up test execution
 
     // Service invocation
@@ -184,6 +147,201 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     int numResultsFound = results.getPageSize() * results.getPageCount();
     Assert.assertTrue("The number of results found (" +  numResultsFound +
         ") is lower than expected (" + ontology1Size + ")" , numResultsFound >= ontology1Size);
+    Assert.assertTrue("The number of results found (" +  numResultsFound +
+        ") is higher than expected (" + ontology1Size + ")" , numResultsFound < 2 * ontology1Size);
+  }
+
+  @Test
+  public void searchClassesInOntologyWrongLabel() { // Search for ontology classes in a given branch
+    String inputText = "aaabbbcccddd"; // Non-existing class label
+    int pageSize = 1;
+    int expectedNumberOfResults = 0;
+
+    ObjectNode requestBody = generateRequestBody(inputText, mapper.createArrayNode().add(ontology1),
+        mapper.createArrayNode(), mapper.createArrayNode(), mapper.createArrayNode());
+    requestBody.put(BP_PAGE_SIZE_PARAM, pageSize);
+
+    // Service invocation
+    Response response = client.target(baseUrlBpIntegratedSearch).request()
+        .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
+    // Check HTTP response
+    Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
+    // Check Content-Type
+    Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
+    // Check the number of results retrieved
+    PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
+    });
+    int numResultsFound = results.getPageSize() * results.getPageCount();
+    Assert.assertTrue("The number of search results for '" + inputText + " (" + numResultsFound + ") " +
+            "' is different from expected" + " (" + expectedNumberOfResults + ") ",
+        numResultsFound == expectedNumberOfResults);
+  }
+
+  @Test
+  public void searchClassesInOntology() { // Search for ontology classes in a given ontology
+    String inputText = "virus"; // Class: http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C14283"
+    int pageSize = 20;
+    int minNumberOfResults = 100;
+    int maxNumberOfResults = 10000;
+
+    ObjectNode requestBody = generateRequestBody(inputText, mapper.createArrayNode().add(ontology1),
+        mapper.createArrayNode(), mapper.createArrayNode(), mapper.createArrayNode());
+    requestBody.put(BP_PAGE_SIZE_PARAM, pageSize);
+
+    // Service invocation
+    Response response = client.target(baseUrlBpIntegratedSearch).request()
+        .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
+    // Check HTTP response
+    Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
+    // Check Content-Type
+    Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
+    // Check the number of results retrieved
+    PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
+    });
+    int numResultsFound = results.getPageSize() * results.getPageCount();
+    Assert.assertTrue("The number of search results for '" + inputText + " (" + numResultsFound + ") " +
+        "' is lower than expected" + " (" + minNumberOfResults + ") ", numResultsFound > minNumberOfResults);
+    Assert.assertTrue("The number of search results for '" + inputText + " (" + numResultsFound + ") " +
+        "' is higher than expected" + " (" + minNumberOfResults + ") ", numResultsFound < maxNumberOfResults);
+    // Check that the first result is right
+    Assert.assertTrue("Unexpected result: ",
+        results.getCollection().get(0).getPrefLabel().toLowerCase().contains(inputText.toLowerCase()));
+    // Check that the retrieved classes are from the right source. We limit this check to the first page or results to speed up the tests
+    for (SearchResult r : results.getCollection()) {
+      String resultSourceAcronym = r.getSource().substring(r.getSource().lastIndexOf("/") + 1);
+      Assert.assertTrue("Class source does not match the expected source",
+          resultSourceAcronym.equals(ontology1.get(VALUE_CONSTRAINTS_ACRONYM).asText()));
+    }
+  }
+
+  @Test
+  public void searchClassesInBranchEmptyInputText() { // It should retrieve all the classes in the branch
+    String inputText = "";
+    ObjectNode requestBody = generateRequestBody(inputText, mapper.createArrayNode(),
+        mapper.createArrayNode().add(branch1), mapper.createArrayNode(), mapper.createArrayNode());
+
+    // Service invocation
+    Response response = client.target(baseUrlBpIntegratedSearch).request()
+        .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
+    // Check HTTP response
+    Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
+    // Check Content-Type
+    Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
+    // Check the number of results retrieved
+    PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {});
+    int numResultsFound = results.getPageSize() * results.getPageCount();
+    Assert.assertTrue("The number of results found (" +  numResultsFound +
+        ") is lower than expected (" + branch1Size + ")" , numResultsFound >= branch1Size);
+    Assert.assertTrue("The number of results found (" +  numResultsFound +
+        ") is higher than expected (" + branch1Size + ")" , numResultsFound < 10 * branch1Size);
+  }
+
+  @Test
+  public void searchClassesInBranchMissingInputText() {  // It should retrieve all the classes in the branch
+    ObjectNode requestBody = generateRequestBody(null, mapper.createArrayNode(),
+        mapper.createArrayNode().add(branch1), mapper.createArrayNode(), mapper.createArrayNode());
+    requestBody.put(BP_PAGE_SIZE_PARAM, 1); // Minimum page size allowed to speed up test execution
+
+    // Service invocation
+    Response response = client.target(baseUrlBpIntegratedSearch).request()
+        .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
+    // Check HTTP response
+    Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
+    // Check Content-Type
+    Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
+    // Check the number of results retrieved
+    PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {});
+    int numResultsFound = results.getPageSize() * results.getPageCount();
+    Assert.assertTrue("The number of results found (" +  numResultsFound +
+        ") is lower than expected (" + branch1Size + ")" , numResultsFound >= branch1Size);
+    Assert.assertTrue("The number of results found (" +  numResultsFound +
+        ") is higher than expected (" + branch1Size + ")" , numResultsFound < 10 * branch1Size);
+  }
+
+  @Test
+  public void searchClassesInBranch() { // Search for ontology classes in a given branch
+    String inputText = "coronavirus"; // http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C14283"
+    int pageSize = 10;
+    int minNumberOfResults = 5;
+    int maxNumberOfResults = 100;
+
+    ObjectNode requestBody = generateRequestBody(inputText, mapper.createArrayNode(),
+        mapper.createArrayNode().add(branch1), mapper.createArrayNode(), mapper.createArrayNode());
+    requestBody.put(BP_PAGE_SIZE_PARAM, pageSize);
+
+    // Service invocation
+    Response response = client.target(baseUrlBpIntegratedSearch).request()
+        .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
+    // Check HTTP response
+    Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
+    // Check Content-Type
+    Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
+    // Check the number of results retrieved
+    PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
+    });
+    int numResultsFound = results.getPageSize() * results.getPageCount();
+    Assert.assertTrue("The number of search results for '" + inputText + " (" + numResultsFound + ") " +
+        "' is lower than expected" + " (" + minNumberOfResults + ") ", numResultsFound >= minNumberOfResults);
+    Assert.assertTrue("The number of search results for '" + inputText + " (" + numResultsFound + ") " +
+        "' is higher than expected" + " (" + minNumberOfResults + ") ", numResultsFound < maxNumberOfResults);
+    // Check that the first result is right
+    Assert.assertTrue("Unexpected result: ",
+        results.getCollection().get(0).getPrefLabel().toLowerCase().contains(inputText.toLowerCase()));
+    // Check that the retrieved classes are from the right source. We limit this check to the first page or results to speed up the tests
+    for (SearchResult r : results.getCollection()) {
+      String resultSourceAcronym = r.getSource().substring(r.getSource().lastIndexOf("/") + 1);
+      Assert.assertTrue("Class source does not match the expected source",
+          resultSourceAcronym.equals(ontology1.get(VALUE_CONSTRAINTS_ACRONYM).asText()));
+    }
+  }
+
+  @Test
+  public void searchClassesInBranchWrongLabel() { // Search for ontology classes in a given branch
+    String inputText = "aaabbbcccddd"; // Non-existing class label
+    int pageSize = 1;
+    int expectedNumberOfResults = 0;
+
+    ObjectNode requestBody = generateRequestBody(inputText, mapper.createArrayNode(),
+        mapper.createArrayNode().add(branch1), mapper.createArrayNode(), mapper.createArrayNode());
+    requestBody.put(BP_PAGE_SIZE_PARAM, pageSize);
+
+    // Service invocation
+    Response response = client.target(baseUrlBpIntegratedSearch).request()
+        .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
+    // Check HTTP response
+    Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
+    // Check Content-Type
+    Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
+    // Check the number of results retrieved
+    PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
+    });
+    int numResultsFound = results.getPageSize() * results.getPageCount();
+    Assert.assertTrue("The number of search results for '" + inputText + " (" + numResultsFound + ") " +
+        "' is different from expected" + " (" + expectedNumberOfResults + ") ",
+        numResultsFound == expectedNumberOfResults);
+  }
+
+  /**
+   *  Utility methods
+   * */
+  private static ObjectNode generateRequestBody(String inputText, ArrayNode ontologies, ArrayNode branches,
+                                                ArrayNode valueSets, ArrayNode classes) {
+    // valueConstraints object
+    ObjectNode valueConstraints = mapper.createObjectNode();
+    valueConstraints.set(VALUE_CONSTRAINTS_ONTOLOGIES, ontologies);
+    valueConstraints.set(VALUE_CONSTRAINTS_BRANCHES, branches);
+    valueConstraints.set(VALUE_CONSTRAINTS_VALUE_SETS, valueSets);
+    valueConstraints.set(VALUE_CONSTRAINTS_CLASSES, classes);
+    // parameterObject object
+    ObjectNode parameterObject = mapper.createObjectNode();
+    parameterObject.set(BP_INTEGRATED_SEARCH_PARAM_VALUE_CONSTRAINTS, valueConstraints);
+    if (inputText != null) {
+      parameterObject.put(BP_INTEGRATED_SEARCH_PARAM_INPUT_TEXT, inputText);
+    }
+    // Request body
+    ObjectNode requestBody = mapper.createObjectNode();
+    requestBody.set(BP_INTEGRATED_SEARCH_PARAMS_FIELD, parameterObject);
+    return requestBody;
   }
 
 }
