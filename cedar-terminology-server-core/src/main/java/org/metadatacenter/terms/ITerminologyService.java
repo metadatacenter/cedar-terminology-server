@@ -25,7 +25,7 @@ public interface ITerminologyService {
   /**
    * CEDAR Integrated Search
    */
-  PagedResults<SearchResult> cedarIntegratedSearch(Optional<String> q, ValueConstraints valueConstraints,
+  PagedResults<SearchResult> integratedSearch(Optional<String> q, ValueConstraints valueConstraints,
                         int page, int pageSize, String apiKey) throws IOException;
 
   /**

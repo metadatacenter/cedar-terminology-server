@@ -61,7 +61,7 @@ public class TerminologyService implements ITerminologyService {
   /**
    * CEDAR Integrated Search
    */
-  public PagedResults<SearchResult> cedarIntegratedSearch(Optional<String> q, ValueConstraints valueConstraints,
+  public PagedResults<SearchResult> integratedSearch(Optional<String> q, ValueConstraints valueConstraints,
                                                           int page, int pageSize, String apiKey) throws IOException {
 
     PagedResults<SearchResult> results = null;

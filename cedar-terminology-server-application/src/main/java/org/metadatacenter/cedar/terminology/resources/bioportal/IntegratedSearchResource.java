@@ -2,29 +2,26 @@ package org.metadatacenter.cedar.terminology.resources.bioportal;
 
 import com.codahale.metrics.annotation.Timed;
 import org.metadatacenter.cedar.terminology.resources.AbstractTerminologyServerResource;
-import org.metadatacenter.cedar.terminology.validation.integratedsearch.*;
+import org.metadatacenter.cedar.terminology.validation.integratedsearch.IntegratedSearchBody;
 import org.metadatacenter.config.CedarConfig;
 import org.metadatacenter.exception.CedarException;
 import org.metadatacenter.rest.context.CedarRequestContext;
 import org.metadatacenter.rest.exception.CedarAssertionException;
 import org.metadatacenter.terms.customObjects.PagedResults;
-import org.metadatacenter.terms.domainObjects.OntologyClass;
 import org.metadatacenter.util.json.JsonMapper;
 
 import javax.validation.Valid;
-import javax.ws.rs.*;
+import javax.ws.rs.Consumes;
+import javax.ws.rs.POST;
+import javax.ws.rs.Path;
+import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.xml.ws.http.HTTPException;
-
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 import java.util.Optional;
 
 import static org.metadatacenter.rest.assertion.GenericAssertions.LoggedIn;
-import static org.metadatacenter.cedar.terminology.util.Constants.*;
 
 @Path("/bioportal")
 @Produces(MediaType.APPLICATION_JSON)
@@ -53,7 +50,7 @@ public class IntegratedSearchResource extends AbstractTerminologyServerResource 
       Optional<String> q = inputText != null? Optional.of(inputText) : Optional.empty();
 
       PagedResults results =
-          terminologyService.cedarIntegratedSearch(q, body.getParameterObject().getValueConstraints(),
+          terminologyService.integratedSearch(q, body.getParameterObject().getValueConstraints(),
               page, pageSize, apiKey);
 
       return Response.ok().entity(JsonMapper.MAPPER.valueToTree(results)).build();
