@@ -335,23 +335,50 @@ public class ObjectConverter {
         .getSynonyms(), c.getRelations(), c.isProvisional(), c.getCreated());
   }
 
-  public static PagedResults<SearchResult> toPagedSearchResults(PagedResults<OntologyClass> classPagedResults) {
+  public static SearchResult toSearchResult(OntologyClass c) {
+
+    String definition = null;
+    if (c.getDefinitions() != null && c.getDefinitions().size() > 0) {
+      definition = c.getDefinitions().get(0);
+    }
+
+    return new SearchResult(c.getId(), c.getLdId(), c.getLdType(), c.getType(), c.getPrefLabel(),
+        definition, c.getOntology());
+  }
+
+  public static SearchResult toSearchResult(Value v) {
+
+    String definition = null;
+    if (v.getDefinitions() != null && v.getDefinitions().size() > 0) {
+      definition = v.getDefinitions().get(0);
+    }
+
+    return new SearchResult(v.getId(), v.getLdId(), v.getLdType(), v.getType(), v.getPrefLabel(),
+        definition, v.getVsCollection());
+  }
+
+  public static PagedResults<SearchResult> classResultsToSearchResults(PagedResults<OntologyClass> classPagedResults) {
 
     List<SearchResult>  results = new ArrayList<>();
     for (OntologyClass c : classPagedResults.getCollection()) {
-
-      String definition = null;
-      if (c.getDefinitions() != null && c.getDefinitions().size() > 0) {
-        definition = c.getDefinitions().get(0);
-      }
-
-      results.add(new SearchResult(c.getId(), c.getLdId(), c.getLdType(), c.getType(), c.getPrefLabel(),
-          definition, c.getOntology()));
+      results.add(toSearchResult(c));
     }
 
     return new PagedResults<>(classPagedResults.getPage(), classPagedResults.getPageCount(),
         classPagedResults.getCollection().size(), classPagedResults.getPrevPage(),
         classPagedResults.getNextPage(), results);
+  }
+
+  public static PagedResults<SearchResult> valueResultsToSearchResults(PagedResults<Value> valuePagedResults) {
+
+    List<SearchResult>  results = new ArrayList<>();
+    for (Value v : valuePagedResults.getCollection()) {
+      results.add(toSearchResult(v));
+    }
+
+    return new PagedResults<>(valuePagedResults.getPage(), valuePagedResults.getPageCount(),
+        valuePagedResults.getCollection().size(), valuePagedResults.getPrevPage(),
+        valuePagedResults.getNextPage(), results);
   }
 
   /**

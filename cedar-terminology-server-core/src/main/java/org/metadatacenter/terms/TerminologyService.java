@@ -58,11 +58,51 @@ public class TerminologyService implements ITerminologyService {
     return ObjectConverter.toPagedSearchResults(results);
   }
 
+  private PagedResults<SearchResult> searchValuesByValueSet(String q, String vsId, String vsCollection, int page,
+                                                            int pageSize, String apiKey) throws IOException {
+
+    // Check that vsCollection is a valid Value Set Collection
+    if (Util.validVsCollection(vsCollection, false)) {
+      PagedResults<SearchResult> results = null;
+      // Find the value set and check if it is regular or provisional
+      ValueSet vs = findValueSet(vsId, vsCollection, apiKey);
+
+      if (!vs.isProvisional()) { // Regular value set
+        // In this case, the value set is just an ontology branch. The value set corresponds to the root of the branch
+        // and the values are all the branch subclasses. Therefore, we can use the branch search endpoint to find all
+        // the values.
+        results = search(q, Arrays.asList(BP_SEARCH_SCOPE_VALUES), new ArrayList<>(), true, vsCollection,
+            vsId, 0, page, pageSize, false, true, apiKey, new ArrayList<>());
+      } else { // Provisional value set
+        List<SearchResult> values = new ArrayList<>();
+        // Get all provisional classes in the vsCollection
+        List<OntologyClass> classes = findAllProvisionalClasses(vsCollection, apiKey);
+        // Keep those provisional classes that are subclass of the given vs and that match the search query
+        for (OntologyClass c : classes) {
+          if (c.getSubclassOf() != null) {
+            String encSubclassOf = Util.encodeIfNeeded(c.getSubclassOf());
+            String encVsId = Util.encodeIfNeeded(vsId);
+            if (encSubclassOf.compareTo(encVsId) == 0) {
+              if (c.getPrefLabel().toLowerCase().contains(q.toLowerCase())) {
+                values.add(ObjectConverter.toSearchResult(c));
+              }
+            }
+          }
+        }
+        results = Util.generatePaginatedResults(values, page, pageSize);
+      }
+      return results;
+    } else {
+      // Bad request
+      throw new HTTPException(Response.Status.BAD_REQUEST.getStatusCode());
+    }
+  }
+
   /**
    * CEDAR Integrated Search
    */
   public PagedResults<SearchResult> integratedSearch(Optional<String> q, ValueConstraints valueConstraints,
-                                                          int page, int pageSize, String apiKey) throws IOException {
+                                                     int page, int pageSize, String apiKey) throws IOException {
 
     PagedResults<SearchResult> results = null;
 
@@ -79,8 +119,9 @@ public class TerminologyService implements ITerminologyService {
       } else { // Retrieve all classes from a given list of ontologies
 
         String ontologyAcronym = valueConstraints.getOntologies().get(0).getAcronym();
-        PagedResults<OntologyClass> pagedClassResults = findAllClassesInOntology(ontologyAcronym, page, pageSize, apiKey);
-        results = ObjectConverter.toPagedSearchResults(pagedClassResults);
+        PagedResults<OntologyClass> pagedClassResults = findAllClassesInOntology(ontologyAcronym, page, pageSize,
+            apiKey);
+        results = ObjectConverter.classResultsToSearchResults(pagedClassResults);
 
       }
     }
@@ -101,7 +142,7 @@ public class TerminologyService implements ITerminologyService {
 
         PagedResults<OntologyClass> pagedClassResults =
             getClassDescendants(rootClassUri, ontologyAcronym, page, pageSize, apiKey);
-        results = ObjectConverter.toPagedSearchResults(pagedClassResults);
+        results = ObjectConverter.classResultsToSearchResults(pagedClassResults);
 
       }
     }
@@ -109,12 +150,21 @@ public class TerminologyService implements ITerminologyService {
     /* Value set constraints */
     if (valueConstraints.getValueSets().size() > 0) {
 
-      if (q.isPresent()) { // Find value sets by name in a given list of ontology branches
+      String vsId = valueConstraints.getValueSets().get(0).getUri();
+      String vsCollection = valueConstraints.getValueSets().get(0).getVsCollection();
+
+      if (q.isPresent()) { // Find values by name in a given list of value sets
+
+        results = searchValuesByValueSet(q.get(), vsId, vsCollection, page, pageSize, apiKey);
 
       }
       else { // Retrieve all values from a given value set
-      }
 
+        PagedResults<Value> pagedValueResults =
+            findValuesByValueSet(vsId, vsCollection, page, pageSize, apiKey);
+        results = ObjectConverter.valueResultsToSearchResults(pagedValueResults);
+
+      }
     }
 
     /* Class constraints */
@@ -125,8 +175,6 @@ public class TerminologyService implements ITerminologyService {
       }
 
     }
-
-
 
     return results;
 
@@ -522,7 +570,8 @@ public class TerminologyService implements ITerminologyService {
       // Find the value set and check if it is regular or provisional
       ValueSet vs = findValueSet(vsId, vsCollection, apiKey);
       if (!vs.isProvisional()) {
-        BpPagedResults<BpClass> bpResults = bpService.findValuesByValueSet(vsId, vsCollection, page, pageSize, apiKey);
+        BpPagedResults<BpClass> bpResults = bpService.findValuesByValueSet(vsId, vsCollection, page, pageSize,
+        apiKey);
         results = ObjectConverter.toValueResults(bpResults);
       } else {
         List<Value> values = new ArrayList<>();
@@ -538,7 +587,8 @@ public class TerminologyService implements ITerminologyService {
             }
           }
         }
-        results = new PagedResults(1, 1, values.size(), 0, 0, values);
+        // Generate paginated results
+        results = Util.generatePaginatedResults(values, page, pageSize);
       }
       return results;
     } else {

@@ -1,12 +1,14 @@
 package org.metadatacenter.terms.util;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import org.metadatacenter.terms.customObjects.PagedResults;
 
 import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -118,6 +120,30 @@ public class Util
     else {
       return false;
     }
+  }
+
+  // Generation of paginated results
+  public static <T> PagedResults<T> generatePaginatedResults(List<T> allResults, int page, int pageSize) {
+    List<T> relevantResults = new ArrayList<>();
+    int pageCount = 0;
+    int prevPage = 0;
+    int nextPage = 0;
+    if (allResults.size() > 0) {
+      pageCount = (int) Math.ceil((double)allResults.size() / pageSize); // round up
+      int startIndex = (page * pageSize) - pageSize;
+      int endIndex = Math.min(startIndex + pageSize, allResults.size());
+      if (startIndex >= endIndex) {
+        page = 1;
+        startIndex = 0;
+      }
+      relevantResults = allResults.subList(startIndex, endIndex); // Note that endIndex is exclusive
+      prevPage = page > 1 ? page - 1 : 0;
+      nextPage = (page + pageSize <= allResults.size()) ? (page + 1) : 0;
+    }
+    else {
+      page = 0;
+    }
+    return new PagedResults(page, pageCount, relevantResults.size(), prevPage, nextPage, relevantResults);
   }
 
 }
