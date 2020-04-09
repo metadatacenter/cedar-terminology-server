@@ -568,8 +568,14 @@ public class TerminologyService implements ITerminologyService {
     if (Util.validVsCollection(vsCollection, false)) {
       PagedResults<Value> results = null;
       // Find the value set and check if it is regular or provisional
-      ValueSet vs = findValueSet(vsId, vsCollection, apiKey);
-      if (!vs.isProvisional()) {
+
+      // Old code. We commented it out to avoid making this extra call
+      // ValueSet vs = findValueSet(vsId, vsCollection, apiKey);
+      // boolean isProvisional = vs.isProvisional();
+
+      boolean isProvisional = Util.isProvisionalClass(vsId);
+
+      if (!isProvisional) {
         BpPagedResults<BpClass> bpResults = bpService.findValuesByValueSet(vsId, vsCollection, page, pageSize,
         apiKey);
         results = ObjectConverter.toValueResults(bpResults);
@@ -660,14 +666,10 @@ public class TerminologyService implements ITerminologyService {
 
   public Value findValue(String id, String vsCollection, String apiKey) throws IOException {
     Value v;
-    try {
+    if (!Util.isProvisionalClass(id)) { // Non-provisional value
       v = findRegularValue(id, vsCollection, apiKey);
-    } catch (HTTPException e) {
-      try {
-        v = findProvisionalValue(id, apiKey);
-      } catch (HTTPException e2) {
-        throw e2;
-      }
+    } else {
+      v = findProvisionalValue(id, apiKey);
     }
     return v;
   }

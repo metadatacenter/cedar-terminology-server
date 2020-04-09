@@ -6,6 +6,8 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.junit.*;
 import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.terms.domainObjects.SearchResult;
+import org.metadatacenter.terms.domainObjects.Value;
+import org.metadatacenter.terms.domainObjects.ValueSet;
 
 import javax.ws.rs.client.Entity;
 import javax.ws.rs.core.GenericType;
@@ -29,8 +31,10 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
   /* Objects used by the test methods */
   private static ObjectNode branch1;
   private static ObjectNode ontology1;
+  private static ObjectNode valueSet1;
   private static int ontology1Size = 157000; // Approx size of NCIT (slightly lower than the actual size)
   private static int branch1Size = 240; // Approx size of branch (slightly lower than the actual size)
+  private static int valueSet1Size = 89;
 
   /**
    * One-time initialization code.
@@ -43,7 +47,11 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
 
     branch1 = mapper.createObjectNode();
     branch1.put(VALUE_CONSTRAINTS_URI, "http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C14283"); // "Virus" branch
-    branch1.put(VALUE_CONSTRAINTS_ACRONYM, "NCIT"); // "Virus" branch
+    branch1.put(VALUE_CONSTRAINTS_ACRONYM, "NCIT");
+
+    valueSet1 = mapper.createObjectNode();
+    valueSet1.put(VALUE_CONSTRAINTS_URI, "http://purl.bioontology.org/ontology/NLMVS/2.16.840.1.113762.1.4.1045.59"); // "Delivery Procedures" value set
+    valueSet1.put(VALUE_CONSTRAINTS_VS_COLLECTION, "NLMVS");
   }
 
   /**
@@ -63,6 +71,10 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
   }
 
   /* Tests */
+
+  /**
+   * Invalid input
+   */
 
   @Test
   public void searchEmptyBody() {
@@ -108,6 +120,10 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     // Check HTTP response
     Assert.assertEquals(BAD_REQUEST, response.getStatus());
   }
+
+  /**
+   * Search Classes in Ontologies
+   */
 
   @Test
   public void searchClassesInOntologyEmptyInputText() { // It should retrieve all the ontology classes
@@ -214,6 +230,10 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     }
   }
 
+  /**
+   * Search Classes in Branches
+   */
+
   @Test
   public void searchClassesInBranchEmptyInputText() { // It should retrieve all the classes in the branch
     String inputText = "";
@@ -319,6 +339,97 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     Assert.assertTrue("The number of search results for '" + inputText + " (" + numResultsFound + ") " +
         "' is different from expected" + " (" + expectedNumberOfResults + ") ",
         numResultsFound == expectedNumberOfResults);
+  }
+
+  /**
+   * Search Values in Value Sets
+   */
+
+  @Test
+  public void searchValuesNonProvisionalValueSetEmptyInputText() { // It should retrieve all the values in the value set
+    String inputText = "";
+    int pageSize = 200;
+    ObjectNode requestBody = generateRequestBody(inputText, mapper.createArrayNode(),
+        mapper.createArrayNode(), mapper.createArrayNode().add(valueSet1), mapper.createArrayNode());
+    requestBody.put(BP_PAGE_SIZE_PARAM, pageSize);
+
+    // Service invocation
+    Response response = client.target(baseUrlBpIntegratedSearch).request()
+        .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
+    // Check HTTP response
+    Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
+    // Check Content-Type
+    Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
+    // Check the number of results retrieved
+    PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {});
+    int numResultsFound = results.getCollection().size();
+    Assert.assertTrue("The number of results found (" +  numResultsFound +
+        ") is different from expected (" + valueSet1Size + ")" , numResultsFound == valueSet1Size);
+  }
+
+  @Test
+  public void searchValuesNonProvisionalValueSet() { // Search for values that match the inputText in the value set
+    String inputText = "barton";
+    int expectedResultsCount = 2;
+    ObjectNode requestBody = generateRequestBody(inputText, mapper.createArrayNode(),
+        mapper.createArrayNode(), mapper.createArrayNode().add(valueSet1), mapper.createArrayNode());
+
+    // Service invocation
+    Response response = client.target(baseUrlBpIntegratedSearch).request()
+        .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
+    // Check HTTP response
+    Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
+    // Check Content-Type
+    Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
+    // Check the number of results retrieved
+    PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {});
+    int numResultsFound = results.getCollection().size();
+    Assert.assertTrue("The number of results found (" +  numResultsFound +
+        ") is different from expected (" + valueSet1Size + ")" , numResultsFound == expectedResultsCount);
+  }
+
+  @Test
+  public void searchValuesProvisionalValueSetEmptyInputText() { // It should retrieve all the values in the value set
+    // Create provisional value set with two values
+    ValueSet createdVs = createValueSet(vs1);
+    Value createdValue1 = createValue(createdVs.getLdId(), value1);
+    Value createdValue2 = createValue(createdVs.getLdId(), value2);
+    int createdVsSize = 2;
+
+    // Wait a little bit to be sure that the BioPortal search index has been updated
+    try {
+      Thread.sleep(3000);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
+
+    // Generate input body based on the created value set
+    ObjectNode vs = mapper.createObjectNode();
+    vs.put(VALUE_CONSTRAINTS_URI, createdVs.getLdId());
+    vs.put(VALUE_CONSTRAINTS_VS_COLLECTION, createdVs.getVsCollection());
+
+    String inputText = "";
+    ObjectNode requestBody = generateRequestBody(inputText, mapper.createArrayNode(),
+        mapper.createArrayNode(), mapper.createArrayNode().add(vs), mapper.createArrayNode());
+
+    // Service invocation
+    Response response = client.target(baseUrlBpIntegratedSearch).request()
+        .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
+    // Check HTTP response
+    Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
+    // Check Content-Type
+    Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
+    // Check the number of results retrieved
+    PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {});
+    int numResultsFound = results.getCollection().size();
+
+    Assert.assertTrue("The number of results found (" +  numResultsFound +
+        ") is different from expected (" + createdVsSize + ")" , numResultsFound == createdVsSize);
+    // Check that the results are right
+    for (SearchResult r : results.getCollection()) {
+      Assert.assertTrue("Unexpected value" , r.getLdId().equals(createdValue1.getLdId()) ||
+          r.getLdId().equals(createdValue2.getLdId()));
+    }
   }
 
   /**

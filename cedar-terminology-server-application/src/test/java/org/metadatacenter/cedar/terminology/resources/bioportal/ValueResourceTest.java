@@ -2,8 +2,6 @@ package org.metadatacenter.cedar.terminology.resources.bioportal;
 
 import org.junit.*;
 import org.metadatacenter.terms.customObjects.PagedResults;
-import org.metadatacenter.terms.domainObjects.OntologyClass;
-import org.metadatacenter.terms.domainObjects.TreeNode;
 import org.metadatacenter.terms.domainObjects.Value;
 import org.metadatacenter.terms.domainObjects.ValueSet;
 import org.metadatacenter.terms.util.Util;
@@ -16,7 +14,6 @@ import javax.ws.rs.core.Response;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.util.HashSet;
-import java.util.List;
 
 import static org.metadatacenter.cedar.terminology.utils.Constants.*;
 import static org.metadatacenter.constant.HttpConstants.HTTP_HEADER_AUTHORIZATION;
@@ -86,6 +83,7 @@ public class ValueResourceTest extends AbstractTerminologyServerResourceTest {
     Assert.assertEquals(expected.isProvisional(), created.isProvisional());
   }
 
+  // TODO: test it for non-provisional values and value sets
   @Test
   public void findValueTest() {
     // Create a provisional value
@@ -117,50 +115,6 @@ public class ValueResourceTest extends AbstractTerminologyServerResourceTest {
   }
 
   // TODO: test it for non-provisional values and value sets
-//  @Test
-//  public void findValueTreeTest() {
-//    ValueSet createdVs = createValueSet(vs1);
-//    Value createdValue1 = createValue(createdVs.getLdId(), value1);
-//    Value createdValue2 = createValue(createdVs.getLdId(), value2);
-//    String encodedValue1Id = null;
-//    try {
-//      encodedValue1Id = URLEncoder.encode(createdValue1.getLdId(), "UTF-8");
-//    } catch (UnsupportedEncodingException e) {
-//      e.printStackTrace();
-//    }
-//    String url = baseUrlBpVSCollections + "/" + Util.getShortIdentifier(createdValue1.getVsCollection())
-//        + "/" + BP_VALUES + "/" + encodedValue1Id + "/" + BP_TREE;
-//    // Wait to be sure that the BioPortal search index was updated
-//    try {
-//      Thread.sleep(1000);
-//    } catch (InterruptedException e) {
-//      e.printStackTrace();
-//    }
-//    // Service invocation
-//    Response response = client.target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
-//    // Check HTTP response
-//    Assert.assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
-//    // Check Content-Type
-//    Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
-//    // Check that the tree is not empty
-//    TreeNode tree = response.readEntity(TreeNode.class);
-//    Assert.assertTrue("No children", tree.getChildren().size() > 0);
-//    // Check that the root is the expected value set
-//    Assert.assertTrue("The tree root does not correspond to the expected value set", tree.getId().equals(createdVs.getId()));
-//    // Check that the children correspond to the created values
-//    boolean v1Found = false;
-//    boolean v2Found = false;
-//    for (TreeNode resource : tree.getChildren()) {
-//      if (resource.getId().equals(createdValue1.getId())) {
-//        v1Found = true;
-//      } else if (resource.getId().equals(createdValue2.getId())) {
-//        v2Found = true;
-//      }
-//    }
-//    Assert.assertTrue("Expected values not found in the returned tree", v1Found && v2Found);
-//  }
-
-  // TODO: test it for non-provisional values and value sets
   @Test
   public void findAllValuesInValueSetByValueTest() {
     ValueSet createdVs = createValueSet(vs1);
@@ -176,7 +130,7 @@ public class ValueResourceTest extends AbstractTerminologyServerResourceTest {
         + "/" + BP_VALUES + "/" + encodedValue1Id + "/" + BP_ALL_VALUES;
     // Wait to be sure that the BioPortal search index was updated
     try {
-      Thread.sleep(1000);
+      Thread.sleep(3000);
     } catch (InterruptedException e) {
       e.printStackTrace();
     }

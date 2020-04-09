@@ -146,4 +146,16 @@ public class Util
     return new PagedResults(page, pageCount, relevantResults.size(), prevPage, nextPage, relevantResults);
   }
 
+  public static boolean isProvisionalClass(String classId) {
+    if (classId.toLowerCase().contains("provisional_classes")) {
+      return true;
+    }
+    if (!classId.contains("http")) { // Id in the form "5e785190-5cb9-0138-e099-005056010088"
+      return true;
+    }
+    else {
+      return false;
+    }
+  }
+
 }
