@@ -398,7 +398,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
 
     // Wait a little bit to be sure that the BioPortal search index has been updated
     try {
-      Thread.sleep(3000);
+      Thread.sleep(6000);
     } catch (InterruptedException e) {
       e.printStackTrace();
     }
@@ -430,6 +430,46 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
       Assert.assertTrue("Unexpected value" , r.getLdId().equals(createdValue1.getLdId()) ||
           r.getLdId().equals(createdValue2.getLdId()));
     }
+  }
+
+  @Test
+  public void searchValuesProvisionalValueSet() { // Search for values in the value set that match the inputText
+    // Create provisional value set with two values
+    ValueSet createdVs = createValueSet(vs1);
+    createValue(createdVs.getLdId(), value1);
+    Value createdValue2 = createValue(createdVs.getLdId(), value2);
+
+    // Wait a little bit to be sure that the BioPortal search index has been updated
+    try {
+      Thread.sleep(6000);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
+
+    // Generate input body based on the created value set
+    ObjectNode vs = mapper.createObjectNode();
+    vs.put(VALUE_CONSTRAINTS_URI, createdVs.getLdId());
+    vs.put(VALUE_CONSTRAINTS_VS_COLLECTION, createdVs.getVsCollection());
+
+    String inputText = "Value2"; // Note that the label of the second value created is value2_test
+    ObjectNode requestBody = generateRequestBody(inputText, mapper.createArrayNode(),
+        mapper.createArrayNode(), mapper.createArrayNode().add(vs), mapper.createArrayNode());
+
+    // Service invocation
+    Response response = client.target(baseUrlBpIntegratedSearch).request()
+        .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
+    // Check HTTP response
+    Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
+    // Check Content-Type
+    Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
+    // Check the number of results retrieved
+    PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {});
+    int numResultsFound = results.getCollection().size();
+    Assert.assertTrue("The number of results found (" +  numResultsFound +
+        ") is different from expected (" + 1 + ")" , numResultsFound == 1);
+    // Check that the result found matches the expected result
+    Assert.assertTrue("Unexpected value" ,
+        results.getCollection().get(0).getLdId().equals(createdValue2.getLdId()));
   }
 
   /**
