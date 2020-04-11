@@ -109,7 +109,7 @@ public class ObjectConverter {
       }
     }
     return new ValueSet(Util.getShortIdentifier(pc.getId()), pc.getId(), pc.getLabel(), pc.getCreator(),
-        Util.getShortIdentifier(pc.getOntology()), pc.getDefinition(), pc.getSynonym(), relations, provisional, pc.getCreated());
+        pc.getOntology(), pc.getDefinition(), pc.getSynonym(), relations, provisional, pc.getCreated());
   }
 
   public static Relation toRelation(BpProvisionalRelation pr) {

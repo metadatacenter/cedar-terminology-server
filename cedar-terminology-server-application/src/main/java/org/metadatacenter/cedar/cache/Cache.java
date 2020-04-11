@@ -6,7 +6,6 @@ import com.google.common.cache.LoadingCache;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.ListenableFutureTask;
 import org.metadatacenter.cedar.terminology.resources.AbstractTerminologyServerResource;
-import org.metadatacenter.terms.TerminologyService;
 import org.metadatacenter.terms.domainObjects.Ontology;
 import org.metadatacenter.terms.domainObjects.ValueSet;
 import org.slf4j.Logger;
@@ -137,6 +136,7 @@ public class Cache {
     // The ontologies are loaded from a cache file if one of the following cases is met:
     // 1) The cache file exists and the server was just started. The calls that will follow will force cache regeneration
     // 2) The cache file exists and the server is in test mode (running tests)
+
     if ((firstLoadOntologies && new File(ontologiesCachePath).isFile()) ||
     (isTestMode && new File(ontologiesCachePath).isFile())) {
       log.info("Loading ontologies from file");

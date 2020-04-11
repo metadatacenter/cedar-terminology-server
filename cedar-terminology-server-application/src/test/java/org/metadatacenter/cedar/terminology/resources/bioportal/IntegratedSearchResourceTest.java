@@ -8,6 +8,7 @@ import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.terms.domainObjects.SearchResult;
 import org.metadatacenter.terms.domainObjects.Value;
 import org.metadatacenter.terms.domainObjects.ValueSet;
+import org.metadatacenter.terms.util.Util;
 
 import javax.ws.rs.client.Entity;
 import javax.ws.rs.core.GenericType;
@@ -395,18 +396,13 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     Value createdValue1 = createValue(createdVs.getLdId(), value1);
     Value createdValue2 = createValue(createdVs.getLdId(), value2);
     int createdVsSize = 2;
-
-    // Wait a little bit to be sure that the BioPortal search index has been updated
-    try {
-      Thread.sleep(6000);
-    } catch (InterruptedException e) {
-      e.printStackTrace();
-    }
+    // Wait
+    longWaitToEnsureBioPortalIndexUpdated();
 
     // Generate input body based on the created value set
     ObjectNode vs = mapper.createObjectNode();
     vs.put(VALUE_CONSTRAINTS_URI, createdVs.getLdId());
-    vs.put(VALUE_CONSTRAINTS_VS_COLLECTION, createdVs.getVsCollection());
+    vs.put(VALUE_CONSTRAINTS_VS_COLLECTION, Util.getShortIdentifier(createdVs.getVsCollection()));
 
     String inputText = "";
     ObjectNode requestBody = generateRequestBody(inputText, mapper.createArrayNode(),
@@ -435,21 +431,16 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
   @Test
   public void searchValuesProvisionalValueSet() { // Search for values in the value set that match the inputText
     // Create provisional value set with two values
-    ValueSet createdVs = createValueSet(vs1);
+    ValueSet createdVs = createValueSet(vs2);
     createValue(createdVs.getLdId(), value1);
     Value createdValue2 = createValue(createdVs.getLdId(), value2);
-
-    // Wait a little bit to be sure that the BioPortal search index has been updated
-    try {
-      Thread.sleep(6000);
-    } catch (InterruptedException e) {
-      e.printStackTrace();
-    }
+    // Wait
+    longWaitToEnsureBioPortalIndexUpdated();
 
     // Generate input body based on the created value set
     ObjectNode vs = mapper.createObjectNode();
     vs.put(VALUE_CONSTRAINTS_URI, createdVs.getLdId());
-    vs.put(VALUE_CONSTRAINTS_VS_COLLECTION, createdVs.getVsCollection());
+    vs.put(VALUE_CONSTRAINTS_VS_COLLECTION, Util.getShortIdentifier(createdVs.getVsCollection()));
 
     String inputText = "Value2"; // Note that the label of the second value created is value2_test
     ObjectNode requestBody = generateRequestBody(inputText, mapper.createArrayNode(),

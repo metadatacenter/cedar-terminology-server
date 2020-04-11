@@ -129,11 +129,7 @@ public class ValueResourceTest extends AbstractTerminologyServerResourceTest {
     String url = baseUrlBpVSCollections + "/" + Util.getShortIdentifier(createdValue1.getVsCollection())
         + "/" + BP_VALUES + "/" + encodedValue1Id + "/" + BP_ALL_VALUES;
     // Wait to be sure that the BioPortal search index was updated
-    try {
-      Thread.sleep(3000);
-    } catch (InterruptedException e) {
-      e.printStackTrace();
-    }
+    shortWaitToEnsureBioPortalIndexUpdated();
     // Service invocation
     Response response = client.target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check HTTP response

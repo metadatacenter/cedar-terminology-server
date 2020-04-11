@@ -74,7 +74,7 @@ public abstract class AbstractTerminologyServerResourceTest {
 
   /**
    * One-time initialization code.
-   * (Called once before any of the test methods in the class).
+   * (Called once before any test class).
    */
   @BeforeClass
   public static void oneTimeSetUpAbstract() {
@@ -216,6 +216,11 @@ public abstract class AbstractTerminologyServerResourceTest {
     } catch (Exception e) {
       e.printStackTrace();
     }
+  }
+
+  @AfterClass
+  public static void oneTearDownAbstract() {
+    client.close();
   }
 
   /**
@@ -402,6 +407,24 @@ public abstract class AbstractTerminologyServerResourceTest {
       }
     }
     System.out.println("No. classes deleted: " + deletedCount);
+  }
+
+  protected static void shortWaitToEnsureBioPortalIndexUpdated() {
+    // Wait to be sure that the BioPortal search index has been updated
+    try {
+      Thread.sleep(5000);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
+  }
+
+  protected static void longWaitToEnsureBioPortalIndexUpdated() {
+    // Wait to be sure that the BioPortal search index has been updated
+    try {
+      Thread.sleep(60000);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
   }
 
 }
