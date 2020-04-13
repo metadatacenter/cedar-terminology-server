@@ -1,6 +1,7 @@
 package org.metadatacenter.terms.util;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import org.metadatacenter.cedar.terminology.validation.integratedsearch.ClassValueConstraint;
 import org.metadatacenter.terms.bioportal.customObjects.BpPagedResults;
 import org.metadatacenter.terms.bioportal.domainObjects.*;
 import org.metadatacenter.terms.customObjects.PagedResults;
@@ -354,6 +355,22 @@ public class ObjectConverter {
 
     return new SearchResult(v.getId(), v.getLdId(), v.getLdType(), v.getType(), v.getPrefLabel(),
         definition, v.getVsCollection());
+  }
+
+  public static SearchResult toSearchResult(ClassValueConstraint c) {
+
+    String ldType = c.getType();
+    String source = c.getSource();
+
+    if (!Util.isUrl(ldType)) {
+      ldType = BP_TYPE_BASE + ldType;
+    }
+    if (!Util.isUrl(source)) {
+      source = BP_API_BASE + BP_ONTOLOGIES + source;
+    }
+
+    return new SearchResult(Util.getShortIdentifier(c.getUri()), c.getUri(), ldType, c.getType(), c.getPrefLabel(),
+        null, source);
   }
 
   public static PagedResults<SearchResult> classResultsToSearchResults(PagedResults<OntologyClass> classPagedResults) {

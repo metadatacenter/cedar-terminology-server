@@ -464,6 +464,15 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
   }
 
   /**
+   * Search Enumerated Classes
+   */
+
+  // TODO. Also:
+  // - Test generation of paginated results (probably as a unit test instead of integration tests)
+  // - Test search based on different constraints
+  // - Test class arrangements (still to be implemented)
+
+  /**
    *  Utility methods
    * */
   private static ObjectNode generateRequestBody(String inputText, ArrayNode ontologies, ArrayNode branches,

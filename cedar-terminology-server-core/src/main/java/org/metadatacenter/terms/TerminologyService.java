@@ -89,6 +89,9 @@ public class TerminologyService implements ITerminologyService {
             }
           }
         }
+        // Sort values by length so that the closer matches are ranked higher
+        values = Util.sortByPrefLabelLength(values);
+        // Generate paginated results
         results = Util.generatePaginatedResults(values, page, pageSize);
       }
       return results;
@@ -170,8 +173,23 @@ public class TerminologyService implements ITerminologyService {
     /* Class constraints */
     if (valueConstraints.getClasses().size() > 0) {
 
-      if (q.isPresent()) {
-      } else {
+      // Convert enumerated classes to search results
+      List<ClassValueConstraint> classValueConstraints = valueConstraints.getClasses();
+      List<SearchResult> searchResults = new ArrayList<>();
+      for (ClassValueConstraint cvc : classValueConstraints) {
+        searchResults.add(ObjectConverter.toSearchResult(cvc));
+      }
+
+      if (q.isPresent()) { // Find classes by name
+
+        List<SearchResult> selectedResults = Util.filterByQuery(q.get(), searchResults);
+        // Sort results by length so that the closer matches are ranked higher
+        selectedResults = Util.sortByPrefLabelLength(selectedResults);
+        results = Util.generatePaginatedResults(selectedResults, page, pageSize);
+
+      }
+      else { // Retrieve all classes
+        results = Util.generatePaginatedResults(searchResults, page, pageSize);
       }
 
     }

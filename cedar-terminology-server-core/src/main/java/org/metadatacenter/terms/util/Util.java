@@ -2,15 +2,14 @@ package org.metadatacenter.terms.util;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import org.metadatacenter.terms.customObjects.PagedResults;
+import org.metadatacenter.terms.domainObjects.SearchResult;
 
 import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 
 import static org.metadatacenter.cedar.terminology.util.Constants.*;
 
@@ -156,6 +155,27 @@ public class Util
     else {
       return false;
     }
+  }
+
+  public static List<SearchResult> filterByQuery(String query, List<SearchResult> searchResults) {
+    List<SearchResult> selectedResults = new ArrayList<>();
+    for (SearchResult result : searchResults) {
+      if (result.getPrefLabel().toLowerCase().contains(query.toLowerCase())) { // Label contains the query
+        selectedResults.add(result);
+      }
+    }
+    return selectedResults;
+  }
+
+  /**
+   * Sorts by prefLabel length
+   * @param searchResults
+   * @return
+   */
+  public static List<SearchResult> sortByPrefLabelLength(List<SearchResult> searchResults) {
+    Collections.sort(searchResults,
+        Comparator.comparing(SearchResult::getPrefLabel, Comparator.comparing(String::length)));
+    return searchResults;
   }
 
 }
