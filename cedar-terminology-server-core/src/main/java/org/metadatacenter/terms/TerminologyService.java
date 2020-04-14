@@ -111,91 +111,120 @@ public class TerminologyService implements ITerminologyService {
 
     /* Ontology constraints */
     if (valueConstraints.getOntologies().size() > 0) {
-
-      if (q.isPresent()) { // Find classes by name in a given list of ontologies
-
-        results = search(q.get(), Arrays.asList(BP_SEARCH_SCOPE_CLASSES),
-            IntegratedSearchUtil.extractOntologyAcronyms(valueConstraints.getOntologies()), true, null,
-            null, 1, page, pageSize,
-            false, true, apiKey, new ArrayList<>());
-
-      } else { // Retrieve all classes from a given list of ontologies
-
-        String ontologyAcronym = valueConstraints.getOntologies().get(0).getAcronym();
-        PagedResults<OntologyClass> pagedClassResults = findAllClassesInOntology(ontologyAcronym, page, pageSize,
-            apiKey);
-        results = ObjectConverter.classResultsToSearchResults(pagedClassResults);
-
-      }
+      results = integratedSearchOntologies(q, valueConstraints.getOntologies(), page, pageSize, apiKey);
     }
     /* Branch constraints */
     if (valueConstraints.getBranches().size() > 0) {
-
-      String rootClassUri = valueConstraints.getBranches().get(0).getUri();
-      String ontologyAcronym = valueConstraints.getBranches().get(0).getAcronym();
-
-      if (q.isPresent()) { // Find classes by name in a given list of ontology branches
-
-        results = search(q.get(), Arrays.asList(BP_SEARCH_SCOPE_CLASSES),
-            new ArrayList<>(), true, ontologyAcronym,
-            rootClassUri, 0, page, pageSize,
-            false, true, apiKey, new ArrayList<>());
-
-      } else { // Retrieve all classes from a given list of ontology branches
-
-        PagedResults<OntologyClass> pagedClassResults =
-            getClassDescendants(rootClassUri, ontologyAcronym, page, pageSize, apiKey);
-        results = ObjectConverter.classResultsToSearchResults(pagedClassResults);
-
-      }
+      results = integratedSearchBranches(q, valueConstraints.getBranches(), page, pageSize, apiKey);
     }
-
     /* Value set constraints */
     if (valueConstraints.getValueSets().size() > 0) {
-
-      String vsId = valueConstraints.getValueSets().get(0).getUri();
-      String vsCollection = valueConstraints.getValueSets().get(0).getVsCollection();
-
-      if (q.isPresent()) { // Find values by name in a given list of value sets
-
-        results = searchValuesByValueSet(q.get(), vsId, vsCollection, page, pageSize, apiKey);
-
-      }
-      else { // Retrieve all values from a given value set
-
-        PagedResults<Value> pagedValueResults =
-            findValuesByValueSet(vsId, vsCollection, page, pageSize, apiKey);
-        results = ObjectConverter.valueResultsToSearchResults(pagedValueResults);
-
-      }
+      results = integratedSearchValueSets(q, valueConstraints.getValueSets(), page, pageSize, apiKey);
     }
-
     /* Class constraints */
     if (valueConstraints.getClasses().size() > 0) {
-
-      // Convert enumerated classes to search results
-      List<ClassValueConstraint> classValueConstraints = valueConstraints.getClasses();
-      List<SearchResult> searchResults = new ArrayList<>();
-      for (ClassValueConstraint cvc : classValueConstraints) {
-        searchResults.add(ObjectConverter.toSearchResult(cvc));
-      }
-
-      if (q.isPresent()) { // Find classes by name
-
-        List<SearchResult> selectedResults = Util.filterByQuery(q.get(), searchResults);
-        // Sort results by length so that the closer matches are ranked higher
-        selectedResults = Util.sortByPrefLabelLength(selectedResults);
-        results = Util.generatePaginatedResults(selectedResults, page, pageSize);
-
-      }
-      else { // Retrieve all classes
-        results = Util.generatePaginatedResults(searchResults, page, pageSize);
-      }
-
+      results = integratedSearchEnumeratedClasses(q, valueConstraints.getClasses(), page, pageSize);
     }
 
     return results;
 
+  }
+
+  private PagedResults<SearchResult> integratedSearchOntologies(Optional<String> q,
+                                                                List<OntologyValueConstraint> ontologyValueConstraints,
+                                                                int page, int pageSize, String apiKey) throws IOException {
+    PagedResults<SearchResult> results = null;
+
+    if (q.isPresent()) { // Find classes by name in a given list of ontologies
+
+      results = search(q.get(), Arrays.asList(BP_SEARCH_SCOPE_CLASSES),
+          IntegratedSearchUtil.extractOntologyAcronyms(ontologyValueConstraints), true, null,
+          null, 1, page, pageSize,
+          false, true, apiKey, new ArrayList<>());
+
+    } else { // Retrieve all classes from a given list of ontologies
+
+      String ontologyAcronym = ontologyValueConstraints.get(0).getAcronym();
+      PagedResults<OntologyClass> pagedClassResults = findAllClassesInOntology(ontologyAcronym, page, pageSize,
+          apiKey);
+      results = ObjectConverter.classResultsToSearchResults(pagedClassResults);
+
+    }
+
+    return results;
+  }
+
+  private PagedResults<SearchResult> integratedSearchBranches(Optional<String> q,
+                                                              List<BranchValueConstraint> branchValueConstraints,
+                                                              int page, int pageSize, String apiKey) throws IOException {
+    PagedResults<SearchResult> results = null;
+
+    String rootClassUri = branchValueConstraints.get(0).getUri();
+    String ontologyAcronym = branchValueConstraints.get(0).getAcronym();
+
+    if (q.isPresent()) { // Find classes by name in a given list of ontology branches
+
+      results = search(q.get(), Arrays.asList(BP_SEARCH_SCOPE_CLASSES),
+          new ArrayList<>(), true, ontologyAcronym,
+          rootClassUri, 0, page, pageSize,
+          false, true, apiKey, new ArrayList<>());
+
+    } else { // Retrieve all classes from a given list of ontology branches
+
+      PagedResults<OntologyClass> pagedClassResults =
+          getClassDescendants(rootClassUri, ontologyAcronym, page, pageSize, apiKey);
+      results = ObjectConverter.classResultsToSearchResults(pagedClassResults);
+
+    }
+    return results;
+
+  }
+
+  private PagedResults<SearchResult> integratedSearchValueSets(Optional<String> q,
+                                                               List<ValueSetValueConstraint> valueSetValueConstraints,
+                                                               int page, int pageSize, String apiKey) throws IOException {
+    PagedResults<SearchResult> results = null;
+    String vsId = valueSetValueConstraints.get(0).getUri();
+    String vsCollection = valueSetValueConstraints.get(0).getVsCollection();
+
+    if (q.isPresent()) { // Find values by name in a given list of value sets
+
+      results = searchValuesByValueSet(q.get(), vsId, vsCollection, page, pageSize, apiKey);
+
+    } else { // Retrieve all values from a given value set
+
+      PagedResults<Value> pagedValueResults =
+          findValuesByValueSet(vsId, vsCollection, page, pageSize, apiKey);
+      results = ObjectConverter.valueResultsToSearchResults(pagedValueResults);
+
+    }
+    return results;
+  }
+
+  private PagedResults<SearchResult> integratedSearchEnumeratedClasses(Optional<String> q,
+                                                                       List<ClassValueConstraint> classValueConstraints,
+                                                                       int page, int pageSize) throws IOException {
+    PagedResults<SearchResult> results = null;
+    // Convert enumerated classes to search results
+    List<SearchResult> searchResults = new ArrayList<>();
+
+    for (ClassValueConstraint cvc : classValueConstraints) {
+      searchResults.add(ObjectConverter.toSearchResult(cvc));
+    }
+
+    if (q.isPresent()) { // Find classes by name
+
+      List<SearchResult> selectedResults = Util.filterByQuery(q.get(), searchResults);
+      // Sort results by length so that the closer matches are ranked higher
+      selectedResults = Util.sortByPrefLabelLength(selectedResults);
+      results = Util.generatePaginatedResults(selectedResults, page, pageSize);
+
+    } else { // Retrieve all classes
+
+      results = Util.generatePaginatedResults(searchResults, page, pageSize);
+
+    }
+    return results;
   }
 
 
@@ -595,7 +624,7 @@ public class TerminologyService implements ITerminologyService {
 
       if (!isProvisional) {
         BpPagedResults<BpClass> bpResults = bpService.findValuesByValueSet(vsId, vsCollection, page, pageSize,
-        apiKey);
+            apiKey);
         results = ObjectConverter.toValueResults(bpResults);
       } else {
         List<Value> values = new ArrayList<>();
