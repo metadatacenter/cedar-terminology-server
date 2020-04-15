@@ -142,7 +142,7 @@ public class Util
     else {
       page = 0;
     }
-    return new PagedResults(page, pageCount, relevantResults.size(), prevPage, nextPage, relevantResults);
+    return new PagedResults(page, pageCount, relevantResults.size(), allResults.size(), prevPage, nextPage, relevantResults);
   }
 
   public static boolean isProvisionalClass(String classId) {

@@ -10,16 +10,18 @@ public class BpPagedResults<T>
 
   private int page;
   private int pageCount;
+  private int totalCount;
   private int prevPage;
   private int nextPage;
   private List<T> collection;
 
   public BpPagedResults() {}
 
-  public BpPagedResults(int page, int pageCount, int prevPage, int nextPage, List<T> collection)
+  public BpPagedResults(int page, int pageCount, int totalCount, int prevPage, int nextPage, List<T> collection)
   {
     this.page = page;
     this.pageCount = pageCount;
+    this.totalCount = totalCount;
     this.prevPage = prevPage;
     this.nextPage = nextPage;
     this.collection = collection;
@@ -30,39 +32,21 @@ public class BpPagedResults<T>
     return page;
   }
 
-  public void setPage(int page)
-  {
-    this.page = page;
-  }
-
   public int getPageCount()
   {
     return pageCount;
   }
 
-  public void setPageCount(int pageCount)
-  {
-    this.pageCount = pageCount;
-  }
+  public int getTotalCount() { return totalCount; }
 
   public int getPrevPage()
   {
     return prevPage;
   }
 
-  public void setPrevPage(int prevPage)
-  {
-    this.prevPage = prevPage;
-  }
-
   public int getNextPage()
   {
     return nextPage;
-  }
-
-  public void setNextPage(int nextPage)
-  {
-    this.nextPage = nextPage;
   }
 
   public List<T> getCollection()

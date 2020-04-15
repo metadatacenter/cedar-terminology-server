@@ -107,60 +107,131 @@ public class TerminologyService implements ITerminologyService {
   public PagedResults<SearchResult> integratedSearch(Optional<String> q, ValueConstraints valueConstraints,
                                                      int page, int pageSize, String apiKey) throws IOException {
 
+    // Check if we have to deal with multiple sources or not
+    boolean multipleSources = IntegratedSearchUtil.hasMultipleSources(valueConstraints);
+
     PagedResults<SearchResult> results = null;
 
+    if (!multipleSources) {
+      results = integratedSearchSingleSource(q, valueConstraints, page, pageSize, apiKey);
+    } else {
+      results = integratedSearchMultipleSources(q, valueConstraints, page, pageSize, apiKey);
+    }
+
+    return results;
+
+  }
+
+  /**
+   * TODO: Describe how pagination is working and its current limitations
+   * @param q
+   * @param valueConstraints
+   * @param page
+   * @param pageSize
+   * @param apiKey
+   * @return
+   * @throws IOException
+   */
+  private PagedResults<SearchResult> integratedSearchMultipleSources(Optional<String> q,
+                                                                     ValueConstraints valueConstraints,
+                                                                     int page, int pageSize, String apiKey) throws IOException {
+    pageSize = 500;
+    List<SearchResult> allResults = new ArrayList<>();
+
+    page = 1; // Limit the results to the aggregation of the first pages of all the sources
+
+    /* Class constraints */
+    if (valueConstraints.getClasses().size() > 0) {
+      allResults.addAll(integratedSearchEnumeratedClasses(q, valueConstraints.getClasses(), page, pageSize).getCollection());
+    }
     /* Ontology constraints */
-    if (valueConstraints.getOntologies().size() > 0) {
-      results = integratedSearchOntologies(q, valueConstraints.getOntologies(), page, pageSize, apiKey);
+    if ((valueConstraints.getOntologies().size() > 0) && (allResults.size() <= (page * pageSize))) { // Avoid making extra calls if have all the results needed
+      if (q.isEmpty()) {
+        for (OntologyValueConstraint ontologyValueConstraint : valueConstraints.getOntologies()) {
+          allResults.addAll(integratedSearchOntologiesEmptyQuery(ontologyValueConstraint, page, pageSize, apiKey).getCollection());
+        }
+      } else {
+        allResults.addAll(integratedSearchOntologies(q, valueConstraints.getOntologies(), page, pageSize, apiKey).getCollection());
+      }
     }
     /* Branch constraints */
-    if (valueConstraints.getBranches().size() > 0) {
-      results = integratedSearchBranches(q, valueConstraints.getBranches(), page, pageSize, apiKey);
+    if ((valueConstraints.getBranches().size() > 0) && (allResults.size() <= (page * pageSize)))  {
+      for (BranchValueConstraint branchValueConstraint : valueConstraints.getBranches()) {
+        allResults.addAll(integratedSearchBranches(q, branchValueConstraint, page, pageSize, apiKey).getCollection());
+      }
     }
     /* Value set constraints */
-    if (valueConstraints.getValueSets().size() > 0) {
-      results = integratedSearchValueSets(q, valueConstraints.getValueSets(), page, pageSize, apiKey);
+    if ((valueConstraints.getValueSets().size() > 0) && (allResults.size() <= (page * pageSize)))  {
+      for (ValueSetValueConstraint valueSetConstraint : valueConstraints.getValueSets()) {
+        allResults.addAll(integratedSearchValueSets(q, valueSetConstraint, page, pageSize, apiKey).getCollection());
+      }
     }
+
+    if (q.isPresent()) {
+      Util.filterByQuery(q.get(), allResults);
+    }
+    // Generate paginated results
+    PagedResults<SearchResult> results = Util.generatePaginatedResults(allResults, page, pageSize);
+
+    return results;
+  }
+
+  private PagedResults<SearchResult> integratedSearchSingleSource(Optional<String> q, ValueConstraints valueConstraints,
+                                                                  int page, int pageSize, String apiKey) throws IOException {
+    PagedResults<SearchResult> results = null;
     /* Class constraints */
     if (valueConstraints.getClasses().size() > 0) {
       results = integratedSearchEnumeratedClasses(q, valueConstraints.getClasses(), page, pageSize);
     }
-
+    /* Ontology constraints */
+    if (valueConstraints.getOntologies().size() > 0) {
+      if (q.isEmpty()) {
+        results = integratedSearchOntologiesEmptyQuery(valueConstraints.getOntologies().get(0), page, pageSize, apiKey);
+      } else {
+        results = integratedSearchOntologies(q, valueConstraints.getOntologies(), page, pageSize, apiKey);
+      }
+    }
+    /* Branch constraints */
+    if (valueConstraints.getBranches().size() > 0) {
+      results = integratedSearchBranches(q, valueConstraints.getBranches().get(0), page, pageSize, apiKey);
+    }
+    /* Value set constraints */
+    if (valueConstraints.getValueSets().size() > 0) {
+      results = integratedSearchValueSets(q, valueConstraints.getValueSets().get(0), page, pageSize, apiKey);
+    }
     return results;
-
   }
 
+  // Find classes by name in a given list of ontologies
   private PagedResults<SearchResult> integratedSearchOntologies(Optional<String> q,
                                                                 List<OntologyValueConstraint> ontologyValueConstraints,
                                                                 int page, int pageSize, String apiKey) throws IOException {
-    PagedResults<SearchResult> results = null;
+    return search(q.get(), Arrays.asList(BP_SEARCH_SCOPE_CLASSES),
+        IntegratedSearchUtil.extractOntologyAcronyms(ontologyValueConstraints), true, null,
+        null, 1, page, pageSize,
+        false, true, apiKey, new ArrayList<>());
 
-    if (q.isPresent()) { // Find classes by name in a given list of ontologies
+  }
 
-      results = search(q.get(), Arrays.asList(BP_SEARCH_SCOPE_CLASSES),
-          IntegratedSearchUtil.extractOntologyAcronyms(ontologyValueConstraints), true, null,
-          null, 1, page, pageSize,
-          false, true, apiKey, new ArrayList<>());
+  // Retrieve all classes from a given list of ontologies
+  private PagedResults<SearchResult> integratedSearchOntologiesEmptyQuery(OntologyValueConstraint ontologyValueConstraint,
+                                                                          int page, int pageSize, String apiKey) throws IOException {
 
-    } else { // Retrieve all classes from a given list of ontologies
 
-      String ontologyAcronym = ontologyValueConstraints.get(0).getAcronym();
-      PagedResults<OntologyClass> pagedClassResults = findAllClassesInOntology(ontologyAcronym, page, pageSize,
-          apiKey);
-      results = ObjectConverter.classResultsToSearchResults(pagedClassResults);
+    String ontologyAcronym = ontologyValueConstraint.getAcronym();
+    PagedResults<OntologyClass> pagedClassResults = findAllClassesInOntology(ontologyAcronym, page, pageSize,
+        apiKey);
+    return ObjectConverter.classResultsToSearchResults(pagedClassResults);
 
-    }
-
-    return results;
   }
 
   private PagedResults<SearchResult> integratedSearchBranches(Optional<String> q,
-                                                              List<BranchValueConstraint> branchValueConstraints,
+                                                              BranchValueConstraint branchValueConstraint,
                                                               int page, int pageSize, String apiKey) throws IOException {
     PagedResults<SearchResult> results = null;
 
-    String rootClassUri = branchValueConstraints.get(0).getUri();
-    String ontologyAcronym = branchValueConstraints.get(0).getAcronym();
+    String rootClassUri = branchValueConstraint.getUri();
+    String ontologyAcronym = branchValueConstraint.getAcronym();
 
     if (q.isPresent()) { // Find classes by name in a given list of ontology branches
 
@@ -181,11 +252,11 @@ public class TerminologyService implements ITerminologyService {
   }
 
   private PagedResults<SearchResult> integratedSearchValueSets(Optional<String> q,
-                                                               List<ValueSetValueConstraint> valueSetValueConstraints,
+                                                               ValueSetValueConstraint valueSetValueConstraint,
                                                                int page, int pageSize, String apiKey) throws IOException {
     PagedResults<SearchResult> results = null;
-    String vsId = valueSetValueConstraints.get(0).getUri();
-    String vsCollection = valueSetValueConstraints.get(0).getVsCollection();
+    String vsId = valueSetValueConstraint.getUri();
+    String vsCollection = valueSetValueConstraint.getVsCollection();
 
     if (q.isPresent()) { // Find values by name in a given list of value sets
 

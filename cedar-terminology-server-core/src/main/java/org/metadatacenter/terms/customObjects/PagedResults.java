@@ -8,17 +8,19 @@ public class PagedResults<T>
   private int page;
   private int pageCount;
   private int pageSize;
+  private int totalCount;
   private int prevPage;
   private int nextPage;
   private List<T> collection;
 
   public PagedResults() {}
 
-  public PagedResults(int page, int pageCount, int pageSize, int prevPage, int nextPage, List<T> collection)
+  public PagedResults(int page, int pageCount, int pageSize, int totalCount, int prevPage, int nextPage, List<T> collection)
   {
     this.page = page;
     this.pageCount = pageCount;
     this.pageSize = pageSize;
+    this.totalCount = totalCount;
     this.prevPage = prevPage;
     this.nextPage = nextPage;
     this.collection = collection;
@@ -48,6 +50,8 @@ public class PagedResults<T>
   {
     return pageSize;
   }
+
+  public int getTotalCount() { return totalCount; }
 
   public void setPageSize(int pageSize)
   {

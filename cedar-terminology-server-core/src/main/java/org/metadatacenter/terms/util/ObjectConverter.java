@@ -172,7 +172,7 @@ public class ObjectConverter {
     for (BpClass c : bpr.getCollection()) {
       valueSets.add(toValueSet(c));
     }
-    return new PagedResults<>(bpr.getPage(), bpr.getPageCount(), bpr.getCollection().size(), bpr.getPrevPage(),
+    return new PagedResults<>(bpr.getPage(), bpr.getPageCount(), bpr.getCollection().size(), bpr.getTotalCount(), bpr.getPrevPage(),
         bpr.getNextPage(), valueSets);
   }
 
@@ -181,7 +181,7 @@ public class ObjectConverter {
     for (BpClass c : bpr.getCollection()) {
       values.add(toValue(c));
     }
-    return new PagedResults<>(bpr.getPage(), bpr.getPageCount(), bpr.getCollection().size(), bpr.getPrevPage(),
+    return new PagedResults<>(bpr.getPage(), bpr.getPageCount(), bpr.getCollection().size(), bpr.getTotalCount(), bpr.getPrevPage(),
         bpr.getNextPage(), values);
   }
 
@@ -192,7 +192,7 @@ public class ObjectConverter {
         classes.add(toOntologyClass(c));
       }
     }
-    return new PagedResults<>(bpr.getPage(), bpr.getPageCount(), bpr.getCollection().size(), bpr.getPrevPage(),
+    return new PagedResults<>(bpr.getPage(), bpr.getPageCount(), bpr.getCollection().size(), bpr.getTotalCount(), bpr.getPrevPage(),
         bpr.getNextPage(), classes);
   }
 
@@ -201,7 +201,7 @@ public class ObjectConverter {
     for (BpProvisionalClass c : bpr.getCollection()) {
       classes.add(toOntologyClass(c));
     }
-    return new PagedResults<>(bpr.getPage(), bpr.getPageCount(), bpr.getCollection().size(), bpr.getPrevPage(),
+    return new PagedResults<>(bpr.getPage(), bpr.getPageCount(), bpr.getCollection().size(), bpr.getTotalCount(), bpr.getPrevPage(),
         bpr.getNextPage(), classes);
   }
 
@@ -237,7 +237,7 @@ public class ObjectConverter {
       SearchResult r = new SearchResult(c.getId(), c.getId(), BP_TYPE_BASE + type, type, c.getPrefLabel(), definition, source);
       results.add(r);
     }
-    return new PagedResults<>(bpr.getPage(), bpr.getPageCount(), bpr.getCollection().size(), bpr.getPrevPage(),
+    return new PagedResults<>(bpr.getPage(), bpr.getPageCount(), bpr.getCollection().size(), bpr.getTotalCount(), bpr.getPrevPage(),
         bpr.getNextPage(), results);
   }
 
@@ -254,7 +254,7 @@ public class ObjectConverter {
       results.add(searchResult);
     }
     return new PagedResults<>(bpProperties.getPage(), bpProperties.getPageCount(), bpProperties.getCollection().size(),
-        bpProperties.getPrevPage(), bpProperties.getNextPage(), results);
+        bpProperties.getTotalCount(), bpProperties.getPrevPage(), bpProperties.getNextPage(), results);
   }
 
   public static List<OntologyProperty> toPropertyListResults(List<BpProperty> bpr) {
@@ -381,7 +381,7 @@ public class ObjectConverter {
     }
 
     return new PagedResults<>(classPagedResults.getPage(), classPagedResults.getPageCount(),
-        classPagedResults.getCollection().size(), classPagedResults.getPrevPage(),
+        classPagedResults.getCollection().size(), classPagedResults.getTotalCount(), classPagedResults.getPrevPage(),
         classPagedResults.getNextPage(), results);
   }
 
@@ -393,7 +393,7 @@ public class ObjectConverter {
     }
 
     return new PagedResults<>(valuePagedResults.getPage(), valuePagedResults.getPageCount(),
-        valuePagedResults.getCollection().size(), valuePagedResults.getPrevPage(),
+        valuePagedResults.getCollection().size(), valuePagedResults.getTotalCount(), valuePagedResults.getPrevPage(),
         valuePagedResults.getNextPage(), results);
   }
 
