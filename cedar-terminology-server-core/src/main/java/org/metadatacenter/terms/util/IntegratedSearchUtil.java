@@ -12,6 +12,10 @@ import java.util.Optional;
 
 public class IntegratedSearchUtil {
 
+  public enum SourceType {
+    CLASSES, ONTOLOGIES, BRANCHES, VALUE_SETS
+  }
+
   public static List<String> extractOntologyAcronyms(List<OntologyValueConstraint> ontologyVCs) {
     List<String> ontologyAcronyms = new ArrayList<>();
     for (OntologyValueConstraint ontologyVC : ontologyVCs) {
@@ -33,13 +37,22 @@ public class IntegratedSearchUtil {
     }
   }
 
-//  public static PagedResults<SearchResult> concatResultsAndRecalculatePagination(PagedResults<SearchResult> results, PagedResults<SearchResult> newResults) {
-//    List<SearchResult> allResults = results.getCollection();
-//    allResults.addAll(newResults.getCollection());
-//
-//    return new PagedResults()
-//
-//        results.getCollection().addAll(newResults.getCollection());
-//  }
+  public static int getNumberOfSources(SourceType sourceType, ValueConstraints valueConstraints) {
+    if (sourceType.equals(SourceType.CLASSES)) {
+      return 1;
+    }
+    else if (sourceType.equals(SourceType.ONTOLOGIES)) {
+      return valueConstraints.getOntologies().size();
+    }
+    else if (sourceType.equals(SourceType.BRANCHES)) {
+      return valueConstraints.getBranches().size();
+    }
+    else if (sourceType.equals(SourceType.VALUE_SETS)) {
+      return valueConstraints.getValueSets().size();
+    }
+    else {
+      throw new InternalError("Invalid source type: " + sourceType);
+    }
+  }
 
 }

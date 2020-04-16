@@ -51,12 +51,14 @@ public class PagedResults<T>
     return pageSize;
   }
 
-  public int getTotalCount() { return totalCount; }
-
   public void setPageSize(int pageSize)
   {
     this.pageSize = pageSize;
   }
+
+  public int getTotalCount() { return totalCount; }
+
+  public void setTotalCount(int totalCount) { this.totalCount = totalCount; }
 
   public int getPrevPage()
   {

@@ -7,6 +7,7 @@ import org.metadatacenter.terms.bioportal.domainObjects.*;
 import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.terms.domainObjects.*;
 import org.metadatacenter.terms.util.IntegratedSearchUtil;
+import org.metadatacenter.terms.util.IntegratedSearchUtil.SourceType;
 import org.metadatacenter.terms.util.ObjectConverter;
 import org.metadatacenter.terms.util.Util;
 import org.slf4j.Logger;
@@ -146,96 +147,90 @@ public class TerminologyService implements ITerminologyService {
   private PagedResults<SearchResult> integratedSearchMultipleSourcesEmptyQuery(ValueConstraints valueConstraints,
                                                                                int page, int pageSize, String apiKey) throws IOException {
 
-    // Explain: requested vs effective indexes
-
 
     List<SearchResult> allResults = new ArrayList<>();
 
     int requestedStartIndex = (page - 1) * pageSize; // Example: page = 2, pageSize = 50, startIndex = 100 (element 101)
-    //int requestedEndIndex = (page * pageSize) + pageSize - 1;
+    int effectiveStartIndex;
+    int effectiveEndIndex = -1;
 
-    /* Class constraints */
-    int effectiveEndIndexClasses = 0;
-    if (valueConstraints.getClasses().size() > 0) {
-      int totalCountClasses = valueConstraints.getClasses().size();
-      int effectiveStartIndexClasses = 0; // Because it's the first source
-      effectiveEndIndexClasses = totalCountClasses - 1;
-      if (requestedStartIndex >= effectiveStartIndexClasses && requestedStartIndex <= effectiveEndIndexClasses) {
-        int translatedPage = (requestedStartIndex / pageSize) + 1;
-        int offset = requestedStartIndex % pageSize;
-        boolean finished = false;
-        List<SearchResult> partialResults;
-        while (!finished) {
-          PagedResults<SearchResult> pagedResultsClasses = integratedSearchEnumeratedClasses(Optional.empty(), valueConstraints.getClasses(), translatedPage, pageSize);
-          partialResults = pagedResultsClasses.getCollection();
-          // Note that when calling sublist, endIndex is exclusive so we add 1 to it
-          int sublistStartIndex = offset;
-          int sublistEndIndex = (Math.min(partialResults.size() - 1, effectiveEndIndexClasses - effectiveStartIndexClasses)) + 1;
-          partialResults = pagedResultsClasses.getCollection().subList(sublistStartIndex, sublistEndIndex);
-          allResults.addAll(partialResults);
-          if (allResults.size() >= pageSize || pagedResultsClasses.getNextPage() == 0) {
-            finished = true;
-          }
-          else {
-            translatedPage++;
+    SourceType[] sourceTypes = {SourceType.CLASSES, SourceType.ONTOLOGIES, SourceType.BRANCHES, SourceType.VALUE_SETS};
+
+    boolean finished = false;
+
+
+    outerloop:
+    for (SourceType sourceType : sourceTypes) {
+      int numberOfSources = IntegratedSearchUtil.getNumberOfSources(sourceType, valueConstraints);
+
+      for (int i = 0; i < numberOfSources; i++) {
+        int totalCount = 0;
+        if (sourceType.equals(SourceType.CLASSES)) { /* Class constraints */
+          totalCount = valueConstraints.getClasses().size();
+        } else if (sourceType.equals(SourceType.ONTOLOGIES)) {
+          totalCount =
+              integratedSearchOntologiesEmptyQuery(valueConstraints.getOntologies().get(i), 1, 1, apiKey).getTotalCount();
+        } else if (sourceType.equals(SourceType.BRANCHES)) {
+          totalCount =
+              integratedSearchBranches(Optional.empty(), valueConstraints.getBranches().get(i), 1, 1, apiKey).getTotalCount();
+        } else if (sourceType.equals(SourceType.VALUE_SETS)) {
+          totalCount =
+              integratedSearchValueSets(Optional.empty(), valueConstraints.getValueSets().get(i), 1, 1, apiKey).getTotalCount();
+        }
+        effectiveStartIndex = effectiveEndIndex + 1;
+        effectiveEndIndex = totalCount - 1;
+
+        if (requestedStartIndex >= effectiveStartIndex && requestedStartIndex <= effectiveEndIndex) {
+          int translatedPage = ((requestedStartIndex - effectiveStartIndex) / pageSize) + 1;
+          List<SearchResult> partialResults;
+          boolean finishedWithSource = false;
+          while (!finishedWithSource) {
+            PagedResults<SearchResult> pagedResults = null;
+            if (sourceType.equals(SourceType.CLASSES)) { /* Class constraints */
+              pagedResults = integratedSearchEnumeratedClasses(Optional.empty(), valueConstraints.getClasses(),
+                  translatedPage, pageSize);
+            } else if (sourceType.equals(SourceType.ONTOLOGIES)) {
+              pagedResults =
+                  integratedSearchOntologiesEmptyQuery(valueConstraints.getOntologies().get(i), translatedPage,
+                      pageSize, apiKey);
+            } else if (sourceType.equals(SourceType.BRANCHES)) {
+              pagedResults =
+                  integratedSearchBranches(Optional.empty(), valueConstraints.getBranches().get(i), translatedPage,
+                      pageSize, apiKey);
+            } else if (sourceType.equals(SourceType.VALUE_SETS)) {
+              pagedResults =
+                  integratedSearchValueSets(Optional.empty(), valueConstraints.getValueSets().get(i),
+                      translatedPage, pageSize, apiKey);
+            }
+            partialResults = pagedResults.getCollection();
+            // Note that when calling sublist, endIndex is exclusive so we add 1 to it
+            int offset = (requestedStartIndex % pageSize) - effectiveStartIndex;
+            int sublistStartIndex = offset > 0 ? offset : 0;
+            int sublistEndIndex = (Math.min(partialResults.size() - 1, effectiveEndIndex - effectiveStartIndex)) + 1;
+            partialResults = pagedResults.getCollection().subList(sublistStartIndex, sublistEndIndex);
+            allResults.addAll(partialResults);
+
+            requestedStartIndex += partialResults.size();
+
+            if (allResults.size() >= pageSize) {
+              break outerloop; // finished
+            }
+
+            if (pagedResults.getNextPage() == 0) {
+              finishedWithSource = true;
+            } else {
+              translatedPage++;
+            }
           }
         }
       }
     }
-//    if (allResults.size() < pageSize) {
-//      /* Ontology constraints */
-//      if ((valueConstraints.getOntologies().size() > 0)) {
-//        if (allResults.size() < pageSize) {
-//          int effectiveEndIndexPreviousOntology = 0;
-//          for (OntologyValueConstraint ontologyValueConstraint : valueConstraints.getOntologies()) {
-//            requestedStartIndex = allResults.size() - 1;
-//            // fast call to compute page and pageSize
-//            PagedResults<SearchResult> exploratoryResults =
-//                integratedSearchOntologiesEmptyQuery(ontologyValueConstraint, 1, 1, apiKey);
-//            int effectiveStartIndexOntology = effectiveEndIndexClasses + effectiveEndIndexPreviousOntology;
-//            int effectiveEndIndexOntology = effectiveStartIndexOntology + exploratoryResults.getTotalCount() - 1;
-//
-//            int pageTranslated =
-//            boolean doneWithOntology = false;
-//            while (!doneWithOntology) {
-//              int startPage = effectiveStartIndexOntology / pageSize;
-//
-//
-//              int effectiveEndIndexOntology =
-//              if (requestedStartIndex >=
-//            }
-//            allResults.addAll(partialResults);
-//          }
-//        }
-//      }
-//      if (allResults.size() < pageSize) {
-//        /* Branch constraints */
-//        if ((valueConstraints.getBranches().size() > 0)) {
-//          if (allResults.size() < pageSize) {
-//            for (BranchValueConstraint branchValueConstraint : valueConstraints.getBranches()) {
-//              allResults.addAll(integratedSearchBranches(Optional.empty(), branchValueConstraint, page, pageSize,
-//                  apiKey).getCollection());
-//            }
-//          }
-//        }
-//        if (allResults.size() < pageSize) {
-//          /* Value set constraints */
-//          if ((valueConstraints.getValueSets().size() > 0)) {
-//            if (allResults.size() < pageSize) {
-//              for (ValueSetValueConstraint valueSetConstraint : valueConstraints.getValueSets()) {
-//                allResults.addAll(integratedSearchValueSets(Optional.empty(), valueSetConstraint, page, pageSize,
-//                    apiKey).getCollection());
-//              }
-//            }
-//          }
-//        }
-//      }
-//    }
 
-    // Generate paginated results
-    PagedResults<SearchResult> results = Util.generatePaginatedResults(allResults, page, pageSize);
-
-    return results;
+    // Notes: the total count and the number of pages might be wrong so we set it to 0. This is done like that to
+    // maximize efficiency. We do the same for next page
+    int prevPage = page > 1 ? page - 1 : 0;
+    int nextPage = 0;
+    return new PagedResults(page, 0, allResults.size(), 0, prevPage, nextPage, allResults);
   }
 
   private PagedResults<SearchResult> integratedSearchMultipleSourcesNonEmptyQuery(Optional<String> q,

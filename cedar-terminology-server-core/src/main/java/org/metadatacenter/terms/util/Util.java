@@ -137,7 +137,7 @@ public class Util
       }
       relevantResults = allResults.subList(startIndex, endIndex); // Note that endIndex is exclusive
       prevPage = page > 1 ? page - 1 : 0;
-      nextPage = (page + pageSize <= allResults.size()) ? (page + 1) : 0;
+      nextPage = (page * pageSize <= allResults.size()) ? (page + 1) : 0;
     }
     else {
       page = 0;
