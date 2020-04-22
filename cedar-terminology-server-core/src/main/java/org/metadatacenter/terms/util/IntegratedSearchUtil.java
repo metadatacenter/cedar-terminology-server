@@ -40,17 +40,13 @@ public class IntegratedSearchUtil {
   public static int getNumberOfSources(SourceType sourceType, ValueConstraints valueConstraints) {
     if (sourceType.equals(SourceType.CLASSES)) {
       return 1;
-    }
-    else if (sourceType.equals(SourceType.ONTOLOGIES)) {
+    } else if (sourceType.equals(SourceType.ONTOLOGIES)) {
       return valueConstraints.getOntologies().size();
-    }
-    else if (sourceType.equals(SourceType.BRANCHES)) {
+    } else if (sourceType.equals(SourceType.BRANCHES)) {
       return valueConstraints.getBranches().size();
-    }
-    else if (sourceType.equals(SourceType.VALUE_SETS)) {
+    } else if (sourceType.equals(SourceType.VALUE_SETS)) {
       return valueConstraints.getValueSets().size();
-    }
-    else {
+    } else {
       throw new InternalError("Invalid source type: " + sourceType);
     }
   }

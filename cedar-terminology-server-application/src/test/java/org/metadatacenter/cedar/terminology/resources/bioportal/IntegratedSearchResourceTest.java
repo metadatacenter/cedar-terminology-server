@@ -649,7 +649,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
 
   @Test
   public void searchEnumeratedClasses() {
-    String inputText = "Mycdosis";
+    String inputText = "Mycosis";
     int pageSize = 10;
     int numberOfExpectedResults = 1;
     ArrayNode enumeratedClasses = mapper.createArrayNode().add(enumeratedClass1).add(enumeratedClass2).add(enumeratedClass3);
@@ -784,7 +784,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     Assert.assertTrue("Wrong prevPage", results.getPrevPage() == 0);
     Assert.assertTrue("Wrong prevPage", results.getNextPage() == 0);
   }
-  
+
   /**
    * TODO: Test pagination. Test arrangements.
    */

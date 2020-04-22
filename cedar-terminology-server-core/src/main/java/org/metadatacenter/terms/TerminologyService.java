@@ -16,10 +16,7 @@ import org.slf4j.LoggerFactory;
 import javax.ws.rs.core.Response;
 import javax.xml.ws.http.HTTPException;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 import static org.metadatacenter.cedar.terminology.util.Constants.*;
 
@@ -119,8 +116,56 @@ public class TerminologyService implements ITerminologyService {
       results = integratedSearchMultipleSources(q, valueConstraints, page, pageSize, apiKey);
     }
 
-    return results;
+    // Apply class arrangements.
+    // Limitations:
+    // ...
+    if (valueConstraints.getActions().size() > 0) {
+      results = applyActions(results, valueConstraints.getActions(), page, pageSize);
+    }
 
+    return results;
+  }
+
+  private PagedResults<SearchResult> applyActions(PagedResults<SearchResult> results, List<Action> actions, int page, int pageSize) {
+
+    // Check that the actions only apply to the right page!
+
+    List<SearchResult> updatedResults = new ArrayList<>();
+    // Sort actions to apply them in the right order. First, we will apply the 'delete' actions. Then, move actions
+    // must be applied in order from highest to lowest rank
+    List<Action> sortedActions = new ArrayList<>();
+    List<Action> moveActions = new ArrayList<>();
+    List<String> termUris = new ArrayList<>();
+    for (Action action : actions) {
+      if (action.getAction().equals(CEDAR_VALUE_ARRANGEMENTS_ACTION_DELETE)) {
+        sortedActions.add(action);
+      }
+      else if (action.getAction().equals(CEDAR_VALUE_ARRANGEMENTS_ACTION_MOVE)) {
+        moveActions.add(action);
+      }
+      else {
+        throw new InternalError("Invalid action: " + action.getAction());
+      }
+      termUris.add(action.getTermUri());
+    }
+    // Sort 'move' actions
+    moveActions.sort(Comparator.comparing(Action::getTo));
+
+    // Ignore classes referenced in either 'delete' or 'move' actions
+    for (SearchResult result : results.getCollection()) {
+      if (!termUris.contains(result.getLdId())) {
+        updatedResults.add(result);
+      }
+    }
+    // Now, insert the classes reference by 'move' actions into the right position
+//    for (Action action : moveActions) {
+//      updatedResults.add(action.getTo())
+//    }
+
+    // Generate new paged results because the totalCount will be different
+    //results.setCollection(updatedResults);
+
+    return results;
   }
 
   private PagedResults<SearchResult> integratedSearchSingleSource(Optional<String> q, ValueConstraints valueConstraints,
@@ -258,7 +303,7 @@ public class TerminologyService implements ITerminologyService {
       }
     }
 
-    // Notes: totalCount, pageCount, and nextPage are set always to 0 to maximize perfomrance
+    // Notes: totalCount, pageCount, and nextPage are set always to null to maximize performance
     int prevPage = page > 1 ? page - 1 : 0;
     int nextPage = 0;
     return new PagedResults(page, 0, allResults.size(), 0, prevPage, nextPage, allResults);

@@ -58,6 +58,11 @@ public class Constants
   public static final String SKOS_IRI = "http://www.w3.org/2004/02/skos/core#";
   public static final String SKOS_NOTATION_IRI = SKOS_IRI + "notation";
   public static final String SKOS_RELATEDMATCH_IRI = SKOS_IRI + "relatedMatch";
+  // Value arrangements
+  public static final String CEDAR_VALUE_ARRANGEMENTS_ACTION_MOVE = "move";
+  public static final String CEDAR_VALUE_ARRANGEMENTS_ACTION_DELETE = "delete";
+  public static final String CEDAR_VALUE_ARRANGEMENTS_ACTIONS_REGEX =
+      CEDAR_VALUE_ARRANGEMENTS_ACTION_MOVE + "|" + CEDAR_VALUE_ARRANGEMENTS_ACTION_DELETE;
 
   /** Resource types **/
   //public static final String BP_ONTOLOGY_TYPE_ONTOLOGY = "ontology_types/ONTOLOGY";

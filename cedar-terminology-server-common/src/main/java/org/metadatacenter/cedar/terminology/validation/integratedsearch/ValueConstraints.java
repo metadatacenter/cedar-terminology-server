@@ -21,6 +21,8 @@ public class ValueConstraints {
   @Valid
   @NotNull
   private List<ClassValueConstraint> classes;
+  @Valid
+  private List<Action> actions;
 
   public ValueConstraints() { }
 
@@ -32,11 +34,9 @@ public class ValueConstraints {
     return branches;
   }
 
-  public List<ValueSetValueConstraint> getValueSets() {
-    return valueSets;
-  }
+  public List<ValueSetValueConstraint> getValueSets() { return valueSets; }
 
-  public List<ClassValueConstraint> getClasses() {
-    return classes;
-  }
+  public List<ClassValueConstraint> getClasses() { return classes; }
+
+  public List<Action> getActions() { return actions; }
 }
