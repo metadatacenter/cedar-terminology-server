@@ -122,11 +122,11 @@ public class Util
   }
 
   // Generation of paginated results
-  public static <T> PagedResults<T> generatePaginatedResults(List<T> allResults, int page, int pageSize) {
+  public static <T> PagedResults<T> generatePaginatedResults(List<T> allResults, Integer page, Integer pageSize) {
     List<T> relevantResults = new ArrayList<>();
-    int pageCount = 0;
-    int prevPage = 0;
-    int nextPage = 0;
+    Integer pageCount = null;
+    Integer prevPage = null;
+    Integer nextPage = null;
     if (allResults.size() > 0) {
       pageCount = (int) Math.ceil((double)allResults.size() / pageSize); // round up
       int startIndex = (page * pageSize) - pageSize;
@@ -136,11 +136,11 @@ public class Util
         startIndex = 0;
       }
       relevantResults = allResults.subList(startIndex, endIndex); // Note that endIndex is exclusive
-      prevPage = page > 1 ? page - 1 : 0;
-      nextPage = (page * pageSize <= allResults.size()) ? (page + 1) : 0;
+      prevPage = page > 1 ? page - 1 : null;
+      nextPage = (page * pageSize <= allResults.size()) ? (page + 1) : null;
     }
     else {
-      page = 0;
+      page = null;
     }
     return new PagedResults(page, pageCount, relevantResults.size(), allResults.size(), prevPage, nextPage, relevantResults);
   }

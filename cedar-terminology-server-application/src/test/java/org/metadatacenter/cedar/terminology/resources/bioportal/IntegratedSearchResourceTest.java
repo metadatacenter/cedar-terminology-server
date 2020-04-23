@@ -569,8 +569,8 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     Assert.assertTrue("Wrong pageCount", results.getPageCount() == 1);
     Assert.assertTrue("Wrong pageSize", results.getPageSize() == 3);
     Assert.assertTrue("Wrong totalCount", results.getTotalCount() == 3);
-    Assert.assertTrue("Wrong prevPage", results.getPrevPage() == 0);
-    Assert.assertTrue("Wrong prevPage", results.getNextPage() == 0);
+    Assert.assertTrue("Wrong prevPage", results.getPrevPage() == null);
+    Assert.assertTrue("Wrong prevPage", results.getNextPage() == null);
   }
 
   @Test
@@ -635,7 +635,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     Assert.assertTrue("Wrong pageCount", resultsPage1.getPageCount() == 2);
     Assert.assertTrue("Wrong pageSize", resultsPage1.getPageSize() == 2);
     Assert.assertTrue("Wrong totalCount", resultsPage1.getTotalCount() == 3);
-    Assert.assertTrue("Wrong prevPage", resultsPage1.getPrevPage() == 0);
+    Assert.assertTrue("Wrong prevPage", resultsPage1.getPrevPage() == null);
     Assert.assertTrue("Wrong prevPage", resultsPage1.getNextPage() == 2);
 
     // Check pagination information (page 2)
@@ -644,7 +644,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     Assert.assertTrue("Wrong pageSize", resultsPage2.getPageSize() == 1);
     Assert.assertTrue("Wrong totalCount", resultsPage2.getTotalCount() == 3);
     Assert.assertTrue("Wrong prevPage", resultsPage2.getPrevPage() == 1);
-    Assert.assertTrue("Wrong prevPage", resultsPage2.getNextPage() == 0);
+    Assert.assertTrue("Wrong prevPage", resultsPage2.getNextPage() == null);
   }
 
   @Test
@@ -695,8 +695,8 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     Assert.assertTrue("Wrong pageCount", results.getPageCount() == 1);
     Assert.assertTrue("Wrong pageSize", results.getPageSize() == 1);
     Assert.assertTrue("Wrong totalCount", results.getTotalCount() == 1);
-    Assert.assertTrue("Wrong prevPage", results.getPrevPage() == 0);
-    Assert.assertTrue("Wrong prevPage", results.getNextPage() == 0);
+    Assert.assertTrue("Wrong prevPage", results.getPrevPage() == null);
+    Assert.assertTrue("Wrong prevPage", results.getNextPage() == null);
   }
 
   /**
@@ -776,13 +776,13 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
         Assert.assertTrue("Wrong definition", results.getCollection().get(i).getDefinition().equals(definition));
       }
     }
-    // Check pagination information. Note that when doing search on multiple sources we set totalCount, pageCount, and nextPage to 0 to maximize performance.
+    // Check pagination information. Note that when doing search on multiple sources we set totalCount, pageCount, and nextPage to null to maximize performance.
     Assert.assertTrue("Wrong page", results.getPage() == 1);
-    Assert.assertTrue("Wrong pageCount", results.getPageCount() == 0);
+    Assert.assertTrue("Wrong pageCount", results.getPageCount() == null);
     Assert.assertTrue("Wrong pageSize", results.getPageSize() == pageSize);
-    Assert.assertTrue("Wrong totalCount", results.getTotalCount() == 0);
-    Assert.assertTrue("Wrong prevPage", results.getPrevPage() == 0);
-    Assert.assertTrue("Wrong prevPage", results.getNextPage() == 0);
+    Assert.assertTrue("Wrong totalCount", results.getTotalCount() == null);
+    Assert.assertTrue("Wrong prevPage", results.getPrevPage() == null);
+    Assert.assertTrue("Wrong prevPage", results.getNextPage() == null);
   }
 
   /**

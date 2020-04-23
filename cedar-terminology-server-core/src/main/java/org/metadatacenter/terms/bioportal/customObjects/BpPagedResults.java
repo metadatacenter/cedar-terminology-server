@@ -8,16 +8,16 @@ import java.util.List;
 public class BpPagedResults<T>
 {
 
-  private int page;
-  private int pageCount;
-  private int totalCount;
-  private int prevPage;
-  private int nextPage;
+  private Integer page;
+  private Integer pageCount;
+  private Integer totalCount;
+  private Integer prevPage;
+  private Integer nextPage;
   private List<T> collection;
 
   public BpPagedResults() {}
 
-  public BpPagedResults(int page, int pageCount, int totalCount, int prevPage, int nextPage, List<T> collection)
+  public BpPagedResults(Integer page, Integer pageCount, Integer totalCount, Integer prevPage, Integer nextPage, List<T> collection)
   {
     this.page = page;
     this.pageCount = pageCount;
@@ -27,24 +27,24 @@ public class BpPagedResults<T>
     this.collection = collection;
   }
 
-  public int getPage()
+  public Integer getPage()
   {
     return page;
   }
 
-  public int getPageCount()
+  public Integer getPageCount()
   {
     return pageCount;
   }
 
-  public int getTotalCount() { return totalCount; }
+  public Integer getTotalCount() { return totalCount; }
 
-  public int getPrevPage()
+  public Integer getPrevPage()
   {
     return prevPage;
   }
 
-  public int getNextPage()
+  public Integer getNextPage()
   {
     return nextPage;
   }

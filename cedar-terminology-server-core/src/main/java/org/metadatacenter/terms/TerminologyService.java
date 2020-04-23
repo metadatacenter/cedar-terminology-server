@@ -119,7 +119,7 @@ public class TerminologyService implements ITerminologyService {
     // Apply class arrangements.
     // Limitations:
     // ...
-    if (valueConstraints.getActions().size() > 0) {
+    if (valueConstraints.getActions() != null && valueConstraints.getActions().size() > 0) {
       results = applyActions(results, valueConstraints.getActions(), page, pageSize);
     }
 
@@ -293,7 +293,7 @@ public class TerminologyService implements ITerminologyService {
               throw new InternalError("Pagination Error: the number of returned results is larger than the page size");
             }
 
-            if (pagedResults.getNextPage() == 0) {
+            if (pagedResults.getNextPage() == null) {
               finishedWithSource = true;
             } else {
               translatedPage++;
@@ -303,10 +303,9 @@ public class TerminologyService implements ITerminologyService {
       }
     }
 
-    // Notes: totalCount, pageCount, and nextPage are set always to null to maximize performance
-    int prevPage = page > 1 ? page - 1 : 0;
-    int nextPage = 0;
-    return new PagedResults(page, 0, allResults.size(), 0, prevPage, nextPage, allResults);
+    // Notes: some parameters are set to null because calculating them would decrease performance
+    Integer prevPage = page > 1 ? page - 1 : null;
+    return new PagedResults(page, null, allResults.size(), null, prevPage, null, allResults);
   }
 
   private PagedResults<SearchResult> integratedSearchMultipleSourcesNonEmptyQuery(Optional<String> q,
