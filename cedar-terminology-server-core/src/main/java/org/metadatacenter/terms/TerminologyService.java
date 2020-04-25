@@ -187,17 +187,14 @@ public class TerminologyService implements ITerminologyService {
     // 2. If #1 didn't work, make a call to retrieve the class/value and generate a search results based on it. For
     // enumerated classes I don't need to make a call, I can just get them from the enumerated list
     if (action.getType().equals(BP_TYPE_CLASS)) {
-      if (!Util.isUrl(action.getSourceUri())) { // Enumerated class
-        for (ClassValueConstraint c : enumeratedClasses) {
-          if (c.getUri().equals(action.getTermUri())) {
-            return ObjectConverter.toSearchResult(c);
-          }
+      // First, try to find it in the list of enumerated classes. If it's not found, make a call to retrieve it from the source ontology
+      for (ClassValueConstraint c : enumeratedClasses) {
+        if (c.getUri().equals(action.getTermUri())) {
+          return ObjectConverter.toSearchResult(c);
         }
       }
-      else { // Non-enumerated class. It can be from an ontology or from an ontology branch
-        OntologyClass c = findClass(action.getTermUri(), action.getSource(), apiKey);
-        return ObjectConverter.toSearchResult(c);
-      }
+      OntologyClass c = findClass(action.getTermUri(), action.getSource(), apiKey);
+      return ObjectConverter.toSearchResult(c);
     }
     else if (action.getType().equals(BP_TYPE_VALUE)) {
       Value v = findValue(action.getTermUri(), action.getSource(), apiKey);
@@ -206,7 +203,6 @@ public class TerminologyService implements ITerminologyService {
     else {
       throw new InternalError("Invalid type: " + action.getType());
     }
-    throw new InternalError("Couldn't generate Search Result for term: " + action.getTermUri());
   }
 
   private PagedResults<SearchResult> integratedSearchSingleSource(Optional<String> q, ValueConstraints valueConstraints,
