@@ -8,7 +8,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import java.util.List;
 
 //@ApiModel
-@JsonPropertyOrder({"id", "@id", "@type", "type", "prefLabel", "source"})
+@JsonPropertyOrder({"id", "@id", "@type", "type", "prefLabel", "notation", "definition", "source"})
 public class SearchResult {
   private String id;
   @JsonProperty("@id")
@@ -17,6 +17,7 @@ public class SearchResult {
   private String ldType;
   private String type;
   private String prefLabel;
+  private String notation;
   private String definition;
   private String source;
 
@@ -24,12 +25,13 @@ public class SearchResult {
   public SearchResult() {
   }
 
-  public SearchResult(String id, String ldId, String ldType, String type, String prefLabel, String definition, String source) {
+  public SearchResult(String id, String ldId, String ldType, String type, String prefLabel, String notation, String definition, String source) {
     this.id = id;
     this.ldId = ldId;
     this.ldType = ldType;
     this.type = type;
     this.prefLabel = prefLabel;
+    this.notation = notation;
     this.definition = definition;
     this.source = source;
   }
@@ -72,6 +74,14 @@ public class SearchResult {
 
   public void setPrefLabel(String prefLabel) {
     this.prefLabel = prefLabel;
+  }
+
+  public String getNotation() {
+    return notation;
+  }
+
+  public void setNotation(String notation) {
+    this.notation = notation;
   }
 
   public String getDefinition() {

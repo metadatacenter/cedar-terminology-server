@@ -1,5 +1,6 @@
 package org.metadatacenter.terms;
 
+import com.github.jsonldjava.utils.Obj;
 import org.metadatacenter.cedar.terminology.validation.integratedsearch.*;
 import org.metadatacenter.terms.bioportal.BioPortalService;
 import org.metadatacenter.terms.bioportal.customObjects.BpPagedResults;
@@ -120,52 +121,92 @@ public class TerminologyService implements ITerminologyService {
     // Limitations:
     // ...
     if (valueConstraints.getActions() != null && valueConstraints.getActions().size() > 0) {
-      results = applyActions(results, valueConstraints.getActions(), page, pageSize);
+      results = applyActions(results, valueConstraints, page, pageSize, apiKey);
     }
 
     return results;
   }
 
-  private PagedResults<SearchResult> applyActions(PagedResults<SearchResult> results, List<Action> actions, int page, int pageSize) {
-
-    // Check that the actions only apply to the right page!
+  private PagedResults<SearchResult> applyActions(PagedResults<SearchResult> results, ValueConstraints valueConstraints,
+                                                  int page, int pageSize, String apiKey) throws IOException {
 
     List<SearchResult> updatedResults = new ArrayList<>();
+
+    int startIndex = (page - 1) * pageSize;
+    int endIndex = startIndex + pageSize - 1;
+
     // Sort actions to apply them in the right order. First, we will apply the 'delete' actions. Then, move actions
     // must be applied in order from highest to lowest rank
     List<Action> sortedActions = new ArrayList<>();
     List<Action> moveActions = new ArrayList<>();
-    List<String> termUris = new ArrayList<>();
-    for (Action action : actions) {
+    List<String> actionTermUris = new ArrayList<>();
+    for (Action action : valueConstraints.getActions()) {
       if (action.getAction().equals(CEDAR_VALUE_ARRANGEMENTS_ACTION_DELETE)) {
         sortedActions.add(action);
-      }
-      else if (action.getAction().equals(CEDAR_VALUE_ARRANGEMENTS_ACTION_MOVE)) {
+      } else if (action.getAction().equals(CEDAR_VALUE_ARRANGEMENTS_ACTION_MOVE)) {
         moveActions.add(action);
-      }
-      else {
+      } else {
         throw new InternalError("Invalid action: " + action.getAction());
       }
-      termUris.add(action.getTermUri());
+      actionTermUris.add(action.getTermUri());
     }
     // Sort 'move' actions
     moveActions.sort(Comparator.comparing(Action::getTo));
 
-    // Ignore classes referenced in either 'delete' or 'move' actions
+    // Ignore classes referenced by either 'delete' or 'move' actions
     for (SearchResult result : results.getCollection()) {
-      if (!termUris.contains(result.getLdId())) {
+      if (!actionTermUris.contains(result.getLdId())) {
         updatedResults.add(result);
       }
     }
-    // Now, insert the classes reference by 'move' actions into the right position
-//    for (Action action : moveActions) {
-//      updatedResults.add(action.getTo())
-//    }
 
-    // Generate new paged results because the totalCount will be different
-    //results.setCollection(updatedResults);
+    // Now, insert the classes referenced by 'move' actions into the right position
+    for (Action action : moveActions) {
+      SearchResult actionSearchResult = generateSearchResultFromAction(action, results.getCollection(),
+          valueConstraints.getClasses(), apiKey); // Note that we pass results, not updatedResults, because the goal
+      // will be to retrieve the SearchResults referenced by the action and we removed them from updatedResults
+      updatedResults.add(action.getTo(), actionSearchResult);
+    }
+
+    // TODO: Generate new paged results because the totalCount will be different
+    results.setCollection(updatedResults);
 
     return results;
+  }
+
+  private SearchResult generateSearchResultFromAction(Action action, List<SearchResult> results,
+                                                      List<ClassValueConstraint> enumeratedClasses,
+                                                      String apiKey) throws IOException {
+
+    // 1. Try to find the result in the search results
+    for (SearchResult result : results) {
+      if (result.getLdId().equals(action.getTermUri())) { // found
+        return result;
+      }
+    }
+    // 2. If #1 didn't work, make a call to retrieve the class/value and generate a search results based on it. For
+    // enumerated classes I don't need to make a call, I can just get them from the enumerated list
+    if (action.getType().equals(BP_TYPE_CLASS)) {
+      if (!Util.isUrl(action.getSourceUri())) { // Enumerated class
+        for (ClassValueConstraint c : enumeratedClasses) {
+          if (c.getUri().equals(action.getTermUri())) {
+            return ObjectConverter.toSearchResult(c);
+          }
+        }
+      }
+      else { // Non-enumerated class. It can be from an ontology or from an ontology branch
+        OntologyClass c = findClass(action.getTermUri(), action.getSource(), apiKey);
+        return ObjectConverter.toSearchResult(c);
+      }
+    }
+    else if (action.getType().equals(BP_TYPE_VALUE)) {
+      Value v = findValue(action.getTermUri(), action.getSource(), apiKey);
+      return ObjectConverter.toSearchResult(v);
+    }
+    else {
+      throw new InternalError("Invalid type: " + action.getType());
+    }
+    throw new InternalError("Couldn't generate Search Result for term: " + action.getTermUri());
   }
 
   private PagedResults<SearchResult> integratedSearchSingleSource(Optional<String> q, ValueConstraints valueConstraints,
@@ -208,7 +249,8 @@ public class TerminologyService implements ITerminologyService {
    * Requested start/end indexes: the range of results requested.
    * Effective start/end indexes: the range covered by each source.
    * Notes:
-   * - Determining totalCount, pageCount, and nextPage would require making one extra call per source type. In order to maximize performance,
+   * - Determining totalCount, pageCount, and nextPage would require making one extra call per source type. In order
+   * to maximize performance,
    * we set them to 0.
    *
    * @param valueConstraints
@@ -933,6 +975,20 @@ public class TerminologyService implements ITerminologyService {
       v = findProvisionalValue(id, apiKey);
     }
     return v;
+  }
+
+  /**
+   * Works in the same way than findValue but figuring out the vsCollection from the value set id. It assumes that
+   * the value set id contains the acronym of the vsCollection.
+   */
+  public Value findValueByValueSet(String valueId, String vsId, String apiKey) throws IOException {
+    String vsCollection = null;
+    for (String vsc : BP_VS_COLLECTIONS_READ) {
+      if (vsId.contains("/" + vsCollection + "/")) {
+        vsCollection = vsc;
+      }
+    }
+    return findValue(valueId, vsCollection, apiKey);
   }
 
   public TreeNode getValueTree(String id, String vsCollection, String apiKey) throws IOException {

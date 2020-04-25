@@ -234,7 +234,7 @@ public class ObjectConverter {
       }
 
       String source = c.getLinks().getOntology();
-      SearchResult r = new SearchResult(c.getId(), c.getId(), BP_TYPE_BASE + type, type, c.getPrefLabel(), definition, source);
+      SearchResult r = new SearchResult(c.getId(), c.getId(), BP_TYPE_BASE + type, type, c.getPrefLabel(), null, definition, source);
       results.add(r);
     }
     return new PagedResults<>(bpr.getPage(), bpr.getPageCount(), bpr.getCollection().size(), bpr.getTotalCount(), bpr.getPrevPage(),
@@ -250,7 +250,7 @@ public class ObjectConverter {
       }
       String source = bpProperty.getLinks().getOntology();
       SearchResult searchResult = new SearchResult(bpProperty.getId(), bpProperty.getId(), bpProperty.getType(),
-          Util.getShortType(bpProperty.getType()), bpProperty.getPrefLabel(), definition, source);
+          Util.getShortType(bpProperty.getType()), bpProperty.getPrefLabel(), null, definition, source);
       results.add(searchResult);
     }
     return new PagedResults<>(bpProperties.getPage(), bpProperties.getPageCount(), bpProperties.getCollection().size(),
@@ -342,7 +342,7 @@ public class ObjectConverter {
       definition = c.getDefinitions().get(0);
     }
 
-    return new SearchResult(c.getId(), c.getLdId(), c.getLdType(), c.getType(), c.getPrefLabel(),
+    return new SearchResult(c.getId(), c.getLdId(), c.getLdType(), c.getType(), c.getPrefLabel(), null,
         definition, c.getOntology());
   }
 
@@ -353,7 +353,7 @@ public class ObjectConverter {
       definition = v.getDefinitions().get(0);
     }
 
-    return new SearchResult(v.getId(), v.getLdId(), v.getLdType(), v.getType(), v.getPrefLabel(),
+    return new SearchResult(v.getId(), v.getLdId(), v.getLdType(), v.getType(), v.getPrefLabel(), v.getNotation(),
         definition, v.getVsCollection());
   }
 
@@ -369,7 +369,7 @@ public class ObjectConverter {
       source = BP_API_BASE + BP_ONTOLOGIES + source;
     }
 
-    return new SearchResult(Util.getShortIdentifier(c.getUri()), c.getUri(), ldType, c.getType(), c.getPrefLabel(),
+    return new SearchResult(Util.getShortIdentifier(c.getUri()), c.getUri(), ldType, c.getType(), c.getPrefLabel(), null,
         null, source);
   }
 

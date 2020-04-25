@@ -61,11 +61,13 @@ public class Constants
   // Value arrangements
   public static final String CEDAR_VALUE_ARRANGEMENTS_ACTION_MOVE = "move";
   public static final String CEDAR_VALUE_ARRANGEMENTS_ACTION_DELETE = "delete";
+
   public static final String CEDAR_VALUE_ARRANGEMENTS_ACTIONS_REGEX =
       CEDAR_VALUE_ARRANGEMENTS_ACTION_MOVE + "|" + CEDAR_VALUE_ARRANGEMENTS_ACTION_DELETE;
 
   /** Resource types **/
-  //public static final String BP_ONTOLOGY_TYPE_ONTOLOGY = "ontology_types/ONTOLOGY";
+  public static final String CEDAR_TYPE_CLASS = "OntologyClass";
+  public static final String CEDAR_TYPE_VALUE = "Value";
   public static final String BP_ONTOLOGY_TYPE_VS_COLLECTION = "ontology_types/VALUE_SET_COLLECTION";
   public static final String BP_TYPE_BASE = "http://data.bioontology.org/metadata/";
   public static final String BP_TYPE_CLASS = "OntologyClass";

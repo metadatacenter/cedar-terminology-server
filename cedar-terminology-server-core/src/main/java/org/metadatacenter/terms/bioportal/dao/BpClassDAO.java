@@ -38,7 +38,7 @@ public class BpClassDAO
   }
 
   public BpClass find(String id, String ontology, String apiKey) throws HTTPException, IOException {
-    String url = BP_API_BASE + BP_ONTOLOGIES + ontology + "/" + BP_CLASSES + id + "?include=prefLabel,hasChildren,created,synonym,definition";
+    String url = BP_API_BASE + BP_ONTOLOGIES + ontology + "/" + BP_CLASSES + Util.encodeIfNeeded(id) + "?include=prefLabel,hasChildren,created,synonym,definition";
     logger.info("Url: " + url);
 
     HttpResponse response = HttpUtil.makeHttpRequest(Request.Get(url)

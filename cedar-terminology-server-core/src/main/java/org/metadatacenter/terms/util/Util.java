@@ -1,6 +1,7 @@
 package org.metadatacenter.terms.util;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import org.apache.commons.lang.StringUtils;
 import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.terms.domainObjects.SearchResult;
 
@@ -176,6 +177,16 @@ public class Util
     Collections.sort(searchResults,
         Comparator.comparing(SearchResult::getPrefLabel, Comparator.comparing(String::length)));
     return searchResults;
+  }
+
+  public static String getOntologyAcronymFromOntologyUri(String ontologyUri) {
+    String prefix = BP_API_BASE + BP_ONTOLOGIES;
+    if (ontologyUri != null && ontologyUri.startsWith(prefix)) {
+      return StringUtils.removeStart(ontologyUri, prefix);
+    }
+    else {
+      throw new InternalError("Malformed ontology URI: " + ontologyUri);
+    }
   }
 
 }
