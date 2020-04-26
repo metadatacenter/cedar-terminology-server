@@ -189,4 +189,15 @@ public class Util
     }
   }
 
+  public static List<SearchResult> sortByPrefLabel(List<SearchResult> results) {
+    results.sort(Comparator.comparing(SearchResult::getPrefLabel, String.CASE_INSENSITIVE_ORDER));
+    return results;
+  }
+
+  public static PagedResults<SearchResult> sortByPrefLabel(PagedResults<SearchResult> pagedResults) {
+    List<SearchResult> results = pagedResults.getCollection();
+    pagedResults.setCollection(sortByPrefLabel(results));
+    return pagedResults;
+  }
+
 }

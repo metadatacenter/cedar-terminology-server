@@ -1,6 +1,5 @@
 package org.metadatacenter.terms;
 
-import com.github.jsonldjava.utils.Obj;
 import org.metadatacenter.cedar.terminology.validation.integratedsearch.*;
 import org.metadatacenter.terms.bioportal.BioPortalService;
 import org.metadatacenter.terms.bioportal.customObjects.BpPagedResults;
@@ -8,7 +7,6 @@ import org.metadatacenter.terms.bioportal.domainObjects.*;
 import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.terms.domainObjects.*;
 import org.metadatacenter.terms.util.IntegratedSearchUtil;
-import org.metadatacenter.terms.util.IntegratedSearchUtil.SourceType;
 import org.metadatacenter.terms.util.ObjectConverter;
 import org.metadatacenter.terms.util.Util;
 import org.slf4j.Logger;
@@ -106,7 +104,7 @@ public class TerminologyService implements ITerminologyService {
   public PagedResults<SearchResult> integratedSearch(Optional<String> q, ValueConstraints valueConstraints,
                                                      int page, int pageSize, String apiKey) throws IOException {
 
-    // Check if we have to deal with multiple sources or not
+    // Check if we have to query with multiple sources or not
     boolean multipleSources = IntegratedSearchUtil.hasMultipleSources(valueConstraints);
 
     PagedResults<SearchResult> results = null;
@@ -117,9 +115,7 @@ public class TerminologyService implements ITerminologyService {
       results = integratedSearchMultipleSources(q, valueConstraints, page, pageSize, apiKey);
     }
 
-    // Apply class arrangements.
-    // Limitations:
-    // ...
+    // Apply class arrangements
     if (valueConstraints.getActions() != null && valueConstraints.getActions().size() > 0) {
       results = applyActions(results, valueConstraints, page, pageSize, apiKey);
     }
@@ -187,7 +183,8 @@ public class TerminologyService implements ITerminologyService {
     // 2. If #1 didn't work, make a call to retrieve the class/value and generate a search results based on it. For
     // enumerated classes I don't need to make a call, I can just get them from the enumerated list
     if (action.getType().equals(BP_TYPE_CLASS)) {
-      // First, try to find it in the list of enumerated classes. If it's not found, make a call to retrieve it from the source ontology
+      // First, try to find it in the list of enumerated classes. If it's not found, make a call to retrieve it from
+      // the source ontology
       for (ClassValueConstraint c : enumeratedClasses) {
         if (c.getUri().equals(action.getTermUri())) {
           return ObjectConverter.toSearchResult(c);
@@ -195,12 +192,10 @@ public class TerminologyService implements ITerminologyService {
       }
       OntologyClass c = findClass(action.getTermUri(), action.getSource(), apiKey);
       return ObjectConverter.toSearchResult(c);
-    }
-    else if (action.getType().equals(BP_TYPE_VALUE)) {
+    } else if (action.getType().equals(BP_TYPE_VALUE)) {
       Value v = findValue(action.getTermUri(), action.getSource(), apiKey);
       return ObjectConverter.toSearchResult(v);
-    }
-    else {
+    } else {
       throw new InternalError("Invalid type: " + action.getType());
     }
   }
@@ -242,12 +237,16 @@ public class TerminologyService implements ITerminologyService {
   }
 
   /**
+   * The following method can be used to retrieve unsorted results from all the sources correctly paginated. We are
+   * currently returning results alphabetically sorted so this method is not useful now, but it may be useful in the
+   * future.
+   * <p>
    * Requested start/end indexes: the range of results requested.
    * Effective start/end indexes: the range covered by each source.
    * Notes:
    * - Determining totalCount, pageCount, and nextPage would require making one extra call per source type. In order
    * to maximize performance,
-   * we set them to 0.
+   * we set them to null.
    *
    * @param valueConstraints
    * @param page
@@ -256,94 +255,138 @@ public class TerminologyService implements ITerminologyService {
    * @return
    * @throws IOException
    */
+//  private PagedResults<SearchResult> integratedSearchMultipleSourcesEmptyQuery(ValueConstraints valueConstraints,
+//                                                                               int page, int pageSize, String
+//                                                                               apiKey) throws IOException {
+//
+//
+//    List<SearchResult> allResults = new ArrayList<>();
+//
+//    int requestedStartIndex = (page - 1) * pageSize; // Example: page = 2, pageSize = 50, startIndex = 100 (element
+//    101)
+//    int effectiveStartIndex;
+//    int effectiveEndIndex = -1;
+//
+//    // The order of the following array determines the order in which the sources will be queried
+//    SourceType[] sourceTypes = {SourceType.CLASSES, SourceType.ONTOLOGIES, SourceType.BRANCHES, SourceType
+//    .VALUE_SETS};
+//
+//    outerloop:
+//    for (SourceType sourceType : sourceTypes) {
+//      int numberOfSources = IntegratedSearchUtil.getNumberOfSources(sourceType, valueConstraints);
+//
+//      for (int i = 0; i < numberOfSources; i++) {
+//        int totalCount = 0;
+//        if (sourceType.equals(SourceType.CLASSES)) { /* Class constraints */
+//          totalCount = valueConstraints.getClasses().size();
+//        } else if (sourceType.equals(SourceType.ONTOLOGIES)) {
+//          totalCount =
+//              integratedSearchOntologiesEmptyQuery(valueConstraints.getOntologies().get(i), 1, 1, apiKey)
+//              .getTotalCount();
+//        } else if (sourceType.equals(SourceType.BRANCHES)) {
+//          totalCount =
+//              integratedSearchBranches(Optional.empty(), valueConstraints.getBranches().get(i), 1, 1, apiKey)
+//              .getTotalCount();
+//        } else if (sourceType.equals(SourceType.VALUE_SETS)) {
+//          totalCount =
+//              integratedSearchValueSets(Optional.empty(), valueConstraints.getValueSets().get(i), 1, 1, apiKey)
+//              .getTotalCount();
+//        }
+//        effectiveStartIndex = effectiveEndIndex + 1;
+//        effectiveEndIndex = totalCount - 1;
+//
+//        if (requestedStartIndex >= effectiveStartIndex && requestedStartIndex <= effectiveEndIndex) {
+//          int translatedPage = ((requestedStartIndex - effectiveStartIndex) / pageSize) + 1;
+//          List<SearchResult> partialResults;
+//          boolean finishedWithSource = false;
+//          while (!finishedWithSource) {
+//            PagedResults<SearchResult> pagedResults = null;
+//            if (sourceType.equals(SourceType.CLASSES)) { /* Class constraints */
+//              pagedResults = integratedSearchEnumeratedClasses(Optional.empty(), valueConstraints.getClasses(),
+//                  translatedPage, pageSize);
+//            } else if (sourceType.equals(SourceType.ONTOLOGIES)) {
+//              pagedResults =
+//                  integratedSearchOntologiesEmptyQuery(valueConstraints.getOntologies().get(i), translatedPage,
+//                      pageSize, apiKey);
+//            } else if (sourceType.equals(SourceType.BRANCHES)) {
+//              pagedResults =
+//                  integratedSearchBranches(Optional.empty(), valueConstraints.getBranches().get(i), translatedPage,
+//                      pageSize, apiKey);
+//            } else if (sourceType.equals(SourceType.VALUE_SETS)) {
+//              pagedResults =
+//                  integratedSearchValueSets(Optional.empty(), valueConstraints.getValueSets().get(i),
+//                      translatedPage, pageSize, apiKey);
+//            }
+//            partialResults = pagedResults.getCollection();
+//            int offset = (requestedStartIndex % pageSize) - effectiveStartIndex;
+//            int sublistStartIndex = offset > 0 ? offset : 0;
+//            // Calculate sublistEndIndex
+//            int numberOfRemainingResultsNeeded = pageSize - allResults.size();
+//            int endIndexTmp = Math.min(partialResults.size() - 1, effectiveEndIndex - effectiveStartIndex);
+//            // Note that when calling sublist, endIndex is exclusive so we add 1 to it
+//            int sublistEndIndex = (Math.min(numberOfRemainingResultsNeeded - 1, endIndexTmp)) + 1;
+//            partialResults = pagedResults.getCollection().subList(sublistStartIndex, sublistEndIndex);
+//            allResults.addAll(partialResults);
+//
+//            requestedStartIndex += partialResults.size();
+//
+//            if (allResults.size() == pageSize) {
+//              break outerloop; // finished
+//            } else if (allResults.size() > pageSize) {
+//              throw new InternalError("Pagination Error: the number of returned results is larger than the page
+//              size");
+//            }
+//
+//            if (pagedResults.getNextPage() == null) {
+//              finishedWithSource = true;
+//            } else {
+//              translatedPage++;
+//            }
+//          }
+//        }
+//      }
+//    }
+//
+//    // Notes: some parameters are set to null because calculating them would decrease performance
+//    Integer prevPage = page > 1 ? page - 1 : null;
+//    return new PagedResults(page, null, allResults.size(), null, prevPage, null, allResults);
+//  }
   private PagedResults<SearchResult> integratedSearchMultipleSourcesEmptyQuery(ValueConstraints valueConstraints,
                                                                                int page, int pageSize, String apiKey) throws IOException {
 
-
     List<SearchResult> allResults = new ArrayList<>();
 
-    int requestedStartIndex = (page - 1) * pageSize; // Example: page = 2, pageSize = 50, startIndex = 100 (element 101)
-    int effectiveStartIndex;
-    int effectiveEndIndex = -1;
-
-    // The order of the following array determines the order in which the sources will be queried
-    SourceType[] sourceTypes = {SourceType.CLASSES, SourceType.ONTOLOGIES, SourceType.BRANCHES, SourceType.VALUE_SETS};
-
-    outerloop:
-    for (SourceType sourceType : sourceTypes) {
-      int numberOfSources = IntegratedSearchUtil.getNumberOfSources(sourceType, valueConstraints);
-
-      for (int i = 0; i < numberOfSources; i++) {
-        int totalCount = 0;
-        if (sourceType.equals(SourceType.CLASSES)) { /* Class constraints */
-          totalCount = valueConstraints.getClasses().size();
-        } else if (sourceType.equals(SourceType.ONTOLOGIES)) {
-          totalCount =
-              integratedSearchOntologiesEmptyQuery(valueConstraints.getOntologies().get(i), 1, 1, apiKey).getTotalCount();
-        } else if (sourceType.equals(SourceType.BRANCHES)) {
-          totalCount =
-              integratedSearchBranches(Optional.empty(), valueConstraints.getBranches().get(i), 1, 1, apiKey).getTotalCount();
-        } else if (sourceType.equals(SourceType.VALUE_SETS)) {
-          totalCount =
-              integratedSearchValueSets(Optional.empty(), valueConstraints.getValueSets().get(i), 1, 1, apiKey).getTotalCount();
-        }
-        effectiveStartIndex = effectiveEndIndex + 1;
-        effectiveEndIndex = totalCount - 1;
-
-        if (requestedStartIndex >= effectiveStartIndex && requestedStartIndex <= effectiveEndIndex) {
-          int translatedPage = ((requestedStartIndex - effectiveStartIndex) / pageSize) + 1;
-          List<SearchResult> partialResults;
-          boolean finishedWithSource = false;
-          while (!finishedWithSource) {
-            PagedResults<SearchResult> pagedResults = null;
-            if (sourceType.equals(SourceType.CLASSES)) { /* Class constraints */
-              pagedResults = integratedSearchEnumeratedClasses(Optional.empty(), valueConstraints.getClasses(),
-                  translatedPage, pageSize);
-            } else if (sourceType.equals(SourceType.ONTOLOGIES)) {
-              pagedResults =
-                  integratedSearchOntologiesEmptyQuery(valueConstraints.getOntologies().get(i), translatedPage,
-                      pageSize, apiKey);
-            } else if (sourceType.equals(SourceType.BRANCHES)) {
-              pagedResults =
-                  integratedSearchBranches(Optional.empty(), valueConstraints.getBranches().get(i), translatedPage,
-                      pageSize, apiKey);
-            } else if (sourceType.equals(SourceType.VALUE_SETS)) {
-              pagedResults =
-                  integratedSearchValueSets(Optional.empty(), valueConstraints.getValueSets().get(i),
-                      translatedPage, pageSize, apiKey);
-            }
-            partialResults = pagedResults.getCollection();
-            int offset = (requestedStartIndex % pageSize) - effectiveStartIndex;
-            int sublistStartIndex = offset > 0 ? offset : 0;
-            // Calculate sublistEndIndex
-            int numberOfRemainingResultsNeeded = pageSize - allResults.size();
-            int endIndexTmp = Math.min(partialResults.size() - 1, effectiveEndIndex - effectiveStartIndex);
-            // Note that when calling sublist, endIndex is exclusive so we add 1 to it
-            int sublistEndIndex = (Math.min(numberOfRemainingResultsNeeded - 1, endIndexTmp)) + 1;
-            partialResults = pagedResults.getCollection().subList(sublistStartIndex, sublistEndIndex);
-            allResults.addAll(partialResults);
-
-            requestedStartIndex += partialResults.size();
-
-            if (allResults.size() == pageSize) {
-              break outerloop; // finished
-            } else if (allResults.size() > pageSize) {
-              throw new InternalError("Pagination Error: the number of returned results is larger than the page size");
-            }
-
-            if (pagedResults.getNextPage() == null) {
-              finishedWithSource = true;
-            } else {
-              translatedPage++;
-            }
-          }
-        }
+    /* Class constraints */
+    if (valueConstraints.getClasses().size() > 0) {
+      allResults.addAll(integratedSearchEnumeratedClasses(Optional.empty(), valueConstraints.getClasses(), page,
+          pageSize).getCollection());
+    }
+    /* Ontology constraints */
+    if ((valueConstraints.getOntologies().size() > 0)) {
+      for (OntologyValueConstraint ontologyVC : valueConstraints.getOntologies()) {
+        allResults.addAll(integratedSearchOntologiesEmptyQuery(ontologyVC, page, pageSize, apiKey).getCollection());
+      }
+    }
+    /* Branch constraints */
+    if ((valueConstraints.getBranches().size() > 0)) {
+      for (BranchValueConstraint branchValueConstraint : valueConstraints.getBranches()) {
+        allResults.addAll(integratedSearchBranches(Optional.empty(), branchValueConstraint, page, pageSize, apiKey).getCollection());
+      }
+    }
+    /* Value set constraints */
+    if ((valueConstraints.getValueSets().size() > 0)) {
+      for (ValueSetValueConstraint valueSetConstraint : valueConstraints.getValueSets()) {
+        allResults.addAll(integratedSearchValueSets(Optional.empty(), valueSetConstraint, page, pageSize, apiKey).getCollection());
       }
     }
 
-    // Notes: some parameters are set to null because calculating them would decrease performance
-    Integer prevPage = page > 1 ? page - 1 : null;
-    return new PagedResults(page, null, allResults.size(), null, prevPage, null, allResults);
+    // Re-sort results by prefLabel
+    allResults = Util.sortByPrefLabel(allResults);
+
+    // Generate paginated results
+    PagedResults<SearchResult> results = Util.generatePaginatedResults(allResults, page, pageSize);
+
+    return results;
   }
 
   private PagedResults<SearchResult> integratedSearchMultipleSourcesNonEmptyQuery(Optional<String> q,
@@ -358,7 +401,7 @@ public class TerminologyService implements ITerminologyService {
       allResults.addAll(integratedSearchEnumeratedClasses(q, valueConstraints.getClasses(), page, pageSize).getCollection());
     }
     /* Ontology constraints */
-    if ((valueConstraints.getOntologies().size() > 0)) { // Avoid making
+    if ((valueConstraints.getOntologies().size() > 0)) {
       allResults.addAll(integratedSearchOntologies(q, valueConstraints.getOntologies(), page, pageSize, apiKey).getCollection());
     }
     /* Branch constraints */
@@ -384,6 +427,34 @@ public class TerminologyService implements ITerminologyService {
     return results;
   }
 
+  private PagedResults<SearchResult> integratedSearchEnumeratedClasses(Optional<String> q,
+                                                                       List<ClassValueConstraint> classValueConstraints,
+                                                                       int page, int pageSize) throws IOException {
+    PagedResults<SearchResult> results = null;
+    // Convert enumerated classes to search results
+    List<SearchResult> searchResults = new ArrayList<>();
+
+    for (ClassValueConstraint cvc : classValueConstraints) {
+      searchResults.add(ObjectConverter.toSearchResult(cvc));
+    }
+
+    if (q.isPresent()) { // Find classes by name
+
+      List<SearchResult> selectedResults = Util.filterByQuery(q.get(), searchResults);
+      // Sort results by length so that the closer matches are ranked higher
+      selectedResults = Util.sortByPrefLabelLength(selectedResults);
+      results = Util.generatePaginatedResults(selectedResults, page, pageSize);
+
+    } else { // Retrieve all classes
+
+      // Sort by prefLabel
+      searchResults.sort(Comparator.comparing(SearchResult::getPrefLabel));
+      results = Util.generatePaginatedResults(searchResults, page, pageSize);
+
+    }
+    return results;
+  }
+
   // Find classes by name in a given list of ontologies
   private PagedResults<SearchResult> integratedSearchOntologies(Optional<String> q,
                                                                 List<OntologyValueConstraint> ontologyValueConstraints,
@@ -403,8 +474,9 @@ public class TerminologyService implements ITerminologyService {
     String ontologyAcronym = ontologyValueConstraint.getAcronym();
     PagedResults<OntologyClass> pagedClassResults = findAllClassesInOntology(ontologyAcronym, page, pageSize,
         apiKey);
-    return ObjectConverter.classResultsToSearchResults(pagedClassResults);
-
+    PagedResults<SearchResult> results = ObjectConverter.classResultsToSearchResults(pagedClassResults);
+    // Sort by prefLabel
+    return Util.sortByPrefLabel(results);
   }
 
   private PagedResults<SearchResult> integratedSearchBranches(Optional<String> q,
@@ -427,6 +499,8 @@ public class TerminologyService implements ITerminologyService {
       PagedResults<OntologyClass> pagedClassResults =
           getClassDescendants(rootClassUri, ontologyAcronym, page, pageSize, apiKey);
       results = ObjectConverter.classResultsToSearchResults(pagedClassResults);
+      // Sort by prefLabel
+      results = Util.sortByPrefLabel(results);
 
     }
     return results;
@@ -449,32 +523,9 @@ public class TerminologyService implements ITerminologyService {
       PagedResults<Value> pagedValueResults =
           findValuesByValueSet(vsId, vsCollection, page, pageSize, apiKey);
       results = ObjectConverter.valueResultsToSearchResults(pagedValueResults);
+      // Sort by prefLabel
+      results = Util.sortByPrefLabel(results);
 
-    }
-    return results;
-  }
-
-  private PagedResults<SearchResult> integratedSearchEnumeratedClasses(Optional<String> q,
-                                                                       List<ClassValueConstraint> classValueConstraints,
-                                                                       int page, int pageSize) throws IOException {
-    PagedResults<SearchResult> results = null;
-    // Convert enumerated classes to search results
-    List<SearchResult> searchResults = new ArrayList<>();
-
-    for (ClassValueConstraint cvc : classValueConstraints) {
-      searchResults.add(ObjectConverter.toSearchResult(cvc));
-    }
-
-    if (q.isPresent()) { // Find classes by name
-
-      List<SearchResult> selectedResults = Util.filterByQuery(q.get(), searchResults);
-      // Sort results by length so that the closer matches are ranked higher
-      selectedResults = Util.sortByPrefLabelLength(selectedResults);
-      results = Util.generatePaginatedResults(selectedResults, page, pageSize);
-
-    } else { // Retrieve all classes
-
-      results = Util.generatePaginatedResults(searchResults, page, pageSize);
 
     }
     return results;
