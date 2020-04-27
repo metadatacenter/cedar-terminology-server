@@ -14,38 +14,38 @@ import java.util.*;
 
 import static org.metadatacenter.cedar.terminology.util.Constants.*;
 
-public class Util
-{
+public class Util {
 
-  public static String getBioPortalAuthHeader(String apikey)
-  {
+  public static String getBioPortalAuthHeader(String apikey) {
     return "apikey token=" + apikey;
   }
 
-  public static String encodeIfNeeded(String uri) throws UnsupportedEncodingException
-  {
+  public static String encodeIfNeeded(String uri) throws UnsupportedEncodingException {
     String decodedUri = URLDecoder.decode(uri, "UTF-8");
     // It is necessary to encode it
-    if (uri.compareTo(decodedUri) == 0)
+    if (uri.compareTo(decodedUri) == 0) {
       return URLEncoder.encode(uri, "UTF-8");
-      // If was already encoded
-    else
+    }
+    // If was already encoded
+    else {
       return uri;
+    }
   }
 
   /**
    * Check that the value set collection is appropriate. Currently, creation is restricted to
    * the CEDARVS collection
    */
-  public static boolean validVsCollection(String vsCollection, boolean creation)
-  {
-    if ((vsCollection == null) || (vsCollection.length() == 0))
+  public static boolean validVsCollection(String vsCollection, boolean creation) {
+    if ((vsCollection == null) || (vsCollection.length() == 0)) {
       return false;
+    }
     List<String> validCollections;
-    if (creation)
+    if (creation) {
       validCollections = Arrays.asList(BP_VS_COLLECTIONS_WRITE);
-    else
+    } else {
       validCollections = Arrays.asList(BP_VS_COLLECTIONS_READ);
+    }
 
     for (String vc : validCollections) {
       if ((vsCollection.compareTo(vc) == 0) || (vsCollection.compareTo(BP_API_BASE + BP_VS_COLLECTIONS + vc) == 0)) {
@@ -56,8 +56,7 @@ public class Util
   }
 
   // TODO: This is not a good practice. Use org.apache.commons.validator.routines.UrlValidator instead.
-  public static boolean isUrl(String url)
-  {
+  public static boolean isUrl(String url) {
     try {
       new URL(url);
     } catch (MalformedURLException e) {
@@ -105,19 +104,18 @@ public class Util
     }
     if (propertyNode.hasNonNull(labelsProperty) && propertyNode.get(labelsProperty).size() > 0) {
       return propertyNode.get(labelsProperty).get(0).asText();
-    }
-    else if (propertyNode.hasNonNull(idProperty)) {
+    } else if (propertyNode.hasNonNull(idProperty)) {
       return Util.getShortIdentifier(propertyNode.get(idProperty).asText());
+    } else {
+      return "Label not available";
     }
-    else return "Label not available";
   }
 
   public static boolean isProperty(String type) {
     type = getShortType(type);
     if (type.equals(OBJECT_PROPERTY) || type.equals(ANNOTATION_PROPERTY) || type.equals(DATATYPE_PROPERTY)) {
       return true;
-    }
-    else {
+    } else {
       return false;
     }
   }
@@ -129,7 +127,7 @@ public class Util
     Integer prevPage = null;
     Integer nextPage = null;
     if (allResults.size() > 0) {
-      pageCount = (int) Math.ceil((double)allResults.size() / pageSize); // round up
+      pageCount = (int) Math.ceil((double) allResults.size() / pageSize); // round up
       int startIndex = (page * pageSize) - pageSize;
       int endIndex = Math.min(startIndex + pageSize, allResults.size());
       if (startIndex >= endIndex) {
@@ -139,11 +137,11 @@ public class Util
       relevantResults = allResults.subList(startIndex, endIndex); // Note that endIndex is exclusive
       prevPage = page > 1 ? page - 1 : null;
       nextPage = (page * pageSize <= allResults.size()) ? (page + 1) : null;
-    }
-    else {
+    } else {
       page = null;
     }
-    return new PagedResults(page, pageCount, relevantResults.size(), allResults.size(), prevPage, nextPage, relevantResults);
+    return new PagedResults(page, pageCount, relevantResults.size(), allResults.size(), prevPage, nextPage,
+        relevantResults);
   }
 
   public static boolean isProvisionalClass(String classId) {
@@ -152,8 +150,7 @@ public class Util
     }
     if (!classId.contains("http")) { // Id in the form "5e785190-5cb9-0138-e099-005056010088"
       return true;
-    }
-    else {
+    } else {
       return false;
     }
   }
@@ -170,6 +167,7 @@ public class Util
 
   /**
    * Sorts by prefLabel length
+   *
    * @param searchResults
    * @return
    */
@@ -183,8 +181,7 @@ public class Util
     String prefix = BP_API_BASE + BP_ONTOLOGIES;
     if (ontologyUri != null && ontologyUri.startsWith(prefix)) {
       return StringUtils.removeStart(ontologyUri, prefix);
-    }
-    else {
+    } else {
       throw new InternalError("Malformed ontology URI: " + ontologyUri);
     }
   }
@@ -197,6 +194,11 @@ public class Util
   public static PagedResults<SearchResult> sortByPrefLabel(PagedResults<SearchResult> pagedResults) {
     List<SearchResult> results = pagedResults.getCollection();
     pagedResults.setCollection(sortByPrefLabel(results));
+    // After sorting the results, the next page cannot be properly computed. Therefore, we have to adjust the
+    // pagination information to avoid confusion. We disable the previous and next page, as well as the number of total pages
+    pagedResults.setPrevPage(null);
+    pagedResults.setNextPage(null);
+    pagedResults.setPageCount(null);
     return pagedResults;
   }
 

@@ -175,7 +175,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
 
   @Test
   public void searchClassesInOntologyEmptyInputText() { // It should retrieve all the ontology classes
-    int pageSize = 1; // Minimum page size allowed to speed up test execution
+    int pageSize = 10; // Small page size to speed up test execution
     ObjectNode requestBody = generateRequestBody("", mapper.createArrayNode().add(ontology1),
         mapper.createArrayNode(), mapper.createArrayNode(), mapper.createArrayNode(), Optional.empty(), Optional.of(pageSize));
 
@@ -189,14 +189,19 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     // Check the number of results retrieved
     PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
     });
-    int numResultsFound = results.getPageSize() * results.getPageCount();
-    Assert.assertTrue("The number of results found (" + numResultsFound +
-        ") is lower than expected (" + ontology1Size + ")", numResultsFound >= ontology1Size);
+    Assert.assertTrue("Wrong number of results", results.getCollection().size() == pageSize);
+    // Check pagination information
+    Assert.assertTrue("Wrong page", results.getPage() == 1);
+    Assert.assertTrue("Wrong pageCount", results.getPageCount() == null);
+    Assert.assertTrue("Wrong pageSize", results.getPageSize() == pageSize);
+    Assert.assertTrue("Wrong totalCount", results.getTotalCount() >= ontology1Size);
+    Assert.assertTrue("Wrong prevPage", results.getPrevPage() == null);
+    Assert.assertTrue("Wrong prevPage", results.getNextPage() == null);
   }
 
   @Test
   public void searchClassesInOntologyMissingInputText() { // It should retrieve all the ontology classes
-    int pageSize = 1; // Minimum page size allowed to speed up test execution
+    int pageSize = 10; // Small page size to speed up test execution
     ObjectNode requestBody = generateRequestBody(null, mapper.createArrayNode().add(ontology1),
         mapper.createArrayNode(), mapper.createArrayNode(), mapper.createArrayNode(), Optional.empty(), Optional.of(pageSize));
 
@@ -210,17 +215,20 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     // Check the number of results retrieved
     PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
     });
-    int numResultsFound = results.getPageSize() * results.getPageCount();
-    Assert.assertTrue("The number of results found (" + numResultsFound +
-        ") is lower than expected (" + ontology1Size + ")", numResultsFound >= ontology1Size);
-    Assert.assertTrue("The number of results found (" + numResultsFound +
-        ") is higher than expected (" + ontology1Size + ")", numResultsFound < 2 * ontology1Size);
+    Assert.assertTrue("Wrong number of results", results.getCollection().size() == pageSize);
+    // Check pagination information
+    Assert.assertTrue("Wrong page", results.getPage() == 1);
+    Assert.assertTrue("Wrong pageCount", results.getPageCount() == null);
+    Assert.assertTrue("Wrong pageSize", results.getPageSize() == pageSize);
+    Assert.assertTrue("Wrong totalCount", results.getTotalCount() >= ontology1Size);
+    Assert.assertTrue("Wrong prevPage", results.getPrevPage() == null);
+    Assert.assertTrue("Wrong prevPage", results.getNextPage() == null);
   }
 
   @Test
   public void searchClassesInOntologyWrongLabel() { // Search for ontology classes in a given branch
     String inputText = "aaabbbcccddd"; // Non-existing class label
-    int pageSize = 1;
+    int pageSize = 10;
     int expectedNumberOfResults = 0;
 
     ObjectNode requestBody = generateRequestBody(inputText, mapper.createArrayNode().add(ontology1),
@@ -236,10 +244,14 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     // Check the number of results retrieved
     PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
     });
-    int numResultsFound = results.getPageSize() * results.getPageCount();
-    Assert.assertTrue("The number of search results for '" + inputText + "' (" + numResultsFound + ") " +
-            "is different from expected" + " (" + expectedNumberOfResults + ") ",
-        numResultsFound == expectedNumberOfResults);
+    Assert.assertTrue("Wrong number of results", results.getCollection().size() == expectedNumberOfResults);
+    // Check pagination information
+    Assert.assertTrue("Wrong page", results.getPage() == 1);
+    Assert.assertTrue("Wrong pageCount", results.getPageCount() == 0);
+    Assert.assertTrue("Wrong pageSize", results.getPageSize() == 0);
+    Assert.assertTrue("Wrong totalCount", results.getTotalCount() == 0);
+    Assert.assertTrue("Wrong prevPage", results.getPrevPage() == null);
+    Assert.assertTrue("Wrong prevPage", results.getNextPage() == null);
   }
 
   @Test
@@ -248,6 +260,8 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     int pageSize = 20;
     int minNumberOfResults = 100;
     int maxNumberOfResults = 10000;
+    int expectedPageCountLowerLimit = 35;
+    int expectedTotalCountLowerLimit = 694;
 
     ObjectNode requestBody = generateRequestBody(inputText, mapper.createArrayNode().add(ontology1),
         mapper.createArrayNode(), mapper.createArrayNode(), mapper.createArrayNode(), Optional.empty(), Optional.of(pageSize));
@@ -276,6 +290,13 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
       Assert.assertTrue("Class source does not match the expected source",
           resultSourceAcronym.equals(ontology1.get(VALUE_CONSTRAINTS_ACRONYM).asText()));
     }
+    // Check pagination information
+    Assert.assertTrue("Wrong page", results.getPage() == 1);
+    Assert.assertTrue("Wrong pageCount", results.getPageCount() >= expectedPageCountLowerLimit);
+    Assert.assertTrue("Wrong pageSize", results.getPageSize() == pageSize);
+    Assert.assertTrue("Wrong totalCount", results.getTotalCount() >= expectedTotalCountLowerLimit);
+    Assert.assertTrue("Wrong prevPage", results.getPrevPage() == null);
+    Assert.assertTrue("Wrong prevPage", results.getNextPage() == 2);
   }
 
   /**
@@ -285,8 +306,11 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
   @Test
   public void searchClassesInBranchEmptyInputText() { // It should retrieve all the classes in the branch
     String inputText = "";
+    int pageSize = 10;
+
     ObjectNode requestBody = generateRequestBody(inputText, mapper.createArrayNode(),
-        mapper.createArrayNode().add(branch1), mapper.createArrayNode(), mapper.createArrayNode(), Optional.empty(), Optional.empty());
+        mapper.createArrayNode().add(branch1), mapper.createArrayNode(), mapper.createArrayNode(), Optional.empty(),
+        Optional.of(pageSize));
 
     // Service invocation
     Response response = client.target(baseUrlBpIntegratedSearch).request()
@@ -298,19 +322,21 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     // Check the number of results retrieved
     PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
     });
-    int numResultsFound = results.getPageSize() * results.getPageCount();
-    Assert.assertTrue("The number of results found (" + numResultsFound +
-        ") is lower than expected (" + branch1Size + ")", numResultsFound >= branch1Size);
-    Assert.assertTrue("The number of results found (" + numResultsFound +
-        ") is higher than expected (" + branch1Size + ")", numResultsFound < 10 * branch1Size);
+    Assert.assertTrue("Wrong number of results", results.getCollection().size() == pageSize);
+    // Check pagination information
+    Assert.assertTrue("Wrong page", results.getPage() == 1);
+    Assert.assertTrue("Wrong pageCount", results.getPageCount() == null);
+    Assert.assertTrue("Wrong pageSize", results.getPageSize() == pageSize);
+    Assert.assertTrue("Wrong totalCount", results.getTotalCount() >= branch1Size);
+    Assert.assertTrue("Wrong prevPage", results.getPrevPage() == null);
+    Assert.assertTrue("Wrong prevPage", results.getNextPage() == null);
   }
 
   @Test
   public void searchClassesInBranchMissingInputText() {  // It should retrieve all the classes in the branch
-    int pageSize = 1; // Minimum page size allowed to speed up test execution
+    int pageSize = 10;
     ObjectNode requestBody = generateRequestBody(null, mapper.createArrayNode(),
         mapper.createArrayNode().add(branch1), mapper.createArrayNode(), mapper.createArrayNode(), Optional.empty(), Optional.of(pageSize));
-    requestBody.put(BP_PAGE_SIZE_PARAM, 1); // Minimum page size allowed to speed up test execution
 
     // Service invocation
     Response response = client.target(baseUrlBpIntegratedSearch).request()
@@ -322,13 +348,17 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     // Check the number of results retrieved
     PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
     });
-    int numResultsFound = results.getPageSize() * results.getPageCount();
-    Assert.assertTrue("The number of results found (" + numResultsFound +
-        ") is lower than expected (" + branch1Size + ")", numResultsFound >= branch1Size);
-    Assert.assertTrue("The number of results found (" + numResultsFound +
-        ") is higher than expected (" + branch1Size + ")", numResultsFound < 10 * branch1Size);
-  }
+    Assert.assertTrue("Wrong number of results", results.getCollection().size() == pageSize);
 
+    // Check pagination information
+    Assert.assertTrue("Wrong page", results.getPage() == 1);
+    Assert.assertTrue("Wrong pageCount", results.getPageCount() == null);
+    Assert.assertTrue("Wrong pageSize", results.getPageSize() == pageSize);
+    Assert.assertTrue("Wrong totalCount", results.getTotalCount() >= branch1Size);
+    Assert.assertTrue("Wrong prevPage", results.getPrevPage() == null);
+    Assert.assertTrue("Wrong prevPage", results.getNextPage() == null);
+  }
+  
   @Test
   public void searchClassesInBranch() { // Search for ontology classes in a given branch
     String inputText = "coronavirus"; // http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C14283"
@@ -338,7 +368,6 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
 
     ObjectNode requestBody = generateRequestBody(inputText, mapper.createArrayNode(),
         mapper.createArrayNode().add(branch1), mapper.createArrayNode(), mapper.createArrayNode(), Optional.empty(), Optional.of(pageSize));
-    requestBody.put(BP_PAGE_SIZE_PARAM, pageSize);
 
     // Service invocation
     Response response = client.target(baseUrlBpIntegratedSearch).request()
@@ -374,7 +403,6 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
 
     ObjectNode requestBody = generateRequestBody(inputText, mapper.createArrayNode(),
         mapper.createArrayNode().add(branch1), mapper.createArrayNode(), mapper.createArrayNode(), Optional.empty(), Optional.of(pageSize));
-    requestBody.put(BP_PAGE_SIZE_PARAM, pageSize);
 
     // Service invocation
     Response response = client.target(baseUrlBpIntegratedSearch).request()
@@ -402,7 +430,6 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     int pageSize = 200;
     ObjectNode requestBody = generateRequestBody(inputText, mapper.createArrayNode(),
         mapper.createArrayNode(), mapper.createArrayNode().add(valueSet1), mapper.createArrayNode(), Optional.empty(), Optional.of(pageSize));
-    requestBody.put(BP_PAGE_SIZE_PARAM, pageSize);
 
     // Service invocation
     Response response = client.target(baseUrlBpIntegratedSearch).request()
@@ -786,12 +813,9 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
   }
 
   /**
-   * TODO: Test pagination. Test arrangements.
-   */
-
-  /**
    *  Utility methods
    * */
+
   private static ObjectNode generateRequestBody(String inputText, ArrayNode ontologies, ArrayNode branches,
                                                 ArrayNode valueSets, ArrayNode classes, Optional<Integer> page,
                                                 Optional<Integer> pageSize) {

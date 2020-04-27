@@ -104,15 +104,17 @@ public class TerminologyService implements ITerminologyService {
   public PagedResults<SearchResult> integratedSearch(Optional<String> q, ValueConstraints valueConstraints,
                                                      int page, int pageSize, String apiKey) throws IOException {
 
-    // Check if we have to query with multiple sources or not
-    boolean multipleSources = IntegratedSearchUtil.hasMultipleSources(valueConstraints);
-
     PagedResults<SearchResult> results = null;
 
-    if (!multipleSources) {
+    if (!IntegratedSearchUtil.hasMultipleSources(valueConstraints)) { // Single source
+
       results = integratedSearchSingleSource(q, valueConstraints, page, pageSize, apiKey);
-    } else {
-      results = integratedSearchMultipleSources(q, valueConstraints, page, pageSize, apiKey);
+
+    } else { // Multiple sources
+      // In this case, we will always sort the results before returning them, so proper pagination cannot be calculated.
+      // Therefore, we will always set page=1 independently of the page requested by the user. This issue could be fixed
+      // by implementing sorting of results from multiple sources in BioPortal
+      results = integratedSearchMultipleSources(q, valueConstraints, 1, pageSize, apiKey);
     }
 
     // Apply class arrangements
@@ -128,8 +130,8 @@ public class TerminologyService implements ITerminologyService {
 
     List<SearchResult> updatedResults = new ArrayList<>();
 
-    int startIndex = (page - 1) * pageSize;
-    int endIndex = startIndex + pageSize - 1;
+    //int startIndex = (page - 1) * pageSize;
+    //int endIndex = startIndex + pageSize - 1;
 
     // Sort actions to apply them in the right order. First, we will apply the 'delete' actions. Then, move actions
     // must be applied in order from highest to lowest rank
@@ -202,6 +204,7 @@ public class TerminologyService implements ITerminologyService {
 
   private PagedResults<SearchResult> integratedSearchSingleSource(Optional<String> q, ValueConstraints valueConstraints,
                                                                   int page, int pageSize, String apiKey) throws IOException {
+
     PagedResults<SearchResult> results = null;
     /* Class constraints */
     if (valueConstraints.getClasses().size() > 0) {
@@ -210,7 +213,7 @@ public class TerminologyService implements ITerminologyService {
     /* Ontology constraints */
     if (valueConstraints.getOntologies().size() > 0) {
       if (q.isEmpty()) {
-        results = integratedSearchOntologiesEmptyQuery(valueConstraints.getOntologies().get(0), page, pageSize, apiKey);
+        results = integratedSearchOntologiesEmptyQuery(valueConstraints.getOntologies().get(0), pageSize, apiKey);
       } else {
         results = integratedSearchOntologies(q, valueConstraints.getOntologies(), page, pageSize, apiKey);
       }
@@ -364,7 +367,7 @@ public class TerminologyService implements ITerminologyService {
     /* Ontology constraints */
     if ((valueConstraints.getOntologies().size() > 0)) {
       for (OntologyValueConstraint ontologyVC : valueConstraints.getOntologies()) {
-        allResults.addAll(integratedSearchOntologiesEmptyQuery(ontologyVC, page, pageSize, apiKey).getCollection());
+        allResults.addAll(integratedSearchOntologiesEmptyQuery(ontologyVC, pageSize, apiKey).getCollection());
       }
     }
     /* Branch constraints */
@@ -429,8 +432,8 @@ public class TerminologyService implements ITerminologyService {
 
   private PagedResults<SearchResult> integratedSearchEnumeratedClasses(Optional<String> q,
                                                                        List<ClassValueConstraint> classValueConstraints,
-                                                                       int page, int pageSize) throws IOException {
-    PagedResults<SearchResult> results = null;
+                                                                       int page, int pageSize) {
+    PagedResults<SearchResult> results;
     // Convert enumerated classes to search results
     List<SearchResult> searchResults = new ArrayList<>();
 
@@ -447,8 +450,8 @@ public class TerminologyService implements ITerminologyService {
 
     } else { // Retrieve all classes
 
-      // Sort by prefLabel
-      searchResults.sort(Comparator.comparing(SearchResult::getPrefLabel));
+      // Sort them by prefLabel
+      searchResults = Util.sortByPrefLabel(searchResults);
       results = Util.generatePaginatedResults(searchResults, page, pageSize);
 
     }
@@ -466,10 +469,24 @@ public class TerminologyService implements ITerminologyService {
 
   }
 
-  // Retrieve all classes from a given list of ontologies
+  /**
+   * Retrieve all classes from a given list of ontologies. Note that this method does not accept a 'page' parameter
+   * because page will be always 1.
+   * <p>
+   * We will sort the results by prefLabel before returning them so proper pagination cannot be used. Therefore, we
+   * will always set page to 1, independently of the user's request. This limitation could be addressed if BioPortal
+   * had an option to return results sorted by prefLabel.
+   *
+   * @param ontologyValueConstraint
+   * @param pageSize
+   * @param apiKey
+   * @return
+   * @throws IOException
+   */
   private PagedResults<SearchResult> integratedSearchOntologiesEmptyQuery(OntologyValueConstraint ontologyValueConstraint,
-                                                                          int page, int pageSize, String apiKey) throws IOException {
+                                                                          int pageSize, String apiKey) throws IOException {
 
+    int page = 1;
 
     String ontologyAcronym = ontologyValueConstraint.getAcronym();
     PagedResults<OntologyClass> pagedClassResults = findAllClassesInOntology(ontologyAcronym, page, pageSize,
@@ -479,6 +496,18 @@ public class TerminologyService implements ITerminologyService {
     return Util.sortByPrefLabel(results);
   }
 
+  /**
+   * Retrieve all classes from a branch. Note that this method does not accept a 'page' parameter because page will
+   * always be 1.
+   *
+   * @param q
+   * @param branchValueConstraint
+   * @param page
+   * @param pageSize
+   * @param apiKey
+   * @return
+   * @throws IOException
+   */
   private PagedResults<SearchResult> integratedSearchBranches(Optional<String> q,
                                                               BranchValueConstraint branchValueConstraint,
                                                               int page, int pageSize, String apiKey) throws IOException {
@@ -495,6 +524,9 @@ public class TerminologyService implements ITerminologyService {
           false, true, apiKey, new ArrayList<>());
 
     } else { // Retrieve all classes from a given list of ontology branches
+
+      // We will sort the results by prefLabel so proper pagination cannot be used. We will always set page to 1.
+      page = 1;
 
       PagedResults<OntologyClass> pagedClassResults =
           getClassDescendants(rootClassUri, ontologyAcronym, page, pageSize, apiKey);
