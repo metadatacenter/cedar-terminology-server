@@ -118,55 +118,65 @@ public class TerminologyService implements ITerminologyService {
 
     // Apply class arrangements
     if (valueConstraints.getActions() != null && valueConstraints.getActions().size() > 0) {
-      results = applyActions(results, valueConstraints, page, pageSize, apiKey);
+      results = applyActions(results, valueConstraints, apiKey);
     }
 
     return results;
   }
 
-  private PagedResults<SearchResult> applyActions(PagedResults<SearchResult> results, ValueConstraints valueConstraints,
-                                                  int page, int pageSize, String apiKey) throws IOException {
+  private PagedResults<SearchResult> applyActions(PagedResults<SearchResult> results, ValueConstraints valueConstraints, String apiKey) throws IOException {
 
     List<SearchResult> updatedResults = new ArrayList<>();
 
-    //int startIndex = (page - 1) * pageSize;
-    //int endIndex = startIndex + pageSize - 1;
-
     // Sort actions to apply them in the right order. First, we will apply the 'delete' actions. Then, move actions
-    // must be applied in order from highest to lowest rank
-    List<Action> sortedActions = new ArrayList<>();
+    // must be applied in order, from highest to lowest rank
     List<Action> moveActions = new ArrayList<>();
     List<String> actionTermUris = new ArrayList<>();
     for (Action action : valueConstraints.getActions()) {
-      if (action.getAction().equals(CEDAR_VALUE_ARRANGEMENTS_ACTION_DELETE)) {
-        sortedActions.add(action);
-      } else if (action.getAction().equals(CEDAR_VALUE_ARRANGEMENTS_ACTION_MOVE)) {
+      if (action.getAction().equals(CEDAR_VALUE_ARRANGEMENTS_ACTION_MOVE)) {
         moveActions.add(action);
+      } else if (action.getAction().equals(CEDAR_VALUE_ARRANGEMENTS_ACTION_DELETE)) {
+        // Do nothing
       } else {
         throw new InternalError("Invalid action: " + action.getAction());
       }
       actionTermUris.add(action.getTermUri());
     }
-    // Sort 'move' actions
-    moveActions.sort(Comparator.comparing(Action::getTo));
 
-    // Ignore classes referenced by either 'delete' or 'move' actions
+    // Ignore classes referenced by actions
     for (SearchResult result : results.getCollection()) {
       if (!actionTermUris.contains(result.getLdId())) {
         updatedResults.add(result);
       }
     }
 
+    // Sort 'move' actions
+    moveActions.sort(Comparator.comparing(Action::getTo));
+
     // Now, insert the classes referenced by 'move' actions into the right position
     for (Action action : moveActions) {
       SearchResult actionSearchResult = generateSearchResultFromAction(action, results.getCollection(),
-          valueConstraints.getClasses(), apiKey); // Note that we pass results, not updatedResults, because the goal
-      // will be to retrieve the SearchResults referenced by the action and we removed them from updatedResults
-      updatedResults.add(action.getTo(), actionSearchResult);
+          valueConstraints.getClasses(), apiKey);
+      if (action.getTo() < updatedResults.size()) {
+        updatedResults.add(action.getTo(), actionSearchResult);
+      }
     }
 
-    // TODO: Generate new paged results because the totalCount will be different
-    results.setCollection(updatedResults);
+    // If needed, adjust the number of results to match the pageSize
+    if (updatedResults.size() > results.getPageSize()) {
+      updatedResults = updatedResults.subList(0, results.getPageSize());
+    }
+    else if (updatedResults.size() < results.getPageSize()) {
+      // Here we could make an additional call to integratedSearch to fill the gaps with some extra results, but this
+      // additional call, which can derive in multiple calls to BioPortal will affect performance. Therefore, we will
+      // not perform this call. We'll just adjust the pagination information to match the current pageSize.
+    }
+
+    // Update pagination information
+    int numberOfDeleteActions = actionTermUris.size() - moveActions.size();
+
+    results = Util.generatePaginatedResultsInvalidPagination(updatedResults, updatedResults.size(),
+        results.getTotalCount() - numberOfDeleteActions);
 
     return results;
   }
