@@ -2,7 +2,9 @@ package org.metadatacenter.cedar.terminology.resources.bioportal;
 
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import jdk.dynalink.linker.ConversionComparator;
 import org.junit.*;
+import org.metadatacenter.cedar.terminology.validation.integratedsearch.ClassValueConstraint;
 import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.terms.domainObjects.SearchResult;
 import org.metadatacenter.terms.domainObjects.Value;
@@ -15,9 +17,8 @@ import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
+import java.io.IOException;
+import java.util.*;
 
 import static org.metadatacenter.cedar.terminology.util.Constants.*;
 import static org.metadatacenter.constant.HttpConstants.BAD_REQUEST;
@@ -52,6 +53,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
   private static String enumeratedClass3Type = "OntologyClass";
   private static String enumeratedClass3Label = "benign neoplasm";
   private static String enumeratedClass3Source = "DOID";
+
   // Ontologies
   private static ObjectNode ontology1;
   private static int ontology1Size = 157000; // Approx size of NCIT (slightly lower than the actual size) 
@@ -177,7 +179,8 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
   public void searchClassesInOntologyEmptyInputText() { // It should retrieve all the ontology classes
     int pageSize = 10; // Small page size to speed up test execution
     ObjectNode requestBody = generateRequestBody("", mapper.createArrayNode().add(ontology1),
-        mapper.createArrayNode(), mapper.createArrayNode(), mapper.createArrayNode(), Optional.empty(), Optional.of(pageSize));
+        mapper.createArrayNode(), mapper.createArrayNode(), mapper.createArrayNode(), Optional.empty(),
+        Optional.of(pageSize));
 
     // Service invocation
     Response response = client.target(baseUrlBpIntegratedSearch).request()
@@ -192,7 +195,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     Assert.assertTrue("Wrong number of results", results.getCollection().size() == pageSize);
     // Check pagination information
     Assert.assertTrue("Wrong page", results.getPage() == 1);
-    Assert.assertTrue("Wrong pageCount", results.getPageCount() == null);
+    Assert.assertTrue("Wrong pageCount", results.getPageCount() == 1);
     Assert.assertTrue("Wrong pageSize", results.getPageSize() == pageSize);
     Assert.assertTrue("Wrong totalCount", results.getTotalCount() >= ontology1Size);
     Assert.assertTrue("Wrong prevPage", results.getPrevPage() == null);
@@ -203,7 +206,8 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
   public void searchClassesInOntologyMissingInputText() { // It should retrieve all the ontology classes
     int pageSize = 10; // Small page size to speed up test execution
     ObjectNode requestBody = generateRequestBody(null, mapper.createArrayNode().add(ontology1),
-        mapper.createArrayNode(), mapper.createArrayNode(), mapper.createArrayNode(), Optional.empty(), Optional.of(pageSize));
+        mapper.createArrayNode(), mapper.createArrayNode(), mapper.createArrayNode(), Optional.empty(),
+        Optional.of(pageSize));
 
     // Service invocation
     Response response = client.target(baseUrlBpIntegratedSearch).request()
@@ -218,7 +222,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     Assert.assertTrue("Wrong number of results", results.getCollection().size() == pageSize);
     // Check pagination information
     Assert.assertTrue("Wrong page", results.getPage() == 1);
-    Assert.assertTrue("Wrong pageCount", results.getPageCount() == null);
+    Assert.assertTrue("Wrong pageCount", results.getPageCount() == 1);
     Assert.assertTrue("Wrong pageSize", results.getPageSize() == pageSize);
     Assert.assertTrue("Wrong totalCount", results.getTotalCount() >= ontology1Size);
     Assert.assertTrue("Wrong prevPage", results.getPrevPage() == null);
@@ -232,7 +236,8 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     int expectedNumberOfResults = 0;
 
     ObjectNode requestBody = generateRequestBody(inputText, mapper.createArrayNode().add(ontology1),
-        mapper.createArrayNode(), mapper.createArrayNode(), mapper.createArrayNode(), Optional.empty(), Optional.of(pageSize));
+        mapper.createArrayNode(), mapper.createArrayNode(), mapper.createArrayNode(), Optional.empty(),
+        Optional.of(pageSize));
 
     // Service invocation
     Response response = client.target(baseUrlBpIntegratedSearch).request()
@@ -258,13 +263,12 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
   public void searchClassesInOntology() { // Search for ontology classes in a given ontology
     String inputText = "virus"; // Class: http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C14283"
     int pageSize = 20;
-    int minNumberOfResults = 100;
-    int maxNumberOfResults = 10000;
     int expectedPageCountLowerLimit = 35;
     int expectedTotalCountLowerLimit = 694;
 
     ObjectNode requestBody = generateRequestBody(inputText, mapper.createArrayNode().add(ontology1),
-        mapper.createArrayNode(), mapper.createArrayNode(), mapper.createArrayNode(), Optional.empty(), Optional.of(pageSize));
+        mapper.createArrayNode(), mapper.createArrayNode(), mapper.createArrayNode(), Optional.empty(),
+        Optional.of(pageSize));
 
     // Service invocation
     Response response = client.target(baseUrlBpIntegratedSearch).request()
@@ -276,15 +280,12 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     // Check the number of results retrieved
     PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
     });
-    int numResultsFound = results.getPageSize() * results.getPageCount();
-    Assert.assertTrue("The number of search results for '" + inputText + " (" + numResultsFound + ") " +
-        "' is lower than expected" + " (" + minNumberOfResults + ") ", numResultsFound > minNumberOfResults);
-    Assert.assertTrue("The number of search results for '" + inputText + " (" + numResultsFound + ") " +
-        "' is higher than expected" + " (" + minNumberOfResults + ") ", numResultsFound < maxNumberOfResults);
+    Assert.assertTrue("Wrong number of results", results.getCollection().size() == pageSize);
     // Check that the first result is right
     Assert.assertTrue("Unexpected result: ",
         results.getCollection().get(0).getPrefLabel().toLowerCase().contains(inputText.toLowerCase()));
-    // Check that the retrieved classes are from the right source. We limit this check to the first page or results to speed up the tests
+    // Check that the retrieved classes are from the right source. We limit this check to the first page or results
+    // to speed up the tests
     for (SearchResult r : results.getCollection()) {
       String resultSourceAcronym = r.getSource().substring(r.getSource().lastIndexOf("/") + 1);
       Assert.assertTrue("Class source does not match the expected source",
@@ -325,7 +326,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     Assert.assertTrue("Wrong number of results", results.getCollection().size() == pageSize);
     // Check pagination information
     Assert.assertTrue("Wrong page", results.getPage() == 1);
-    Assert.assertTrue("Wrong pageCount", results.getPageCount() == null);
+    Assert.assertTrue("Wrong pageCount", results.getPageCount() == 1);
     Assert.assertTrue("Wrong pageSize", results.getPageSize() == pageSize);
     Assert.assertTrue("Wrong totalCount", results.getTotalCount() >= branch1Size);
     Assert.assertTrue("Wrong prevPage", results.getPrevPage() == null);
@@ -336,7 +337,8 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
   public void searchClassesInBranchMissingInputText() {  // It should retrieve all the classes in the branch
     int pageSize = 10;
     ObjectNode requestBody = generateRequestBody(null, mapper.createArrayNode(),
-        mapper.createArrayNode().add(branch1), mapper.createArrayNode(), mapper.createArrayNode(), Optional.empty(), Optional.of(pageSize));
+        mapper.createArrayNode().add(branch1), mapper.createArrayNode(), mapper.createArrayNode(), Optional.empty(),
+        Optional.of(pageSize));
 
     // Service invocation
     Response response = client.target(baseUrlBpIntegratedSearch).request()
@@ -349,25 +351,25 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
     });
     Assert.assertTrue("Wrong number of results", results.getCollection().size() == pageSize);
-
     // Check pagination information
     Assert.assertTrue("Wrong page", results.getPage() == 1);
-    Assert.assertTrue("Wrong pageCount", results.getPageCount() == null);
+    Assert.assertTrue("Wrong pageCount", results.getPageCount() == 1);
     Assert.assertTrue("Wrong pageSize", results.getPageSize() == pageSize);
     Assert.assertTrue("Wrong totalCount", results.getTotalCount() >= branch1Size);
     Assert.assertTrue("Wrong prevPage", results.getPrevPage() == null);
     Assert.assertTrue("Wrong prevPage", results.getNextPage() == null);
   }
-  
+
   @Test
   public void searchClassesInBranch() { // Search for ontology classes in a given branch
-    String inputText = "coronavirus"; // http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C14283"
-    int pageSize = 10;
-    int minNumberOfResults = 5;
-    int maxNumberOfResults = 100;
+    String inputText = "coronavirus"; // Search for 'coronavirus' in the 'virus' branch of NCIT
+    int pageSize = 100;
+    int expectedNumberOfResultsLowerLimit = 7; // There are at least 7 'coronavirus' classes in the branch
+    int expectedNumberOfResultsUpperLimit = branch1Size;
 
     ObjectNode requestBody = generateRequestBody(inputText, mapper.createArrayNode(),
-        mapper.createArrayNode().add(branch1), mapper.createArrayNode(), mapper.createArrayNode(), Optional.empty(), Optional.of(pageSize));
+        mapper.createArrayNode().add(branch1), mapper.createArrayNode(), mapper.createArrayNode(), Optional.empty(),
+        Optional.of(pageSize));
 
     // Service invocation
     Response response = client.target(baseUrlBpIntegratedSearch).request()
@@ -379,20 +381,27 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     // Check the number of results retrieved
     PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
     });
-    int numResultsFound = results.getPageSize() * results.getPageCount();
-    Assert.assertTrue("The number of search results for '" + inputText + " (" + numResultsFound + ") " +
-        "' is lower than expected" + " (" + minNumberOfResults + ") ", numResultsFound >= minNumberOfResults);
-    Assert.assertTrue("The number of search results for '" + inputText + " (" + numResultsFound + ") " +
-        "' is higher than expected" + " (" + minNumberOfResults + ") ", numResultsFound < maxNumberOfResults);
+    Assert.assertTrue("Wrong number of results", results.getCollection().size() >= expectedNumberOfResultsLowerLimit);
+    Assert.assertTrue("Wrong number of results", results.getCollection().size() <= expectedNumberOfResultsUpperLimit);
     // Check that the first result is right
     Assert.assertTrue("Unexpected result: ",
         results.getCollection().get(0).getPrefLabel().toLowerCase().contains(inputText.toLowerCase()));
-    // Check that the retrieved classes are from the right source. We limit this check to the first page or results to speed up the tests
+    // Check that the retrieved classes are from the right source. We limit this check to the first page or results
+    // to speed up the tests
     for (SearchResult r : results.getCollection()) {
       String resultSourceAcronym = r.getSource().substring(r.getSource().lastIndexOf("/") + 1);
       Assert.assertTrue("Class source does not match the expected source",
           resultSourceAcronym.equals(ontology1.get(VALUE_CONSTRAINTS_ACRONYM).asText()));
     }
+    // Check pagination information
+    Assert.assertTrue("Wrong page", results.getPage() == 1);
+    Assert.assertTrue("Wrong pageCount", results.getPageCount() > 0);
+    Assert.assertTrue("Wrong pageSize", results.getPageSize() >= expectedNumberOfResultsLowerLimit);
+    Assert.assertTrue("Wrong pageSize", results.getPageSize() <= pageSize);
+    Assert.assertTrue("Wrong totalCount", results.getTotalCount() >= expectedNumberOfResultsLowerLimit);
+    Assert.assertTrue("Wrong totalCount", results.getTotalCount() <= expectedNumberOfResultsUpperLimit);
+    Assert.assertTrue("Wrong prevPage", results.getPrevPage() == null);
+    Assert.assertTrue("Wrong prevPage", results.getNextPage() == null);
   }
 
   @Test
@@ -402,7 +411,8 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     int expectedNumberOfResults = 0;
 
     ObjectNode requestBody = generateRequestBody(inputText, mapper.createArrayNode(),
-        mapper.createArrayNode().add(branch1), mapper.createArrayNode(), mapper.createArrayNode(), Optional.empty(), Optional.of(pageSize));
+        mapper.createArrayNode().add(branch1), mapper.createArrayNode(), mapper.createArrayNode(), Optional.empty(),
+        Optional.of(pageSize));
 
     // Service invocation
     Response response = client.target(baseUrlBpIntegratedSearch).request()
@@ -414,10 +424,14 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     // Check the number of results retrieved
     PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
     });
-    int numResultsFound = results.getPageSize() * results.getPageCount();
-    Assert.assertTrue("The number of search results for '" + inputText + "' (" + numResultsFound + ") " +
-            "is different from expected" + " (" + expectedNumberOfResults + ") ",
-        numResultsFound == expectedNumberOfResults);
+    Assert.assertTrue("Wrong number of results", results.getCollection().size() == expectedNumberOfResults);
+    // Check pagination information
+    Assert.assertTrue("Wrong page", results.getPage() == 1);
+    Assert.assertTrue("Wrong pageCount", results.getPageCount() == 0);
+    Assert.assertTrue("Wrong totalCount", results.getTotalCount() == 0);
+    Assert.assertTrue("Wrong pageSize", results.getPageSize() == 0);
+    Assert.assertTrue("Wrong prevPage", results.getPrevPage() == null);
+    Assert.assertTrue("Wrong prevPage", results.getNextPage() == null);
   }
 
   /**
@@ -427,9 +441,10 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
   @Test
   public void searchValuesNonProvisionalValueSetEmptyInputText() { // It should retrieve all the values in the value set
     String inputText = "";
-    int pageSize = 200;
+    int pageSize = 200; // higher than valueSet1Size to ensure that all the results are returned
     ObjectNode requestBody = generateRequestBody(inputText, mapper.createArrayNode(),
-        mapper.createArrayNode(), mapper.createArrayNode().add(valueSet1), mapper.createArrayNode(), Optional.empty(), Optional.of(pageSize));
+        mapper.createArrayNode(), mapper.createArrayNode().add(valueSet1), mapper.createArrayNode(), Optional.empty()
+        , Optional.of(pageSize));
 
     // Service invocation
     Response response = client.target(baseUrlBpIntegratedSearch).request()
@@ -441,9 +456,14 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     // Check the number of results retrieved
     PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
     });
-    int numResultsFound = results.getCollection().size();
-    Assert.assertTrue("The number of results found (" + numResultsFound +
-        ") is different from expected (" + valueSet1Size + ")", numResultsFound == valueSet1Size);
+    Assert.assertTrue("Wrong number of results", results.getCollection().size() == valueSet1Size);
+    // Check pagination information
+    Assert.assertTrue("Wrong page", results.getPage() == 1);
+    Assert.assertTrue("Wrong pageCount", results.getPageCount() == 1);
+    Assert.assertTrue("Wrong totalCount", results.getTotalCount() == valueSet1Size);
+    Assert.assertTrue("Wrong pageSize", results.getPageSize() == valueSet1Size);
+    Assert.assertTrue("Wrong prevPage", results.getPrevPage() == null);
+    Assert.assertTrue("Wrong prevPage", results.getNextPage() == null);
   }
 
   @Test
@@ -451,7 +471,8 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     String inputText = "barton";
     int expectedResultsCount = 2;
     ObjectNode requestBody = generateRequestBody(inputText, mapper.createArrayNode(),
-        mapper.createArrayNode(), mapper.createArrayNode().add(valueSet1), mapper.createArrayNode(), Optional.empty(), Optional.empty());
+        mapper.createArrayNode(), mapper.createArrayNode().add(valueSet1), mapper.createArrayNode(), Optional.empty()
+        , Optional.empty());
 
     // Service invocation
     Response response = client.target(baseUrlBpIntegratedSearch).request()
@@ -463,9 +484,14 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     // Check the number of results retrieved
     PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
     });
-    int numResultsFound = results.getCollection().size();
-    Assert.assertTrue("The number of results found (" + numResultsFound +
-        ") is different from expected (" + valueSet1Size + ")", numResultsFound == expectedResultsCount);
+    Assert.assertTrue("Wrong number of results", results.getCollection().size() == expectedResultsCount);
+    // Check pagination information
+    Assert.assertTrue("Wrong page", results.getPage() == 1);
+    Assert.assertTrue("Wrong pageCount", results.getPageCount() == 1);
+    Assert.assertTrue("Wrong totalCount", results.getTotalCount() == expectedResultsCount);
+    Assert.assertTrue("Wrong pageSize", results.getPageSize() == expectedResultsCount);
+    Assert.assertTrue("Wrong prevPage", results.getPrevPage() == null);
+    Assert.assertTrue("Wrong prevPage", results.getNextPage() == null);
   }
 
   @Test
@@ -476,6 +502,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     Value createdValue2 = createValue(createdVs.getLdId(), value2);
     int createdVsSize = 2;
     // Wait
+    //shortWaitToEnsureBioPortalIndexUpdated();
     longWaitToEnsureBioPortalIndexUpdated();
 
     // Generate input body based on the created value set
@@ -498,15 +525,19 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     // Check the number of results retrieved
     PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
     });
-    int numResultsFound = results.getCollection().size();
-
-    Assert.assertTrue("The number of results found (" + numResultsFound +
-        ") is different from expected (" + createdVsSize + ")", numResultsFound == createdVsSize);
+    Assert.assertTrue("Wrong number of results", results.getCollection().size() == createdVsSize);
     // Check that the results are right
     for (SearchResult r : results.getCollection()) {
       Assert.assertTrue("Unexpected value", r.getLdId().equals(createdValue1.getLdId()) ||
           r.getLdId().equals(createdValue2.getLdId()));
     }
+    // Check pagination information
+    Assert.assertTrue("Wrong page", results.getPage() == 1);
+    Assert.assertTrue("Wrong pageCount", results.getPageCount() == 1);
+    Assert.assertTrue("Wrong totalCount", results.getTotalCount() == createdVsSize);
+    Assert.assertTrue("Wrong pageSize", results.getPageSize() == createdVsSize);
+    Assert.assertTrue("Wrong prevPage", results.getPrevPage() == null);
+    Assert.assertTrue("Wrong prevPage", results.getNextPage() == null);
   }
 
   @Test
@@ -516,6 +547,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     createValue(createdVs.getLdId(), value1);
     Value createdValue2 = createValue(createdVs.getLdId(), value2);
     // Wait
+    //shortWaitToEnsureBioPortalIndexUpdated();
     longWaitToEnsureBioPortalIndexUpdated();
 
     // Generate input body based on the created value set
@@ -525,7 +557,8 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
 
     String inputText = "Value2"; // Note that the label of the second value created is value2_test
     ObjectNode requestBody = generateRequestBody(inputText, mapper.createArrayNode(),
-        mapper.createArrayNode(), mapper.createArrayNode().add(vs), mapper.createArrayNode(), Optional.empty(), Optional.empty());
+        mapper.createArrayNode(), mapper.createArrayNode().add(vs), mapper.createArrayNode(), Optional.empty(),
+        Optional.empty());
 
     // Service invocation
     Response response = client.target(baseUrlBpIntegratedSearch).request()
@@ -535,14 +568,20 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     // Check Content-Type
     Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check the number of results retrieved
+    int expectedNumberOfResults = 1;
     PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
     });
-    int numResultsFound = results.getCollection().size();
-    Assert.assertTrue("The number of results found (" + numResultsFound +
-        ") is different from expected (" + 1 + ")", numResultsFound == 1);
+    Assert.assertTrue("Wrong number of results", results.getCollection().size() == expectedNumberOfResults);
     // Check that the result found matches the expected result
     Assert.assertTrue("Unexpected value",
         results.getCollection().get(0).getLdId().equals(createdValue2.getLdId()));
+    // Check pagination information
+    Assert.assertTrue("Wrong page", results.getPage() == 1);
+    Assert.assertTrue("Wrong pageCount", results.getPageCount() == 1);
+    Assert.assertTrue("Wrong totalCount", results.getTotalCount() == 1);
+    Assert.assertTrue("Wrong pageSize", results.getPageSize() == 1);
+    Assert.assertTrue("Wrong prevPage", results.getPrevPage() == null);
+    Assert.assertTrue("Wrong prevPage", results.getNextPage() == null);
   }
 
   /**
@@ -550,10 +589,11 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
    */
 
   @Test
-  public void searchEnumeratedClassesEmptySearch() {
+  public void searchEnumeratedClassesEmptySearch() throws IOException {
     String inputText = "";
     int pageSize = 10;
-    ArrayNode enumeratedClasses = mapper.createArrayNode().add(enumeratedClass1).add(enumeratedClass2).add(enumeratedClass3);
+    ArrayNode enumeratedClasses =
+        mapper.createArrayNode().add(enumeratedClass1).add(enumeratedClass2).add(enumeratedClass3);
 
     // Add 3 enumerated classes
     ObjectNode requestBody = generateRequestBody(inputText, mapper.createArrayNode(),
@@ -570,19 +610,20 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     // Check the number of results retrieved
     PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
     });
-    int numResultsFound = results.getTotalCount();
-    Assert.assertTrue("The number of search results for '" + inputText + "' (" + numResultsFound + ") " +
-            "is different from expected" + " (" + enumeratedClasses.size() + ") ",
-        numResultsFound == enumeratedClasses.size());
+    Assert.assertTrue("Wrong number of results", results.getCollection().size() == enumeratedClasses.size());
     // Check that the results are right
-    for (int i = 0; i < enumeratedClasses.size(); i++) {
-      String ldId = enumeratedClasses.get(i).get(VALUE_CONSTRAINTS_URI).asText();
-      String id = Util.getShortIdentifier(ldId);
-      String type = enumeratedClasses.get(i).get(VALUE_CONSTRAINTS_TYPE).asText();
-      String ldType = BP_TYPE_BASE + type;
-      String prefLabel = enumeratedClasses.get(i).get(VALUE_CONSTRAINTS_PREFLABEL).asText();
-      String source = BP_API_BASE + BP_ONTOLOGIES + enumeratedClasses.get(i).get(VALUE_CONSTRAINTS_SOURCE).asText();
+    // Sort the enumerated classes by prefLabel so that we can compare them in order with the returned results
+    List<ClassValueConstraint> classes = Arrays.asList(mapper.readValue(enumeratedClasses.toString(),
+        ClassValueConstraint[].class));
+    classes.sort(Comparator.comparing(ClassValueConstraint::getPrefLabel, String.CASE_INSENSITIVE_ORDER));
 
+    for (int i = 0; i < classes.size(); i++) {
+      String ldId = classes.get(i).getUri();
+      String id = Util.getShortIdentifier(ldId);
+      String type = classes.get(i).getType();
+      String ldType = BP_TYPE_BASE + type;
+      String prefLabel = classes.get(i).getPrefLabel();
+      String source = BP_API_BASE + BP_ONTOLOGIES + classes.get(i).getSource();
       Assert.assertTrue("Wrong ldId", results.getCollection().get(i).getLdId().equals(ldId));
       Assert.assertTrue("Wrong id", results.getCollection().get(i).getId().equals(id));
       Assert.assertTrue("Wrong type", results.getCollection().get(i).getType().equals(type));
@@ -601,10 +642,11 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
   }
 
   @Test
-  public void searchEnumeratedClassesEmptySearchTwoPages() {
+  public void searchEnumeratedClassesEmptySearchTwoPages() throws IOException {
     String inputText = "";
     int pageSize = 2;
-    ArrayNode enumeratedClasses = mapper.createArrayNode().add(enumeratedClass1).add(enumeratedClass2).add(enumeratedClass3);
+    ArrayNode enumeratedClasses =
+        mapper.createArrayNode().add(enumeratedClass1).add(enumeratedClass2).add(enumeratedClass3);
 
     // 3 enumerated classes. Page 1
     ObjectNode requestBodyPage1 = generateRequestBody(inputText, mapper.createArrayNode(),
@@ -630,10 +672,8 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     });
     PagedResults<SearchResult> resultsPage2 = responsePage2.readEntity(new GenericType<PagedResults<SearchResult>>() {
     });
-    Assert.assertTrue("The number of search results for '" + inputText + "' (" + resultsPage1.getCollection().size() + ") " +
-        "is different from expected" + " (" + 2 + ") ", resultsPage1.getCollection().size() == 2);
-    Assert.assertTrue("The number of search results for '" + inputText + "' (" + resultsPage2.getCollection().size() + ") " +
-        "is different from expected" + " (" + 1 + ") ", resultsPage2.getCollection().size() == 1);
+    Assert.assertTrue("Wrong number of results", resultsPage1.getCollection().size() == 2);
+    Assert.assertTrue("Wrong number of results", resultsPage2.getCollection().size() == 1);
 
     List<SearchResult> results = new ArrayList<>();
     results.add(resultsPage1.getCollection().get(0));
@@ -641,13 +681,17 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     results.add(resultsPage2.getCollection().get(0));
 
     // Check that the results are right
-    for (int i = 0; i < enumeratedClasses.size(); i++) {
-      String ldId = enumeratedClasses.get(i).get(VALUE_CONSTRAINTS_URI).asText();
+    // Sort the enumerated classes by prefLabel so that we can compare them in order with the returned results
+    List<ClassValueConstraint> classes = Arrays.asList(mapper.readValue(enumeratedClasses.toString(),
+        ClassValueConstraint[].class));
+    classes.sort(Comparator.comparing(ClassValueConstraint::getPrefLabel, String.CASE_INSENSITIVE_ORDER));
+    for (int i = 0; i < classes.size(); i++) {
+      String ldId = classes.get(i).getUri();
       String id = Util.getShortIdentifier(ldId);
-      String type = enumeratedClasses.get(i).get(VALUE_CONSTRAINTS_TYPE).asText();
+      String type = classes.get(i).getType();
       String ldType = BP_TYPE_BASE + type;
-      String prefLabel = enumeratedClasses.get(i).get(VALUE_CONSTRAINTS_PREFLABEL).asText();
-      String source = BP_API_BASE + BP_ONTOLOGIES + enumeratedClasses.get(i).get(VALUE_CONSTRAINTS_SOURCE).asText();
+      String prefLabel = classes.get(i).getPrefLabel();
+      String source = BP_API_BASE + BP_ONTOLOGIES + classes.get(i).getSource();
 
       Assert.assertTrue("Wrong ldId", results.get(i).getLdId().equals(ldId));
       Assert.assertTrue("Wrong id", results.get(i).getId().equals(id));
@@ -679,7 +723,8 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     String inputText = "Mycosis";
     int pageSize = 10;
     int numberOfExpectedResults = 1;
-    ArrayNode enumeratedClasses = mapper.createArrayNode().add(enumeratedClass1).add(enumeratedClass2).add(enumeratedClass3);
+    ArrayNode enumeratedClasses =
+        mapper.createArrayNode().add(enumeratedClass1).add(enumeratedClass2).add(enumeratedClass3);
 
     // Add 3 enumerated classes
     ObjectNode requestBody = generateRequestBody(inputText, mapper.createArrayNode(),
@@ -696,12 +741,8 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     // Check the number of results retrieved
     PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
     });
-    int numResultsFound = results.getTotalCount();
-    Assert.assertTrue("The number of search results for '" + inputText + "' (" + numResultsFound + ") " +
-            "is different from expected" + " (" + numberOfExpectedResults + ") ",
-        numResultsFound == numberOfExpectedResults);
+    Assert.assertTrue("Wrong number of results", results.getCollection().size() == 1);
     // Check that the result is right
-
     String ldId = enumeratedClass1.get(VALUE_CONSTRAINTS_URI).asText();
     String id = Util.getShortIdentifier(ldId);
     String type = enumeratedClass1.get(VALUE_CONSTRAINTS_TYPE).asText();
@@ -720,8 +761,8 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     // Check pagination information
     Assert.assertTrue("Wrong page", results.getPage() == 1);
     Assert.assertTrue("Wrong pageCount", results.getPageCount() == 1);
-    Assert.assertTrue("Wrong pageSize", results.getPageSize() == 1);
     Assert.assertTrue("Wrong totalCount", results.getTotalCount() == 1);
+    Assert.assertTrue("Wrong pageSize", results.getPageSize() == 1);
     Assert.assertTrue("Wrong prevPage", results.getPrevPage() == null);
     Assert.assertTrue("Wrong prevPage", results.getNextPage() == null);
   }
@@ -734,22 +775,31 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
   public void searchEnumeratedClassesAndOntologyEmptySearch() {
     String inputText = "";
     int pageSize = 10;
-    ArrayNode enumeratedClasses = mapper.createArrayNode().add(enumeratedClass1).add(enumeratedClass2).add(enumeratedClass3);
+
+    // I will set the label of one enumerated class to "000" to ensure that it shows up at the top, and the label of
+    // other class to "zzz" to ensure that it's not in the first page
+    enumeratedClass1.put(VALUE_CONSTRAINTS_PREFLABEL, "000");
+    enumeratedClass2.put(VALUE_CONSTRAINTS_PREFLABEL, "zzz");
+    ArrayNode enumeratedClasses =
+        mapper.createArrayNode().add(enumeratedClass1).add(enumeratedClass2);
     ArrayNode ontologies = mapper.createArrayNode().add(ontology1);
 
-    // 3 enumerated classes and 1 ontology
+    // Generate request
     ObjectNode requestBody = generateRequestBody(inputText, ontologies,
         mapper.createArrayNode(), mapper.createArrayNode(),
         enumeratedClasses, Optional.empty(), Optional.of(pageSize));
 
-    // Initial request to get some results (20) from the ontology
+    // Initial request to get some results (20) from the ontology, so that I can check when making the other request
+    // that nothing is missing
     ObjectNode ontSizeRequestBody = generateRequestBody(inputText, ontologies,
         mapper.createArrayNode(), mapper.createArrayNode(),
-        mapper.createArrayNode(), Optional.of(1), Optional.of(20));
+        mapper.createArrayNode(), Optional.of(1), Optional.of(pageSize));
     Response ontSizeResponse = client.target(baseUrlBpIntegratedSearch).request()
         .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(ontSizeRequestBody));
-    List<SearchResult> topOntologyClasses = ontSizeResponse.readEntity(new GenericType<PagedResults<SearchResult>>() {
-    }).getCollection();
+    PagedResults<SearchResult> ontology1Response = ontSizeResponse.readEntity(new GenericType<PagedResults<SearchResult>>() {
+    });
+    List<SearchResult> ontology1Classes = ontology1Response.getCollection();
+    int ontology1CurrentSize = ontology1Response.getTotalCount();
 
     // Service invocation
     Response response = client.target(baseUrlBpIntegratedSearch).request()
@@ -759,38 +809,38 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     // Check Content-Type
     Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check the number of results retrieved
-    PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {});
+    PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
+    });
 
     Assert.assertTrue("Wrong page size", pageSize == results.getPageSize());
     Assert.assertTrue("Wrong page size", pageSize == results.getCollection().size());
 
-    // Check that the results are right (enumerated classes) (enumerated classes will be returned at the top)
-    for (int i = 0; i < enumeratedClasses.size(); i++) {
-      String ldId = enumeratedClasses.get(i).get(VALUE_CONSTRAINTS_URI).asText();
-      String id = Util.getShortIdentifier(ldId);
-      String type = enumeratedClasses.get(i).get(VALUE_CONSTRAINTS_TYPE).asText();
-      String ldType = BP_TYPE_BASE + type;
-      String prefLabel = enumeratedClasses.get(i).get(VALUE_CONSTRAINTS_PREFLABEL).asText();
-      String source = BP_API_BASE + BP_ONTOLOGIES + enumeratedClasses.get(i).get(VALUE_CONSTRAINTS_SOURCE).asText();
+    // Check that the class with label "000" is returned at the top
+    String ldId = enumeratedClass1.get(VALUE_CONSTRAINTS_URI).asText();
+    String id = Util.getShortIdentifier(ldId);
+    String type = enumeratedClass1.get(VALUE_CONSTRAINTS_TYPE).asText();
+    String ldType = BP_TYPE_BASE + type;
+    String prefLabel = enumeratedClass1.get(VALUE_CONSTRAINTS_PREFLABEL).asText();
+    String source = BP_API_BASE + BP_ONTOLOGIES + enumeratedClass1.get(VALUE_CONSTRAINTS_SOURCE).asText();
 
-      Assert.assertTrue("Wrong ldId", results.getCollection().get(i).getLdId().equals(ldId));
-      Assert.assertTrue("Wrong id", results.getCollection().get(i).getId().equals(id));
-      Assert.assertTrue("Wrong type", results.getCollection().get(i).getType().equals(type));
-      Assert.assertTrue("Wrong ldType", results.getCollection().get(i).getLdType().equals(ldType));
-      Assert.assertTrue("Wrong prefLabel", results.getCollection().get(i).getPrefLabel().equals(prefLabel));
-      Assert.assertTrue("Wrong source", results.getCollection().get(i).getSource().equals(source));
-      Assert.assertTrue("Wrong definition", results.getCollection().get(i).getDefinition() == null);
-    }
-    // Check that the results are right (ontology classes) (enumerated classes will be returned at the top)
+    Assert.assertTrue("Wrong ldId", results.getCollection().get(0).getLdId().equals(ldId));
+    Assert.assertTrue("Wrong id", results.getCollection().get(0).getId().equals(id));
+    Assert.assertTrue("Wrong type", results.getCollection().get(0).getType().equals(type));
+    Assert.assertTrue("Wrong ldType", results.getCollection().get(0).getLdType().equals(ldType));
+    Assert.assertTrue("Wrong prefLabel", results.getCollection().get(0).getPrefLabel().equals(prefLabel));
+    Assert.assertTrue("Wrong source", results.getCollection().get(0).getSource().equals(source));
+    Assert.assertTrue("Wrong definition", results.getCollection().get(0).getDefinition() == null);
+
+    // Check that the rest of the results are right. We start with i=1 because we've already checked the first result
     int ontologyClassesIndex = 0;
-    for (int i = enumeratedClasses.size(); i < pageSize; i++) {
-      String ldId = topOntologyClasses.get(ontologyClassesIndex).getLdId();
-      String id = topOntologyClasses.get(ontologyClassesIndex).getId();
-      String type = topOntologyClasses.get(ontologyClassesIndex).getType();
-      String ldType = topOntologyClasses.get(ontologyClassesIndex).getLdType();
-      String prefLabel = topOntologyClasses.get(ontologyClassesIndex).getPrefLabel();
-      String definition = topOntologyClasses.get(ontologyClassesIndex).getDefinition();
-      String source = topOntologyClasses.get(ontologyClassesIndex).getSource();
+    for (int i = 1; i < pageSize; i++) {
+      ldId = ontology1Classes.get(ontologyClassesIndex).getLdId();
+      id = ontology1Classes.get(ontologyClassesIndex).getId();
+      type = ontology1Classes.get(ontologyClassesIndex).getType();
+      ldType = ontology1Classes.get(ontologyClassesIndex).getLdType();
+      prefLabel = ontology1Classes.get(ontologyClassesIndex).getPrefLabel();
+      String definition = ontology1Classes.get(ontologyClassesIndex).getDefinition();
+      source = ontology1Classes.get(ontologyClassesIndex).getSource();
       ontologyClassesIndex++;
 
       Assert.assertTrue("Wrong ldId", results.getCollection().get(i).getLdId().equals(ldId));
@@ -803,18 +853,19 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
         Assert.assertTrue("Wrong definition", results.getCollection().get(i).getDefinition().equals(definition));
       }
     }
-    // Check pagination information. Note that when doing search on multiple sources we set totalCount, pageCount, and nextPage to null to maximize performance.
+    // Check pagination information. Note that when doing search on multiple sources we set totalCount, pageCount,
+    // and nextPage to null to maximize performance.
     Assert.assertTrue("Wrong page", results.getPage() == 1);
     Assert.assertTrue("Wrong pageCount", results.getPageCount() == null);
+    Assert.assertTrue("Wrong totalCount", results.getTotalCount() == ontology1CurrentSize + 2);
     Assert.assertTrue("Wrong pageSize", results.getPageSize() == pageSize);
-    Assert.assertTrue("Wrong totalCount", results.getTotalCount() == null);
     Assert.assertTrue("Wrong prevPage", results.getPrevPage() == null);
     Assert.assertTrue("Wrong prevPage", results.getNextPage() == null);
   }
 
   /**
-   *  Utility methods
-   * */
+   * Utility methods
+   */
 
   private static ObjectNode generateRequestBody(String inputText, ArrayNode ontologies, ArrayNode branches,
                                                 ArrayNode valueSets, ArrayNode classes, Optional<Integer> page,

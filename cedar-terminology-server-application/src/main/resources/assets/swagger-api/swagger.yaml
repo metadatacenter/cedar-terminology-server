@@ -3,7 +3,7 @@ swagger: "2.0"
 #                              API Information                                 #
 ################################################################################
 info:
-  title: CEDAR Terminology Server API
+  title: CEDAR Terminology Server API - DELETE
   description: CEDAR Terminology Server API
   version: "1.0.6"
 basePath: /bioportal
@@ -136,6 +136,65 @@ responses:
 #                              Paths                                           #
 ################################################################################
 paths:
+  /integrated-search:
+    get:
+      summary: Search
+      tags:
+        - Classes
+        - Value sets
+        - Values
+      description: Search for ontology classes, value sets, and values.
+      parameters:
+        - name: q
+          in: query
+          description: Search query. Example&#58; melanoma.
+          required: true
+          type: string
+        - name: scope
+          in: query
+          description: Comma-separated list of search scopes. Accepted values={all, classes, value_sets, values}. Default&#58; all.
+          required: false
+          type: string
+          default: "all"
+        - name: sources
+          in: query
+          description: Comma-separated list of target ontologies and/or value sets. Example&#58; 'ontologies=CEDARVS,NCIT'. By default, all BioPortal ontologies and value sets are considered. The value of 'scope' overrides the list of sources specified using this parameter.
+          required: false
+          type: string
+        - name: suggest
+          in: query
+          description: Will perform a search specifically geared towards type-ahead suggestions. Default&#58; false.
+          required: false
+          type: string
+        - name: subtree_root_id
+          in: query
+          description: Class identifier that limits the search to the branch rooted on that class. It must be URL encoded. Example&#58; http%3A%2F%2Fncicb.nci.nih.gov%2Fxml%2Fowl%2FEVS%2FThesaurus.owl%23C3224.
+          required: false
+          type: string
+        - name: source
+          in: query
+          description: Ontology for which the subtree search will be performed. Example&#58; NCIT.
+          required: false
+          type: string
+        - name: maxDepth
+          in: query
+          description: Subtree depth.
+          required: false
+          type: integer
+          default: 1
+        - $ref: '#/parameters/page'
+        - $ref: '#/parameters/page_size'
+      responses:
+        200:
+          $ref: '#/responses/ok'
+        400:
+          $ref: '#/responses/bad_request'
+        401:
+          $ref: '#/responses/unauthorized'
+        500:
+          $ref: '#/responses/internal_error'
+      security:
+        - api_key: []
   /search:
     get:
       summary: Search
