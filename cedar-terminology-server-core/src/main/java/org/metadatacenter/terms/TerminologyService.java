@@ -86,10 +86,9 @@ public class TerminologyService implements ITerminologyService {
             }
           }
         }
-        // Sort values by length so that the closer matches are ranked higher
-        values = Util.sortByPrefLabelLength(values);
+        values = Util.sortByClosestMatch(q, values);
         // Generate paginated results
-        results = Util.generatePaginatedResults(values, page, pageSize);
+        results = Util.generatePaginatedResults(values, page, pageSize, Optional.empty());
       }
       return results;
     } else {
@@ -235,7 +234,7 @@ public class TerminologyService implements ITerminologyService {
     if (q.isEmpty()) {
       return integratedSearchMultipleSourcesEmptyQuery(valueConstraints, page, pageSize, apiKey);
     } else {
-      return integratedSearchMultipleSourcesNonEmptyQuery(q, valueConstraints, page, pageSize, apiKey);
+      return integratedSearchMultipleSourcesNonEmptyQuery(q.get(), valueConstraints, page, pageSize, apiKey);
     }
   }
 
@@ -354,32 +353,44 @@ public class TerminologyService implements ITerminologyService {
 //    Integer prevPage = page > 1 ? page - 1 : null;
 //    return new PagedResults(page, null, allResults.size(), null, prevPage, null, allResults);
 //  }
+
+
   private PagedResults<SearchResult> integratedSearchMultipleSourcesEmptyQuery(ValueConstraints valueConstraints,
                                                                                int page, int pageSize, String apiKey) throws IOException {
 
     List<SearchResult> allResults = new ArrayList<>();
-
+    int totalCount = 0;
     /* Class constraints */
     if (valueConstraints.getClasses().size() > 0) {
-      allResults.addAll(integratedSearchEnumeratedClasses(Optional.empty(), valueConstraints.getClasses(), page,
-          pageSize).getCollection());
+      PagedResults<SearchResult> partialResults = integratedSearchEnumeratedClasses(Optional.empty(),
+          valueConstraints.getClasses(), page, pageSize);
+      allResults.addAll(partialResults.getCollection());
+      totalCount += partialResults.getTotalCount();
     }
     /* Ontology constraints */
     if ((valueConstraints.getOntologies().size() > 0)) {
       for (OntologyValueConstraint ontologyVC : valueConstraints.getOntologies()) {
-        allResults.addAll(integratedSearchOntologiesEmptyQuery(ontologyVC, pageSize, apiKey).getCollection());
+        PagedResults<SearchResult> partialResults = integratedSearchOntologiesEmptyQuery(ontologyVC, pageSize, apiKey);
+        allResults.addAll(partialResults.getCollection());
+        totalCount += partialResults.getTotalCount();
       }
     }
     /* Branch constraints */
     if ((valueConstraints.getBranches().size() > 0)) {
       for (BranchValueConstraint branchValueConstraint : valueConstraints.getBranches()) {
-        allResults.addAll(integratedSearchBranches(Optional.empty(), branchValueConstraint, page, pageSize, apiKey).getCollection());
+        PagedResults<SearchResult> partialResults = integratedSearchBranches(Optional.empty(), branchValueConstraint,
+            page, pageSize, apiKey);
+        allResults.addAll(partialResults.getCollection());
+        totalCount += partialResults.getTotalCount();
       }
     }
     /* Value set constraints */
     if ((valueConstraints.getValueSets().size() > 0)) {
       for (ValueSetValueConstraint valueSetConstraint : valueConstraints.getValueSets()) {
-        allResults.addAll(integratedSearchValueSets(Optional.empty(), valueSetConstraint, page, pageSize, apiKey).getCollection());
+        PagedResults<SearchResult> partialResults = integratedSearchValueSets(Optional.empty(), valueSetConstraint,
+            page, pageSize, apiKey);
+        allResults.addAll(partialResults.getCollection());
+        totalCount += partialResults.getTotalCount();
       }
     }
 
@@ -387,46 +398,52 @@ public class TerminologyService implements ITerminologyService {
     allResults = Util.sortByPrefLabel(allResults);
 
     // Generate paginated results
-    PagedResults<SearchResult> results = Util.generatePaginatedResults(allResults, page, pageSize);
+    PagedResults<SearchResult> results = Util.generatePaginatedResultsInvalidPagination(allResults, pageSize, totalCount);
 
     return results;
   }
 
-  private PagedResults<SearchResult> integratedSearchMultipleSourcesNonEmptyQuery(Optional<String> q,
+  private PagedResults<SearchResult> integratedSearchMultipleSourcesNonEmptyQuery(String q,
                                                                                   ValueConstraints valueConstraints,
                                                                                   int page, int pageSize,
                                                                                   String apiKey) throws IOException {
 
     List<SearchResult> allResults = new ArrayList<>();
-
+    int totalCount = 0;
     /* Class constraints */
     if (valueConstraints.getClasses().size() > 0) {
-      allResults.addAll(integratedSearchEnumeratedClasses(q, valueConstraints.getClasses(), page, pageSize).getCollection());
+      PagedResults<SearchResult> partialResults = integratedSearchEnumeratedClasses(Optional.of(q), valueConstraints.getClasses(), page, pageSize);
+      allResults.addAll(partialResults.getCollection());
+      totalCount += partialResults.getTotalCount();
     }
     /* Ontology constraints */
     if ((valueConstraints.getOntologies().size() > 0)) {
-      allResults.addAll(integratedSearchOntologies(q, valueConstraints.getOntologies(), page, pageSize, apiKey).getCollection());
+      PagedResults<SearchResult> partialResults = integratedSearchOntologies(Optional.of(q), valueConstraints.getOntologies(), page, pageSize, apiKey);
+      allResults.addAll(partialResults.getCollection());
+      totalCount += partialResults.getTotalCount();
     }
     /* Branch constraints */
     if ((valueConstraints.getBranches().size() > 0)) {
       for (BranchValueConstraint branchValueConstraint : valueConstraints.getBranches()) {
-        allResults.addAll(integratedSearchBranches(q, branchValueConstraint, page, pageSize, apiKey).getCollection());
+        PagedResults<SearchResult> partialResults = integratedSearchBranches(Optional.of(q), branchValueConstraint, page, pageSize, apiKey);
+        allResults.addAll(partialResults.getCollection());
+        totalCount += partialResults.getTotalCount();
       }
     }
     /* Value set constraints */
     if ((valueConstraints.getValueSets().size() > 0)) {
       for (ValueSetValueConstraint valueSetConstraint : valueConstraints.getValueSets()) {
-        allResults.addAll(integratedSearchValueSets(q, valueSetConstraint, page, pageSize, apiKey).getCollection());
+        PagedResults<SearchResult> partialResults = integratedSearchValueSets(Optional.of(q), valueSetConstraint, page, pageSize, apiKey);
+        allResults.addAll(partialResults.getCollection());
+        totalCount += partialResults.getTotalCount();
       }
     }
 
     // Re-sort results by length so that the closer matches are ranked higher. We don't need to filter them out by
     // label at this point because we've done it already when retrieving the results.
-    allResults = Util.sortByPrefLabelLength(allResults);
-
+    allResults = Util.sortByClosestMatch(q, allResults);
     // Generate paginated results
-    PagedResults<SearchResult> results = Util.generatePaginatedResults(allResults, page, pageSize);
-
+    PagedResults<SearchResult> results = Util.generatePaginatedResultsInvalidPagination(allResults, pageSize, totalCount);
     return results;
   }
 
@@ -443,16 +460,15 @@ public class TerminologyService implements ITerminologyService {
 
     if (q.isPresent()) { // Find classes by name
 
-      List<SearchResult> selectedResults = Util.filterByQuery(q.get(), searchResults);
-      // Sort results by length so that the closer matches are ranked higher
-      selectedResults = Util.sortByPrefLabelLength(selectedResults);
-      results = Util.generatePaginatedResults(selectedResults, page, pageSize);
+      // Filter by query and Sort them by prefLabel
+      searchResults = Util.filterByQuery(q.get(), searchResults);
+      List<SearchResult> selectedResults = Util.sortByClosestMatch(q.get(), searchResults);
+      results = Util.generatePaginatedResults(selectedResults, page, pageSize, Optional.empty());
 
     } else { // Retrieve all classes
 
-      // Sort them by prefLabel
       searchResults = Util.sortByPrefLabel(searchResults);
-      results = Util.generatePaginatedResults(searchResults, page, pageSize);
+      results = Util.generatePaginatedResults(searchResults, page, pageSize, Optional.empty());
 
     }
     return results;
@@ -976,7 +992,7 @@ public class TerminologyService implements ITerminologyService {
           }
         }
         // Generate paginated results
-        results = Util.generatePaginatedResults(values, page, pageSize);
+        results = Util.generatePaginatedResults(values, page, pageSize, Optional.empty());
       }
       return results;
     } else {

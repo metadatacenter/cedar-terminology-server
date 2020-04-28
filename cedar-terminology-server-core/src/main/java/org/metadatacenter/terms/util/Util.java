@@ -121,7 +121,8 @@ public class Util {
   }
 
   // Generation of paginated results
-  public static <T> PagedResults<T> generatePaginatedResults(List<T> allResults, Integer page, Integer pageSize) {
+  public static <T> PagedResults<T> generatePaginatedResults(List<T> allResults, Integer page, Integer pageSize,
+                                                             Optional<Integer> totalCount) {
     List<T> relevantResults = new ArrayList<>();
     Integer pageCount = null;
     Integer prevPage = null;
@@ -140,8 +141,22 @@ public class Util {
     } else {
       page = null;
     }
-    return new PagedResults(page, pageCount, relevantResults.size(), allResults.size(), prevPage, nextPage,
+
+    Integer total = totalCount.isPresent() ? totalCount.get() : allResults.size();
+
+    return new PagedResults(page, pageCount, relevantResults.size(), total, prevPage, nextPage,
         relevantResults);
+  }
+
+  /**
+   * Used when we cannot generate proper pagination results because we re-sort the results that come from BioPortal.
+   */
+  public static <T> PagedResults<T> generatePaginatedResultsInvalidPagination(List<T> allResults, int pageSize,
+                                                                               Integer totalCount) {
+    if (allResults.size() > pageSize) {
+      allResults = allResults.subList(0, pageSize);
+    }
+    return new PagedResults(1, null, allResults.size(), totalCount, null, null, allResults);
   }
 
   public static boolean isProvisionalClass(String classId) {
@@ -155,9 +170,9 @@ public class Util {
     }
   }
 
-  public static List<SearchResult> filterByQuery(String query, List<SearchResult> searchResults) {
+  public static List<SearchResult> filterByQuery(String query, List<SearchResult> results) {
     List<SearchResult> selectedResults = new ArrayList<>();
-    for (SearchResult result : searchResults) {
+    for (SearchResult result : results) {
       if (result.getPrefLabel().toLowerCase().contains(query.toLowerCase())) { // Label contains the query
         selectedResults.add(result);
       }
@@ -168,13 +183,20 @@ public class Util {
   /**
    * Sorts by prefLabel length
    *
-   * @param searchResults
+   * @param results
    * @return
    */
-  public static List<SearchResult> sortByPrefLabelLength(List<SearchResult> searchResults) {
-    Collections.sort(searchResults,
-        Comparator.comparing(SearchResult::getPrefLabel, Comparator.comparing(String::length)));
-    return searchResults;
+//  public static List<SearchResult> sortByPrefLabelLength(List<SearchResult> results) {
+//    Collections.sort(results,
+//        Comparator.comparing(SearchResult::getPrefLabel, Comparator.comparing(String::length)));
+//    return results;
+//  }
+
+  public static List<SearchResult> sortByClosestMatch(String query, List<SearchResult> results) {
+    if (results.size() > 1) {
+      Collections.sort(results, new SearchResultComparator(query));
+    }
+    return results;
   }
 
   public static String getOntologyAcronymFromOntologyUri(String ontologyUri) {
@@ -195,10 +217,10 @@ public class Util {
     List<SearchResult> results = pagedResults.getCollection();
     pagedResults.setCollection(sortByPrefLabel(results));
     // After sorting the results, the next page cannot be properly computed. Therefore, we have to adjust the
-    // pagination information to avoid confusion. We disable the previous and next page, as well as the number of total pages
+    // pagination information to avoid confusion. We disable the previous and next page and set the total number of pages to 1.
     pagedResults.setPrevPage(null);
     pagedResults.setNextPage(null);
-    pagedResults.setPageCount(null);
+    pagedResults.setPageCount(1);
     return pagedResults;
   }
 
