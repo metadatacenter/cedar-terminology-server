@@ -12,8 +12,7 @@ public class ClassValueConstraint {
   private String prefLabel;
   @NotEmpty
   private String type;
-  @NotEmpty
-  private String label;
+  private String label; // Optional
   @NotEmpty
   private String source;
 

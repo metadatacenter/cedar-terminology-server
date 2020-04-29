@@ -68,8 +68,13 @@ public class BioPortalService implements IBioPortalService {
       }
       // Search for values in value sets
       else if ((scope.contains(BP_SEARCH_SCOPE_VALUES))) {
-        url = BP_API_BASE + BP_SEARCH + "?q=" + q
-            + "&also_search_provisional=true&ontology_types=VALUE_SET_COLLECTION&valueset_exclude_roots=true";
+        url = BP_API_BASE + BP_SEARCH + "?q=" + q + "&also_search_provisional=true&ontology_types" +
+            "=VALUE_SET_COLLECTION";
+
+        // I've removed 'valueset_exclude_roots=true' because it seems that it's not needed. It seems that the root is not
+        // returned anyways and removing makes the call much faster.
+        //url = BP_API_BASE + BP_SEARCH + "?q=" + q +
+        // "&also_search_provisional=true&ontology_types=VALUE_SET_COLLECTION&valueset_exclude_roots=true";
       }
     } else if (scope.size() == 2) {
       // TODO: This call is retrieving value sets only because the 'valueset_roots_only' parameter is restricting the

@@ -492,7 +492,6 @@ public class TerminologyService implements ITerminologyService {
         IntegratedSearchUtil.extractOntologyAcronyms(ontologyValueConstraints), true, null,
         null, 1, page, pageSize,
         false, true, apiKey, new ArrayList<>());
-
   }
 
   /**
