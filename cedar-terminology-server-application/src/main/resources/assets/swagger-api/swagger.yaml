@@ -3,7 +3,7 @@ swagger: "2.0"
 #                              API Information                                 #
 ################################################################################
 info:
-  title: CEDAR Terminology Server API - DELETE
+  title: CEDAR Terminology Server API
   description: CEDAR Terminology Server API
   version: "1.0.6"
 basePath: /bioportal
@@ -128,6 +128,8 @@ responses:
     description: Bad request
   unauthorized: #401
     description: Unauthorized
+  unprocessable_entity: #422
+    description: Unprocessable entity
   not_found: #404
     description: Not found
   internal_error: #500
@@ -137,58 +139,29 @@ responses:
 ################################################################################
 paths:
   /integrated-search:
-    get:
-      summary: Search
+    post:
+      summary: Search for classes and values based on CEDAR value constraints
       tags:
         - Classes
         - Value sets
         - Values
-      description: Search for ontology classes, value sets, and values.
+      description: Search for ontology classes, value sets, and values based on CEDAR value constraints. This endpoint takes a controlled term field specification and any user-supplied initial characters and returns conforming values. <br /> <br /> Note that in some cases, the server will need to sort the results obtained from BioPortal and the original pagination information will not be valid any more. In those situations, the values of some of the pagination fields returned as part of the results (e.g., pageCount, nextPage, etc.) cannot be computed consistently, and the server will assign a 'null' value to those fields.
       parameters:
-        - name: q
-          in: query
-          description: Search query. Example&#58; melanoma.
+        - name: request body
           required: true
-          type: string
-        - name: scope
-          in: query
-          description: Comma-separated list of search scopes. Accepted values={all, classes, value_sets, values}. Default&#58; all.
-          required: false
-          type: string
-          default: "all"
-        - name: sources
-          in: query
-          description: Comma-separated list of target ontologies and/or value sets. Example&#58; 'ontologies=CEDARVS,NCIT'. By default, all BioPortal ontologies and value sets are considered. The value of 'scope' overrides the list of sources specified using this parameter.
-          required: false
-          type: string
-        - name: suggest
-          in: query
-          description: Will perform a search specifically geared towards type-ahead suggestions. Default&#58; false.
-          required: false
-          type: string
-        - name: subtree_root_id
-          in: query
-          description: Class identifier that limits the search to the branch rooted on that class. It must be URL encoded. Example&#58; http%3A%2F%2Fncicb.nci.nih.gov%2Fxml%2Fowl%2FEVS%2FThesaurus.owl%23C3224.
-          required: false
-          type: string
-        - name: source
-          in: query
-          description: Ontology for which the subtree search will be performed. Example&#58; NCIT.
-          required: false
-          type: string
-        - name: maxDepth
-          in: query
-          description: Subtree depth.
-          required: false
-          type: integer
-          default: 1
-        - $ref: '#/parameters/page'
-        - $ref: '#/parameters/page_size'
+          in: body
+          description: Object that encapsulates the information needed to run the search query. The "valueConstraints" field specification is based on CEDAR's "_valueConstraints" field. See https://more.metadatacenter.org/tools-training/outreach/cedar-template-model for more details.
+          schema:
+            "$ref": "#/definitions/IntegratedSearchRequestBody"
       responses:
         200:
-          $ref: '#/responses/ok'
+          description: A paginated list of search results
+          schema:
+            "$ref": "#/definitions/IntegratedSearchResults"
         400:
           $ref: '#/responses/bad_request'
+        422:
+          $ref: '#/responses/unprocessable_entity'
         401:
           $ref: '#/responses/unauthorized'
         500:
@@ -1133,4 +1106,149 @@ paths:
 ################################################################################
 #                              Definitions                                     #
 ################################################################################
-# TODO: Object definitions.
+definitions:
+  IntegratedSearchRequestBody:
+    type: object
+    required:
+      - parameterObject
+    properties:
+      parameterObject:
+        type: object
+        required:
+          - valueConstraints
+          - inputText
+        properties:
+          valueConstraints:
+            type: object
+            required:
+              - classes
+              - ontologies
+              - branches
+              - valueSets
+            properties:
+              classes:
+                type: array
+                items:
+                  type: object
+                  required:
+                    - uri
+                    - prefLabel
+                    - type
+                    - source
+                  properties:
+                    uri:
+                      type: string
+                    prefLabel:
+                      type: string
+                    type:
+                      type: string
+                    source:
+                      type: string
+              ontologies:
+                type: array
+                items:
+                  type: object
+                  required:
+                    - acronym
+                  properties:
+                    acronym:
+                      type: string
+              branches:
+                type: array
+                items:
+                  type: object
+                  required:
+                    - uri
+                    - acronym
+                  properties:
+                    uri:
+                      type: string
+                    acronym:
+                      type: string
+              valueSets:
+                type: array
+                items:
+                  type: object
+                  required:
+                    - uri
+                    - vsCollection
+                  properties:
+                    uri:
+                      type: string
+                    vsCollection:
+                      type: string
+              actions:
+                type: array
+                items:
+                  type: object
+                  required:
+                    - action
+                    - termUri
+                    - type
+                    - source
+                  properties:
+                    action:
+                      type: string
+                    termUri:
+                      type: string
+                    type:
+                      type: string
+                    source:
+                      type: string
+          inputText:
+            type: string
+      page:
+        $ref: '#/parameters/page'
+      pageSize:
+        $ref: '#/parameters/page_size'
+  IntegratedSearchResults:
+    type: array
+    items:
+      type: object
+      required:
+        - page
+        - pageCount
+        - pageSize
+        - totalCount
+        - prevPage
+        - nextPage
+        - collection
+      properties:
+        page:
+          type: integer
+        pageCount:
+          type: integer
+        pageSize:
+          type: integer
+        totalCount:
+          type: integer
+        prevPage:
+          type: integer
+        nextPage:
+          type: integer
+        collection:
+          type: array
+          items:
+            type: object
+            required:
+              - id
+              - at_id
+              - at_type
+              - type
+              - prefLabel
+              - notation
+              - definition
+            properties:
+              id:
+                type: string
+              at_id:
+                type: string
+              at_type:
+                type: string
+              prefLabel:
+                type: string
+              notation:
+                type: string
+              definition:
+                type: string
+
