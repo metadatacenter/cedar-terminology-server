@@ -31,7 +31,7 @@ public class PropertyResource extends AbstractTerminologyServerResource {
   public Response findProperty(@PathParam("id") @Encoded String id, @PathParam("ontology") String ontology)
       throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
-    //ctx.must(ctx.user()).be(LoggedIn);
+    ctx.must(ctx.user()).be(LoggedIn);
     try {
       OntologyProperty p = terminologyService.findProperty(id, ontology, apiKey);
       return Response.ok().entity(JsonMapper.MAPPER.valueToTree(p)).build();
@@ -47,7 +47,7 @@ public class PropertyResource extends AbstractTerminologyServerResource {
   // Note that this endpoint is not paged
   public Response findAllPropertiesForOntology(@PathParam("ontology") String ontology) throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
-    //ctx.must(ctx.user()).be(LoggedIn);
+    ctx.must(ctx.user()).be(LoggedIn);
     try {
       List<OntologyProperty> properties = terminologyService.findAllPropertiesInOntology(ontology, apiKey);
       return Response.ok().entity(JsonMapper.MAPPER.valueToTree(properties)).build();
@@ -63,7 +63,7 @@ public class PropertyResource extends AbstractTerminologyServerResource {
   public Response findPropertyTree(@PathParam("id") @Encoded String id, @PathParam("ontology") String ontology) throws
       CedarException {
     CedarRequestContext ctx = buildRequestContext();
-    //ctx.must(ctx.user()).be(LoggedIn);
+    ctx.must(ctx.user()).be(LoggedIn);
     try {
       List<TreeNode> tree = terminologyService.getPropertyTree(id, ontology, apiKey);
       return Response.ok().entity(JsonMapper.MAPPER.valueToTree(tree)).build();
@@ -79,7 +79,7 @@ public class PropertyResource extends AbstractTerminologyServerResource {
   public Response findPropertyChildren(@PathParam("id") @Encoded String id, @PathParam("ontology") String ontology)
       throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
-    //ctx.must(ctx.user()).be(LoggedIn);
+    ctx.must(ctx.user()).be(LoggedIn);
     try {
       List<OntologyProperty> children = terminologyService.getPropertyChildren(id, ontology, apiKey);
       return Response.ok().entity(JsonMapper.MAPPER.valueToTree(children)).build();
@@ -95,7 +95,7 @@ public class PropertyResource extends AbstractTerminologyServerResource {
   public Response findPropertyDescendants(@PathParam("id") @Encoded String id, @PathParam("ontology") String ontology)
       throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
-    //ctx.must(ctx.user()).be(LoggedIn);
+    ctx.must(ctx.user()).be(LoggedIn);
     try {
       List<OntologyProperty> descendants = terminologyService.getPropertyDescendants(id, ontology, apiKey);
       return Response.ok().entity(JsonMapper.MAPPER.valueToTree(descendants)).build();

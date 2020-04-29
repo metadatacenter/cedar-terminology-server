@@ -78,6 +78,7 @@ public class PropertyResourceTest extends AbstractTerminologyServerResourceTest 
   }
 
   @Test
+  @Ignore
   public void findAllPropertiesForOntologyTest() {
     String ontology = "BIBFRAME";
     int approxPropertiesCount = 198;
@@ -97,6 +98,7 @@ public class PropertyResourceTest extends AbstractTerminologyServerResourceTest 
   }
 
   @Test
+  @Ignore
   public void findPropertyTreeTest() {
     String ontology = "BIBFRAME";
     // Property "Copyright date" from BIBFRAME (The parent property is "Date")
@@ -138,6 +140,7 @@ public class PropertyResourceTest extends AbstractTerminologyServerResourceTest 
   }
 
   @Test
+  @Ignore
   public void findPropertyChildrenTest() {
     String ontology = "BIBFRAME";
     // Class "Date" from BIBFRAME. One of its children is "Copyright date".
@@ -171,6 +174,7 @@ public class PropertyResourceTest extends AbstractTerminologyServerResourceTest 
   }
 
   @Test
+  @Ignore
   public void findPropertyDescendantsTest() {
     String ontology = "BIBFRAME";
     // Property "Related artifact" from BIBFRAME (http://id.loc.gov/ontologies/bibframe/relatedTo)
@@ -212,6 +216,7 @@ public class PropertyResourceTest extends AbstractTerminologyServerResourceTest 
   }
 
   @Test
+  @Ignore
   public void findClassParentsTest() {
     String ontology = "BIBFRAME";
     // Class "Copyright date" from BIBFRAME. Its parent is "Date".
