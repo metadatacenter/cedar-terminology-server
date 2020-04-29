@@ -8,7 +8,7 @@ import org.apache.http.entity.ContentType;
 import org.apache.http.util.EntityUtils;
 import org.metadatacenter.terms.bioportal.customObjects.BpPagedResults;
 import org.metadatacenter.terms.bioportal.domainObjects.BpProvisionalClass;
-import org.metadatacenter.terms.util.Constants;
+import org.metadatacenter.cedar.terminology.util.Constants;
 import org.metadatacenter.terms.util.HttpUtil;
 import org.metadatacenter.terms.util.Util;
 import org.slf4j.Logger;
@@ -19,7 +19,7 @@ import javax.xml.ws.http.HTTPException;
 import java.io.IOException;
 import java.util.List;
 
-import static org.metadatacenter.terms.util.Constants.*;
+import static org.metadatacenter.cedar.terminology.util.Constants.*;
 import static org.metadatacenter.util.json.JsonMapper.MAPPER;
 
 public class BpProvisionalClassDAO {
@@ -91,7 +91,7 @@ public class BpProvisionalClassDAO {
         // If the ontology is specified, BioPortal does not return paged results, so we have to build them.
         // TODO: task for the BioPortal team: provide paged results when the ontology is specified
         List<BpProvisionalClass> provClasses = MAPPER.readValue(MAPPER.treeAsTokens(bpResult), new TypeReference<List<BpProvisionalClass>>() {});
-        results = new BpPagedResults<>(1, 1, 0, 0, provClasses);
+        results = new BpPagedResults<>(1, 1, provClasses.size(), null, null, provClasses);
         return results;
       }
       else {

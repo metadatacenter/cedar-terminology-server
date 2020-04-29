@@ -3,10 +3,9 @@ package org.metadatacenter.terms.domainObjects;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 
-import static org.metadatacenter.terms.util.Constants.BP_TYPE_BASE;
-import static org.metadatacenter.terms.util.Constants.BP_TYPE_CLASS;
-
 import java.util.List;
+
+import static org.metadatacenter.cedar.terminology.util.Constants.*;
 
 @JsonPropertyOrder({"id", "@id", "@type", "type", "prefLabel", "creator", "ontology", "definitions",
     "synonyms", "subclassOf", "relations", "provisional", "created", "hasChildren"})
@@ -17,7 +16,7 @@ public class OntologyClass {
   @JsonProperty("@id")
   private String ldId;
   @JsonProperty("@type")
-  private String ldType;
+  private String ldType = BP_TYPE_BASE + BP_TYPE_CLASS;
   private String type = BP_TYPE_CLASS;
   private String prefLabel;
   private String creator;

@@ -11,6 +11,7 @@ public class Constants {
   public static final String BP_PUBLIC_API_KEY = "8c478417-cae7-473d-bcd7-a03cf229bb5d";
   public static final String BP_ENDPOINT = "bioportal";
   public static final String BP_SEARCH = "search";
+  public static final String BP_INTEGRATED_SEARCH = "integrated-search";
   public static final String BP_PROPERTY_SEARCH = "property_search";
   public static final String BP_CLASSES = "classes";
   public static final String BP_PROPERTIES = "properties";

@@ -13,6 +13,7 @@ import javax.ws.rs.core.Response.Status;
 import java.util.List;
 
 import static org.metadatacenter.cedar.terminology.utils.Constants.*;
+import static org.metadatacenter.constant.HttpConstants.HTTP_HEADER_AUTHORIZATION;
 
 /**
  * Integration tests. They are done by starting a test server that makes it possible to test the real HTTP stack.
@@ -52,7 +53,7 @@ public class OntologyResourceTest extends AbstractTerminologyServerResourceTest 
   public void findAllOntologiesTest() {
     String url = baseUrlBpOntologies;
     // Service invocation
-    Response response = client.target(url).request().header("Authorization", authHeader).get();
+    Response response = client.target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
     // Check Content-Type
@@ -67,7 +68,7 @@ public class OntologyResourceTest extends AbstractTerminologyServerResourceTest 
   public void findOntologyTest() {
     String url = baseUrlBpOntologies + "/" + ontology1.getId();
     // Service invocation
-    Response response = client.target(url).request().header("Authorization", authHeader).get();
+    Response response = client.target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
     // Check Content-Type
@@ -82,7 +83,7 @@ public class OntologyResourceTest extends AbstractTerminologyServerResourceTest 
   public void findRootClassesTest() {
     String url = baseUrlBpOntologies + "/" + ontology1.getId() + "/" + BP_CLASSES + "/" + BP_ROOTS;
     // Service invocation
-    Response response = client.target(url).request().header("Authorization", authHeader).get();
+    Response response = client.target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
     // Check Content-Type
@@ -107,7 +108,7 @@ public class OntologyResourceTest extends AbstractTerminologyServerResourceTest 
     String ontology = "BIBFRAME";
     String url = baseUrlBpOntologies + "/" + ontology + "/" + BP_PROPERTIES + "/" + BP_ROOTS;
     // Service invocation
-    Response response = client.target(url).request().header("Authorization", authHeader).get();
+    Response response = client.target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
     // Check Content-Type

@@ -5,8 +5,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 //import com.wordnik.swagger.annotations.ApiModel;
 //import com.wordnik.swagger.annotations.ApiModelProperty;
 
-import static org.metadatacenter.terms.util.Constants.BP_TYPE_BASE;
-import static org.metadatacenter.terms.util.Constants.BP_TYPE_VALUE;
+import static org.metadatacenter.cedar.terminology.util.Constants.*;
 
 import java.util.List;
 

@@ -1,5 +1,6 @@
 package org.metadatacenter.cedar.terminology.resources.bioportal;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.dropwizard.client.JerseyClientBuilder;
 import io.dropwizard.testing.ResourceHelpers;
 import io.dropwizard.testing.junit.DropwizardAppRule;
@@ -27,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.metadatacenter.cedar.terminology.utils.Constants.*;
+import static org.metadatacenter.constant.HttpConstants.HTTP_HEADER_AUTHORIZATION;
 
 /**
  * Integration tests. They are done by starting a test server that makes it possible to test the real HTTP stack.
@@ -36,9 +38,11 @@ public abstract class AbstractTerminologyServerResourceTest {
   protected static CedarConfig cedarConfig;
   protected static Client client;
   protected static String authHeader;
+  protected static ObjectMapper mapper;
   protected static final String BASE_URL = "http://localhost";
   protected static String baseUrlBp;
   protected static String baseUrlBpSearch;
+  protected static String baseUrlBpIntegratedSearch;
   protected static String baseUrlBpPropertySearch;
   protected static String baseUrlBpOntologies;
   protected static String baseUrlBpVSCollections;
@@ -55,6 +59,14 @@ public abstract class AbstractTerminologyServerResourceTest {
   protected static Value value1;
   protected static Value value2;
 
+  protected final static String classCreator = "http://data.bioontology.org/users/cedar-test";
+  protected final static String classOntology = "http://data.bioontology.org/ontologies/CEDARPC";
+
+  /**
+   * Status codes not part of the JAX-RS Status enum.
+   */
+  protected static final int STATUS_CODE_UNPROCESSABLE_ENTITY = 422;
+
   @ClassRule
   public static final DropwizardAppRule<TerminologyServerConfiguration> RULE =
       new DropwizardAppRule<>(TerminologyServerApplicationTest.class, ResourceHelpers.resourceFilePath("test-config" +
@@ -62,7 +74,7 @@ public abstract class AbstractTerminologyServerResourceTest {
 
   /**
    * One-time initialization code.
-   * (Called once before any of the test methods in the class).
+   * (Called once before any test class).
    */
   @BeforeClass
   public static void oneTimeSetUpAbstract() {
@@ -75,6 +87,7 @@ public abstract class AbstractTerminologyServerResourceTest {
 
     baseUrlBp = BASE_URL + ":" + RULE.getLocalPort() + "/" + BP_ENDPOINT;
     baseUrlBpSearch = baseUrlBp + "/" + BP_SEARCH;
+    baseUrlBpIntegratedSearch = baseUrlBp + "/" + BP_INTEGRATED_SEARCH;
     baseUrlBpPropertySearch = baseUrlBp + "/" + BP_PROPERTY_SEARCH;
     baseUrlBpOntologies = baseUrlBp + "/" + BP_ONTOLOGIES;
     baseUrlBpVSCollections = baseUrlBp + "/" + BP_VALUE_SET_COLLECTIONS;
@@ -87,6 +100,8 @@ public abstract class AbstractTerminologyServerResourceTest {
 
     authHeader = TestUserUtil.getTestUser1AuthHeader(cedarConfig);
 
+    mapper = new ObjectMapper();
+
   }
 
   /**
@@ -95,6 +110,15 @@ public abstract class AbstractTerminologyServerResourceTest {
    */
   @Before
   public void setUpAbstract() {
+
+    // OPTIONAL. This block cleans up all the provisional classes created for testing. Uncomment and run it when needed
+//    try {
+//      deleteProvisionalClassesCreatedForTesting();
+//      System.exit(1);
+//    } catch (Exception e) {
+//      e.printStackTrace();
+//    }
+
     createdClasses = new ArrayList<>();
     createdRelations = new ArrayList<>();
     createdValueSets = new ArrayList<>();
@@ -102,8 +126,6 @@ public abstract class AbstractTerminologyServerResourceTest {
 
     // Initialize test class
     String classLabel = "class1_test";
-    String classCreator = "http://data.bioontology.org/users/cedar-test";
-    String classOntology = "http://data.bioontology.org/ontologies/CEDARPC";
     List classDefinitions = new ArrayList<>();
     classDefinitions.add("classDefinition1");
     classDefinitions.add("classDefinition2");
@@ -196,6 +218,11 @@ public abstract class AbstractTerminologyServerResourceTest {
     }
   }
 
+  @AfterClass
+  public static void oneTearDownAbstract() {
+    client.close();
+  }
+
   /**
    * Test Utils
    */
@@ -204,7 +231,7 @@ public abstract class AbstractTerminologyServerResourceTest {
   protected static OntologyClass createClass(OntologyClass c) {
     String url = baseUrlBpOntologies + "/" + Util.getShortIdentifier(c.getOntology()) + "/" + BP_CLASSES;
     // Service invocation
-    Response response = client.target(url).request().header("Authorization", authHeader).post(Entity.json(c));
+    Response response = client.target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(c));
     // Check HTTP response
     Assert.assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
     OntologyClass created = response.readEntity(OntologyClass.class);
@@ -218,9 +245,10 @@ public abstract class AbstractTerminologyServerResourceTest {
       String findUrl = baseUrlBpOntologies + "/" + Util.getShortIdentifier(c.getOntology()) + "/" +
           BP_CLASSES + "/" + c.getId();
       String deleteUrl = baseUrlBp + "/" + BP_CLASSES + "/" + c.getId();
-      Response findResponse = client.target(findUrl).request().header("Authorization", authHeader).get();
+      Response findResponse = client.target(findUrl).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
       if (findResponse.getStatus() == Response.Status.OK.getStatusCode()) {
-        Response deleteResponse = client.target(deleteUrl).request().header("Authorization", authHeader).delete();
+        Response deleteResponse =
+            client.target(deleteUrl).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).delete();
         if (deleteResponse.getStatus() != Response.Status.NO_CONTENT.getStatusCode()) {
           throw new Exception("Couldn't delete class: Id = " + c.getLdId());
         }
@@ -237,7 +265,7 @@ public abstract class AbstractTerminologyServerResourceTest {
     OntologyClass createdClass = createClass(c);
     // Create provisional relation
     r.setSourceClassId(createdClass.getId());
-    Response response = client.target(url).request().header("Authorization", authHeader).post(Entity.json(r));
+    Response response = client.target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(r));
     // Check HTTP response
     Assert.assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
     Relation created = response.readEntity(Relation.class);
@@ -249,9 +277,9 @@ public abstract class AbstractTerminologyServerResourceTest {
     for (Relation r : createdRelations) {
       // Check if the relation still exists
       String url = baseUrlBp + "/" + BP_RELATIONS + "/" + r.getId();
-      Response findResponse = client.target(url).request().header("Authorization", authHeader).get();
+      Response findResponse = client.target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
       if (findResponse.getStatus() == Response.Status.OK.getStatusCode()) {
-        Response deleteResponse = client.target(url).request().header("Authorization", authHeader).delete();
+        Response deleteResponse = client.target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).delete();
         if (deleteResponse.getStatus() != Response.Status.NO_CONTENT.getStatusCode()) {
           throw new Exception("Couldn't delete relation: Id = " + r.getLdId() +
               ". This relation could have been automatically removed by BioPortal when deleting the class that " +
@@ -269,7 +297,8 @@ public abstract class AbstractTerminologyServerResourceTest {
 
   protected static ValueSet createValueSet(ValueSet vs) {
     String url = baseUrlBpVSCollections + "/" + Util.getShortIdentifier(vs.getVsCollection()) + "/" + BP_VALUE_SETS;
-    Response response = client.target(url).request().header("Authorization", authHeader).post(Entity.json(vs));
+    Response response =
+        client.target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(vs));
     // Check HTTP response
     Assert.assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
     ValueSet created = response.readEntity(ValueSet.class);
@@ -283,9 +312,10 @@ public abstract class AbstractTerminologyServerResourceTest {
       String findUrl = baseUrlBpVSCollections + "/" + Util.getShortIdentifier(vs.getVsCollection()) + "/" +
           BP_VALUE_SETS + "/" + vs.getId();
       String deleteUrl = baseUrlBp + "/" + BP_VALUE_SETS + "/" + vs.getId();
-      Response findResponse = client.target(findUrl).request().header("Authorization", authHeader).get();
+      Response findResponse = client.target(findUrl).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
       if (findResponse.getStatus() == Response.Status.OK.getStatusCode()) {
-        Response deleteResponse = client.target(deleteUrl).request().header("Authorization", authHeader).delete();
+        Response deleteResponse =
+            client.target(deleteUrl).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).delete();
         if (deleteResponse.getStatus() != Response.Status.NO_CONTENT.getStatusCode()) {
           throw new Exception("Couldn't delete value set: Id = " + vs.getLdId());
         }
@@ -308,7 +338,7 @@ public abstract class AbstractTerminologyServerResourceTest {
       e.printStackTrace();
     }
     // Service invocation
-    Response response = client.target(url).request().header("Authorization", authHeader).post(Entity.json(v));
+    Response response = client.target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(v));
     // Check HTTP response
     Assert.assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
     Value created = response.readEntity(Value.class);
@@ -322,9 +352,10 @@ public abstract class AbstractTerminologyServerResourceTest {
       String findUrl = baseUrlBpVSCollections + "/" + Util.getShortIdentifier(v.getVsCollection()) + "/" + BP_VALUES
           + "/" + v.getId();
       String deleteUrl = baseUrlBp + "/" + BP_VALUES + "/" + v.getId();
-      Response findResponse = client.target(findUrl).request().header("Authorization", authHeader).get();
+      Response findResponse = client.target(findUrl).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
       if (findResponse.getStatus() == Response.Status.OK.getStatusCode()) {
-        Response deleteResponse = client.target(deleteUrl).request().header("Authorization", authHeader).delete();
+        Response deleteResponse =
+            client.target(deleteUrl).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).delete();
         if (deleteResponse.getStatus() != Response.Status.NO_CONTENT.getStatusCode()) {
           throw new Exception("Couldn't delete value: Id = " + v.getId());
         }
@@ -337,7 +368,8 @@ public abstract class AbstractTerminologyServerResourceTest {
   /* Properties */
   protected static PagedResults<SearchResult> searchProperties(String q) {
     // Service invocation
-    Response response = client.target(baseUrlBpPropertySearch).queryParam("q", q).request().header("Authorization",
+    Response response =
+        client.target(baseUrlBpPropertySearch).queryParam("q", q).request().header(HTTP_HEADER_AUTHORIZATION,
         authHeader).get();
     // Check HTTP response
     Assert.assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
@@ -347,6 +379,52 @@ public abstract class AbstractTerminologyServerResourceTest {
     PagedResults<SearchResult> properties = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
     });
     return properties;
+  }
+
+  /* Delete all provisional classes that were created for testing. Sometimes the tests fail and some classes are not
+  deleted. This method can be used to perform a full clean-up of the provisional classes created for testing purposes */
+  protected static void deleteProvisionalClassesCreatedForTesting() throws Exception {
+    // Retrieve all provisional classes
+    String url = baseUrlBp + "/" + BP_PROVISIONAL_CLASSES + "?pageSize=5000";
+    // Service invocation
+    Response response = client.target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
+    PagedResults<OntologyClass> results = response.readEntity(new GenericType<PagedResults<OntologyClass>>() {
+    });
+    int deletedCount = 0;
+    for (OntologyClass pc : results.getCollection()) {
+      if (pc.getCreator() != null && pc.getCreator().equals(classCreator)) {
+        if (pc.getPrefLabel().toLowerCase().contains("test")) {
+          // Delete provisional class
+          String deleteUrl = baseUrlBp + "/" + BP_CLASSES + "/" + pc.getId();
+          Response deleteResponse =
+              client.target(deleteUrl).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).delete();
+          if (deleteResponse.getStatus() != Response.Status.NO_CONTENT.getStatusCode()) {
+            throw new Exception("Couldn't delete class: Id = " + pc.getLdId());
+          }
+          deletedCount++;
+          System.out.println("Class deleted successfully: " + pc.getPrefLabel());
+        }
+      }
+    }
+    System.out.println("No. classes deleted: " + deletedCount);
+  }
+
+  protected static void shortWaitToEnsureBioPortalIndexUpdated() {
+    // Wait to be sure that the BioPortal search index has been updated
+    try {
+      Thread.sleep(5000);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
+  }
+
+  protected static void longWaitToEnsureBioPortalIndexUpdated() {
+    // Wait to be sure that the BioPortal search index has been updated
+    try {
+      Thread.sleep(60000);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
   }
 
 }
