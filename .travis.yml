@@ -4,6 +4,7 @@ language: java
 jdk:
 - openjdk11
 services:
+  - neo4j
   - mongodb
   - redis-server
 branches:
