@@ -20,11 +20,8 @@ notifications:
 before_install:
 - sleep 15
 - |
-  curl -i --header "Authorization: Basic bmVvNGo6bmVvNGo=" \
-  --data "@cedar-terminology-server-application/src/test/resources/create-test-user.cypher" \
-  -H "Accept: application/json" \
-  -H "Content-Type: application/json" \
-  http://localhost:7474/db/data/transaction/commit
+  curl -i --header "Authorization: Basic bmVvNGo6bmVvNGo=" --data "@cedar-terminology-server-application/src/test/resources/create-test-user.cypher" -H "Accept: application/json" \
+  -H "Content-Type: application/json" http://localhost:7474/db/data/transaction/commit
 install: '[ ${TRAVIS_PULL_REQUEST} = ''false'' ] && mvn -DskipTests=false clean deploy
   --settings .m2/travis-settings.xml'
 script: '[ ${TRAVIS_PULL_REQUEST} = ''false'' ] && mvn -DskipTests=true clean --settings
