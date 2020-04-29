@@ -1132,8 +1132,6 @@ public class TerminologyService implements ITerminologyService {
    */
 
   public OntologyProperty findProperty(String id, String ontology, String apiKey) throws IOException {
-    log.info("Finding Property...");
-    log.info("Api key fragment: " + apiKey.substring(0,6));
     BpProperty bp = bpService.findBpPropertyById(id, ontology, apiKey);
     return ObjectConverter.toOntologyProperty(bp);
   }
