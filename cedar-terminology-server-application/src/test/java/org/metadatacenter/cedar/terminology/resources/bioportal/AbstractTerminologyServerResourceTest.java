@@ -84,8 +84,6 @@ public abstract class AbstractTerminologyServerResourceTest {
   @BeforeClass
   public static void oneTimeSetUpAbstract() {
 
-    log.info("Started oneTimeSetUpAbstract...");
-
     SystemComponent systemComponent = SystemComponent.SERVER_TERMINOLOGY;
     Map<String, String> environment = CedarEnvironmentVariableProvider.getFor(systemComponent);
     CedarConfig cedarConfig = CedarConfig.getInstance(environment);
@@ -108,9 +106,7 @@ public abstract class AbstractTerminologyServerResourceTest {
     authHeader = TestUserUtil.getTestUser1AuthHeader(cedarConfig);
 
     mapper = new ObjectMapper();
-
-    log.info("Finished oneTimeSetUpAbstract...");
-
+    
   }
 
   /**
