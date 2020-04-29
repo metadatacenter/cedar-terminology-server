@@ -3,6 +3,9 @@ dist: trusty
 language: java
 jdk:
 - openjdk11
+services:
+  - mongodb
+  - redis-server
 branches:
   only:
   - develop
