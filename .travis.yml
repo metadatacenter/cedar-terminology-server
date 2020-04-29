@@ -3,13 +3,11 @@ dist: trusty
 language: java
 jdk:
 - openjdk11
-services:
-- mongodb
-- redis-server
 branches:
   only:
   - develop
   - master
+  - fix-travis
 notifications:
   slack:
     on_success: change
