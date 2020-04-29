@@ -11,10 +11,13 @@ import org.metadatacenter.cedar.terminology.TerminologyServerConfiguration;
 import org.metadatacenter.config.CedarConfig;
 import org.metadatacenter.config.environment.CedarEnvironmentVariableProvider;
 import org.metadatacenter.model.SystemComponent;
+import org.metadatacenter.terms.TerminologyService;
 import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.terms.domainObjects.*;
 import org.metadatacenter.terms.util.Util;
 import org.metadatacenter.util.test.TestUserUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.Entity;
@@ -62,6 +65,8 @@ public abstract class AbstractTerminologyServerResourceTest {
   protected final static String classCreator = "http://data.bioontology.org/users/cedar-test";
   protected final static String classOntology = "http://data.bioontology.org/ontologies/CEDARPC";
 
+  protected static final Logger log = LoggerFactory.getLogger(AbstractTerminologyServerResourceTest.class);
+
   /**
    * Status codes not part of the JAX-RS Status enum.
    */
@@ -69,8 +74,8 @@ public abstract class AbstractTerminologyServerResourceTest {
 
   @ClassRule
   public static final DropwizardAppRule<TerminologyServerConfiguration> RULE =
-      new DropwizardAppRule<>(TerminologyServerApplicationTest.class, ResourceHelpers.resourceFilePath("test-config" +
-          ".yml"));
+      new DropwizardAppRule<>(TerminologyServerApplicationTest.class,
+          ResourceHelpers.resourceFilePath("test-config.yml"));
 
   /**
    * One-time initialization code.
@@ -78,6 +83,8 @@ public abstract class AbstractTerminologyServerResourceTest {
    */
   @BeforeClass
   public static void oneTimeSetUpAbstract() {
+
+    log.info("Started oneTimeSetUpAbstract...");
 
     SystemComponent systemComponent = SystemComponent.SERVER_TERMINOLOGY;
     Map<String, String> environment = CedarEnvironmentVariableProvider.getFor(systemComponent);
@@ -101,6 +108,8 @@ public abstract class AbstractTerminologyServerResourceTest {
     authHeader = TestUserUtil.getTestUser1AuthHeader(cedarConfig);
 
     mapper = new ObjectMapper();
+
+    log.info("Finished oneTimeSetUpAbstract...");
 
   }
 
