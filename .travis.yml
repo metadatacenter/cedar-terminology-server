@@ -19,9 +19,10 @@ notifications:
     secure: rN6+Ne6+w5r8uVjE7ZwTWxnW0VeA6dfrDB+jCPG+FeridUK6FF+MrAYlYOnCI3hIck2l/EtDaBvnGPUuzLJBo3N7HseFMZonSY+5nWZnk4XOGn1Xl6n7vQqv7ydQMxS/PgZlAbotvJ2Hgxj+r4oB9tANNt3LlJifl0rO+f9D7D0jblIUuu2sIckwBilxn6AjJV/nuolekhJcoRBszmEJKq5b9druau0MnaoJDIpxFSNeG2zZcjobMKdv6GJ37whB3gk3OZL4gTPsPNcWsOhNSc3dZjQA0kluaExXrGdRVXy6vxlXopQBs9WOSEc7SqnavvKo27qqUuDQGDBZyGkl2KzKtwoFYNyV/7Wu7UAGz8un64m/nLM8oZ3ZOaL5H9qRgS6+QfYwLKsTObAc9636eOTf2qB4Wm2ur7H7gTUGbntnzR0MrHiy0ob1tviAwKM/lMj+JCudey3xQmNu3p0L51yRSykNd1RbzZWk4wuS8OCaGZQ0ajQEqBYsAKrWZQb0X8iQodOmWcax83nbAMLSy2RRZ3ukc6+OD4NHw5NjE/JlaGKyb7Nu27OzoL8k/qtle3sk5H75aCjnVVDLkZVX8i9Wj6dUnJcadYqn8pyeWlIIYRn81xIhXlm32rJcBJA5xtDmKKbtUqeS1zmqTwByDUahEJbL8BfLIPxmbO6tx90=
 before_install:
 - sleep 15
-- |
-  curl -i --header "Authorization: Basic bmVvNGo6bmVvNGo=" --data "@cedar-terminology-server-application/src/test/resources/create-test-user.cypher" -H "Accept: application/json" \
-  -H "Content-Type: application/json" http://localhost:7474/db/data/transaction/commit
+- | # Create the test user in Neo4j
+  curl -i --header "Authorization: Basic bmVvNGo6bmVvNGo=" --data "@cedar-terminology-server-application/src/test/resources/create-test-user.cypher" -H "Accept: application/json" -H "Content-Type: application/json" http://localhost:7474/db/data/transaction/commit
+- | # Check that the user was created correctly
+  curl -i --header "Authorization: Basic bmVvNGo6bmVvNGo=" --data '{ "query": "MATCH (n) where ID(n)=1 RETURN n" }' -H "Accept: application/json" -H "Content-Type: application/json" http://localhost:7474/db/data/cypher
 install: '[ ${TRAVIS_PULL_REQUEST} = ''false'' ] && mvn -DskipTests=false clean deploy
   --settings .m2/travis-settings.xml'
 script: '[ ${TRAVIS_PULL_REQUEST} = ''false'' ] && mvn -DskipTests=true clean --settings
