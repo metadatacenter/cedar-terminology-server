@@ -28,7 +28,6 @@ import static org.metadatacenter.model.ModelNodeNames.*;
 /**
  * Integration tests. They are done by starting a test server that makes it possible to test the real HTTP stack.
  */
-@Ignore
 public class IntegratedSearchResourceTest extends AbstractTerminologyServerResourceTest {
 
 
