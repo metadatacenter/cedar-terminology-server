@@ -16,6 +16,7 @@ import static org.metadatacenter.constant.HttpConstants.HTTP_HEADER_AUTHORIZATIO
 /**
  * Integration tests. They are done by starting a test server that makes it possible to test the real HTTP stack.
  */
+
 public class RelationResourceTest extends AbstractTerminologyServerResourceTest {
 
   /**
