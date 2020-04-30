@@ -50,6 +50,7 @@ public class OntologyResourceTest extends AbstractTerminologyServerResourceTest 
   }
 
   @Test
+  @Ignore
   public void findAllOntologiesTest() {
     String url = baseUrlBpOntologies;
     // Service invocation
