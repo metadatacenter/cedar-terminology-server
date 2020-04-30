@@ -110,7 +110,6 @@ public abstract class AbstractTerminologyServerResourceTest {
     log.info("CEDAR Config - Test User:");
     log.info("Id: " + cedarConfig.getTestUsers().getTestUser1().getId());
     log.info("authHeader: " + authHeader);
-    log.info("-------------------");
   }
 
   /**
