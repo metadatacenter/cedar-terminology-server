@@ -23,6 +23,8 @@ before_install:
   curl -i --header "Authorization: Basic bmVvNGo6bmVvNGo=" --data "@cedar-terminology-server-application/src/test/resources/create-test-user.cypher" -H "Accept: application/json" -H "Content-Type: application/json" http://localhost:7474/db/data/transaction/commit
 - | # Check that the user was created correctly
   curl -i --header "Authorization: Basic bmVvNGo6bmVvNGo=" --data '{ "query": "MATCH (n) where ID(n)=1 RETURN n" }' -H "Accept: application/json" -H "Content-Type: application/json" http://localhost:7474/db/data/cypher
+- | # Additional check to see if the user can be retrieved by api key
+  curl -i --header "Authorization: Basic bmVvNGo6bmVvNGo=" --data '{ "query": "MATCH (user:User) WHERE "672186948e6y634f985e7d93d5a4af3ab4deaab389f74017e6e0b2e0bb8fae07" IN user.apiKeys RETURN user" }' -H "Accept: application/json" -H "Content-Type: application/json" http://localhost:7474/db/data/cypher
 install: '[ ${TRAVIS_PULL_REQUEST} = ''false'' ] && mvn -DskipTests=false clean deploy
   --settings .m2/travis-settings.xml'
 script: '[ ${TRAVIS_PULL_REQUEST} = ''false'' ] && mvn -DskipTests=true clean --settings
