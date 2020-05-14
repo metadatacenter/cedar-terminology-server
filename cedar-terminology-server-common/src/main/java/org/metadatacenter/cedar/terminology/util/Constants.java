@@ -1,4 +1,4 @@
-package org.metadatacenter.terms.util;
+package org.metadatacenter.cedar.terminology.util;
 
 /**
  * Constants of general utility.
@@ -25,11 +25,20 @@ public class Constants
   public static final String BP_PROVISIONAL_CLASSES = "provisional_classes/";
   public static final String BP_PROVISIONAL_RELATIONS = "provisional_relations/";
 
-  /** BioPortal Search endpoint - Search scopes */
+  /** Search endpoint - Search scopes */
   public static final String BP_SEARCH_SCOPE_ALL = "all";
   public static final String BP_SEARCH_SCOPE_CLASSES = "classes";
   public static final String BP_SEARCH_SCOPE_VALUE_SETS = "value_sets";
   public static final String BP_SEARCH_SCOPE_VALUES = "values";
+
+  /** CEDAR pagination parameters **/
+  public static final String BP_PAGE_PARAM = "page";
+  public static final String BP_PAGE_SIZE_PARAM = "pageSize";
+
+  /** CEDAR Integrated Search - Request **/
+  public static final String BP_INTEGRATED_SEARCH_PARAMS_FIELD = "parameterObject";
+  public static final String BP_INTEGRATED_SEARCH_PARAM_VALUE_CONSTRAINTS = "valueConstraints";
+  public static final String BP_INTEGRATED_SEARCH_PARAM_INPUT_TEXT = "inputText";
 
   /** BioPortal API endpoint parameters **/
   public static final String BP_INCLUDE_ALL = "include=all";
@@ -42,15 +51,23 @@ public class Constants
   public static final String CADSR_VALUE_SETS_ONTOLOGY = "CADSR-VS";
   // BioPortal VS collections
   public static final String[] BP_VS_COLLECTIONS_READ = {CEDAR_VALUE_SETS_ONTOLOGY, NLM_VALUE_SETS_ONTOLOGY, CADSR_VALUE_SETS_ONTOLOGY};
+  public static final String BP_VS_COLLECTIONS_READ_REGEX = CEDAR_VALUE_SETS_ONTOLOGY + "|" + NLM_VALUE_SETS_ONTOLOGY + '|' + CADSR_VALUE_SETS_ONTOLOGY;
   // Creation of value sets is restricted to this VS collections
   public static final String[] BP_VS_COLLECTIONS_WRITE = {CEDAR_VALUE_SETS_ONTOLOGY};
   // Used by the values in the CADSR value sets ontology
   public static final String SKOS_IRI = "http://www.w3.org/2004/02/skos/core#";
   public static final String SKOS_NOTATION_IRI = SKOS_IRI + "notation";
   public static final String SKOS_RELATEDMATCH_IRI = SKOS_IRI + "relatedMatch";
+  // Value arrangements
+  public static final String CEDAR_VALUE_ARRANGEMENTS_ACTION_MOVE = "move";
+  public static final String CEDAR_VALUE_ARRANGEMENTS_ACTION_DELETE = "delete";
+
+  public static final String CEDAR_VALUE_ARRANGEMENTS_ACTIONS_REGEX =
+      CEDAR_VALUE_ARRANGEMENTS_ACTION_MOVE + "|" + CEDAR_VALUE_ARRANGEMENTS_ACTION_DELETE;
 
   /** Resource types **/
-  //public static final String BP_ONTOLOGY_TYPE_ONTOLOGY = "ontology_types/ONTOLOGY";
+  public static final String CEDAR_TYPE_CLASS = "OntologyClass";
+  public static final String CEDAR_TYPE_VALUE = "Value";
   public static final String BP_ONTOLOGY_TYPE_VS_COLLECTION = "ontology_types/VALUE_SET_COLLECTION";
   public static final String BP_TYPE_BASE = "http://data.bioontology.org/metadata/";
   public static final String BP_TYPE_CLASS = "OntologyClass";
@@ -59,6 +76,7 @@ public class Constants
   public static final String BP_TYPE_VALUE = "Value";
   public static final String BP_TYPE_ONTOLOGY = "Ontology";
   public static final String BP_TYPE_VS_COLLECTION = "ValueSetCollection";
+  public static final String BP_TYPE_RELATION = "Relation";
 
   /** Object Types **/
   public static final String DATATYPE_PROPERTY = "DatatypeProperty";

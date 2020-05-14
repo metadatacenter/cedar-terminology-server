@@ -2,8 +2,6 @@ package org.metadatacenter.cedar.terminology.resources.bioportal;
 
 import org.junit.*;
 import org.metadatacenter.terms.customObjects.PagedResults;
-import org.metadatacenter.terms.domainObjects.OntologyClass;
-import org.metadatacenter.terms.domainObjects.TreeNode;
 import org.metadatacenter.terms.domainObjects.Value;
 import org.metadatacenter.terms.domainObjects.ValueSet;
 import org.metadatacenter.terms.util.Util;
@@ -16,13 +14,14 @@ import javax.ws.rs.core.Response;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.util.HashSet;
-import java.util.List;
 
 import static org.metadatacenter.cedar.terminology.utils.Constants.*;
+import static org.metadatacenter.constant.HttpConstants.HTTP_HEADER_AUTHORIZATION;
 
 /**
  * Integration tests. They are done by starting a test server that makes it possible to test the real HTTP stack.
  */
+@Ignore
 public class ValueResourceTest extends AbstractTerminologyServerResourceTest {
 
   /**
@@ -62,7 +61,7 @@ public class ValueResourceTest extends AbstractTerminologyServerResourceTest {
       e.printStackTrace();
     }
     // Service invocation
-    Response response = client.target(url).request().header("Authorization", authHeader).post(Entity.json(value1));
+    Response response = client.target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(value1));
     // Check HTTP response
     Assert.assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
     // Check Content-Type
@@ -85,6 +84,7 @@ public class ValueResourceTest extends AbstractTerminologyServerResourceTest {
     Assert.assertEquals(expected.isProvisional(), created.isProvisional());
   }
 
+  // TODO: test it for non-provisional values and value sets
   @Test
   public void findValueTest() {
     // Create a provisional value
@@ -94,7 +94,7 @@ public class ValueResourceTest extends AbstractTerminologyServerResourceTest {
     String findUrl = baseUrlBpVSCollections + "/" + Util.getShortIdentifier(created.getVsCollection()) + "/" +
         BP_VALUES + "/" + created.getId();
     // Service invocation
-    Response findResponse = client.target(findUrl).request().header("Authorization", authHeader).get();
+    Response findResponse = client.target(findUrl).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check HTTP response
     Assert.assertEquals(Response.Status.OK.getStatusCode(), findResponse.getStatus());
     // Check Content-Type
@@ -116,50 +116,6 @@ public class ValueResourceTest extends AbstractTerminologyServerResourceTest {
   }
 
   // TODO: test it for non-provisional values and value sets
-//  @Test
-//  public void findValueTreeTest() {
-//    ValueSet createdVs = createValueSet(vs1);
-//    Value createdValue1 = createValue(createdVs.getLdId(), value1);
-//    Value createdValue2 = createValue(createdVs.getLdId(), value2);
-//    String encodedValue1Id = null;
-//    try {
-//      encodedValue1Id = URLEncoder.encode(createdValue1.getLdId(), "UTF-8");
-//    } catch (UnsupportedEncodingException e) {
-//      e.printStackTrace();
-//    }
-//    String url = baseUrlBpVSCollections + "/" + Util.getShortIdentifier(createdValue1.getVsCollection())
-//        + "/" + BP_VALUES + "/" + encodedValue1Id + "/" + BP_TREE;
-//    // Wait to be sure that the BioPortal search index was updated
-//    try {
-//      Thread.sleep(1000);
-//    } catch (InterruptedException e) {
-//      e.printStackTrace();
-//    }
-//    // Service invocation
-//    Response response = client.target(url).request().header("Authorization", authHeader).get();
-//    // Check HTTP response
-//    Assert.assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
-//    // Check Content-Type
-//    Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
-//    // Check that the tree is not empty
-//    TreeNode tree = response.readEntity(TreeNode.class);
-//    Assert.assertTrue("No children", tree.getChildren().size() > 0);
-//    // Check that the root is the expected value set
-//    Assert.assertTrue("The tree root does not correspond to the expected value set", tree.getId().equals(createdVs.getId()));
-//    // Check that the children correspond to the created values
-//    boolean v1Found = false;
-//    boolean v2Found = false;
-//    for (TreeNode resource : tree.getChildren()) {
-//      if (resource.getId().equals(createdValue1.getId())) {
-//        v1Found = true;
-//      } else if (resource.getId().equals(createdValue2.getId())) {
-//        v2Found = true;
-//      }
-//    }
-//    Assert.assertTrue("Expected values not found in the returned tree", v1Found && v2Found);
-//  }
-
-  // TODO: test it for non-provisional values and value sets
   @Test
   public void findAllValuesInValueSetByValueTest() {
     ValueSet createdVs = createValueSet(vs1);
@@ -174,13 +130,9 @@ public class ValueResourceTest extends AbstractTerminologyServerResourceTest {
     String url = baseUrlBpVSCollections + "/" + Util.getShortIdentifier(createdValue1.getVsCollection())
         + "/" + BP_VALUES + "/" + encodedValue1Id + "/" + BP_ALL_VALUES;
     // Wait to be sure that the BioPortal search index was updated
-    try {
-      Thread.sleep(1000);
-    } catch (InterruptedException e) {
-      e.printStackTrace();
-    }
+    shortWaitToEnsureBioPortalIndexUpdated();
     // Service invocation
-    Response response = client.target(url).request().header("Authorization", authHeader).get();
+    Response response = client.target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check HTTP response
     Assert.assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
     // Check Content-Type
@@ -210,13 +162,13 @@ public class ValueResourceTest extends AbstractTerminologyServerResourceTest {
         createdValue.getSynonyms(), createdValue.getRelations(), createdValue.isProvisional(), createdValue.getCreated());
     String url = baseUrlBp + "/" + BP_VALUES + "/" + createdValue.getId();
     // Service invocation
-    Response updateResponse = client.target(url).request().header("Authorization", authHeader).put(Entity.json(updatedValue));
+    Response updateResponse = client.target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).put(Entity.json(updatedValue));
     // Check HTTP response
     Assert.assertEquals(Response.Status.NO_CONTENT.getStatusCode(), updateResponse.getStatus());
     // Retrieve the value
     String findUrl = baseUrlBpVSCollections + "/" + Util.getShortIdentifier(createdValue.getVsCollection()) + "/" +
         BP_VALUES + "/" + createdValue.getId();
-    Response findResponse = client.target(findUrl).request().header("Authorization", authHeader).get();
+    Response findResponse = client.target(findUrl).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     Value found = findResponse.readEntity(Value.class);
     // Check that the modifications have been done correctly
     Value expected = updatedValue;
@@ -240,7 +192,7 @@ public class ValueResourceTest extends AbstractTerminologyServerResourceTest {
     Value created = createValue(createdVs.getLdId(), value1);
     // Delete the value that has been created
     String classUrl = baseUrlBp + "/" + BP_VALUES + "/" + created.getId();
-    Response deleteResponse = client.target(classUrl).request().header("Authorization", authHeader).delete();
+    Response deleteResponse = client.target(classUrl).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).delete();
     // Check HTTP response
     Assert.assertEquals(Response.Status.NO_CONTENT.getStatusCode(), deleteResponse.getStatus());
     // Remove value from the list of created values. It has already been deleted
@@ -248,7 +200,7 @@ public class ValueResourceTest extends AbstractTerminologyServerResourceTest {
     // Try to retrieve the value to check that it has been deleted correctly
     String findUrl = baseUrlBpVSCollections + "/" + Util.getShortIdentifier(created.getVsCollection()) + "/" +
         BP_VALUES + "/" + created.getId();
-    Response findResponse = client.target(findUrl).request().header("Authorization", authHeader).get();
+    Response findResponse = client.target(findUrl).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check not found
     Assert.assertEquals(Response.Status.NOT_FOUND.getStatusCode(), findResponse.getStatus());
   }

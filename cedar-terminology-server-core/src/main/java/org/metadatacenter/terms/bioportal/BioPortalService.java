@@ -16,12 +16,11 @@ import java.io.IOException;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static org.metadatacenter.terms.util.Constants.*;
+import static org.metadatacenter.cedar.terminology.util.Constants.*;
 import static org.metadatacenter.util.json.JsonMapper.MAPPER;
 
 
-public class BioPortalService implements IBioPortalService
-{
+public class BioPortalService implements IBioPortalService {
   private final int connectTimeout;
   private final int socketTimeout;
   private BpProvisionalClassDAO bpProvClassDAO;
@@ -34,8 +33,7 @@ public class BioPortalService implements IBioPortalService
    * @param connectTimeout
    * @param socketTimeout
    */
-  public BioPortalService(int connectTimeout, int socketTimeout)
-  {
+  public BioPortalService(int connectTimeout, int socketTimeout) {
     this.connectTimeout = connectTimeout;
     this.socketTimeout = socketTimeout;
     this.bpProvClassDAO = new BpProvisionalClassDAO(connectTimeout, socketTimeout);
@@ -48,9 +46,9 @@ public class BioPortalService implements IBioPortalService
   /**
    * Search for ontology classes, value sets, and value set items. Provisional classes are included.
    */
-  public BpPagedResults<BpClass> search(String q, List<String> scope, List<String> sources, boolean suggest, String source, String subtreeRootId, int maxDepth, int page, int pageSize,
-    boolean displayContext, boolean displayLinks, String apiKey) throws IOException
-  {
+  public BpPagedResults<BpClass> search(String q, List<String> scope, List<String> sources, boolean suggest,
+                                        String source, String subtreeRootId, int maxDepth, int page, int pageSize,
+                                        boolean displayContext, boolean displayLinks, String apiKey) throws IOException {
     // Encode query
     q = Util.encodeIfNeeded(q);
     /** Build url **/
@@ -66,12 +64,17 @@ public class BioPortalService implements IBioPortalService
       // Search for value sets
       else if (scope.contains(BP_SEARCH_SCOPE_VALUE_SETS)) {
         url = BP_API_BASE + BP_SEARCH + "?q=" + q
-          + "&also_search_provisional=true&ontology_types=VALUE_SET_COLLECTION&valueset_roots_only=true";
+            + "&also_search_provisional=true&ontology_types=VALUE_SET_COLLECTION&valueset_roots_only=true";
       }
       // Search for values in value sets
       else if ((scope.contains(BP_SEARCH_SCOPE_VALUES))) {
-        url = BP_API_BASE + BP_SEARCH + "?q=" + q
-          + "&also_search_provisional=true&ontology_types=VALUE_SET_COLLECTION&valueset_exclude_roots=true";
+        url = BP_API_BASE + BP_SEARCH + "?q=" + q + "&also_search_provisional=true&ontology_types" +
+            "=VALUE_SET_COLLECTION";
+
+        // I've removed 'valueset_exclude_roots=true' because it seems that it's not needed. It seems that the root is not
+        // returned anyways and removing makes the call much faster.
+        //url = BP_API_BASE + BP_SEARCH + "?q=" + q +
+        // "&also_search_provisional=true&ontology_types=VALUE_SET_COLLECTION&valueset_exclude_roots=true";
       }
     } else if (scope.size() == 2) {
       // TODO: This call is retrieving value sets only because the 'valueset_roots_only' parameter is restricting the
@@ -129,13 +132,14 @@ public class BioPortalService implements IBioPortalService
 
     // Send request to the BioPortal API
     HttpResponse response = Request.Get(url).addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
-      connectTimeout(connectTimeout).socketTimeout(socketTimeout).execute().returnResponse();
+        connectTimeout(connectTimeout).socketTimeout(socketTimeout).execute().returnResponse();
 
     int statusCode = response.getStatusLine().getStatusCode();
     // The request has succeeded
     if (statusCode == Response.Status.OK.getStatusCode()) {
       JsonNode bpResult = MAPPER.readTree(new String(EntityUtils.toByteArray(response.getEntity())));
-      return MAPPER.readValue(MAPPER.treeAsTokens(bpResult), new TypeReference<BpPagedResults<BpClass>>() {});
+      return MAPPER.readValue(MAPPER.treeAsTokens(bpResult), new TypeReference<BpPagedResults<BpClass>>() {
+      });
     } else {
       throw new HTTPException(statusCode);
     }
@@ -145,12 +149,11 @@ public class BioPortalService implements IBioPortalService
    * Search for ontology properties.
    */
   public BpPagedResults<BpProperty> propertySearch(String q, List<String> sources, boolean exactMatch, boolean
-      requireDefinitions, int page, int pageSize, boolean displayContext, boolean displayLinks, String apiKey) throws IOException
-  {
+      requireDefinitions, int page, int pageSize, boolean displayContext, boolean displayLinks, String apiKey) throws IOException {
     // Encode query
     q = Util.encodeIfNeeded(q);
     /** Build url **/
-    String url =  BP_API_BASE + BP_PROPERTY_SEARCH + "?q=" + q;
+    String url = BP_API_BASE + BP_PROPERTY_SEARCH + "?q=" + q;
 
     /** Add sources **/
     if (sources.size() > 0) {
@@ -183,7 +186,8 @@ public class BioPortalService implements IBioPortalService
     // The request has succeeded
     if (statusCode == Response.Status.OK.getStatusCode()) {
       JsonNode bpResult = MAPPER.readTree(new String(EntityUtils.toByteArray(response.getEntity())));
-      return MAPPER.readValue(MAPPER.treeAsTokens(bpResult), new TypeReference<BpPagedResults<BpProperty>>() {});
+      return MAPPER.readValue(MAPPER.treeAsTokens(bpResult), new TypeReference<BpPagedResults<BpProperty>>() {
+      });
     } else {
       throw new HTTPException(statusCode);
     }
@@ -241,7 +245,8 @@ public class BioPortalService implements IBioPortalService
     return bpClassDAO.getChildren(id, ontology, page, pageSize, apiKey);
   }
 
-  public BpPagedResults<BpClass> getClassDescendants(String id, String ontology, int page, int pageSize, String apiKey) throws IOException {
+  public BpPagedResults<BpClass> getClassDescendants(String id, String ontology, int page, int pageSize,
+                                                     String apiKey) throws IOException {
     return bpClassDAO.getDescendants(id, ontology, page, pageSize, apiKey);
   }
 
@@ -249,18 +254,16 @@ public class BioPortalService implements IBioPortalService
     return bpClassDAO.getParents(id, ontology, apiKey);
   }
 
-  public BpProvisionalClass createBpProvisionalClass(BpProvisionalClass c, String apiKey) throws IOException
-  {
+  public BpProvisionalClass createBpProvisionalClass(BpProvisionalClass c, String apiKey) throws IOException {
     return bpProvClassDAO.create(c, apiKey);
   }
 
-  public BpProvisionalClass findBpProvisionalClassById(String id, String apiKey) throws IOException
-  {
+  public BpProvisionalClass findBpProvisionalClassById(String id, String apiKey) throws IOException {
     return bpProvClassDAO.find(id, apiKey);
   }
 
-  public BpPagedResults<BpProvisionalClass> findAllProvisionalClasses(String ontology, int page, int pageSize, String apiKey) throws IOException
-  {
+  public BpPagedResults<BpProvisionalClass> findAllProvisionalClasses(String ontology, int page, int pageSize,
+                                                                      String apiKey) throws IOException {
     return bpProvClassDAO.findAll(ontology, page, pageSize, apiKey);
   }
 
@@ -276,13 +279,11 @@ public class BioPortalService implements IBioPortalService
    * Relations
    */
 
-  public BpProvisionalRelation createBpProvisionalRelation(BpProvisionalRelation pr, String apiKey) throws IOException
-  {
+  public BpProvisionalRelation createBpProvisionalRelation(BpProvisionalRelation pr, String apiKey) throws IOException {
     return bpProvRelationDAO.create(pr, apiKey);
   }
 
-  public BpProvisionalRelation findProvisionalRelationById(String id, String apiKey) throws IOException
-  {
+  public BpProvisionalRelation findProvisionalRelationById(String id, String apiKey) throws IOException {
     return bpProvRelationDAO.find(id, apiKey);
   }
 
@@ -298,15 +299,15 @@ public class BioPortalService implements IBioPortalService
    * Value Sets
    */
 
-  public BpPagedResults<BpClass> findValueSetsByValueSetCollection(String vsCollection, int page, int pageSize, String apiKey)
-    throws IOException
-  {
+  public BpPagedResults<BpClass> findValueSetsByValueSetCollection(String vsCollection, int page, int pageSize,
+                                                                   String apiKey)
+      throws IOException {
     return bpClassDAO.findValueSetsByValueSetCollection(vsCollection, page, pageSize, apiKey);
   }
 
-  public BpPagedResults<BpClass> findValuesByValueSet(String vsId, String vsCollection, int page, int pageSize, String apiKey)
-    throws IOException
-  {
+  public BpPagedResults<BpClass> findValuesByValueSet(String vsId, String vsCollection, int page, int pageSize,
+                                                      String apiKey)
+      throws IOException {
     return bpClassDAO.findValuesByValueSet(vsId, vsCollection, page, pageSize, apiKey);
   }
 

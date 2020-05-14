@@ -20,7 +20,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.metadatacenter.terms.util.Constants.*;
+import static org.metadatacenter.cedar.terminology.util.Constants.*;
+
 import static org.metadatacenter.util.json.JsonMapper.MAPPER;
 
 public class BpClassDAO
@@ -37,7 +38,7 @@ public class BpClassDAO
   }
 
   public BpClass find(String id, String ontology, String apiKey) throws HTTPException, IOException {
-    String url = BP_API_BASE + BP_ONTOLOGIES + ontology + "/" + BP_CLASSES + id + "?include=prefLabel,hasChildren,created,synonym,definition";
+    String url = BP_API_BASE + BP_ONTOLOGIES + ontology + "/" + BP_CLASSES + Util.encodeIfNeeded(id) + "?include=prefLabel,hasChildren,created,synonym,definition";
     logger.info("Url: " + url);
 
     HttpResponse response = HttpUtil.makeHttpRequest(Request.Get(url)
@@ -112,7 +113,7 @@ public class BpClassDAO
   }
 
   public BpPagedResults<BpClass> getDescendants(String id, String ontology, int page, int pageSize, String apiKey) throws HTTPException, IOException {
-    String url = BP_API_BASE + BP_ONTOLOGIES + ontology + "/" + BP_CLASSES + id + "/descendants?"
+    String url = BP_API_BASE + BP_ONTOLOGIES + ontology + "/" + BP_CLASSES + Util.encodeIfNeeded(id) + "/descendants?"
     + "&page=" + page + "&pagesize=" + pageSize + "&include=prefLabel,hasChildren,created,synonym,definition";
     logger.info("Url: " + url);
 
@@ -179,7 +180,7 @@ public class BpClassDAO
   public BpPagedResults<BpClass> findValuesByValueSet(String vsId, String vsCollection, int page, int pageSize, String apiKey)
     throws IOException
   {
-    String url = BP_API_BASE + BP_ONTOLOGIES + vsCollection + "/classes/" + vsId + "/children?"
+    String url = BP_API_BASE + BP_ONTOLOGIES + vsCollection + "/classes/" + Util.encodeIfNeeded(vsId) + "/children?"
         + "page=" + page + "&pagesize=" + pageSize + "&include=prefLabel,hasChildren,created,synonym,definition";
     // In the case of the CADSR value sets collection, we also need to return the properties to be able to access to the
     // source terminology URI, which is stored using the property skos:relatedMatch, and to the VALIDVALUE, which is

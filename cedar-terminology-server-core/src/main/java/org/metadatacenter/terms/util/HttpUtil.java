@@ -5,7 +5,7 @@ import org.apache.http.client.fluent.Request;
 
 import java.io.IOException;
 
-import static org.metadatacenter.terms.util.Constants.BP_API_WAIT_TIME;
+import static org.metadatacenter.cedar.terminology.util.Constants.*;
 
 public class HttpUtil {
 

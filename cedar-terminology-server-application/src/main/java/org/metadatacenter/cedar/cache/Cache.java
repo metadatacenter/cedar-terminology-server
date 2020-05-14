@@ -6,7 +6,6 @@ import com.google.common.cache.LoadingCache;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.ListenableFutureTask;
 import org.metadatacenter.cedar.terminology.resources.AbstractTerminologyServerResource;
-import org.metadatacenter.terms.TerminologyService;
 import org.metadatacenter.terms.domainObjects.Ontology;
 import org.metadatacenter.terms.domainObjects.ValueSet;
 import org.slf4j.Logger;
@@ -26,33 +25,31 @@ public class Cache {
 
   private static ScheduledExecutorService executor;
   private static final int refreshInitialDelay = 0;
-  private static final int refreshDelay = 3;
+  private static final int refreshDelay = 7;
   private static final TimeUnit delayUnit = TimeUnit.HOURS;
   private static String valueSetsCachePath;
   private static String ontologiesCachePath;
   private static boolean firstLoadValueSets = true;
   private static boolean firstLoadOntologies = true;
+  private static boolean isTestMode = false;
 
   private static final Logger log = LoggerFactory.getLogger(Cache.class);
 
-  static {
-    valueSetsCachePath = getCacheObjectsPath() + "/" + VALUE_SETS_CACHE_FILE;
-    ontologiesCachePath = getCacheObjectsPath() + "/" + ONTOLOGIES_CACHE_FILE;
-    executor = Executors.newSingleThreadScheduledExecutor();
-  }
-
   public static void init(boolean testMode) {
-    //Logger.info("Initializing cache");
-    if (testMode) {
+    isTestMode = testMode;
+    if (isTestMode) {
       ontologiesCachePath = TEST_CACHE_FOLDER_NAME + "/" + ONTOLOGIES_CACHE_FILE;
       valueSetsCachePath = TEST_CACHE_FOLDER_NAME + "/" + VALUE_SETS_CACHE_FILE;
     }
     else {
+      valueSetsCachePath = getCacheObjectsPath() + "/" + VALUE_SETS_CACHE_FILE;
+      ontologiesCachePath = getCacheObjectsPath() + "/" + ONTOLOGIES_CACHE_FILE;
+      executor = Executors.newSingleThreadScheduledExecutor();
       executor.scheduleWithFixedDelay(
           new Runnable() {
             public void run() {
-              valueSetsCache.refresh("value-sets");
               ontologiesCache.refresh("ontologies");
+              valueSetsCache.refresh("value-sets");
             }
           }, refreshInitialDelay, refreshDelay, delayUnit);
     }
@@ -85,7 +82,7 @@ public class Cache {
       });
 
   // Google Guava cache for all ontologies. It has been implemented as a single-object cache that will contain a
-  // LinkedHashMap with all ontologies, so that it is possible both getting them as an ordered list and quickly
+  // LinkedHashMap with all ontologies, so that it is possible to both get them as an ordered list and quickly
   // access to specific ontologies by id.
   public static LoadingCache<String, LinkedHashMap<String, Ontology>> ontologiesCache = CacheBuilder.newBuilder().maximumSize(1)
           //.expireAfterAccess(5, TimeUnit.SECONDS)
@@ -113,7 +110,11 @@ public class Cache {
 
   private static LinkedHashMap<String, ValueSet> getAllValueSetsAsMap() throws IOException {
     List<ValueSet> valueSets = null;
-    if (firstLoadValueSets && new File(valueSetsCachePath).isFile()) {
+    // The value sets are loaded from a cache file if one of the following cases is met:
+    // 1) The cache file exists and the server was just started. The calls that will follow will force cache regeneration
+    // 2) The cache file exists and the server is in test mode (running tests)
+    if ((firstLoadValueSets && new File(valueSetsCachePath).isFile()) ||
+        (isTestMode && new File(valueSetsCachePath).isFile()))  {
       log.info("Loading value sets from file");
       valueSets = readValueSetsFromFile();
     } else {
@@ -132,7 +133,12 @@ public class Cache {
 
   private static LinkedHashMap<String, Ontology> getAllOntologiesAsMap() throws IOException {
     List<Ontology> ontologies = null;
-    if (firstLoadOntologies && new File(ontologiesCachePath).isFile()) {
+    // The ontologies are loaded from a cache file if one of the following cases is met:
+    // 1) The cache file exists and the server was just started. The calls that will follow will force cache regeneration
+    // 2) The cache file exists and the server is in test mode (running tests)
+
+    if ((firstLoadOntologies && new File(ontologiesCachePath).isFile()) ||
+    (isTestMode && new File(ontologiesCachePath).isFile())) {
       log.info("Loading ontologies from file");
       ontologies = readOntologiesFromFile();
     } else {

@@ -15,8 +15,7 @@ import javax.ws.rs.core.Response.Status;
 import javax.xml.ws.http.HTTPException;
 import java.io.IOException;
 
-import static org.metadatacenter.terms.util.Constants.BP_API_BASE;
-import static org.metadatacenter.terms.util.Constants.BP_PROVISIONAL_RELATIONS;
+import static org.metadatacenter.cedar.terminology.util.Constants.*;
 import static org.metadatacenter.util.json.JsonMapper.MAPPER;
 
 public class BpProvisionalRelationDAO {

@@ -8,61 +8,45 @@ import java.util.List;
 public class BpPagedResults<T>
 {
 
-  private int page;
-  private int pageCount;
-  private int prevPage;
-  private int nextPage;
+  private Integer page;
+  private Integer pageCount;
+  private Integer totalCount;
+  private Integer prevPage;
+  private Integer nextPage;
   private List<T> collection;
 
   public BpPagedResults() {}
 
-  public BpPagedResults(int page, int pageCount, int prevPage, int nextPage, List<T> collection)
+  public BpPagedResults(Integer page, Integer pageCount, Integer totalCount, Integer prevPage, Integer nextPage, List<T> collection)
   {
     this.page = page;
     this.pageCount = pageCount;
+    this.totalCount = totalCount;
     this.prevPage = prevPage;
     this.nextPage = nextPage;
     this.collection = collection;
   }
 
-  public int getPage()
+  public Integer getPage()
   {
     return page;
   }
 
-  public void setPage(int page)
-  {
-    this.page = page;
-  }
-
-  public int getPageCount()
+  public Integer getPageCount()
   {
     return pageCount;
   }
 
-  public void setPageCount(int pageCount)
-  {
-    this.pageCount = pageCount;
-  }
+  public Integer getTotalCount() { return totalCount; }
 
-  public int getPrevPage()
+  public Integer getPrevPage()
   {
     return prevPage;
   }
 
-  public void setPrevPage(int prevPage)
-  {
-    this.prevPage = prevPage;
-  }
-
-  public int getNextPage()
+  public Integer getNextPage()
   {
     return nextPage;
-  }
-
-  public void setNextPage(int nextPage)
-  {
-    this.nextPage = nextPage;
   }
 
   public List<T> getCollection()

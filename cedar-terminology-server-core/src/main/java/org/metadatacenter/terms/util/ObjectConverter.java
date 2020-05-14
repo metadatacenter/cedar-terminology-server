@@ -1,6 +1,7 @@
 package org.metadatacenter.terms.util;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import org.metadatacenter.cedar.terminology.validation.integratedsearch.ClassValueConstraint;
 import org.metadatacenter.terms.bioportal.customObjects.BpPagedResults;
 import org.metadatacenter.terms.bioportal.domainObjects.*;
 import org.metadatacenter.terms.customObjects.PagedResults;
@@ -11,13 +12,13 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
-import static org.metadatacenter.terms.util.Constants.*;
+import static org.metadatacenter.cedar.terminology.util.Constants.*;
 import static org.metadatacenter.util.json.JsonMapper.MAPPER;
 
 public class ObjectConverter {
 
   /**
-   * To BioPortal objects
+   * From Terminology Server objects to BioPortal objects
    **/
 
   public static BpProvisionalClass toBpProvisionalClass(OntologyClass c) {
@@ -70,7 +71,7 @@ public class ObjectConverter {
   }
 
   /**
-   * From BioPortal objects
+   * From BioPortal objects to Terminology Server objects
    **/
 
   public static Ontology toOntology(BpOntology o) {
@@ -108,9 +109,8 @@ public class ObjectConverter {
         relations.add(toRelation(pr));
       }
     }
-    return new ValueSet(Util.getShortIdentifier(pc.getId()), pc.getId(), pc.getLabel(), pc.getCreator(), pc
-        .getOntology(), pc.getDefinition(),
-        pc.getSynonym(), relations, provisional, pc.getCreated());
+    return new ValueSet(Util.getShortIdentifier(pc.getId()), pc.getId(), pc.getLabel(), pc.getCreator(),
+        pc.getOntology(), pc.getDefinition(), pc.getSynonym(), relations, provisional, pc.getCreated());
   }
 
   public static Relation toRelation(BpProvisionalRelation pr) {
@@ -172,7 +172,7 @@ public class ObjectConverter {
     for (BpClass c : bpr.getCollection()) {
       valueSets.add(toValueSet(c));
     }
-    return new PagedResults<>(bpr.getPage(), bpr.getPageCount(), bpr.getCollection().size(), bpr.getPrevPage(),
+    return new PagedResults<>(bpr.getPage(), bpr.getPageCount(), bpr.getCollection().size(), bpr.getTotalCount(), bpr.getPrevPage(),
         bpr.getNextPage(), valueSets);
   }
 
@@ -181,7 +181,7 @@ public class ObjectConverter {
     for (BpClass c : bpr.getCollection()) {
       values.add(toValue(c));
     }
-    return new PagedResults<>(bpr.getPage(), bpr.getPageCount(), bpr.getCollection().size(), bpr.getPrevPage(),
+    return new PagedResults<>(bpr.getPage(), bpr.getPageCount(), bpr.getCollection().size(), bpr.getTotalCount(), bpr.getPrevPage(),
         bpr.getNextPage(), values);
   }
 
@@ -192,7 +192,7 @@ public class ObjectConverter {
         classes.add(toOntologyClass(c));
       }
     }
-    return new PagedResults<>(bpr.getPage(), bpr.getPageCount(), bpr.getCollection().size(), bpr.getPrevPage(),
+    return new PagedResults<>(bpr.getPage(), bpr.getPageCount(), bpr.getCollection().size(), bpr.getTotalCount(), bpr.getPrevPage(),
         bpr.getNextPage(), classes);
   }
 
@@ -201,7 +201,7 @@ public class ObjectConverter {
     for (BpProvisionalClass c : bpr.getCollection()) {
       classes.add(toOntologyClass(c));
     }
-    return new PagedResults<>(bpr.getPage(), bpr.getPageCount(), bpr.getCollection().size(), bpr.getPrevPage(),
+    return new PagedResults<>(bpr.getPage(), bpr.getPageCount(), bpr.getCollection().size(), bpr.getTotalCount(), bpr.getPrevPage(),
         bpr.getNextPage(), classes);
   }
 
@@ -234,10 +234,10 @@ public class ObjectConverter {
       }
 
       String source = c.getLinks().getOntology();
-      SearchResult r = new SearchResult(c.getId(), c.getId(), BP_TYPE_BASE + type, type, c.getPrefLabel(), definition, source);
+      SearchResult r = new SearchResult(c.getId(), c.getId(), BP_TYPE_BASE + type, type, c.getPrefLabel(), null, definition, source);
       results.add(r);
     }
-    return new PagedResults<>(bpr.getPage(), bpr.getPageCount(), bpr.getCollection().size(), bpr.getPrevPage(),
+    return new PagedResults<>(bpr.getPage(), bpr.getPageCount(), bpr.getCollection().size(), bpr.getTotalCount(), bpr.getPrevPage(),
         bpr.getNextPage(), results);
   }
 
@@ -250,11 +250,11 @@ public class ObjectConverter {
       }
       String source = bpProperty.getLinks().getOntology();
       SearchResult searchResult = new SearchResult(bpProperty.getId(), bpProperty.getId(), bpProperty.getType(),
-          Util.getShortType(bpProperty.getType()), bpProperty.getPrefLabel(), definition, source);
+          Util.getShortType(bpProperty.getType()), bpProperty.getPrefLabel(), null, definition, source);
       results.add(searchResult);
     }
     return new PagedResults<>(bpProperties.getPage(), bpProperties.getPageCount(), bpProperties.getCollection().size(),
-        bpProperties.getPrevPage(), bpProperties.getNextPage(), results);
+        bpProperties.getTotalCount(), bpProperties.getPrevPage(), bpProperties.getNextPage(), results);
   }
 
   public static List<OntologyProperty> toPropertyListResults(List<BpProperty> bpr) {
@@ -306,7 +306,7 @@ public class ObjectConverter {
   }
 
   /**
-   * From API object to API object
+   * From Terminology Server object to a different Terminology Server object
    */
 
   public static Value toValue(OntologyClass c) {
@@ -333,6 +333,68 @@ public class ObjectConverter {
   public static ValueSet toValueSet(OntologyClass c) {
     return new ValueSet(c.getId(), c.getLdId(), c.getPrefLabel(), c.getCreator(), c.getOntology(), c.getDefinitions(), c
         .getSynonyms(), c.getRelations(), c.isProvisional(), c.getCreated());
+  }
+
+  public static SearchResult toSearchResult(OntologyClass c) {
+
+    String definition = null;
+    if (c.getDefinitions() != null && c.getDefinitions().size() > 0) {
+      definition = c.getDefinitions().get(0);
+    }
+
+    return new SearchResult(c.getId(), c.getLdId(), c.getLdType(), c.getType(), c.getPrefLabel(), null,
+        definition, c.getOntology());
+  }
+
+  public static SearchResult toSearchResult(Value v) {
+
+    String definition = null;
+    if (v.getDefinitions() != null && v.getDefinitions().size() > 0) {
+      definition = v.getDefinitions().get(0);
+    }
+
+    return new SearchResult(v.getId(), v.getLdId(), v.getLdType(), v.getType(), v.getPrefLabel(), v.getNotation(),
+        definition, v.getVsCollection());
+  }
+
+  public static SearchResult toSearchResult(ClassValueConstraint c) {
+
+    String ldType = c.getType();
+    String source = c.getSource();
+
+    if (!Util.isUrl(ldType)) {
+      ldType = BP_TYPE_BASE + ldType;
+    }
+    if (!Util.isUrl(source)) {
+      source = BP_API_BASE + BP_ONTOLOGIES + source;
+    }
+
+    return new SearchResult(Util.getShortIdentifier(c.getUri()), c.getUri(), ldType, c.getType(), c.getPrefLabel(), null,
+        null, source);
+  }
+
+  public static PagedResults<SearchResult> classResultsToSearchResults(PagedResults<OntologyClass> classPagedResults) {
+
+    List<SearchResult>  results = new ArrayList<>();
+    for (OntologyClass c : classPagedResults.getCollection()) {
+      results.add(toSearchResult(c));
+    }
+
+    return new PagedResults<>(classPagedResults.getPage(), classPagedResults.getPageCount(),
+        classPagedResults.getCollection().size(), classPagedResults.getTotalCount(), classPagedResults.getPrevPage(),
+        classPagedResults.getNextPage(), results);
+  }
+
+  public static PagedResults<SearchResult> valueResultsToSearchResults(PagedResults<Value> valuePagedResults) {
+
+    List<SearchResult>  results = new ArrayList<>();
+    for (Value v : valuePagedResults.getCollection()) {
+      results.add(toSearchResult(v));
+    }
+
+    return new PagedResults<>(valuePagedResults.getPage(), valuePagedResults.getPageCount(),
+        valuePagedResults.getCollection().size(), valuePagedResults.getTotalCount(), valuePagedResults.getPrevPage(),
+        valuePagedResults.getNextPage(), results);
   }
 
   /**

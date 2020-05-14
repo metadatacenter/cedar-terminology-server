@@ -2,6 +2,7 @@ package org.metadatacenter.cedar.terminology.resources.bioportal;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import javax.ws.rs.core.HttpHeaders;
@@ -9,9 +10,12 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
+import static org.metadatacenter.constant.HttpConstants.HTTP_HEADER_AUTHORIZATION;
+
 /**
  * Integration tests. They are done by starting a test server that makes it possible to test the real HTTP stack.
  */
+
 public class SearchResourceTest extends AbstractTerminologyServerResourceTest {
 
   @Test
@@ -20,7 +24,7 @@ public class SearchResourceTest extends AbstractTerminologyServerResourceTest {
     String q = "white blood cell";
     // Service invocation
     Response response = client.target(baseUrlBpSearch).queryParam("q", q).request()
-        .header("Authorization", authHeader).get();
+        .header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
     // Check Content-Type
@@ -40,7 +44,7 @@ public class SearchResourceTest extends AbstractTerminologyServerResourceTest {
     String scope = "classes";
     // Service invocation
     Response response = client.target(baseUrlBpSearch).queryParam("q", q).queryParam("scope", scope).request()
-        .header("Authorization", authHeader).get();
+        .header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
     // Check Content-Type
@@ -65,7 +69,7 @@ public class SearchResourceTest extends AbstractTerminologyServerResourceTest {
         .queryParam("q", q)
         .queryParam("scope", scope)
         .queryParam("sources", source)
-        .request().header("Authorization", authHeader).get();
+        .request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
     // Check Content-Type
@@ -84,7 +88,7 @@ public class SearchResourceTest extends AbstractTerminologyServerResourceTest {
     String scope = "classes,values";
     // Service invocation
     Response response = client.target(baseUrlBpSearch).queryParam("q", q).queryParam("scope", scope).request()
-        .header("Authorization", authHeader).get();
+        .header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
     // Check Content-Type
@@ -108,7 +112,7 @@ public class SearchResourceTest extends AbstractTerminologyServerResourceTest {
         .queryParam("q", q)
         .queryParam("scope", scope)
         .queryParam("sources", source)
-        .request().header("Authorization", authHeader).get();
+        .request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
     // Check Content-Type
@@ -137,7 +141,7 @@ public class SearchResourceTest extends AbstractTerminologyServerResourceTest {
         .queryParam("q", q)
         .queryParam("scope", scope)
         .queryParam("sources", source)
-        .request().header("Authorization", authHeader).get();
+        .request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check HTTP response
     Assert.assertEquals(Status.NOT_FOUND.getStatusCode(), response.getStatus());
   }
@@ -151,7 +155,7 @@ public class SearchResourceTest extends AbstractTerminologyServerResourceTest {
     Response response = client.target(baseUrlBpSearch)
         .queryParam("q", q)
         .queryParam("scope", scope)
-        .request().header("Authorization", authHeader).get();
+        .request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
     // Check Content-Type
@@ -171,7 +175,7 @@ public class SearchResourceTest extends AbstractTerminologyServerResourceTest {
     Response response = client.target(baseUrlBpSearch)
         .queryParam("q", q)
         .queryParam("scope", scope)
-        .request().header("Authorization", authHeader).get();
+        .request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
     // Check Content-Type
@@ -187,7 +191,7 @@ public class SearchResourceTest extends AbstractTerminologyServerResourceTest {
     // Query parameters
     String q = "has title";
     // Service invocation
-    Response response = client.target(baseUrlBpPropertySearch).queryParam("q", q).request().header("Authorization", authHeader).get();
+    Response response = client.target(baseUrlBpPropertySearch).queryParam("q", q).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
     // Check Content-Type
@@ -205,7 +209,7 @@ public class SearchResourceTest extends AbstractTerminologyServerResourceTest {
     // Query parameters
     String q = "wrongproperty333";
     // Service invocation
-    Response response = client.target(baseUrlBpPropertySearch).queryParam("q", q).request().header("Authorization", authHeader).get();
+    Response response = client.target(baseUrlBpPropertySearch).queryParam("q", q).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
     // Check Content-Type
@@ -226,7 +230,7 @@ public class SearchResourceTest extends AbstractTerminologyServerResourceTest {
     Response response = client.target(baseUrlBpPropertySearch)
         .queryParam("q", q)
         .queryParam("sources", source)
-        .request().header("Authorization", authHeader).get();
+        .request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
     // Check Content-Type
@@ -262,7 +266,7 @@ public class SearchResourceTest extends AbstractTerminologyServerResourceTest {
         .queryParam("q", q)
         .queryParam("sources", source)
         .queryParam("exact_match", exactMatch)
-        .request().header("Authorization", authHeader).get();
+        .request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
     // Check Content-Type
@@ -290,7 +294,7 @@ public class SearchResourceTest extends AbstractTerminologyServerResourceTest {
     Response response = client.target(baseUrlBpPropertySearch)
         .queryParam("q", q)
         .queryParam("sources", source)
-        .request().header("Authorization", authHeader).get();
+        .request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check HTTP response
     Assert.assertEquals(Status.NOT_FOUND.getStatusCode(), response.getStatus());
   }
@@ -304,7 +308,7 @@ public class SearchResourceTest extends AbstractTerminologyServerResourceTest {
     Response response = client.target(baseUrlBpPropertySearch)
         .queryParam("q", q)
         .queryParam("require_definitions", requireDefinitions)
-        .request().header("Authorization", authHeader).get();
+        .request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
     // Check Content-Type
