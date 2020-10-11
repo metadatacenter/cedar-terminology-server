@@ -23,9 +23,9 @@ before_install:
 - docker ps -a
 - sleep 15
 - | # Create the test user in Neo4j
-  curl -i --header "Authorization: Basic bmVvNGo6bmVvNGo=" --data "@cedar-terminology-server-application/src/test/resources/create-test-user.cypher" -H "Accept: application/json" -H "Content-Type: application/json" http://localhost:7474/db/data/transaction/commit
+  curl -i --header "Authorization: Basic bmVvNGo6Y2hhbmdlbWU=" --data "@cedar-terminology-server-application/src/test/resources/create-test-user.cypher" -H "Accept: application/json" -H "Content-Type: application/json" http://localhost:7474/db/data/transaction/commit
 - | # Check that the user was created correctly
-  curl -i --header "Authorization: Basic bmVvNGo6bmVvNGo=" --data '{ "query": "MATCH (n) where ID(n)=1 RETURN n" }' -H "Accept: application/json" -H "Content-Type: application/json" http://localhost:7474/db/data/cypher
+  curl -i --header "Authorization: Basic bmVvNGo6Y2hhbmdlbWU=" --data '{ "query": "MATCH (n) where ID(n)=1 RETURN n" }' -H "Accept: application/json" -H "Content-Type: application/json" http://localhost:7474/db/data/cypher
 install: '[ ${TRAVIS_PULL_REQUEST} = ''false'' ] && mvn -DskipTests=false clean deploy
   --settings .m2/travis-settings.xml'
 script: '[ ${TRAVIS_PULL_REQUEST} = ''false'' ] && mvn -DskipTests=true clean --settings
@@ -37,7 +37,7 @@ env:
   - CEDAR_NEO4J_HOST=127.0.0.1
   - CEDAR_NEO4J_BOLT_PORT=7687
   - CEDAR_NEO4J_USER_NAME=neo4j
-  - CEDAR_NEO4J_USER_PASSWORD=neo4j
+  - CEDAR_NEO4J_USER_PASSWORD=changeme
   - CEDAR_MONGO_HOST=127.0.0.1
   - CEDAR_MONGO_PORT=27017
   - CEDAR_MONGO_APP_USER_NAME=cedarUser
