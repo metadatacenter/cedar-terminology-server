@@ -1,8 +1,6 @@
 package org.metadatacenter.cedar.terminology.resources.bioportal;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.dropwizard.client.JerseyClientBuilder;
-import io.dropwizard.setup.Environment;
 import io.dropwizard.testing.ResourceHelpers;
 import io.dropwizard.testing.junit.DropwizardAppRule;
 import org.glassfish.jersey.client.ClientProperties;
@@ -13,7 +11,6 @@ import org.metadatacenter.cedar.terminology.TerminologyServerConfiguration;
 import org.metadatacenter.config.CedarConfig;
 import org.metadatacenter.config.environment.CedarEnvironmentVariableProvider;
 import org.metadatacenter.model.SystemComponent;
-import org.metadatacenter.terms.TerminologyService;
 import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.terms.domainObjects.*;
 import org.metadatacenter.terms.util.Util;
@@ -99,7 +96,7 @@ public abstract class AbstractTerminologyServerResourceTest {
     baseUrlBpOntologies = baseUrlBp + "/" + BP_ONTOLOGIES;
     baseUrlBpVSCollections = baseUrlBp + "/" + BP_VALUE_SET_COLLECTIONS;
 
-    client =  new ResteasyClientBuilder().build();
+    client = new ResteasyClientBuilder().build();
     //client = new JerseyClientBuilder(RULE.getEnvironment()).build("BioPortal search endpoint client");
     client.property(ClientProperties.CONNECT_TIMEOUT, cedarConfig.getTerminologyConfig().getBioPortal()
         .getConnectTimeout());
@@ -242,12 +239,19 @@ public abstract class AbstractTerminologyServerResourceTest {
   protected static OntologyClass createClass(OntologyClass c) {
     String url = baseUrlBpOntologies + "/" + Util.getShortIdentifier(c.getOntology()) + "/" + BP_CLASSES;
     // Service invocation
-    Response response = client.target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(c));
-    // Check HTTP response
-    Assert.assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
-    OntologyClass created = response.readEntity(OntologyClass.class);
-    createdClasses.add(created);
-    return created;
+    Response response = null;
+    try {
+      response = client.target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(c));
+      // Check HTTP response
+      Assert.assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
+      OntologyClass created = response.readEntity(OntologyClass.class);
+      createdClasses.add(created);
+      return created;
+    } finally {
+      if (response != null) {
+        response.close();
+      }
+    }
   }
 
   private static void deleteCreatedClasses() throws Exception {
@@ -256,15 +260,26 @@ public abstract class AbstractTerminologyServerResourceTest {
       String findUrl = baseUrlBpOntologies + "/" + Util.getShortIdentifier(c.getOntology()) + "/" +
           BP_CLASSES + "/" + c.getId();
       String deleteUrl = baseUrlBp + "/" + BP_CLASSES + "/" + c.getId();
-      Response findResponse = client.target(findUrl).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
-      if (findResponse.getStatus() == Response.Status.OK.getStatusCode()) {
-        Response deleteResponse =
-            client.target(deleteUrl).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).delete();
-        if (deleteResponse.getStatus() != Response.Status.NO_CONTENT.getStatusCode()) {
-          throw new Exception("Couldn't delete class: Id = " + c.getLdId());
+
+      Response findResponse = null;
+      Response deleteResponse = null;
+      try {
+        findResponse = client.target(findUrl).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
+        if (findResponse.getStatus() == Response.Status.OK.getStatusCode()) {
+          deleteResponse = client.target(deleteUrl).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).delete();
+          if (deleteResponse.getStatus() != Response.Status.NO_CONTENT.getStatusCode()) {
+            throw new Exception("Couldn't delete class: Id = " + c.getLdId());
+          }
+        } else {
+          throw new Exception("Couldn't find class: Id = " + c.getLdId());
         }
-      } else {
-        throw new Exception("Couldn't find class: Id = " + c.getLdId());
+      } finally {
+        if (findResponse != null) {
+          findResponse.close();
+        }
+        if (deleteResponse != null) {
+          deleteResponse.close();
+        }
       }
     }
   }
@@ -276,12 +291,19 @@ public abstract class AbstractTerminologyServerResourceTest {
     OntologyClass createdClass = createClass(c);
     // Create provisional relation
     r.setSourceClassId(createdClass.getId());
-    Response response = client.target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(r));
-    // Check HTTP response
-    Assert.assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
-    Relation created = response.readEntity(Relation.class);
-    createdRelations.add(created);
-    return created;
+    Response response = null;
+    try {
+      response = client.target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(r));
+      // Check HTTP response
+      Assert.assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
+      Relation created = response.readEntity(Relation.class);
+      createdRelations.add(created);
+      return created;
+    } finally {
+      if (response != null) {
+        response.close();
+      }
+    }
   }
 
   private static void deleteCreatedRelations() throws Exception {
@@ -308,13 +330,19 @@ public abstract class AbstractTerminologyServerResourceTest {
 
   protected static ValueSet createValueSet(ValueSet vs) {
     String url = baseUrlBpVSCollections + "/" + Util.getShortIdentifier(vs.getVsCollection()) + "/" + BP_VALUE_SETS;
-    Response response =
-        client.target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(vs));
-    // Check HTTP response
-    Assert.assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
-    ValueSet created = response.readEntity(ValueSet.class);
-    createdValueSets.add(created);
-    return created;
+    Response response = null;
+    try {
+      response = client.target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(vs));
+      // Check HTTP response
+      Assert.assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
+      ValueSet created = response.readEntity(ValueSet.class);
+      createdValueSets.add(created);
+      return created;
+    } finally {
+      if (response != null) {
+        response.close();
+      }
+    }
   }
 
   private static void deleteCreatedValueSets() throws Exception {
@@ -349,12 +377,19 @@ public abstract class AbstractTerminologyServerResourceTest {
       e.printStackTrace();
     }
     // Service invocation
-    Response response = client.target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(v));
-    // Check HTTP response
-    Assert.assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
-    Value created = response.readEntity(Value.class);
-    createdValues.add(created);
-    return created;
+    Response response = null;
+    try {
+      response = client.target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(v));
+      // Check HTTP response
+      Assert.assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
+      Value created = response.readEntity(Value.class);
+      createdValues.add(created);
+      return created;
+    } finally {
+      if (response != null) {
+        response.close();
+      }
+    }
   }
 
   private static void deleteCreatedValues() throws Exception {
@@ -379,17 +414,22 @@ public abstract class AbstractTerminologyServerResourceTest {
   /* Properties */
   protected static PagedResults<SearchResult> searchProperties(String q) {
     // Service invocation
-    Response response =
-        client.target(baseUrlBpPropertySearch).queryParam("q", q).request().header(HTTP_HEADER_AUTHORIZATION,
-        authHeader).get();
-    // Check HTTP response
-    Assert.assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
-    // Check Content-Type
-    Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
-    // Check the number of results
-    PagedResults<SearchResult> properties = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
-    });
-    return properties;
+    Response response = null;
+    try {
+      response = client.target(baseUrlBpPropertySearch).queryParam("q", q).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
+      // Check HTTP response
+      Assert.assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+      // Check Content-Type
+      Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
+      // Check the number of results
+      PagedResults<SearchResult> properties = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
+      });
+      return properties;
+    } finally {
+      if (response != null) {
+        response.close();
+      }
+    }
   }
 
   /* Delete all provisional classes that were created for testing. Sometimes the tests fail and some classes are not
