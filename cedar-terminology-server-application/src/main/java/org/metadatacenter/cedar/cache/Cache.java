@@ -25,7 +25,7 @@ public class Cache {
 
   private static ScheduledExecutorService executor;
   private static final int refreshInitialDelay = 0;
-  private static final int refreshDelay = 7;
+  private static final int refreshDelay = 1;
   private static final TimeUnit delayUnit = TimeUnit.HOURS;
   private static String valueSetsCachePath;
   private static String ontologiesCachePath;
