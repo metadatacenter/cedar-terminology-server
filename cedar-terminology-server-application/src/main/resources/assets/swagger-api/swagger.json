@@ -3,7 +3,7 @@
   "info": {
     "title": "CEDAR Terminology Server API",
     "description": "CEDAR Terminology Server API",
-    "version": "2.5.31-SNAPSHOT"
+    "version": "2.5.32"
   },
   "basePath": "/bioportal",
   "schemes": [
