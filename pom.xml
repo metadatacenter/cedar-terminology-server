@@ -10,9 +10,11 @@
 
   <groupId>org.metadatacenter</groupId>
   <artifactId>cedar-terminology-server</artifactId>
+  <version>2.5.37-SNAPSHOT</version>
+  <packaging>pom</packaging>
+
   <name>CEDAR Terminology Server</name>
   <description>A wrapper for the BioPortal API that simplifies the access to BioPortal resources</description>
-  <packaging>pom</packaging>
 
   <scm>
     <connection>scm:git:https://github.com/metadatacenter/cedar-terminology-server.git</connection>
