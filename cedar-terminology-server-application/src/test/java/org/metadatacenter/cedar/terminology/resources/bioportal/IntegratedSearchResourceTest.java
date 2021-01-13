@@ -129,7 +129,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
   public void searchEmptyBody() {
     ObjectNode emptyBody = mapper.createObjectNode();
     // Service invocation
-    Response response = client.target(baseUrlBpIntegratedSearch).request()
+    Response response = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
         .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(emptyBody));
     // Check HTTP response
     Assert.assertEquals(STATUS_CODE_UNPROCESSABLE_ENTITY, response.getStatus());
@@ -140,7 +140,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     ObjectNode requestBody = mapper.createObjectNode();
     requestBody.set(BP_INTEGRATED_SEARCH_PARAMS_FIELD, mapper.createObjectNode());
     // Service invocation
-    Response response = client.target(baseUrlBpIntegratedSearch).request()
+    Response response = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
         .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
     // Check HTTP response
     Assert.assertEquals(STATUS_CODE_UNPROCESSABLE_ENTITY, response.getStatus());
@@ -153,7 +153,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     parameterObject.set(BP_INTEGRATED_SEARCH_PARAM_VALUE_CONSTRAINTS, mapper.createObjectNode());
     requestBody.set(BP_INTEGRATED_SEARCH_PARAMS_FIELD, parameterObject);
     // Service invocation
-    Response response = client.target(baseUrlBpIntegratedSearch).request()
+    Response response = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
         .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
     // Check HTTP response
     Assert.assertEquals(STATUS_CODE_UNPROCESSABLE_ENTITY, response.getStatus());
@@ -164,7 +164,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     ObjectNode requestBody = mapper.createObjectNode();
     requestBody.put("invalidField", "invalidFieldValue");
     // Service invocation
-    Response response = client.target(baseUrlBpIntegratedSearch).request()
+    Response response = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
         .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
     // Check HTTP response
     Assert.assertEquals(BAD_REQUEST, response.getStatus());
@@ -182,7 +182,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
         Optional.of(pageSize));
 
     // Service invocation
-    Response response = client.target(baseUrlBpIntegratedSearch).request()
+    Response response = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
         .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
@@ -209,7 +209,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
         Optional.of(pageSize));
 
     // Service invocation
-    Response response = client.target(baseUrlBpIntegratedSearch).request()
+    Response response = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
         .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
@@ -239,7 +239,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
         Optional.of(pageSize));
 
     // Service invocation
-    Response response = client.target(baseUrlBpIntegratedSearch).request()
+    Response response = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
         .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
@@ -270,7 +270,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
         Optional.of(pageSize));
 
     // Service invocation
-    Response response = client.target(baseUrlBpIntegratedSearch).request()
+    Response response = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
         .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
@@ -313,7 +313,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
         Optional.of(pageSize));
 
     // Service invocation
-    Response response = client.target(baseUrlBpIntegratedSearch).request()
+    Response response = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
         .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
@@ -340,7 +340,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
         Optional.of(pageSize));
 
     // Service invocation
-    Response response = client.target(baseUrlBpIntegratedSearch).request()
+    Response response = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
         .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
@@ -371,7 +371,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
         Optional.of(pageSize));
 
     // Service invocation
-    Response response = client.target(baseUrlBpIntegratedSearch).request()
+    Response response = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
         .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
@@ -414,7 +414,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
         Optional.of(pageSize));
 
     // Service invocation
-    Response response = client.target(baseUrlBpIntegratedSearch).request()
+    Response response = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
         .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
@@ -446,7 +446,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
         , Optional.of(pageSize));
 
     // Service invocation
-    Response response = client.target(baseUrlBpIntegratedSearch).request()
+    Response response = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
         .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
@@ -474,7 +474,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
         , Optional.empty());
 
     // Service invocation
-    Response response = client.target(baseUrlBpIntegratedSearch).request()
+    Response response = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
         .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
@@ -515,7 +515,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
         Optional.empty(), Optional.empty());
 
     // Service invocation
-    Response response = client.target(baseUrlBpIntegratedSearch).request()
+    Response response = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
         .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
@@ -560,7 +560,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
         Optional.empty());
 
     // Service invocation
-    Response response = client.target(baseUrlBpIntegratedSearch).request()
+    Response response = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
         .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
@@ -600,7 +600,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
         enumeratedClasses, Optional.empty(), Optional.of(pageSize));
 
     // Service invocation
-    Response response = client.target(baseUrlBpIntegratedSearch).request()
+    Response response = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
         .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
@@ -656,9 +656,9 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
         enumeratedClasses, Optional.of(2), Optional.of(pageSize));
 
     // Service invocation
-    Response responsePage1 = client.target(baseUrlBpIntegratedSearch).request()
+    Response responsePage1 = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
         .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBodyPage1));
-    Response responsePage2 = client.target(baseUrlBpIntegratedSearch).request()
+    Response responsePage2 = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
         .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBodyPage2));
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), responsePage1.getStatus());
@@ -731,7 +731,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
         enumeratedClasses, Optional.empty(), Optional.of(pageSize));
 
     // Service invocation
-    Response response = client.target(baseUrlBpIntegratedSearch).request()
+    Response response = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
         .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
@@ -793,7 +793,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     ObjectNode ontSizeRequestBody = generateRequestBody(inputText, ontologies,
         mapper.createArrayNode(), mapper.createArrayNode(),
         mapper.createArrayNode(), Optional.of(1), Optional.of(pageSize));
-    Response ontSizeResponse = client.target(baseUrlBpIntegratedSearch).request()
+    Response ontSizeResponse = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
         .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(ontSizeRequestBody));
     PagedResults<SearchResult> ontology1Response = ontSizeResponse.readEntity(new GenericType<PagedResults<SearchResult>>() {
     });
@@ -801,7 +801,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     int ontology1CurrentSize = ontology1Response.getTotalCount();
 
     // Service invocation
-    Response response = client.target(baseUrlBpIntegratedSearch).request()
+    Response response = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
         .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());

@@ -61,7 +61,7 @@ public class ValueResourceTest extends AbstractTerminologyServerResourceTest {
       e.printStackTrace();
     }
     // Service invocation
-    Response response = client.target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(value1));
+    Response response = clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(value1));
     // Check HTTP response
     Assert.assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
     // Check Content-Type
@@ -94,7 +94,7 @@ public class ValueResourceTest extends AbstractTerminologyServerResourceTest {
     String findUrl = baseUrlBpVSCollections + "/" + Util.getShortIdentifier(created.getVsCollection()) + "/" +
         BP_VALUES + "/" + created.getId();
     // Service invocation
-    Response findResponse = client.target(findUrl).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
+    Response findResponse = clientBuilder.build().target(findUrl).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check HTTP response
     Assert.assertEquals(Response.Status.OK.getStatusCode(), findResponse.getStatus());
     // Check Content-Type
@@ -132,7 +132,7 @@ public class ValueResourceTest extends AbstractTerminologyServerResourceTest {
     // Wait to be sure that the BioPortal search index was updated
     shortWaitToEnsureBioPortalIndexUpdated();
     // Service invocation
-    Response response = client.target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
+    Response response = clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check HTTP response
     Assert.assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
     // Check Content-Type
@@ -162,13 +162,13 @@ public class ValueResourceTest extends AbstractTerminologyServerResourceTest {
         createdValue.getSynonyms(), createdValue.getRelations(), createdValue.isProvisional(), createdValue.getCreated());
     String url = baseUrlBp + "/" + BP_VALUES + "/" + createdValue.getId();
     // Service invocation
-    Response updateResponse = client.target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).put(Entity.json(updatedValue));
+    Response updateResponse = clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).put(Entity.json(updatedValue));
     // Check HTTP response
     Assert.assertEquals(Response.Status.NO_CONTENT.getStatusCode(), updateResponse.getStatus());
     // Retrieve the value
     String findUrl = baseUrlBpVSCollections + "/" + Util.getShortIdentifier(createdValue.getVsCollection()) + "/" +
         BP_VALUES + "/" + createdValue.getId();
-    Response findResponse = client.target(findUrl).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
+    Response findResponse = clientBuilder.build().target(findUrl).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     Value found = findResponse.readEntity(Value.class);
     // Check that the modifications have been done correctly
     Value expected = updatedValue;
@@ -192,7 +192,7 @@ public class ValueResourceTest extends AbstractTerminologyServerResourceTest {
     Value created = createValue(createdVs.getLdId(), value1);
     // Delete the value that has been created
     String classUrl = baseUrlBp + "/" + BP_VALUES + "/" + created.getId();
-    Response deleteResponse = client.target(classUrl).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).delete();
+    Response deleteResponse = clientBuilder.build().target(classUrl).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).delete();
     // Check HTTP response
     Assert.assertEquals(Response.Status.NO_CONTENT.getStatusCode(), deleteResponse.getStatus());
     // Remove value from the list of created values. It has already been deleted
@@ -200,7 +200,7 @@ public class ValueResourceTest extends AbstractTerminologyServerResourceTest {
     // Try to retrieve the value to check that it has been deleted correctly
     String findUrl = baseUrlBpVSCollections + "/" + Util.getShortIdentifier(created.getVsCollection()) + "/" +
         BP_VALUES + "/" + created.getId();
-    Response findResponse = client.target(findUrl).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
+    Response findResponse = clientBuilder.build().target(findUrl).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check not found
     Assert.assertEquals(Response.Status.NOT_FOUND.getStatusCode(), findResponse.getStatus());
   }
