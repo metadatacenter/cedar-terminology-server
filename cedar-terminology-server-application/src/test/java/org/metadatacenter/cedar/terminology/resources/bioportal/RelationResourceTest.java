@@ -58,6 +58,7 @@ public class RelationResourceTest extends AbstractTerminologyServerResourceTest 
     Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Store class to delete the class after the test
     Relation created = response.readEntity(Relation.class);
+    response.close();
     // Note: the following line it's not currently needed, but it's kept for safety. When the class is deleted, BioPortal will delete the relation too.
     createdRelations.add(created);
     // Check fields
@@ -85,6 +86,7 @@ public class RelationResourceTest extends AbstractTerminologyServerResourceTest 
     Assert.assertEquals(MediaType.APPLICATION_JSON, findResponse.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check the element retrieved
     Relation found = findResponse.readEntity(Relation.class);
+    findResponse.close();
     // Check fields
     Assert.assertEquals(created.getId(), found.getId());
     Assert.assertEquals(created.getLdId(), found.getLdId());

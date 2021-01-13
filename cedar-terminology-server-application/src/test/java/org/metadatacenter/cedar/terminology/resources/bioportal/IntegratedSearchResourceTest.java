@@ -191,6 +191,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     // Check the number of results retrieved
     PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
     });
+    response.close();
     Assert.assertTrue("Wrong number of results", results.getCollection().size() == pageSize);
     // Check pagination information
     Assert.assertTrue("Wrong page", results.getPage() == 1);
@@ -218,6 +219,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     // Check the number of results retrieved
     PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
     });
+    response.close();
     Assert.assertTrue("Wrong number of results", results.getCollection().size() == pageSize);
     // Check pagination information
     Assert.assertTrue("Wrong page", results.getPage() == 1);
@@ -248,6 +250,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     // Check the number of results retrieved
     PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
     });
+    response.close();
     Assert.assertTrue("Wrong number of results", results.getCollection().size() == expectedNumberOfResults);
     // Check pagination information
     Assert.assertTrue("Wrong page", results.getPage() == 1);
@@ -279,6 +282,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     // Check the number of results retrieved
     PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
     });
+    response.close();
     Assert.assertTrue("Wrong number of results", results.getCollection().size() == pageSize);
     // Check that the first result is right
     Assert.assertTrue("Unexpected result: ",
@@ -322,6 +326,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     // Check the number of results retrieved
     PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
     });
+    response.close();
     Assert.assertTrue("Wrong number of results", results.getCollection().size() == pageSize);
     // Check pagination information
     Assert.assertTrue("Wrong page", results.getPage() == 1);
@@ -349,6 +354,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     // Check the number of results retrieved
     PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
     });
+    response.close();
     Assert.assertTrue("Wrong number of results", results.getCollection().size() == pageSize);
     // Check pagination information
     Assert.assertTrue("Wrong page", results.getPage() == 1);
@@ -380,6 +386,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     // Check the number of results retrieved
     PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
     });
+    response.close();
     Assert.assertTrue("Wrong number of results", results.getCollection().size() >= expectedNumberOfResultsLowerLimit);
     Assert.assertTrue("Wrong number of results", results.getCollection().size() <= expectedNumberOfResultsUpperLimit);
     // Check that the first result is right
@@ -423,6 +430,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     // Check the number of results retrieved
     PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
     });
+    response.close();
     Assert.assertTrue("Wrong number of results", results.getCollection().size() == expectedNumberOfResults);
     // Check pagination information
     Assert.assertTrue("Wrong page", results.getPage() == 1);
@@ -455,6 +463,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     // Check the number of results retrieved
     PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
     });
+    response.close();
     Assert.assertTrue("Wrong number of results", results.getCollection().size() == valueSet1Size);
     // Check pagination information
     Assert.assertTrue("Wrong page", results.getPage() == 1);
@@ -483,6 +492,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     // Check the number of results retrieved
     PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
     });
+    response.close();
     Assert.assertTrue("Wrong number of results", results.getCollection().size() == expectedResultsCount);
     // Check pagination information
     Assert.assertTrue("Wrong page", results.getPage() == 1);
@@ -524,6 +534,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     // Check the number of results retrieved
     PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
     });
+    response.close();
     Assert.assertTrue("Wrong number of results", results.getCollection().size() == createdVsSize);
     // Check that the results are right
     for (SearchResult r : results.getCollection()) {
@@ -570,6 +581,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     int expectedNumberOfResults = 1;
     PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
     });
+    response.close();
     Assert.assertTrue("Wrong number of results", results.getCollection().size() == expectedNumberOfResults);
     // Check that the result found matches the expected result
     Assert.assertTrue("Unexpected value",
@@ -609,6 +621,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     // Check the number of results retrieved
     PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
     });
+    response.close();
     Assert.assertTrue("Wrong number of results", results.getCollection().size() == enumeratedClasses.size());
     // Check that the results are right
     // Sort the enumerated classes by prefLabel so that we can compare them in order with the returned results
@@ -669,8 +682,10 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     // Check the number of results retrieved
     PagedResults<SearchResult> resultsPage1 = responsePage1.readEntity(new GenericType<PagedResults<SearchResult>>() {
     });
+    responsePage1.close();
     PagedResults<SearchResult> resultsPage2 = responsePage2.readEntity(new GenericType<PagedResults<SearchResult>>() {
     });
+    responsePage2.close();
     Assert.assertTrue("Wrong number of results", resultsPage1.getCollection().size() == 2);
     Assert.assertTrue("Wrong number of results", resultsPage2.getCollection().size() == 1);
 
@@ -740,6 +755,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     // Check the number of results retrieved
     PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
     });
+    response.close();
     Assert.assertTrue("Wrong number of results", results.getCollection().size() == 1);
     // Check that the result is right
     String ldId = enumeratedClass1.get(VALUE_CONSTRAINTS_URI).asText();
@@ -797,6 +813,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
         .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(ontSizeRequestBody));
     PagedResults<SearchResult> ontology1Response = ontSizeResponse.readEntity(new GenericType<PagedResults<SearchResult>>() {
     });
+    ontSizeResponse.close();
     List<SearchResult> ontology1Classes = ontology1Response.getCollection();
     int ontology1CurrentSize = ontology1Response.getTotalCount();
 
@@ -810,7 +827,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     // Check the number of results retrieved
     PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
     });
-
+    response.close();
     Assert.assertTrue("Wrong page size", pageSize == results.getPageSize());
     Assert.assertTrue("Wrong page size", pageSize == results.getCollection().size());
 

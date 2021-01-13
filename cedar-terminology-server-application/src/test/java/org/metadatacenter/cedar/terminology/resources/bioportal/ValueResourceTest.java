@@ -68,6 +68,7 @@ public class ValueResourceTest extends AbstractTerminologyServerResourceTest {
     Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Store value to delete it after the test
     Value created = response.readEntity(Value.class);
+    response.close();
     createdValues.add(created);
     // Check fields
     Value expected = value1;
@@ -101,6 +102,7 @@ public class ValueResourceTest extends AbstractTerminologyServerResourceTest {
     Assert.assertEquals(MediaType.APPLICATION_JSON, findResponse.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check the element retrieved
     Value found = findResponse.readEntity(Value.class);
+    findResponse.close();
     // Check fields
     Assert.assertEquals(created.getId(), found.getId());
     Assert.assertEquals(created.getLdId(), found.getLdId());
@@ -139,6 +141,7 @@ public class ValueResourceTest extends AbstractTerminologyServerResourceTest {
     Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check that there are some results
     PagedResults<Value> values = response.readEntity(new GenericType<PagedResults<Value>>(){});
+    response.close();
     Assert.assertTrue("No values found", values.getCollection().size() == 2);
     boolean v1Found = false;
     boolean v2Found = false;
@@ -170,6 +173,7 @@ public class ValueResourceTest extends AbstractTerminologyServerResourceTest {
         BP_VALUES + "/" + createdValue.getId();
     Response findResponse = clientBuilder.build().target(findUrl).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     Value found = findResponse.readEntity(Value.class);
+    findResponse.close();
     // Check that the modifications have been done correctly
     Value expected = updatedValue;
     Assert.assertEquals(expected.getId(), found.getId());

@@ -54,6 +54,7 @@ public class ValueSetCollectionResourceTest extends AbstractTerminologyServerRes
     // Check the results returned
     List<ValueSetCollection> vsc = response.readEntity(new GenericType<List<ValueSetCollection>>() {
     });
+    response.close();
     Assert.assertTrue("No ontologies returned", vsc.size() > 0);
     // Check that the CEDARVS collection is included into the results
     String sampleVsc = "CEDARVS";

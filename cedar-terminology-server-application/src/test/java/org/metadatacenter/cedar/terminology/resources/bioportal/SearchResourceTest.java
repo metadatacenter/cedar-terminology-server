@@ -31,6 +31,7 @@ public class SearchResourceTest extends AbstractTerminologyServerResourceTest {
     Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check the number of results
     JsonNode jsonResponse = response.readEntity(JsonNode.class);
+    response.close();
     int pageCount = jsonResponse.get("pageCount").asInt();
     int lowLimitPageCount = 2000;
     Assert.assertTrue("The number of search results for '" + q + "' is lower than expected", pageCount >
@@ -51,6 +52,7 @@ public class SearchResourceTest extends AbstractTerminologyServerResourceTest {
     Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check the number of results
     JsonNode jsonResponse = response.readEntity(JsonNode.class);
+    response.close();
     int pageCount = jsonResponse.get("pageCount").asInt();
     int lowLimitPageCount = 2000;
     Assert.assertTrue("The number of search results for '" + q + "' is lower than expected", pageCount >
@@ -76,6 +78,7 @@ public class SearchResourceTest extends AbstractTerminologyServerResourceTest {
     Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check the number of results
     JsonNode jsonResponse = response.readEntity(JsonNode.class);
+    response.close();
     int pageCount = jsonResponse.get("pageCount").asInt();
     int lowLimitPageCount = 1;
     Assert.assertTrue("The number of search results for '" + q + "' is lower than expected", pageCount >= lowLimitPageCount);
@@ -95,6 +98,7 @@ public class SearchResourceTest extends AbstractTerminologyServerResourceTest {
     Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check the number of results
     JsonNode jsonResponse = response.readEntity(JsonNode.class);
+    response.close();
     int pageCount = jsonResponse.get("pageCount").asInt();
     int lowLimitPageCount = 2000;
     Assert.assertTrue("The number of search results for '" + q + "' is lower than expected", pageCount >
@@ -119,6 +123,7 @@ public class SearchResourceTest extends AbstractTerminologyServerResourceTest {
     Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check that there are some results
     JsonNode jsonResponse = response.readEntity(JsonNode.class);
+    response.close();
     JsonNode results = jsonResponse.get("collection");
     Assert.assertTrue("The number of search results for '" + q + "' is lower than expected", results.size() > 1);
     // Check that the retrieved classes are from the right source
@@ -162,6 +167,7 @@ public class SearchResourceTest extends AbstractTerminologyServerResourceTest {
     Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check that there are some results
     JsonNode jsonResponse = response.readEntity(JsonNode.class);
+    response.close();
     JsonNode results = jsonResponse.get("collection");
     Assert.assertTrue("The number of search results for '" + q + "' is lower than expected", results.size() > 0);
   }
@@ -182,6 +188,7 @@ public class SearchResourceTest extends AbstractTerminologyServerResourceTest {
     Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check that there are some results
     JsonNode jsonResponse = response.readEntity(JsonNode.class);
+    response.close();
     JsonNode results = jsonResponse.get("collection");
     Assert.assertTrue("The number of search results for '" + q + "' is lower than expected", results.size() > 0);
   }
@@ -198,6 +205,7 @@ public class SearchResourceTest extends AbstractTerminologyServerResourceTest {
     Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check the number of results
     JsonNode jsonResponse = response.readEntity(JsonNode.class);
+    response.close();
     int pageCount = jsonResponse.get("pageCount").asInt();
     int lowLimitPageCount = 100;
     Assert.assertTrue("The number of search results for '" + q + "' is lower than expected", pageCount >
@@ -216,6 +224,7 @@ public class SearchResourceTest extends AbstractTerminologyServerResourceTest {
     Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check the number of results
     JsonNode jsonResponse = response.readEntity(JsonNode.class);
+    response.close();
     int pageSize = jsonResponse.get("pageSize").asInt();
     int expectedCount = 0;
     Assert.assertTrue("The number of search results for '" + q + "' is different than expected", pageSize == expectedCount);
@@ -237,6 +246,7 @@ public class SearchResourceTest extends AbstractTerminologyServerResourceTest {
     Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check that there are some results
     JsonNode jsonResponse = response.readEntity(JsonNode.class);
+    response.close();
     JsonNode results = jsonResponse.get("collection");
     // The ontology may change over time, so we define a range for the number of properties found
     int lowerLimitResultsCount = 5;
@@ -273,6 +283,7 @@ public class SearchResourceTest extends AbstractTerminologyServerResourceTest {
     Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check that there are some results
     JsonNode jsonResponse = response.readEntity(JsonNode.class);
+    response.close();
     JsonNode results = jsonResponse.get("collection");
     // Enabling exact_match should only return one property
     Assert.assertTrue("The number of search results for '" + q + "' is different than expected", results.size() == 1);
@@ -314,6 +325,7 @@ public class SearchResourceTest extends AbstractTerminologyServerResourceTest {
     // Check Content-Type
     Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     JsonNode jsonResponse = response.readEntity(JsonNode.class);
+    response.close();
     JsonNode results = jsonResponse.get("collection");
     // Check that there are some results
     Assert.assertTrue("No search results obtained for '" + q + "'", results.size() > 0);

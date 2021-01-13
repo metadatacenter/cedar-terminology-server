@@ -58,6 +58,7 @@ public class ValueSetResourceTest extends AbstractTerminologyServerResourceTest 
     Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Store value set to delete it after the test
     ValueSet created = response.readEntity(ValueSet.class);
+    response.close();
     createdValueSets.add(created);
     // Check fields
     ValueSet expected = vs1;
@@ -88,6 +89,7 @@ public class ValueSetResourceTest extends AbstractTerminologyServerResourceTest 
     Assert.assertEquals(MediaType.APPLICATION_JSON, findResponse.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check the element retrieved
     ValueSet found = findResponse.readEntity(ValueSet.class);
+    findResponse.close();
     // Check fields
     Assert.assertEquals(created.getId(), found.getId());
     Assert.assertEquals(created.getLdId(), found.getLdId());
@@ -118,6 +120,7 @@ public class ValueSetResourceTest extends AbstractTerminologyServerResourceTest 
     // Check the number of elements retrieved
     PagedResults<ValueSet> valueSets = findResponse.readEntity(new GenericType<PagedResults<ValueSet>>() {
     });
+    findResponse.close();
     int resultsCount = valueSets.getCollection().size();
     Assert.assertTrue("Wrong number of value sets retrieved", resultsCount > 1);
   }
@@ -142,6 +145,7 @@ public class ValueSetResourceTest extends AbstractTerminologyServerResourceTest 
     // Check the results returned
     List<ValueSet> valueSets = response.readEntity(new GenericType<List<ValueSet>>() {
     });
+    response.close();
     Assert.assertTrue("Wrong number of value sets returned", valueSets.size() > 1);
   }
 
@@ -165,6 +169,7 @@ public class ValueSetResourceTest extends AbstractTerminologyServerResourceTest 
     Response findResponse = clientBuilder.build().target(findUrl).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check the element retrieved
     ValueSet found = findResponse.readEntity(ValueSet.class);
+    findResponse.close();
     // Check fields
     ValueSet expected = updatedValueSet;
     Assert.assertEquals(expected.getId(), found.getId());

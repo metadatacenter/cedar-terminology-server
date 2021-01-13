@@ -61,6 +61,7 @@ public class OntologyResourceTest extends AbstractTerminologyServerResourceTest 
     Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check the results returned
     List<Ontology> ontologies = response.readEntity(new GenericType<List<Ontology>>() {});
+    response.close();
     Assert.assertTrue("No ontologies returned", ontologies.size() > 0);
     Assert.assertTrue("Wrong number of ontologies returned", ontologies.size() > 525);
   }
@@ -76,6 +77,7 @@ public class OntologyResourceTest extends AbstractTerminologyServerResourceTest 
     Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check that the call returns the expected ontology
     Ontology ontology = response.readEntity(Ontology.class);
+    response.close();
     Assert.assertEquals("Wrong ontology id", "NCIT", ontology.getId());
     Assert.assertEquals("Wrong ontology name", "National Cancer Institute Thesaurus", ontology.getName());
   }
@@ -91,6 +93,7 @@ public class OntologyResourceTest extends AbstractTerminologyServerResourceTest 
     Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check results
     List<OntologyClass> roots = response.readEntity(new GenericType<List<OntologyClass>>() {});
+    response.close();
     Assert.assertTrue("No roots returned", roots.size() > 0);
     // Basic check to see whether "Biological Process" is found
     String rootId = "http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C17828";
@@ -116,6 +119,7 @@ public class OntologyResourceTest extends AbstractTerminologyServerResourceTest 
     Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check results
     List<OntologyProperty> roots = response.readEntity(new GenericType<List<OntologyProperty>>() {});
+    response.close();
     Assert.assertTrue("No roots returned", roots.size() > 0);
     // Basic check to see if the "Administrative metadata" root property is found
     String rootId = "http://id.loc.gov/ontologies/bibframe/adminMetadata";

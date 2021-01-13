@@ -60,6 +60,7 @@ public class ClassResourceTest extends AbstractTerminologyServerResourceTest {
     Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Store class to delete the class after the test
     OntologyClass created = response.readEntity(OntologyClass.class);
+    response.close();
     createdClasses.add(created);
     // Check fields
     OntologyClass expected = class1;
@@ -91,6 +92,7 @@ public class ClassResourceTest extends AbstractTerminologyServerResourceTest {
     Assert.assertEquals(MediaType.APPLICATION_JSON, findResponse.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check the element retrieved
     OntologyClass found = findResponse.readEntity(OntologyClass.class);
+    findResponse.close();
     // Check fields
     Assert.assertEquals(created.getId(), found.getId());
     Assert.assertEquals(created.getLdId(), found.getLdId());
@@ -119,7 +121,8 @@ public class ClassResourceTest extends AbstractTerminologyServerResourceTest {
     // Check Content-Type
     Assert.assertEquals(MediaType.APPLICATION_JSON, findResponse.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check the number of results retrieved
-    PagedResults<OntologyClass> classes = findResponse.readEntity(new GenericType<PagedResults<OntologyClass>>() {});
+    PagedResults<OntologyClass> classes = findResponse.readEntity(new GenericType<>() {});
+    findResponse.close();
     int numClassesFound = classes.getPageSize() * classes.getPageCount();
     Assert.assertTrue("The number of classes found (" +  numClassesFound + ") is lower than expected (" + ontologySize + ")" , numClassesFound >= ontologySize);
   }
@@ -146,6 +149,7 @@ public class ClassResourceTest extends AbstractTerminologyServerResourceTest {
     Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check that the tree is not empty and that it is correctly expanded to the given class
     List<TreeNode> tree = response.readEntity(new GenericType<List<TreeNode>>() {});
+    response.close();
     Assert.assertTrue("Empty tree", tree.size() > 0);
     boolean classFound = false;
     for (TreeNode node : tree) {
@@ -190,6 +194,7 @@ public class ClassResourceTest extends AbstractTerminologyServerResourceTest {
     // Note that this check is done with a class that has less children than the default page size. Otherwise,
     // we should iterate over all pages.
     PagedResults<OntologyClass> children = response.readEntity(new GenericType<PagedResults<OntologyClass>>() {});
+    response.close();
     Assert.assertTrue("No children returned", children.getCollection().size() > 0);
     boolean childFound = false;
     for (OntologyClass c : children.getCollection()) {
@@ -227,6 +232,7 @@ public class ClassResourceTest extends AbstractTerminologyServerResourceTest {
     // Note that this check is done with a class that has less descendants than the default page size. Otherwise,
     // we should iterate over all pages.
     PagedResults<OntologyClass> descendants = response.readEntity(new GenericType<PagedResults<OntologyClass>>() {});
+    response.close();
     Assert.assertTrue("No descendants returned", descendants.getCollection().size() > 0);
     boolean descendant1Found = false;
     boolean descendant2Found = false;
@@ -264,6 +270,7 @@ public class ClassResourceTest extends AbstractTerminologyServerResourceTest {
     Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check that the call returns the expected parent
     List<OntologyClass> parents = response.readEntity(new GenericType<List<OntologyClass>>() {});
+    response.close();
     Assert.assertTrue("No parents returned", parents.size() > 0);
     boolean parentFound = false;
     for (OntologyClass c : parents) {
@@ -285,6 +292,7 @@ public class ClassResourceTest extends AbstractTerminologyServerResourceTest {
     Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check that the array returned is not empty
     PagedResults<OntologyClass> results = response.readEntity(new GenericType<PagedResults<OntologyClass>>() {});
+    response.close();
     Assert.assertTrue("Empty array returned", results.getCollection().size() > 0);
     // Check that the classes returned are provisional
     for (OntologyClass pc : results.getCollection()) {
@@ -305,6 +313,7 @@ public class ClassResourceTest extends AbstractTerminologyServerResourceTest {
     Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check that the array returned is not empty
     PagedResults<OntologyClass> results = response.readEntity(new GenericType<PagedResults<OntologyClass>>() {});
+    response.close();
     Assert.assertTrue("Empty array returned", results.getCollection().size() > 0);
     // Check that the classes returned are provisional
     for (OntologyClass pc : results.getCollection()) {
@@ -331,6 +340,7 @@ public class ClassResourceTest extends AbstractTerminologyServerResourceTest {
         + "/" + BP_CLASSES + "/" + createdClass.getId();
     Response findResponse = clientBuilder.build().target(findUrl).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     OntologyClass found = findResponse.readEntity(OntologyClass.class);
+    findResponse.close();
     // Check that the modifications have been done correctly
     OntologyClass expected = updatedClass;
     Assert.assertEquals(expected.getId(), found.getId());
