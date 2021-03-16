@@ -51,13 +51,14 @@ public class RelationResourceTest extends AbstractTerminologyServerResourceTest 
     // Create provisional relation
     relation1.setSourceClassId(createdClass.getLdId());
     // Service invocation
-    Response response = client.target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(relation1));
+    Response response = clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(relation1));
     // Check HTTP response
     Assert.assertEquals(Status.CREATED.getStatusCode(), response.getStatus());
     // Check Content-Type
     Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Store class to delete the class after the test
     Relation created = response.readEntity(Relation.class);
+    response.close();
     // Note: the following line it's not currently needed, but it's kept for safety. When the class is deleted, BioPortal will delete the relation too.
     createdRelations.add(created);
     // Check fields
@@ -78,13 +79,14 @@ public class RelationResourceTest extends AbstractTerminologyServerResourceTest 
     // Find the provisional relation by id
     String url = baseUrlBp + "/" + BP_RELATIONS + "/" + created.getId();
     // Service invocation
-    Response findResponse = client.target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
+    Response findResponse = clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), findResponse.getStatus());
     // Check Content-Type
     Assert.assertEquals(MediaType.APPLICATION_JSON, findResponse.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check the element retrieved
     Relation found = findResponse.readEntity(Relation.class);
+    findResponse.close();
     // Check fields
     Assert.assertEquals(created.getId(), found.getId());
     Assert.assertEquals(created.getLdId(), found.getLdId());
@@ -101,14 +103,14 @@ public class RelationResourceTest extends AbstractTerminologyServerResourceTest 
     Relation created = createRelation(class1, relation1);
     // Delete the relation that has been created
     String url = baseUrlBp + "/" + BP_RELATIONS + "/" + created.getId();
-    Response deleteResponse = client.target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).delete();
+    Response deleteResponse = clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).delete();
     // Check HTTP response
     Assert.assertEquals(Status.NO_CONTENT.getStatusCode(), deleteResponse.getStatus());
     // Remove relation from the list of created relations. It has been already deleted
     createdRelations.remove(created);
     // Try to retrieve the relation to check that it has been deleted correctly
     String findUrl = baseUrlBp + "/" + BP_RELATIONS + "/" + created.getId();
-    Response findResponse = client.target(findUrl).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
+    Response findResponse = clientBuilder.build().target(findUrl).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check not found
     Assert.assertEquals(Status.NOT_FOUND.getStatusCode(), findResponse.getStatus());
   }

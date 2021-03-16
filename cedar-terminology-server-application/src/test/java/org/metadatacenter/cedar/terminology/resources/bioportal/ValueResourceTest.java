@@ -61,13 +61,14 @@ public class ValueResourceTest extends AbstractTerminologyServerResourceTest {
       e.printStackTrace();
     }
     // Service invocation
-    Response response = client.target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(value1));
+    Response response = clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(value1));
     // Check HTTP response
     Assert.assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
     // Check Content-Type
     Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Store value to delete it after the test
     Value created = response.readEntity(Value.class);
+    response.close();
     createdValues.add(created);
     // Check fields
     Value expected = value1;
@@ -94,13 +95,14 @@ public class ValueResourceTest extends AbstractTerminologyServerResourceTest {
     String findUrl = baseUrlBpVSCollections + "/" + Util.getShortIdentifier(created.getVsCollection()) + "/" +
         BP_VALUES + "/" + created.getId();
     // Service invocation
-    Response findResponse = client.target(findUrl).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
+    Response findResponse = clientBuilder.build().target(findUrl).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check HTTP response
     Assert.assertEquals(Response.Status.OK.getStatusCode(), findResponse.getStatus());
     // Check Content-Type
     Assert.assertEquals(MediaType.APPLICATION_JSON, findResponse.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check the element retrieved
     Value found = findResponse.readEntity(Value.class);
+    findResponse.close();
     // Check fields
     Assert.assertEquals(created.getId(), found.getId());
     Assert.assertEquals(created.getLdId(), found.getLdId());
@@ -132,13 +134,14 @@ public class ValueResourceTest extends AbstractTerminologyServerResourceTest {
     // Wait to be sure that the BioPortal search index was updated
     shortWaitToEnsureBioPortalIndexUpdated();
     // Service invocation
-    Response response = client.target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
+    Response response = clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check HTTP response
     Assert.assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
     // Check Content-Type
     Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check that there are some results
     PagedResults<Value> values = response.readEntity(new GenericType<PagedResults<Value>>(){});
+    response.close();
     Assert.assertTrue("No values found", values.getCollection().size() == 2);
     boolean v1Found = false;
     boolean v2Found = false;
@@ -162,14 +165,15 @@ public class ValueResourceTest extends AbstractTerminologyServerResourceTest {
         createdValue.getSynonyms(), createdValue.getRelations(), createdValue.isProvisional(), createdValue.getCreated());
     String url = baseUrlBp + "/" + BP_VALUES + "/" + createdValue.getId();
     // Service invocation
-    Response updateResponse = client.target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).put(Entity.json(updatedValue));
+    Response updateResponse = clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).put(Entity.json(updatedValue));
     // Check HTTP response
     Assert.assertEquals(Response.Status.NO_CONTENT.getStatusCode(), updateResponse.getStatus());
     // Retrieve the value
     String findUrl = baseUrlBpVSCollections + "/" + Util.getShortIdentifier(createdValue.getVsCollection()) + "/" +
         BP_VALUES + "/" + createdValue.getId();
-    Response findResponse = client.target(findUrl).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
+    Response findResponse = clientBuilder.build().target(findUrl).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     Value found = findResponse.readEntity(Value.class);
+    findResponse.close();
     // Check that the modifications have been done correctly
     Value expected = updatedValue;
     Assert.assertEquals(expected.getId(), found.getId());
@@ -192,7 +196,7 @@ public class ValueResourceTest extends AbstractTerminologyServerResourceTest {
     Value created = createValue(createdVs.getLdId(), value1);
     // Delete the value that has been created
     String classUrl = baseUrlBp + "/" + BP_VALUES + "/" + created.getId();
-    Response deleteResponse = client.target(classUrl).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).delete();
+    Response deleteResponse = clientBuilder.build().target(classUrl).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).delete();
     // Check HTTP response
     Assert.assertEquals(Response.Status.NO_CONTENT.getStatusCode(), deleteResponse.getStatus());
     // Remove value from the list of created values. It has already been deleted
@@ -200,7 +204,7 @@ public class ValueResourceTest extends AbstractTerminologyServerResourceTest {
     // Try to retrieve the value to check that it has been deleted correctly
     String findUrl = baseUrlBpVSCollections + "/" + Util.getShortIdentifier(created.getVsCollection()) + "/" +
         BP_VALUES + "/" + created.getId();
-    Response findResponse = client.target(findUrl).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
+    Response findResponse = clientBuilder.build().target(findUrl).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check not found
     Assert.assertEquals(Response.Status.NOT_FOUND.getStatusCode(), findResponse.getStatus());
   }

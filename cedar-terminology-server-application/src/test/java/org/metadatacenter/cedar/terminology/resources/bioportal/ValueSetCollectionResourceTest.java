@@ -46,14 +46,15 @@ public class ValueSetCollectionResourceTest extends AbstractTerminologyServerRes
   public void findAllVSCollectionsTest() {
     String url = baseUrlBpVSCollections;
     // Service invocation
-    Response response = client.target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
-    // Check HTTP response
+    Response response = clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
+    response.close();
     Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
     // Check Content-Type
     Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check the results returned
     List<ValueSetCollection> vsc = response.readEntity(new GenericType<List<ValueSetCollection>>() {
     });
+    response.close();
     Assert.assertTrue("No ontologies returned", vsc.size() > 0);
     // Check that the CEDARVS collection is included into the results
     String sampleVsc = "CEDARVS";

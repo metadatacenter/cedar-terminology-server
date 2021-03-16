@@ -54,13 +54,14 @@ public class OntologyResourceTest extends AbstractTerminologyServerResourceTest 
   public void findAllOntologiesTest() {
     String url = baseUrlBpOntologies;
     // Service invocation
-    Response response = client.target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
+    Response response = clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
     // Check Content-Type
     Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check the results returned
     List<Ontology> ontologies = response.readEntity(new GenericType<List<Ontology>>() {});
+    response.close();
     Assert.assertTrue("No ontologies returned", ontologies.size() > 0);
     Assert.assertTrue("Wrong number of ontologies returned", ontologies.size() > 525);
   }
@@ -69,13 +70,14 @@ public class OntologyResourceTest extends AbstractTerminologyServerResourceTest 
   public void findOntologyTest() {
     String url = baseUrlBpOntologies + "/" + ontology1.getId();
     // Service invocation
-    Response response = client.target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
+    Response response = clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
     // Check Content-Type
     Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check that the call returns the expected ontology
     Ontology ontology = response.readEntity(Ontology.class);
+    response.close();
     Assert.assertEquals("Wrong ontology id", "NCIT", ontology.getId());
     Assert.assertEquals("Wrong ontology name", "National Cancer Institute Thesaurus", ontology.getName());
   }
@@ -84,13 +86,14 @@ public class OntologyResourceTest extends AbstractTerminologyServerResourceTest 
   public void findRootClassesTest() {
     String url = baseUrlBpOntologies + "/" + ontology1.getId() + "/" + BP_CLASSES + "/" + BP_ROOTS;
     // Service invocation
-    Response response = client.target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
+    Response response = clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
     // Check Content-Type
     Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check results
     List<OntologyClass> roots = response.readEntity(new GenericType<List<OntologyClass>>() {});
+    response.close();
     Assert.assertTrue("No roots returned", roots.size() > 0);
     // Basic check to see whether "Biological Process" is found
     String rootId = "http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C17828";
@@ -109,13 +112,14 @@ public class OntologyResourceTest extends AbstractTerminologyServerResourceTest 
     String ontology = "BIBFRAME";
     String url = baseUrlBpOntologies + "/" + ontology + "/" + BP_PROPERTIES + "/" + BP_ROOTS;
     // Service invocation
-    Response response = client.target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
+    Response response = clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
     // Check Content-Type
     Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check results
     List<OntologyProperty> roots = response.readEntity(new GenericType<List<OntologyProperty>>() {});
+    response.close();
     Assert.assertTrue("No roots returned", roots.size() > 0);
     // Basic check to see if the "Administrative metadata" root property is found
     String rootId = "http://id.loc.gov/ontologies/bibframe/adminMetadata";

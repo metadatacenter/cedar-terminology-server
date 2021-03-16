@@ -129,7 +129,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
   public void searchEmptyBody() {
     ObjectNode emptyBody = mapper.createObjectNode();
     // Service invocation
-    Response response = client.target(baseUrlBpIntegratedSearch).request()
+    Response response = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
         .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(emptyBody));
     // Check HTTP response
     Assert.assertEquals(STATUS_CODE_UNPROCESSABLE_ENTITY, response.getStatus());
@@ -140,7 +140,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     ObjectNode requestBody = mapper.createObjectNode();
     requestBody.set(BP_INTEGRATED_SEARCH_PARAMS_FIELD, mapper.createObjectNode());
     // Service invocation
-    Response response = client.target(baseUrlBpIntegratedSearch).request()
+    Response response = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
         .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
     // Check HTTP response
     Assert.assertEquals(STATUS_CODE_UNPROCESSABLE_ENTITY, response.getStatus());
@@ -153,7 +153,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     parameterObject.set(BP_INTEGRATED_SEARCH_PARAM_VALUE_CONSTRAINTS, mapper.createObjectNode());
     requestBody.set(BP_INTEGRATED_SEARCH_PARAMS_FIELD, parameterObject);
     // Service invocation
-    Response response = client.target(baseUrlBpIntegratedSearch).request()
+    Response response = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
         .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
     // Check HTTP response
     Assert.assertEquals(STATUS_CODE_UNPROCESSABLE_ENTITY, response.getStatus());
@@ -164,7 +164,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     ObjectNode requestBody = mapper.createObjectNode();
     requestBody.put("invalidField", "invalidFieldValue");
     // Service invocation
-    Response response = client.target(baseUrlBpIntegratedSearch).request()
+    Response response = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
         .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
     // Check HTTP response
     Assert.assertEquals(BAD_REQUEST, response.getStatus());
@@ -182,7 +182,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
         Optional.of(pageSize));
 
     // Service invocation
-    Response response = client.target(baseUrlBpIntegratedSearch).request()
+    Response response = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
         .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
@@ -191,6 +191,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     // Check the number of results retrieved
     PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
     });
+    response.close();
     Assert.assertTrue("Wrong number of results", results.getCollection().size() == pageSize);
     // Check pagination information
     Assert.assertTrue("Wrong page", results.getPage() == 1);
@@ -209,7 +210,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
         Optional.of(pageSize));
 
     // Service invocation
-    Response response = client.target(baseUrlBpIntegratedSearch).request()
+    Response response = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
         .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
@@ -218,6 +219,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     // Check the number of results retrieved
     PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
     });
+    response.close();
     Assert.assertTrue("Wrong number of results", results.getCollection().size() == pageSize);
     // Check pagination information
     Assert.assertTrue("Wrong page", results.getPage() == 1);
@@ -239,7 +241,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
         Optional.of(pageSize));
 
     // Service invocation
-    Response response = client.target(baseUrlBpIntegratedSearch).request()
+    Response response = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
         .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
@@ -248,6 +250,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     // Check the number of results retrieved
     PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
     });
+    response.close();
     Assert.assertTrue("Wrong number of results", results.getCollection().size() == expectedNumberOfResults);
     // Check pagination information
     Assert.assertTrue("Wrong page", results.getPage() == 1);
@@ -270,7 +273,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
         Optional.of(pageSize));
 
     // Service invocation
-    Response response = client.target(baseUrlBpIntegratedSearch).request()
+    Response response = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
         .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
@@ -279,6 +282,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     // Check the number of results retrieved
     PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
     });
+    response.close();
     Assert.assertTrue("Wrong number of results", results.getCollection().size() == pageSize);
     // Check that the first result is right
     Assert.assertTrue("Unexpected result: ",
@@ -313,7 +317,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
         Optional.of(pageSize));
 
     // Service invocation
-    Response response = client.target(baseUrlBpIntegratedSearch).request()
+    Response response = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
         .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
@@ -322,6 +326,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     // Check the number of results retrieved
     PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
     });
+    response.close();
     Assert.assertTrue("Wrong number of results", results.getCollection().size() == pageSize);
     // Check pagination information
     Assert.assertTrue("Wrong page", results.getPage() == 1);
@@ -340,7 +345,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
         Optional.of(pageSize));
 
     // Service invocation
-    Response response = client.target(baseUrlBpIntegratedSearch).request()
+    Response response = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
         .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
@@ -349,6 +354,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     // Check the number of results retrieved
     PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
     });
+    response.close();
     Assert.assertTrue("Wrong number of results", results.getCollection().size() == pageSize);
     // Check pagination information
     Assert.assertTrue("Wrong page", results.getPage() == 1);
@@ -371,7 +377,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
         Optional.of(pageSize));
 
     // Service invocation
-    Response response = client.target(baseUrlBpIntegratedSearch).request()
+    Response response = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
         .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
@@ -380,6 +386,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     // Check the number of results retrieved
     PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
     });
+    response.close();
     Assert.assertTrue("Wrong number of results", results.getCollection().size() >= expectedNumberOfResultsLowerLimit);
     Assert.assertTrue("Wrong number of results", results.getCollection().size() <= expectedNumberOfResultsUpperLimit);
     // Check that the first result is right
@@ -414,7 +421,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
         Optional.of(pageSize));
 
     // Service invocation
-    Response response = client.target(baseUrlBpIntegratedSearch).request()
+    Response response = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
         .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
@@ -423,6 +430,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     // Check the number of results retrieved
     PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
     });
+    response.close();
     Assert.assertTrue("Wrong number of results", results.getCollection().size() == expectedNumberOfResults);
     // Check pagination information
     Assert.assertTrue("Wrong page", results.getPage() == 1);
@@ -446,7 +454,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
         , Optional.of(pageSize));
 
     // Service invocation
-    Response response = client.target(baseUrlBpIntegratedSearch).request()
+    Response response = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
         .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
@@ -455,6 +463,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     // Check the number of results retrieved
     PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
     });
+    response.close();
     Assert.assertTrue("Wrong number of results", results.getCollection().size() == valueSet1Size);
     // Check pagination information
     Assert.assertTrue("Wrong page", results.getPage() == 1);
@@ -474,7 +483,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
         , Optional.empty());
 
     // Service invocation
-    Response response = client.target(baseUrlBpIntegratedSearch).request()
+    Response response = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
         .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
@@ -483,6 +492,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     // Check the number of results retrieved
     PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
     });
+    response.close();
     Assert.assertTrue("Wrong number of results", results.getCollection().size() == expectedResultsCount);
     // Check pagination information
     Assert.assertTrue("Wrong page", results.getPage() == 1);
@@ -515,7 +525,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
         Optional.empty(), Optional.empty());
 
     // Service invocation
-    Response response = client.target(baseUrlBpIntegratedSearch).request()
+    Response response = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
         .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
@@ -524,6 +534,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     // Check the number of results retrieved
     PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
     });
+    response.close();
     Assert.assertTrue("Wrong number of results", results.getCollection().size() == createdVsSize);
     // Check that the results are right
     for (SearchResult r : results.getCollection()) {
@@ -560,7 +571,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
         Optional.empty());
 
     // Service invocation
-    Response response = client.target(baseUrlBpIntegratedSearch).request()
+    Response response = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
         .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
@@ -570,6 +581,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     int expectedNumberOfResults = 1;
     PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
     });
+    response.close();
     Assert.assertTrue("Wrong number of results", results.getCollection().size() == expectedNumberOfResults);
     // Check that the result found matches the expected result
     Assert.assertTrue("Unexpected value",
@@ -600,7 +612,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
         enumeratedClasses, Optional.empty(), Optional.of(pageSize));
 
     // Service invocation
-    Response response = client.target(baseUrlBpIntegratedSearch).request()
+    Response response = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
         .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
@@ -609,6 +621,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     // Check the number of results retrieved
     PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
     });
+    response.close();
     Assert.assertTrue("Wrong number of results", results.getCollection().size() == enumeratedClasses.size());
     // Check that the results are right
     // Sort the enumerated classes by prefLabel so that we can compare them in order with the returned results
@@ -656,9 +669,9 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
         enumeratedClasses, Optional.of(2), Optional.of(pageSize));
 
     // Service invocation
-    Response responsePage1 = client.target(baseUrlBpIntegratedSearch).request()
+    Response responsePage1 = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
         .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBodyPage1));
-    Response responsePage2 = client.target(baseUrlBpIntegratedSearch).request()
+    Response responsePage2 = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
         .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBodyPage2));
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), responsePage1.getStatus());
@@ -669,8 +682,10 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     // Check the number of results retrieved
     PagedResults<SearchResult> resultsPage1 = responsePage1.readEntity(new GenericType<PagedResults<SearchResult>>() {
     });
+    responsePage1.close();
     PagedResults<SearchResult> resultsPage2 = responsePage2.readEntity(new GenericType<PagedResults<SearchResult>>() {
     });
+    responsePage2.close();
     Assert.assertTrue("Wrong number of results", resultsPage1.getCollection().size() == 2);
     Assert.assertTrue("Wrong number of results", resultsPage2.getCollection().size() == 1);
 
@@ -731,7 +746,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
         enumeratedClasses, Optional.empty(), Optional.of(pageSize));
 
     // Service invocation
-    Response response = client.target(baseUrlBpIntegratedSearch).request()
+    Response response = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
         .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
@@ -740,6 +755,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     // Check the number of results retrieved
     PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
     });
+    response.close();
     Assert.assertTrue("Wrong number of results", results.getCollection().size() == 1);
     // Check that the result is right
     String ldId = enumeratedClass1.get(VALUE_CONSTRAINTS_URI).asText();
@@ -793,15 +809,16 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     ObjectNode ontSizeRequestBody = generateRequestBody(inputText, ontologies,
         mapper.createArrayNode(), mapper.createArrayNode(),
         mapper.createArrayNode(), Optional.of(1), Optional.of(pageSize));
-    Response ontSizeResponse = client.target(baseUrlBpIntegratedSearch).request()
+    Response ontSizeResponse = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
         .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(ontSizeRequestBody));
     PagedResults<SearchResult> ontology1Response = ontSizeResponse.readEntity(new GenericType<PagedResults<SearchResult>>() {
     });
+    ontSizeResponse.close();
     List<SearchResult> ontology1Classes = ontology1Response.getCollection();
     int ontology1CurrentSize = ontology1Response.getTotalCount();
 
     // Service invocation
-    Response response = client.target(baseUrlBpIntegratedSearch).request()
+    Response response = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
         .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
@@ -810,7 +827,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     // Check the number of results retrieved
     PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
     });
-
+    response.close();
     Assert.assertTrue("Wrong page size", pageSize == results.getPageSize());
     Assert.assertTrue("Wrong page size", pageSize == results.getCollection().size());
 
