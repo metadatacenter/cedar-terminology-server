@@ -40,8 +40,8 @@ public class IntegratedSearchResource extends AbstractTerminologyServerResource 
   @Consumes(MediaType.APPLICATION_JSON)
   public Response cedarIntegratedSearch(@Valid IntegratedSearchBody body) throws CedarException {
 
-    CedarRequestContext c = buildRequestContext();
-    c.must(c.user()).be(LoggedIn);
+    //CedarRequestContext c = buildRequestContext();
+    //c.must(c.user()).be(LoggedIn);
 
     try {
       int page = extractPage(body);
