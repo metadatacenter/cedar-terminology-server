@@ -205,7 +205,7 @@ public class ObjectConverter {
         bpr.getNextPage(), classes);
   }
 
-  public static PagedResults<SearchResult> toPagedSearchResults(BpPagedResults<BpClass> bpr, List<String> valueSetsIds) {
+  public static PagedResults<SearchResult> toPagedSearchResults(BpPagedResults<BpClass> bpr, List<String> valueSetsIds, String query) {
     List<SearchResult> results = new ArrayList<>();
     for (BpClass c : bpr.getCollection()) {
       // Assign information depending on the result type
@@ -234,7 +234,12 @@ public class ObjectConverter {
       }
 
       String source = c.getLinks().getOntology();
-      SearchResult r = new SearchResult(c.getId(), c.getId(), BP_TYPE_BASE + type, type, c.getPrefLabel(), null, definition, source);
+      List<String> matchedSynonyms = new ArrayList<>();
+      if (query != null && c.getMatchType().equals("synonym")) {
+        matchedSynonyms = calculateMatchedSynonyms(c.getPrefLabel(), c.getSynonym(), query);
+      }
+      SearchResult r = new SearchResult(c.getId(), c.getId(), BP_TYPE_BASE + type, type,
+          c.getPrefLabel(), null, definition, source, c.getMatchType(), matchedSynonyms);
       results.add(r);
     }
     return new PagedResults<>(bpr.getPage(), bpr.getPageCount(), bpr.getCollection().size(), bpr.getTotalCount(), bpr.getPrevPage(),
@@ -250,7 +255,7 @@ public class ObjectConverter {
       }
       String source = bpProperty.getLinks().getOntology();
       SearchResult searchResult = new SearchResult(bpProperty.getId(), bpProperty.getId(), bpProperty.getType(),
-          Util.getShortType(bpProperty.getType()), bpProperty.getPrefLabel(), null, definition, source);
+          Util.getShortType(bpProperty.getType()), bpProperty.getPrefLabel(), null, definition, source, null, new ArrayList<>());
       results.add(searchResult);
     }
     return new PagedResults<>(bpProperties.getPage(), bpProperties.getPageCount(), bpProperties.getCollection().size(),
@@ -343,7 +348,7 @@ public class ObjectConverter {
     }
 
     return new SearchResult(c.getId(), c.getLdId(), c.getLdType(), c.getType(), c.getPrefLabel(), null,
-        definition, c.getOntology());
+        definition, c.getOntology(), null, new ArrayList<>());
   }
 
   public static SearchResult toSearchResult(Value v) {
@@ -354,7 +359,7 @@ public class ObjectConverter {
     }
 
     return new SearchResult(v.getId(), v.getLdId(), v.getLdType(), v.getType(), v.getPrefLabel(), v.getNotation(),
-        definition, v.getVsCollection());
+        definition, v.getVsCollection(), null, new ArrayList<>());
   }
 
   public static SearchResult toSearchResult(ClassValueConstraint c) {
@@ -370,7 +375,7 @@ public class ObjectConverter {
     }
 
     return new SearchResult(Util.getShortIdentifier(c.getUri()), c.getUri(), ldType, c.getType(), c.getPrefLabel(), null,
-        null, source);
+        null, source, null, new ArrayList<>());
   }
 
   public static PagedResults<SearchResult> classResultsToSearchResults(PagedResults<OntologyClass> classPagedResults) {
@@ -420,6 +425,17 @@ public class ObjectConverter {
     else {
       return true;
     }
+  }
+
+  private static List<String> calculateMatchedSynonyms(String prefLabel, List<String> synonyms, String searchQuery) {
+    searchQuery = searchQuery.trim();
+    List<String> matchedSynonyms = new ArrayList<>();
+    for (String synonym : synonyms) {
+      if (!synonym.equalsIgnoreCase(prefLabel) && synonym.toLowerCase().contains(searchQuery.toLowerCase())) {
+        matchedSynonyms.add(synonym);
+      }
+    }
+    return matchedSynonyms;
   }
 
 }

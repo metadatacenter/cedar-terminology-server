@@ -82,8 +82,7 @@ public class SearchResource extends AbstractTerminologyServerResource {
       // These ids are used to know if a particular result returned by BioPortal is a value or a value set.
       // BioPortal should provide this information and this parameter should be removed
       PagedResults results = terminologyService.search(q, scopeList, sourcesList, suggest, source, subtreeRootId,
-          maxDepth,
-          page, pageSize, false, true, apiKey, valueSetsIds);
+          maxDepth, page, pageSize, false, true, apiKey, valueSetsIds);
       JsonNode output = JsonMapper.MAPPER.valueToTree(results);
       return Response.ok().entity(output).build();
     } catch (HTTPException e) {

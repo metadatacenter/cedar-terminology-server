@@ -41,7 +41,7 @@ public class TerminologyService implements ITerminologyService {
     BpPagedResults<BpClass> results = bpService.search(q, scope, sources, suggest, source, subtreeRootId, maxDepth,
         page, pageSize, displayContext, displayLinks, apiKey);
 
-    return ObjectConverter.toPagedSearchResults(results, valueSetsIds);
+    return ObjectConverter.toPagedSearchResults(results, valueSetsIds, q);
   }
 
   public PagedResults<SearchResult> propertySearch(String q, List<String> sources, boolean exactMatch, boolean
@@ -99,6 +99,15 @@ public class TerminologyService implements ITerminologyService {
 
   /**
    * CEDAR Integrated Search
+   *
+   * Features that are still not implemented with respect to the original search endpoint:
+   *
+   * 1. Synonym-based search. The original search endpoint returns the following two attributes:
+   *    - matchType: specifies if the query matched the prefLabel or one (or several) term synonym.
+   *    - matchedSynonyms: array that contains the synonyms matched by the query.
+   *  The work done on the original search endpoint to enable synonym-based search is described at
+   *  https://github.com/metadatacenter/cedar-project/issues/1160.
+   *
    */
   public PagedResults<SearchResult> integratedSearch(Optional<String> q, ValueConstraints valueConstraints,
                                                      int page, int pageSize, String apiKey) throws IOException {
