@@ -20,12 +20,15 @@ public class SearchResult {
   private String notation;
   private String definition;
   private String source;
+  private String matchType;
+  private List<String> matchedSynonyms;
 
   // The default constructor is used by Jackson for deserialization
   public SearchResult() {
   }
 
-  public SearchResult(String id, String ldId, String ldType, String type, String prefLabel, String notation, String definition, String source) {
+  public SearchResult(String id, String ldId, String ldType, String type, String prefLabel, String notation,
+                      String definition, String source, String matchType, List<String> matchedSynonyms) {
     this.id = id;
     this.ldId = ldId;
     this.ldType = ldType;
@@ -34,6 +37,8 @@ public class SearchResult {
     this.notation = notation;
     this.definition = definition;
     this.source = source;
+    this.matchType = matchType;
+    this.matchedSynonyms = matchedSynonyms;
   }
 
   public String getId() {
@@ -99,4 +104,12 @@ public class SearchResult {
   public void setSource(String source) {
     this.source = source;
   }
+
+  public String getMatchType() { return matchType; }
+
+  public void setMatchType(String matchType) { this.matchType = matchType; }
+
+  public List<String> getMatchedSynonyms() { return matchedSynonyms; }
+
+  public void setMatchedSynonyms(List<String> matchedSynonyms) { this.matchedSynonyms = matchedSynonyms; }
 }

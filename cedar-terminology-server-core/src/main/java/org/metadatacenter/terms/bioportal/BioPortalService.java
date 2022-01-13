@@ -120,7 +120,7 @@ public class BioPortalService implements IBioPortalService {
     url += "&also_search_properties=true";
 
     /** Include additional information **/
-    url += "&include=prefLabel,definition";
+    //url += "&include=prefLabel,definition"; // Commented out because we need matchType
 
     /** Add page and pageSize **/
     url += "&page=" + page + "&pagesize=" + pageSize;

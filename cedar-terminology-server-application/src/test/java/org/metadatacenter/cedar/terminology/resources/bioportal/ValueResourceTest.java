@@ -21,7 +21,7 @@ import static org.metadatacenter.constant.HttpConstants.HTTP_HEADER_AUTHORIZATIO
 /**
  * Integration tests. They are done by starting a test server that makes it possible to test the real HTTP stack.
  */
-@Ignore
+
 public class ValueResourceTest extends AbstractTerminologyServerResourceTest {
 
   /**
@@ -48,6 +48,7 @@ public class ValueResourceTest extends AbstractTerminologyServerResourceTest {
   public void tearDown() {
   }
 
+  @Ignore
   @Test
   public void createValueTest() {
     // Create value set and value
@@ -86,6 +87,7 @@ public class ValueResourceTest extends AbstractTerminologyServerResourceTest {
   }
 
   // TODO: test it for non-provisional values and value sets
+  @Ignore
   @Test
   public void findValueTest() {
     // Create a provisional value
@@ -118,6 +120,7 @@ public class ValueResourceTest extends AbstractTerminologyServerResourceTest {
   }
 
   // TODO: test it for non-provisional values and value sets
+  @Ignore
   @Test
   public void findAllValuesInValueSetByValueTest() {
     ValueSet createdVs = createValueSet(vs1);
@@ -155,6 +158,7 @@ public class ValueResourceTest extends AbstractTerminologyServerResourceTest {
     Assert.assertTrue("Expected values not found", v1Found && v2Found);
   }
 
+  @Ignore
   @Test
   public void updateValueTest() {
     // Create a provisional value
@@ -189,6 +193,7 @@ public class ValueResourceTest extends AbstractTerminologyServerResourceTest {
     Assert.assertEquals(expected.getCreated(), found.getCreated());
   }
 
+  @Ignore
   @Test
   public void deleteValueTest() {
     // Create a provisional value

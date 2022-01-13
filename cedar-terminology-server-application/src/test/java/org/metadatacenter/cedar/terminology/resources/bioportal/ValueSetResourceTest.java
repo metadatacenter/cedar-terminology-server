@@ -47,6 +47,7 @@ public class ValueSetResourceTest extends AbstractTerminologyServerResourceTest 
   public void tearDown() {
   }
 
+  @Ignore
   @Test
   public void createValueSetTest() {
     String url = baseUrlBpVSCollections + "/" + Util.getShortIdentifier(vs1.getVsCollection()) + "/" + BP_VALUE_SETS;
@@ -73,6 +74,7 @@ public class ValueSetResourceTest extends AbstractTerminologyServerResourceTest 
     Assert.assertEquals(expected.isProvisional(), created.isProvisional());
   }
 
+  @Ignore
   @Test
   // TODO: test find for regular value sets too
   public void findValueSetTest() {
@@ -103,6 +105,7 @@ public class ValueSetResourceTest extends AbstractTerminologyServerResourceTest 
     Assert.assertEquals(created.getCreated(), found.getCreated());
   }
 
+  @Ignore
   @Test
   public void findValueSetsByVsCollectionTest() {
     // Create two provisional value sets
@@ -132,6 +135,7 @@ public class ValueSetResourceTest extends AbstractTerminologyServerResourceTest 
 //
 //  }
 
+  @Ignore
   @Test
   public void findAllValueSetsTest() {
     // Find url
@@ -149,6 +153,7 @@ public class ValueSetResourceTest extends AbstractTerminologyServerResourceTest 
     Assert.assertTrue("Wrong number of value sets returned", valueSets.size() > 1);
   }
 
+  @Ignore
   @Test
   public void updateValueSetTest() {
     // Create a provisional value set
@@ -184,6 +189,7 @@ public class ValueSetResourceTest extends AbstractTerminologyServerResourceTest 
     Assert.assertEquals(expected.getCreated(), found.getCreated());
   }
 
+  @Ignore
   @Test
   public void deleteValueSetTest() {
     // Create a provisional value set

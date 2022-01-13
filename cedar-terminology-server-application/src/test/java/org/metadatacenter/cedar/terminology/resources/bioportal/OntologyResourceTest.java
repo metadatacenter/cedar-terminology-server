@@ -29,7 +29,7 @@ public class OntologyResourceTest extends AbstractTerminologyServerResourceTest 
   @BeforeClass
   public static void oneTimeSetUp() {
     // Initialize ontology information
-    ontology1 = new Ontology("NCIT","http://data.bioontology.org/ontologies/",
+    ontology1 = new Ontology("NCIT","https://data.bioontology.org/ontologies/",
         "National Cancer Institute Thesaurus", false, null);
   }
 
