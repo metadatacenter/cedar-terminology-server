@@ -22,12 +22,14 @@ public class BpClass {
   private BpLinks links;
   private boolean hasChildren;
   private Map<String, List<String>> properties;
+  private String matchType;
 
   public BpClass() {
   }
 
   public BpClass(String id, String type, String prefLabel, List<Object> definition, List<String> synonym,
-                 boolean provisional, BpLinks links, boolean hasChildren, Map<String, List<String>> properties) {
+                 boolean provisional, BpLinks links, boolean hasChildren, Map<String, List<String>> properties,
+                 String matchType) {
     this.id = id;
     this.type = type;
     this.prefLabel = prefLabel;
@@ -37,6 +39,7 @@ public class BpClass {
     this.links = links;
     this.hasChildren = hasChildren;
     this.properties = properties;
+    this.matchType = matchType;
   }
 
   public String getId() {
@@ -111,6 +114,10 @@ public class BpClass {
     this.properties = properties;
   }
 
+  public String getMatchType() { return matchType; }
+
+  public void setMatchType(String matchType) { this.matchType = matchType; }
+
   @Override
   public String toString() {
     return "BpClass{" +
@@ -123,6 +130,7 @@ public class BpClass {
         ", links=" + links +
         ", hasChildren=" + hasChildren +
         ", properties=" + properties +
+        ", matchType='" + matchType +
         '}';
   }
 }

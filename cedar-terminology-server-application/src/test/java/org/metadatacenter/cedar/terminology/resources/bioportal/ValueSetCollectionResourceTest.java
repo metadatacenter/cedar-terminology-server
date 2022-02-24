@@ -42,6 +42,7 @@ public class ValueSetCollectionResourceTest extends AbstractTerminologyServerRes
   public void tearDown() {
   }
 
+  @Ignore
   @Test
   public void findAllVSCollectionsTest() {
     String url = baseUrlBpVSCollections;

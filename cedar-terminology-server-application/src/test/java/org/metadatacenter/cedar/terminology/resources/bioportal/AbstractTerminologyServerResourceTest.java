@@ -62,8 +62,8 @@ public abstract class AbstractTerminologyServerResourceTest {
   protected static Value value1;
   protected static Value value2;
 
-  protected final static String classCreator = "http://data.bioontology.org/users/cedar-test";
-  protected final static String classOntology = "http://data.bioontology.org/ontologies/CEDARPC";
+  protected final static String classCreator = "https://data.bioontology.org/users/cedar-test";
+  protected final static String classOntology = "https://data.bioontology.org/ontologies/CEDARPC";
 
   protected static final Logger log = LoggerFactory.getLogger(AbstractTerminologyServerResourceTest.class);
 
@@ -146,15 +146,15 @@ public abstract class AbstractTerminologyServerResourceTest {
 
     // Initialize test relation - the source class id will be set later
     String relationType = "http://www.w3.org/2004/02/skos/core#closeMatch";
-    String relationCreator = "http://data.bioontology.org/users/cedar-test";
+    String relationCreator = "https://data.bioontology.org/users/cedar-test";
     String targetClassId = "http://purl.bioontology.org/ontology/CPT/1002796";
-    String targetClassOntology = "http://data.bioontology.org/ontologies/CPT";
+    String targetClassOntology = "https://data.bioontology.org/ontologies/CPT";
     relation1 = new Relation(null, null, null, relationType, targetClassId, targetClassOntology, null, relationCreator);
 
     // Initialize test value set 1
     String vs1Label = "vs1_test";
-    String vs1Creator = "http://data.bioontology.org/users/cedar-test";
-    String vs1Collection = "http://data.bioontology.org/ontologies/CEDARVS";
+    String vs1Creator = "https://data.bioontology.org/users/cedar-test";
+    String vs1Collection = "https://data.bioontology.org/ontologies/CEDARVS";
     List vs1Definitions = new ArrayList<>();
     vs1Definitions.add("vs1Definition1");
     vs1Definitions.add("vs1Definition2");
@@ -167,8 +167,8 @@ public abstract class AbstractTerminologyServerResourceTest {
 
     // Initialize test value set 2
     String vs2Label = "vs2_test";
-    String vs2Creator = "http://data.bioontology.org/users/cedar-test";
-    String vs2Collection = "http://data.bioontology.org/ontologies/CEDARVS";
+    String vs2Creator = "https://data.bioontology.org/users/cedar-test";
+    String vs2Collection = "https://data.bioontology.org/ontologies/CEDARVS";
     List vs2Definitions = new ArrayList<>();
     vs2Definitions.add("vs2Definition1");
     vs2Definitions.add("vs2Definition2");
@@ -181,8 +181,8 @@ public abstract class AbstractTerminologyServerResourceTest {
 
     // Initialize test value 1 - the vsId will be set later
     String value1Label = "value1_test";
-    String value1Creator = "http://data.bioontology.org/users/cedar-test";
-    String value1VsCollection = "http://data.bioontology.org/ontologies/CEDARVS";
+    String value1Creator = "https://data.bioontology.org/users/cedar-test";
+    String value1VsCollection = "https://data.bioontology.org/ontologies/CEDARVS";
     List value1Definitions = new ArrayList<>();
     value1Definitions.add("value1Definition1");
     value1Definitions.add("value1Definition2");
@@ -195,8 +195,8 @@ public abstract class AbstractTerminologyServerResourceTest {
 
     // Initialize test value 2 - the vsId will be set later
     String value2Label = "value2_test";
-    String value2Creator = "http://data.bioontology.org/users/cedar-test";
-    String value2VsCollection = "http://data.bioontology.org/ontologies/CEDARVS";
+    String value2Creator = "https://data.bioontology.org/users/cedar-test";
+    String value2VsCollection = "https://data.bioontology.org/ontologies/CEDARVS";
     List value2Definitions = new ArrayList<>();
     value2Definitions.add("value2Definition1");
     value2Definitions.add("value2Definition2");
