@@ -138,9 +138,15 @@ public class ObjectConverter {
         }
       }
     }
-    return new Value(Util.getShortIdentifier(c.getId()), c.getId(), c.getPrefLabel(), notation, relatedMatch,
-        null, null, c.getLinks().getOntology(), toListOfString(c.getDefinition()),
-        c.getSynonym(), null, c.isProvisional(), null);
+
+    if (relatedMatch != null)
+      return new Value(Util.getShortIdentifier(c.getId()), relatedMatch, c.getPrefLabel(), notation, relatedMatch, null,
+        null, c.getLinks().getOntology(), toListOfString(c.getDefinition()), c.getSynonym(), null, c.isProvisional(),
+        null);
+    else
+      return new Value(Util.getShortIdentifier(c.getId()), c.getId(), c.getPrefLabel(), notation, relatedMatch, null,
+        null, c.getLinks().getOntology(), toListOfString(c.getDefinition()), c.getSynonym(), null, c.isProvisional(),
+        null);
   }
 
   public static Value toValue(BpProvisionalClass pc) {
