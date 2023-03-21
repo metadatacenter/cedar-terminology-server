@@ -1,15 +1,15 @@
 package org.metadatacenter.cedar.terminology.resources.bioportal;
 
+import jakarta.ws.rs.core.GenericType;
+import jakarta.ws.rs.core.HttpHeaders;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.Response.Status;
 import org.junit.*;
 import org.metadatacenter.terms.domainObjects.Ontology;
 import org.metadatacenter.terms.domainObjects.OntologyClass;
 import org.metadatacenter.terms.domainObjects.OntologyProperty;
 
-import javax.ws.rs.core.GenericType;
-import javax.ws.rs.core.HttpHeaders;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.Response.Status;
 import java.util.List;
 
 import static org.metadatacenter.cedar.terminology.utils.Constants.*;
@@ -29,7 +29,7 @@ public class OntologyResourceTest extends AbstractTerminologyServerResourceTest 
   @BeforeClass
   public static void oneTimeSetUp() {
     // Initialize ontology information
-    ontology1 = new Ontology("NCIT","https://data.bioontology.org/ontologies/",
+    ontology1 = new Ontology("NCIT", "https://data.bioontology.org/ontologies/",
         "National Cancer Institute Thesaurus", false, null);
   }
 
@@ -60,7 +60,8 @@ public class OntologyResourceTest extends AbstractTerminologyServerResourceTest 
     // Check Content-Type
     Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check the results returned
-    List<Ontology> ontologies = response.readEntity(new GenericType<List<Ontology>>() {});
+    List<Ontology> ontologies = response.readEntity(new GenericType<List<Ontology>>() {
+    });
     response.close();
     Assert.assertTrue("No ontologies returned", ontologies.size() > 0);
     Assert.assertTrue("Wrong number of ontologies returned", ontologies.size() > 525);
@@ -92,7 +93,8 @@ public class OntologyResourceTest extends AbstractTerminologyServerResourceTest 
     // Check Content-Type
     Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check results
-    List<OntologyClass> roots = response.readEntity(new GenericType<List<OntologyClass>>() {});
+    List<OntologyClass> roots = response.readEntity(new GenericType<List<OntologyClass>>() {
+    });
     response.close();
     Assert.assertTrue("No roots returned", roots.size() > 0);
     // Basic check to see whether "Biological Process" is found
@@ -118,7 +120,8 @@ public class OntologyResourceTest extends AbstractTerminologyServerResourceTest 
     // Check Content-Type
     Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check results
-    List<OntologyProperty> roots = response.readEntity(new GenericType<List<OntologyProperty>>() {});
+    List<OntologyProperty> roots = response.readEntity(new GenericType<List<OntologyProperty>>() {
+    });
     response.close();
     Assert.assertTrue("No roots returned", roots.size() > 0);
     // Basic check to see if the "Administrative metadata" root property is found

@@ -2,6 +2,12 @@ package org.metadatacenter.cedar.terminology.resources.bioportal;
 
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import jakarta.ws.rs.client.Entity;
+import jakarta.ws.rs.core.GenericType;
+import jakarta.ws.rs.core.HttpHeaders;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.Response.Status;
 import org.junit.*;
 import org.metadatacenter.cedar.terminology.validation.integratedsearch.ClassValueConstraint;
 import org.metadatacenter.terms.customObjects.PagedResults;
@@ -10,12 +16,6 @@ import org.metadatacenter.terms.domainObjects.Value;
 import org.metadatacenter.terms.domainObjects.ValueSet;
 import org.metadatacenter.terms.util.Util;
 
-import javax.ws.rs.client.Entity;
-import javax.ws.rs.core.GenericType;
-import javax.ws.rs.core.HttpHeaders;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.util.*;
 
@@ -811,7 +811,8 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
         mapper.createArrayNode(), Optional.of(1), Optional.of(pageSize));
     Response ontSizeResponse = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
         .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(ontSizeRequestBody));
-    PagedResults<SearchResult> ontology1Response = ontSizeResponse.readEntity(new GenericType<PagedResults<SearchResult>>() {
+    PagedResults<SearchResult> ontology1Response =
+        ontSizeResponse.readEntity(new GenericType<PagedResults<SearchResult>>() {
     });
     ontSizeResponse.close();
     List<SearchResult> ontology1Classes = ontology1Response.getCollection();

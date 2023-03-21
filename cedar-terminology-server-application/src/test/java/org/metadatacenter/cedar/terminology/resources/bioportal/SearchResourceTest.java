@@ -1,14 +1,12 @@
 package org.metadatacenter.cedar.terminology.resources.bioportal;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import jakarta.ws.rs.core.HttpHeaders;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.Response.Status;
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
-
-import javax.ws.rs.core.HttpHeaders;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.Response.Status;
 
 import java.io.IOException;
 import java.util.List;
@@ -47,7 +45,8 @@ public class SearchResourceTest extends AbstractTerminologyServerResourceTest {
     String q = "white blood cell";
     String scope = "classes";
     // Service invocation
-    Response response = clientBuilder.build().target(baseUrlBpSearch).queryParam("q", q).queryParam("scope", scope).request()
+    Response response =
+        clientBuilder.build().target(baseUrlBpSearch).queryParam("q", q).queryParam("scope", scope).request()
         .header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
@@ -62,7 +61,9 @@ public class SearchResourceTest extends AbstractTerminologyServerResourceTest {
         lowLimitPageCount);
   }
 
-  /** The following test will only work if the BioPortal API flag 'also_search_properties' has been set to true **/
+  /**
+   * The following test will only work if the BioPortal API flag 'also_search_properties' has been set to true
+   **/
   @Test
   public void searchClassByPropertyValue() {
     // Query parameters
@@ -84,7 +85,8 @@ public class SearchResourceTest extends AbstractTerminologyServerResourceTest {
     response.close();
     int pageCount = jsonResponse.get("pageCount").asInt();
     int lowLimitPageCount = 1;
-    Assert.assertTrue("The number of search results for '" + q + "' is lower than expected", pageCount >= lowLimitPageCount);
+    Assert.assertTrue("The number of search results for '" + q + "' is lower than expected",
+        pageCount >= lowLimitPageCount);
   }
 
   @Test
@@ -93,7 +95,8 @@ public class SearchResourceTest extends AbstractTerminologyServerResourceTest {
     String q = "white blood cell";
     String scope = "classes,values";
     // Service invocation
-    Response response = clientBuilder.build().target(baseUrlBpSearch).queryParam("q", q).queryParam("scope", scope).request()
+    Response response =
+        clientBuilder.build().target(baseUrlBpSearch).queryParam("q", q).queryParam("scope", scope).request()
         .header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
@@ -262,7 +265,8 @@ public class SearchResourceTest extends AbstractTerminologyServerResourceTest {
     // Query parameters
     String q = "has title";
     // Service invocation
-    Response response = clientBuilder.build().target(baseUrlBpPropertySearch).queryParam("q", q).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
+    Response response =
+        clientBuilder.build().target(baseUrlBpPropertySearch).queryParam("q", q).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
     // Check Content-Type
@@ -281,7 +285,8 @@ public class SearchResourceTest extends AbstractTerminologyServerResourceTest {
     // Query parameters
     String q = "wrongproperty333";
     // Service invocation
-    Response response = clientBuilder.build().target(baseUrlBpPropertySearch).queryParam("q", q).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
+    Response response =
+        clientBuilder.build().target(baseUrlBpPropertySearch).queryParam("q", q).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
     // Check Content-Type
@@ -291,7 +296,8 @@ public class SearchResourceTest extends AbstractTerminologyServerResourceTest {
     response.close();
     int pageSize = jsonResponse.get("pageSize").asInt();
     int expectedCount = 0;
-    Assert.assertTrue("The number of search results for '" + q + "' is different than expected", pageSize == expectedCount);
+    Assert.assertTrue("The number of search results for '" + q + "' is different than expected",
+        pageSize == expectedCount);
   }
 
   @Test
@@ -318,8 +324,10 @@ public class SearchResourceTest extends AbstractTerminologyServerResourceTest {
     int pageSize = jsonResponse.get("pageSize").asInt();
     int pageCount = jsonResponse.get("pageCount").asInt();
     int approxResultsCount = pageSize * pageCount;
-    Assert.assertTrue("The number of search results for '" + q + "' is lower than expected", approxResultsCount > lowerLimitResultsCount);
-    Assert.assertTrue("The number of search results for '" + q + "' is higher than expected", approxResultsCount < upperLimitResultsCount);
+    Assert.assertTrue("The number of search results for '" + q + "' is lower than expected",
+        approxResultsCount > lowerLimitResultsCount);
+    Assert.assertTrue("The number of search results for '" + q + "' is higher than expected",
+        approxResultsCount < upperLimitResultsCount);
     // Check that the retrieved classes are from the right source
     for (JsonNode r : results) {
       String resultSource = r.get("source").asText();
