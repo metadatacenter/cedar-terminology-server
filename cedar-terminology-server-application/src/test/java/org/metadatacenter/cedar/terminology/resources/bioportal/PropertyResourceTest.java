@@ -1,18 +1,17 @@
 package org.metadatacenter.cedar.terminology.resources.bioportal;
 
+import jakarta.ws.rs.core.GenericType;
+import jakarta.ws.rs.core.HttpHeaders;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.Response.Status;
 import org.junit.*;
 import org.metadatacenter.terms.customObjects.PagedResults;
-import org.metadatacenter.terms.domainObjects.OntologyClass;
 import org.metadatacenter.terms.domainObjects.OntologyProperty;
 import org.metadatacenter.terms.domainObjects.SearchResult;
 import org.metadatacenter.terms.domainObjects.TreeNode;
 import org.metadatacenter.terms.util.Util;
 
-import javax.ws.rs.core.GenericType;
-import javax.ws.rs.core.HttpHeaders;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.Response.Status;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.util.List;
@@ -64,9 +63,11 @@ public class PropertyResourceTest extends AbstractTerminologyServerResourceTest 
     } catch (UnsupportedEncodingException e) {
       e.printStackTrace();
     }
-    String url = baseUrlBpOntologies + "/" + Util.getShortIdentifier(p.getSource()) + "/" + BP_PROPERTIES + "/" + encodedPropertyId;
+    String url =
+        baseUrlBpOntologies + "/" + Util.getShortIdentifier(p.getSource()) + "/" + BP_PROPERTIES + "/" + encodedPropertyId;
     // Service invocation
-    Response findResponse = clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
+    Response findResponse =
+        clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), findResponse.getStatus());
     // Check Content-Type
@@ -84,13 +85,15 @@ public class PropertyResourceTest extends AbstractTerminologyServerResourceTest 
     int approxPropertiesCount = 198;
     String url = baseUrlBpOntologies + "/" + ontology + "/" + BP_PROPERTIES;
     // Service invocation
-    Response findResponse = clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
+    Response findResponse =
+        clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), findResponse.getStatus());
     // Check Content-Type
     Assert.assertEquals(MediaType.APPLICATION_JSON, findResponse.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check the number of results retrieved
-    List<OntologyProperty> properties = findResponse.readEntity(new GenericType<List<OntologyProperty>>() {});
+    List<OntologyProperty> properties = findResponse.readEntity(new GenericType<List<OntologyProperty>>() {
+    });
     findResponse.close();
     Assert.assertTrue("The number of properties found (" + properties.size() + ") is lower than expected (" +
         approxPropertiesCount + ")", properties.size() >= approxPropertiesCount);
@@ -118,15 +121,18 @@ public class PropertyResourceTest extends AbstractTerminologyServerResourceTest 
     // Check Content-Type
     Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check that the tree is not empty and that it is correctly expanded to the given class
-    List<TreeNode> tree = response.readEntity(new GenericType<List<TreeNode>>() {});
+    List<TreeNode> tree = response.readEntity(new GenericType<List<TreeNode>>() {
+    });
     response.close();
     Assert.assertTrue("Empty tree", tree.size() > 0);
     TreeNode foundChild = null;
     for (TreeNode node : tree) {
       // If "Date"
       if (node.getLdId().equals(parentPropertyId)) {
-        Assert.assertTrue("The 'hasChildren' property for this resource should be set to 'true'", node.getHasChildren() == true);
-        Assert.assertTrue("The number of children returned for this resource should be greater than 0", node.getChildren().size() > 0);
+        Assert.assertTrue("The 'hasChildren' property for this resource should be set to 'true'",
+            node.getHasChildren() == true);
+        Assert.assertTrue("The number of children returned for this resource should be greater than 0",
+            node.getChildren().size() > 0);
         for (TreeNode childrenNode : node.getChildren()) {
           // If "Copyright date"
           if (childrenNode.getLdId().equals(propertyId)) {
@@ -137,7 +143,8 @@ public class PropertyResourceTest extends AbstractTerminologyServerResourceTest 
       }
     }
     Assert.assertTrue("Given property not found in the returned tree", foundChild != null);
-    Assert.assertTrue("Preferred label not found for child property", foundChild.getPrefLabel() != null && foundChild.getPrefLabel().length() > 0);
+    Assert.assertTrue("Preferred label not found for child property",
+        foundChild.getPrefLabel() != null && foundChild.getPrefLabel().length() > 0);
   }
 
   @Test
@@ -152,7 +159,8 @@ public class PropertyResourceTest extends AbstractTerminologyServerResourceTest 
     } catch (UnsupportedEncodingException e) {
       e.printStackTrace();
     }
-    String url = baseUrlBpOntologies + "/" + ontology + "/" + BP_PROPERTIES + "/" + encodedPropertyId + "/" + BP_CHILDREN;
+    String url =
+        baseUrlBpOntologies + "/" + ontology + "/" + BP_PROPERTIES + "/" + encodedPropertyId + "/" + BP_CHILDREN;
     // Service invocation
     Response response = clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check HTTP response
@@ -162,7 +170,8 @@ public class PropertyResourceTest extends AbstractTerminologyServerResourceTest 
     // Check that the call returns some children and that one of them is "Copyright date".
     // Note that this check is done with a property that has less children than the default page size. Otherwise,
     // we should iterate over all pages.
-    List<OntologyProperty> children = response.readEntity(new GenericType<List<OntologyProperty>>() {});
+    List<OntologyProperty> children = response.readEntity(new GenericType<List<OntologyProperty>>() {
+    });
     response.close();
     Assert.assertTrue("No children returned", children.size() > 0);
     boolean childFound = false;
@@ -189,7 +198,8 @@ public class PropertyResourceTest extends AbstractTerminologyServerResourceTest 
     } catch (UnsupportedEncodingException e) {
       e.printStackTrace();
     }
-    String url = baseUrlBpOntologies + "/" + ontology + "/" + BP_PROPERTIES + "/" + encodedPropertyId + "/" + BP_DESCENDANTS;
+    String url =
+        baseUrlBpOntologies + "/" + ontology + "/" + BP_PROPERTIES + "/" + encodedPropertyId + "/" + BP_DESCENDANTS;
     // Service invocation
     Response response = clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check HTTP response
@@ -199,7 +209,8 @@ public class PropertyResourceTest extends AbstractTerminologyServerResourceTest 
     // Check that the call returns some children and that those are right.
     // Note that this check is done with a class that has less descendants than the default page size. Otherwise,
     // we should iterate over all pages.
-    List<OntologyProperty> descendants = response.readEntity(new GenericType<List<OntologyProperty>>() {});
+    List<OntologyProperty> descendants = response.readEntity(new GenericType<List<OntologyProperty>>() {
+    });
     response.close();
     Assert.assertTrue("No descendants returned", descendants.size() > 0);
     boolean descendant1Found = false;
@@ -207,13 +218,14 @@ public class PropertyResourceTest extends AbstractTerminologyServerResourceTest 
     for (OntologyProperty property : descendants) {
       if (property.getLdId().equals(descendant1PropertyId)) {
         descendant1Found = true;
-      }
-      else if (property.getLdId().equals(descendant2PropertyId)) {
+      } else if (property.getLdId().equals(descendant2PropertyId)) {
         descendant2Found = true;
       }
     }
-    Assert.assertTrue("Descendant " + descendant1PropertyId + " not found for the given property " + propertyId, descendant1Found);
-    Assert.assertTrue("Descendant " + descendant2PropertyId + " not found for the given property " + propertyId, descendant2Found);
+    Assert.assertTrue("Descendant " + descendant1PropertyId + " not found for the given property " + propertyId,
+        descendant1Found);
+    Assert.assertTrue("Descendant " + descendant2PropertyId + " not found for the given property " + propertyId,
+        descendant2Found);
   }
 
   @Test
@@ -228,7 +240,8 @@ public class PropertyResourceTest extends AbstractTerminologyServerResourceTest 
     } catch (UnsupportedEncodingException e) {
       e.printStackTrace();
     }
-    String url = baseUrlBpOntologies + "/" + ontology + "/" + BP_PROPERTIES + "/" + encodedPropertyId + "/" + BP_PARENTS;
+    String url =
+        baseUrlBpOntologies + "/" + ontology + "/" + BP_PROPERTIES + "/" + encodedPropertyId + "/" + BP_PARENTS;
     // Service invocation
     Response response = clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check HTTP response
@@ -236,7 +249,8 @@ public class PropertyResourceTest extends AbstractTerminologyServerResourceTest 
     // Check Content-Type
     Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check that the call returns the expected parent
-    List<OntologyProperty> parents = response.readEntity(new GenericType<List<OntologyProperty>>() {});
+    List<OntologyProperty> parents = response.readEntity(new GenericType<List<OntologyProperty>>() {
+    });
     response.close();
     Assert.assertTrue("No parents returned", parents.size() > 0);
     boolean parentFound = false;

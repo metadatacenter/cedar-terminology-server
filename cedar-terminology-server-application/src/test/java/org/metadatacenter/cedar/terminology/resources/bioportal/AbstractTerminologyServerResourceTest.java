@@ -3,6 +3,12 @@ package org.metadatacenter.cedar.terminology.resources.bioportal;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.dropwizard.testing.ResourceHelpers;
 import io.dropwizard.testing.junit.DropwizardAppRule;
+import jakarta.ws.rs.client.ClientBuilder;
+import jakarta.ws.rs.client.Entity;
+import jakarta.ws.rs.core.GenericType;
+import jakarta.ws.rs.core.HttpHeaders;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
 import org.glassfish.jersey.client.ClientProperties;
 import org.jboss.resteasy.client.jaxrs.ResteasyClientBuilder;
 import org.junit.*;
@@ -18,13 +24,6 @@ import org.metadatacenter.util.test.TestUserUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.ws.rs.client.Client;
-import javax.ws.rs.client.ClientBuilder;
-import javax.ws.rs.client.Entity;
-import javax.ws.rs.core.GenericType;
-import javax.ws.rs.core.HttpHeaders;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.List;
@@ -97,10 +96,11 @@ public abstract class AbstractTerminologyServerResourceTest {
     baseUrlBpOntologies = baseUrlBp + "/" + BP_ONTOLOGIES;
     baseUrlBpVSCollections = baseUrlBp + "/" + BP_VALUE_SET_COLLECTIONS;
 
-    clientBuilder = new ResteasyClientBuilder();
+    clientBuilder = ResteasyClientBuilder.newBuilder();
     clientBuilder.property(ClientProperties.CONNECT_TIMEOUT, cedarConfig.getTerminologyConfig().getBioPortal()
         .getConnectTimeout());
-    clientBuilder.property(ClientProperties.READ_TIMEOUT, cedarConfig.getTerminologyConfig().getBioPortal().getSocketTimeout
+    clientBuilder.property(ClientProperties.READ_TIMEOUT,
+        cedarConfig.getTerminologyConfig().getBioPortal().getSocketTimeout
         () * 20); // enough time to build the ontologies and value sets cache if it has not been created yet
 
     authHeader = TestUserUtil.getTestUser1AuthHeader(cedarConfig);
@@ -240,7 +240,8 @@ public abstract class AbstractTerminologyServerResourceTest {
     // Service invocation
     Response response = null;
     try {
-      response = clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(c));
+      response =
+          clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(c));
       // Check HTTP response
       Assert.assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
       OntologyClass created = response.readEntity(OntologyClass.class);
@@ -263,9 +264,11 @@ public abstract class AbstractTerminologyServerResourceTest {
       Response findResponse = null;
       Response deleteResponse = null;
       try {
-        findResponse = clientBuilder.build().target(findUrl).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
+        findResponse =
+            clientBuilder.build().target(findUrl).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
         if (findResponse.getStatus() == Response.Status.OK.getStatusCode()) {
-          deleteResponse = clientBuilder.build().target(deleteUrl).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).delete();
+          deleteResponse = clientBuilder.build().target(deleteUrl).request().header(HTTP_HEADER_AUTHORIZATION,
+              authHeader).delete();
           if (deleteResponse.getStatus() != Response.Status.NO_CONTENT.getStatusCode()) {
             throw new Exception("Couldn't delete class: Id = " + c.getLdId());
           }
@@ -292,7 +295,8 @@ public abstract class AbstractTerminologyServerResourceTest {
     r.setSourceClassId(createdClass.getId());
     Response response = null;
     try {
-      response = clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(r));
+      response =
+          clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(r));
       // Check HTTP response
       Assert.assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
       Relation created = response.readEntity(Relation.class);
@@ -309,9 +313,11 @@ public abstract class AbstractTerminologyServerResourceTest {
     for (Relation r : createdRelations) {
       // Check if the relation still exists
       String url = baseUrlBp + "/" + BP_RELATIONS + "/" + r.getId();
-      Response findResponse = clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
+      Response findResponse = clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION,
+          authHeader).get();
       if (findResponse.getStatus() == Response.Status.OK.getStatusCode()) {
-        Response deleteResponse = clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).delete();
+        Response deleteResponse = clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION,
+            authHeader).delete();
         if (deleteResponse.getStatus() != Response.Status.NO_CONTENT.getStatusCode()) {
           throw new Exception("Couldn't delete relation: Id = " + r.getLdId() +
               ". This relation could have been automatically removed by BioPortal when deleting the class that " +
@@ -331,7 +337,8 @@ public abstract class AbstractTerminologyServerResourceTest {
     String url = baseUrlBpVSCollections + "/" + Util.getShortIdentifier(vs.getVsCollection()) + "/" + BP_VALUE_SETS;
     Response response = null;
     try {
-      response = clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(vs));
+      response =
+          clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(vs));
       // Check HTTP response
       Assert.assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
       ValueSet created = response.readEntity(ValueSet.class);
@@ -350,7 +357,8 @@ public abstract class AbstractTerminologyServerResourceTest {
       String findUrl = baseUrlBpVSCollections + "/" + Util.getShortIdentifier(vs.getVsCollection()) + "/" +
           BP_VALUE_SETS + "/" + vs.getId();
       String deleteUrl = baseUrlBp + "/" + BP_VALUE_SETS + "/" + vs.getId();
-      Response findResponse = clientBuilder.build().target(findUrl).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
+      Response findResponse = clientBuilder.build().target(findUrl).request().header(HTTP_HEADER_AUTHORIZATION,
+          authHeader).get();
       if (findResponse.getStatus() == Response.Status.OK.getStatusCode()) {
         Response deleteResponse =
             clientBuilder.build().target(deleteUrl).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).delete();
@@ -378,7 +386,8 @@ public abstract class AbstractTerminologyServerResourceTest {
     // Service invocation
     Response response = null;
     try {
-      response = clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(v));
+      response =
+          clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(v));
       // Check HTTP response
       Assert.assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
       Value created = response.readEntity(Value.class);
@@ -397,7 +406,8 @@ public abstract class AbstractTerminologyServerResourceTest {
       String findUrl = baseUrlBpVSCollections + "/" + Util.getShortIdentifier(v.getVsCollection()) + "/" + BP_VALUES
           + "/" + v.getId();
       String deleteUrl = baseUrlBp + "/" + BP_VALUES + "/" + v.getId();
-      Response findResponse = clientBuilder.build().target(findUrl).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
+      Response findResponse = clientBuilder.build().target(findUrl).request().header(HTTP_HEADER_AUTHORIZATION,
+          authHeader).get();
       if (findResponse.getStatus() == Response.Status.OK.getStatusCode()) {
         Response deleteResponse =
             clientBuilder.build().target(deleteUrl).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).delete();
@@ -415,7 +425,8 @@ public abstract class AbstractTerminologyServerResourceTest {
     // Service invocation
     Response response = null;
     try {
-      response = clientBuilder.build().target(baseUrlBpPropertySearch).queryParam("q", q).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
+      response =
+          clientBuilder.build().target(baseUrlBpPropertySearch).queryParam("q", q).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
       // Check HTTP response
       Assert.assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
       // Check Content-Type

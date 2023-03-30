@@ -1,13 +1,13 @@
 package org.metadatacenter.cedar.terminology.resources.bioportal;
 
+import jakarta.ws.rs.core.GenericType;
+import jakarta.ws.rs.core.HttpHeaders;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.Response.Status;
 import org.junit.*;
 import org.metadatacenter.terms.domainObjects.ValueSetCollection;
 
-import javax.ws.rs.core.GenericType;
-import javax.ws.rs.core.HttpHeaders;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.Response.Status;
 import java.util.List;
 
 import static org.metadatacenter.constant.HttpConstants.HTTP_HEADER_AUTHORIZATION;

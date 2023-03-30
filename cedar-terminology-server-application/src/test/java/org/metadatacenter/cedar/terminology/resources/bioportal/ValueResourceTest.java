@@ -1,16 +1,16 @@
 package org.metadatacenter.cedar.terminology.resources.bioportal;
 
+import jakarta.ws.rs.client.Entity;
+import jakarta.ws.rs.core.GenericType;
+import jakarta.ws.rs.core.HttpHeaders;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
 import org.junit.*;
 import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.terms.domainObjects.Value;
 import org.metadatacenter.terms.domainObjects.ValueSet;
 import org.metadatacenter.terms.util.Util;
 
-import javax.ws.rs.client.Entity;
-import javax.ws.rs.core.GenericType;
-import javax.ws.rs.core.HttpHeaders;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.util.HashSet;
@@ -62,7 +62,8 @@ public class ValueResourceTest extends AbstractTerminologyServerResourceTest {
       e.printStackTrace();
     }
     // Service invocation
-    Response response = clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(value1));
+    Response response =
+        clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(value1));
     // Check HTTP response
     Assert.assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
     // Check Content-Type
@@ -97,7 +98,8 @@ public class ValueResourceTest extends AbstractTerminologyServerResourceTest {
     String findUrl = baseUrlBpVSCollections + "/" + Util.getShortIdentifier(created.getVsCollection()) + "/" +
         BP_VALUES + "/" + created.getId();
     // Service invocation
-    Response findResponse = clientBuilder.build().target(findUrl).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
+    Response findResponse = clientBuilder.build().target(findUrl).request().header(HTTP_HEADER_AUTHORIZATION,
+        authHeader).get();
     // Check HTTP response
     Assert.assertEquals(Response.Status.OK.getStatusCode(), findResponse.getStatus());
     // Check Content-Type
@@ -143,7 +145,8 @@ public class ValueResourceTest extends AbstractTerminologyServerResourceTest {
     // Check Content-Type
     Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check that there are some results
-    PagedResults<Value> values = response.readEntity(new GenericType<PagedResults<Value>>(){});
+    PagedResults<Value> values = response.readEntity(new GenericType<PagedResults<Value>>() {
+    });
     response.close();
     Assert.assertTrue("No values found", values.getCollection().size() == 2);
     boolean v1Found = false;
@@ -165,17 +168,21 @@ public class ValueResourceTest extends AbstractTerminologyServerResourceTest {
     ValueSet createdValueSet = createValueSet(vs1);
     Value createdValue = createValue(createdValueSet.getLdId(), value1);
     Value updatedValue = new Value(createdValue.getId(), createdValue.getLdId(), "new label", null, null,
-        createdValue.getCreator(), createdValue.getVsId(), createdValue.getVsCollection(), createdValue.getDefinitions(),
-        createdValue.getSynonyms(), createdValue.getRelations(), createdValue.isProvisional(), createdValue.getCreated());
+        createdValue.getCreator(), createdValue.getVsId(), createdValue.getVsCollection(),
+        createdValue.getDefinitions(),
+        createdValue.getSynonyms(), createdValue.getRelations(), createdValue.isProvisional(),
+        createdValue.getCreated());
     String url = baseUrlBp + "/" + BP_VALUES + "/" + createdValue.getId();
     // Service invocation
-    Response updateResponse = clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).put(Entity.json(updatedValue));
+    Response updateResponse = clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION,
+        authHeader).put(Entity.json(updatedValue));
     // Check HTTP response
     Assert.assertEquals(Response.Status.NO_CONTENT.getStatusCode(), updateResponse.getStatus());
     // Retrieve the value
     String findUrl = baseUrlBpVSCollections + "/" + Util.getShortIdentifier(createdValue.getVsCollection()) + "/" +
         BP_VALUES + "/" + createdValue.getId();
-    Response findResponse = clientBuilder.build().target(findUrl).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
+    Response findResponse = clientBuilder.build().target(findUrl).request().header(HTTP_HEADER_AUTHORIZATION,
+        authHeader).get();
     Value found = findResponse.readEntity(Value.class);
     findResponse.close();
     // Check that the modifications have been done correctly
@@ -201,7 +208,8 @@ public class ValueResourceTest extends AbstractTerminologyServerResourceTest {
     Value created = createValue(createdVs.getLdId(), value1);
     // Delete the value that has been created
     String classUrl = baseUrlBp + "/" + BP_VALUES + "/" + created.getId();
-    Response deleteResponse = clientBuilder.build().target(classUrl).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).delete();
+    Response deleteResponse = clientBuilder.build().target(classUrl).request().header(HTTP_HEADER_AUTHORIZATION,
+        authHeader).delete();
     // Check HTTP response
     Assert.assertEquals(Response.Status.NO_CONTENT.getStatusCode(), deleteResponse.getStatus());
     // Remove value from the list of created values. It has already been deleted
@@ -209,7 +217,8 @@ public class ValueResourceTest extends AbstractTerminologyServerResourceTest {
     // Try to retrieve the value to check that it has been deleted correctly
     String findUrl = baseUrlBpVSCollections + "/" + Util.getShortIdentifier(created.getVsCollection()) + "/" +
         BP_VALUES + "/" + created.getId();
-    Response findResponse = clientBuilder.build().target(findUrl).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
+    Response findResponse = clientBuilder.build().target(findUrl).request().header(HTTP_HEADER_AUTHORIZATION,
+        authHeader).get();
     // Check not found
     Assert.assertEquals(Response.Status.NOT_FOUND.getStatusCode(), findResponse.getStatus());
   }

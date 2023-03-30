@@ -1,16 +1,15 @@
 package org.metadatacenter.cedar.terminology.resources.bioportal;
 
+import jakarta.ws.rs.client.Entity;
+import jakarta.ws.rs.core.HttpHeaders;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.Response.Status;
 import org.junit.*;
 import org.metadatacenter.terms.domainObjects.OntologyClass;
 import org.metadatacenter.terms.domainObjects.Relation;
 
-import javax.ws.rs.client.Entity;
-import javax.ws.rs.core.HttpHeaders;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.Response.Status;
-
-import static org.metadatacenter.cedar.terminology.utils.Constants.*;
+import static org.metadatacenter.cedar.terminology.utils.Constants.BP_RELATIONS;
 import static org.metadatacenter.constant.HttpConstants.HTTP_HEADER_AUTHORIZATION;
 
 /**
@@ -51,7 +50,8 @@ public class RelationResourceTest extends AbstractTerminologyServerResourceTest 
     // Create provisional relation
     relation1.setSourceClassId(createdClass.getLdId());
     // Service invocation
-    Response response = clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(relation1));
+    Response response =
+        clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(relation1));
     // Check HTTP response
     Assert.assertEquals(Status.CREATED.getStatusCode(), response.getStatus());
     // Check Content-Type
@@ -59,7 +59,8 @@ public class RelationResourceTest extends AbstractTerminologyServerResourceTest 
     // Store class to delete the class after the test
     Relation created = response.readEntity(Relation.class);
     response.close();
-    // Note: the following line it's not currently needed, but it's kept for safety. When the class is deleted, BioPortal will delete the relation too.
+    // Note: the following line it's not currently needed, but it's kept for safety. When the class is deleted,
+    // BioPortal will delete the relation too.
     createdRelations.add(created);
     // Check fields
     Relation expected = relation1;
@@ -79,7 +80,8 @@ public class RelationResourceTest extends AbstractTerminologyServerResourceTest 
     // Find the provisional relation by id
     String url = baseUrlBp + "/" + BP_RELATIONS + "/" + created.getId();
     // Service invocation
-    Response findResponse = clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
+    Response findResponse =
+        clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check HTTP response
     Assert.assertEquals(Status.OK.getStatusCode(), findResponse.getStatus());
     // Check Content-Type
@@ -103,14 +105,16 @@ public class RelationResourceTest extends AbstractTerminologyServerResourceTest 
     Relation created = createRelation(class1, relation1);
     // Delete the relation that has been created
     String url = baseUrlBp + "/" + BP_RELATIONS + "/" + created.getId();
-    Response deleteResponse = clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).delete();
+    Response deleteResponse = clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION,
+        authHeader).delete();
     // Check HTTP response
     Assert.assertEquals(Status.NO_CONTENT.getStatusCode(), deleteResponse.getStatus());
     // Remove relation from the list of created relations. It has been already deleted
     createdRelations.remove(created);
     // Try to retrieve the relation to check that it has been deleted correctly
     String findUrl = baseUrlBp + "/" + BP_RELATIONS + "/" + created.getId();
-    Response findResponse = clientBuilder.build().target(findUrl).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
+    Response findResponse = clientBuilder.build().target(findUrl).request().header(HTTP_HEADER_AUTHORIZATION,
+        authHeader).get();
     // Check not found
     Assert.assertEquals(Status.NOT_FOUND.getStatusCode(), findResponse.getStatus());
   }
