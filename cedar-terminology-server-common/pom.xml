@@ -23,7 +23,7 @@
 
     <dependency>
       <groupId>org.metadatacenter</groupId>
-      <artifactId>cedar-project-config</artifactId>
+      <artifactId>cedar-config-library</artifactId>
     </dependency>
 
     <dependency>
