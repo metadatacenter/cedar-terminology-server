@@ -5,7 +5,7 @@
   <parent>
     <groupId>org.metadatacenter</groupId>
     <artifactId>cedar-terminology-server</artifactId>
-    <version>2.6.23</version>
+    <version>2.6.24</version>
   </parent>
 
   <groupId>org.metadatacenter</groupId>
@@ -23,7 +23,7 @@
 
     <dependency>
       <groupId>org.metadatacenter</groupId>
-      <artifactId>cedar-server-globals</artifactId>
+      <artifactId>cedar-server-globals-library</artifactId>
     </dependency>
 
     <dependency>
