@@ -5,12 +5,12 @@ import com.fasterxml.jackson.databind.JsonNode;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.fluent.Request;
 import org.apache.http.util.EntityUtils;
+import org.metadatacenter.http.CedarResponseStatus;
 import org.metadatacenter.terms.bioportal.customObjects.BpPagedResults;
 import org.metadatacenter.terms.bioportal.dao.*;
 import org.metadatacenter.terms.bioportal.domainObjects.*;
 import org.metadatacenter.terms.util.Util;
 
-import javax.ws.rs.core.Response;
 import javax.xml.ws.http.HTTPException;
 import java.io.IOException;
 import java.util.List;
@@ -71,7 +71,8 @@ public class BioPortalService implements IBioPortalService {
         url = BP_API_BASE + BP_SEARCH + "?q=" + q + "&also_search_provisional=true&ontology_types" +
             "=VALUE_SET_COLLECTION";
 
-        // I've removed 'valueset_exclude_roots=true' because it seems that it's not needed. It seems that the root is not
+        // I've removed 'valueset_exclude_roots=true' because it seems that it's not needed. It seems that the root
+        // is not
         // returned anyways and removing makes the call much faster.
         //url = BP_API_BASE + BP_SEARCH + "?q=" + q +
         // "&also_search_provisional=true&ontology_types=VALUE_SET_COLLECTION&valueset_exclude_roots=true";
@@ -136,7 +137,7 @@ public class BioPortalService implements IBioPortalService {
 
     int statusCode = response.getStatusLine().getStatusCode();
     // The request has succeeded
-    if (statusCode == Response.Status.OK.getStatusCode()) {
+    if (statusCode == CedarResponseStatus.OK.getStatusCode()) {
       JsonNode bpResult = MAPPER.readTree(new String(EntityUtils.toByteArray(response.getEntity())));
       return MAPPER.readValue(MAPPER.treeAsTokens(bpResult), new TypeReference<BpPagedResults<BpClass>>() {
       });
@@ -184,7 +185,7 @@ public class BioPortalService implements IBioPortalService {
 
     int statusCode = response.getStatusLine().getStatusCode();
     // The request has succeeded
-    if (statusCode == Response.Status.OK.getStatusCode()) {
+    if (statusCode == CedarResponseStatus.OK.getStatusCode()) {
       JsonNode bpResult = MAPPER.readTree(new String(EntityUtils.toByteArray(response.getEntity())));
       return MAPPER.readValue(MAPPER.treeAsTokens(bpResult), new TypeReference<BpPagedResults<BpProperty>>() {
       });

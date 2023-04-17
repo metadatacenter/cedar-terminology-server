@@ -6,6 +6,7 @@ import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.junit.*;
+import org.metadatacenter.http.CedarResponseStatus;
 import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.terms.domainObjects.Value;
 import org.metadatacenter.terms.domainObjects.ValueSet;
@@ -65,7 +66,7 @@ public class ValueResourceTest extends AbstractTerminologyServerResourceTest {
     Response response =
         clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(value1));
     // Check HTTP response
-    Assert.assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
+    Assert.assertEquals(CedarResponseStatus.CREATED.getStatusCode(), response.getStatus());
     // Check Content-Type
     Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Store value to delete it after the test
@@ -101,7 +102,7 @@ public class ValueResourceTest extends AbstractTerminologyServerResourceTest {
     Response findResponse = clientBuilder.build().target(findUrl).request().header(HTTP_HEADER_AUTHORIZATION,
         authHeader).get();
     // Check HTTP response
-    Assert.assertEquals(Response.Status.OK.getStatusCode(), findResponse.getStatus());
+    Assert.assertEquals(CedarResponseStatus.OK.getStatusCode(), findResponse.getStatus());
     // Check Content-Type
     Assert.assertEquals(MediaType.APPLICATION_JSON, findResponse.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check the element retrieved
@@ -141,7 +142,7 @@ public class ValueResourceTest extends AbstractTerminologyServerResourceTest {
     // Service invocation
     Response response = clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check HTTP response
-    Assert.assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+    Assert.assertEquals(CedarResponseStatus.OK.getStatusCode(), response.getStatus());
     // Check Content-Type
     Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check that there are some results
@@ -177,7 +178,7 @@ public class ValueResourceTest extends AbstractTerminologyServerResourceTest {
     Response updateResponse = clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION,
         authHeader).put(Entity.json(updatedValue));
     // Check HTTP response
-    Assert.assertEquals(Response.Status.NO_CONTENT.getStatusCode(), updateResponse.getStatus());
+    Assert.assertEquals(CedarResponseStatus.NO_CONTENT.getStatusCode(), updateResponse.getStatus());
     // Retrieve the value
     String findUrl = baseUrlBpVSCollections + "/" + Util.getShortIdentifier(createdValue.getVsCollection()) + "/" +
         BP_VALUES + "/" + createdValue.getId();
@@ -211,7 +212,7 @@ public class ValueResourceTest extends AbstractTerminologyServerResourceTest {
     Response deleteResponse = clientBuilder.build().target(classUrl).request().header(HTTP_HEADER_AUTHORIZATION,
         authHeader).delete();
     // Check HTTP response
-    Assert.assertEquals(Response.Status.NO_CONTENT.getStatusCode(), deleteResponse.getStatus());
+    Assert.assertEquals(CedarResponseStatus.NO_CONTENT.getStatusCode(), deleteResponse.getStatus());
     // Remove value from the list of created values. It has already been deleted
     createdValues.remove(created);
     // Try to retrieve the value to check that it has been deleted correctly
@@ -220,7 +221,7 @@ public class ValueResourceTest extends AbstractTerminologyServerResourceTest {
     Response findResponse = clientBuilder.build().target(findUrl).request().header(HTTP_HEADER_AUTHORIZATION,
         authHeader).get();
     // Check not found
-    Assert.assertEquals(Response.Status.NOT_FOUND.getStatusCode(), findResponse.getStatus());
+    Assert.assertEquals(CedarResponseStatus.NOT_FOUND.getStatusCode(), findResponse.getStatus());
   }
 
 }

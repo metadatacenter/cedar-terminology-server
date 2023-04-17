@@ -1,5 +1,6 @@
 package org.metadatacenter.cedar.terminology.utils.logging;
 
+import org.metadatacenter.http.CedarResponseStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,7 +24,7 @@ protected final Logger log = LoggerFactory.getLogger("HTTP Response");
       message += "; " + containerResponseContext.getEntity().toString();
     }
 
-    if (statusCode == Response.Status.INTERNAL_SERVER_ERROR.getStatusCode()) {
+    if (statusCode == CedarResponseStatus.INTERNAL_SERVER_ERROR.getStatusCode()) {
       log.error(message);
     }
     else {
