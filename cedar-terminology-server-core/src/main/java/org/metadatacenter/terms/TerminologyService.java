@@ -1,6 +1,7 @@
 package org.metadatacenter.terms;
 
 import org.metadatacenter.cedar.terminology.validation.integratedsearch.*;
+import org.metadatacenter.http.CedarResponseStatus;
 import org.metadatacenter.terms.bioportal.BioPortalService;
 import org.metadatacenter.terms.bioportal.customObjects.BpPagedResults;
 import org.metadatacenter.terms.bioportal.domainObjects.*;
@@ -93,7 +94,7 @@ public class TerminologyService implements ITerminologyService {
       return results;
     } else {
       // Bad request
-      throw new HTTPException(Response.Status.BAD_REQUEST.getStatusCode());
+      throw new HTTPException(CedarResponseStatus.BAD_REQUEST.getStatusCode());
     }
   }
 
@@ -655,7 +656,7 @@ public class TerminologyService implements ITerminologyService {
         }
       }
     } catch (HTTPException e) {
-      if (e.getStatusCode() == Response.Status.NOT_FOUND.getStatusCode()) {
+      if (e.getStatusCode() == CedarResponseStatus.NOT_FOUND.getStatusCode()) {
         // When the metrics are not found, we also assume that it is because either there are no submissions for the
         // ontology or the latest submission failed to process, so submissions are not available either.
         hasSubmissions = false;
@@ -673,7 +674,7 @@ public class TerminologyService implements ITerminologyService {
       }
       details.setCategories(categories);
     } catch (HTTPException e) {
-      if (e.getStatusCode() == Response.Status.NOT_FOUND.getStatusCode()) {
+      if (e.getStatusCode() == CedarResponseStatus.NOT_FOUND.getStatusCode()) {
         log.error("Categories not found for " + ontologyId + " ontology");
       } else {
         throw (e);
@@ -693,7 +694,7 @@ public class TerminologyService implements ITerminologyService {
       details.setHasSubmissions(hasSubmissions);
       details.setMetricsAvailable(metricsAvailable);
     } catch (HTTPException e) {
-      if (e.getStatusCode() == Response.Status.NOT_FOUND.getStatusCode()) {
+      if (e.getStatusCode() == CedarResponseStatus.NOT_FOUND.getStatusCode()) {
         log.error("Latest submission not found for " + ontologyId + " ontology");
       } else {
         throw (e);
@@ -914,7 +915,7 @@ public class TerminologyService implements ITerminologyService {
       return createdVs;
     } else {
       // Bad request
-      throw new HTTPException(Response.Status.BAD_REQUEST.getStatusCode());
+      throw new HTTPException(CedarResponseStatus.BAD_REQUEST.getStatusCode());
     }
   }
 
@@ -974,7 +975,7 @@ public class TerminologyService implements ITerminologyService {
       return ObjectConverter.toValueSetResults(bpResults);
     } else {
       // Bad request
-      throw new HTTPException(Response.Status.BAD_REQUEST.getStatusCode());
+      throw new HTTPException(CedarResponseStatus.BAD_REQUEST.getStatusCode());
     }
   }
 
@@ -1015,7 +1016,7 @@ public class TerminologyService implements ITerminologyService {
       return results;
     } else {
       // Bad request
-      throw new HTTPException(Response.Status.BAD_REQUEST.getStatusCode());
+      throw new HTTPException(CedarResponseStatus.BAD_REQUEST.getStatusCode());
     }
   }
 
@@ -1066,7 +1067,7 @@ public class TerminologyService implements ITerminologyService {
       return ObjectConverter.toValue(pc);
     } else {
       // Bad request
-      throw new HTTPException(Response.Status.BAD_REQUEST.getStatusCode());
+      throw new HTTPException(CedarResponseStatus.BAD_REQUEST.getStatusCode());
     }
   }
 

@@ -16,6 +16,7 @@ import org.metadatacenter.cedar.terminology.TerminologyServerApplicationTest;
 import org.metadatacenter.cedar.terminology.TerminologyServerConfiguration;
 import org.metadatacenter.config.CedarConfig;
 import org.metadatacenter.config.environment.CedarEnvironmentVariableProvider;
+import org.metadatacenter.http.CedarResponseStatus;
 import org.metadatacenter.model.SystemComponent;
 import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.terms.domainObjects.*;
@@ -243,7 +244,7 @@ public abstract class AbstractTerminologyServerResourceTest {
       response =
           clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(c));
       // Check HTTP response
-      Assert.assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
+      Assert.assertEquals(CedarResponseStatus.CREATED.getStatusCode(), response.getStatus());
       OntologyClass created = response.readEntity(OntologyClass.class);
       createdClasses.add(created);
       return created;
@@ -266,10 +267,10 @@ public abstract class AbstractTerminologyServerResourceTest {
       try {
         findResponse =
             clientBuilder.build().target(findUrl).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
-        if (findResponse.getStatus() == Response.Status.OK.getStatusCode()) {
+        if (findResponse.getStatus() == CedarResponseStatus.OK.getStatusCode()) {
           deleteResponse = clientBuilder.build().target(deleteUrl).request().header(HTTP_HEADER_AUTHORIZATION,
               authHeader).delete();
-          if (deleteResponse.getStatus() != Response.Status.NO_CONTENT.getStatusCode()) {
+          if (deleteResponse.getStatus() != CedarResponseStatus.NO_CONTENT.getStatusCode()) {
             throw new Exception("Couldn't delete class: Id = " + c.getLdId());
           }
         } else {
@@ -298,7 +299,7 @@ public abstract class AbstractTerminologyServerResourceTest {
       response =
           clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(r));
       // Check HTTP response
-      Assert.assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
+      Assert.assertEquals(CedarResponseStatus.CREATED.getStatusCode(), response.getStatus());
       Relation created = response.readEntity(Relation.class);
       createdRelations.add(created);
       return created;
@@ -315,10 +316,10 @@ public abstract class AbstractTerminologyServerResourceTest {
       String url = baseUrlBp + "/" + BP_RELATIONS + "/" + r.getId();
       Response findResponse = clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION,
           authHeader).get();
-      if (findResponse.getStatus() == Response.Status.OK.getStatusCode()) {
+      if (findResponse.getStatus() == CedarResponseStatus.OK.getStatusCode()) {
         Response deleteResponse = clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION,
             authHeader).delete();
-        if (deleteResponse.getStatus() != Response.Status.NO_CONTENT.getStatusCode()) {
+        if (deleteResponse.getStatus() != CedarResponseStatus.NO_CONTENT.getStatusCode()) {
           throw new Exception("Couldn't delete relation: Id = " + r.getLdId() +
               ". This relation could have been automatically removed by BioPortal when deleting the class that " +
               "contained it");
@@ -340,7 +341,7 @@ public abstract class AbstractTerminologyServerResourceTest {
       response =
           clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(vs));
       // Check HTTP response
-      Assert.assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
+      Assert.assertEquals(CedarResponseStatus.CREATED.getStatusCode(), response.getStatus());
       ValueSet created = response.readEntity(ValueSet.class);
       createdValueSets.add(created);
       return created;
@@ -359,10 +360,10 @@ public abstract class AbstractTerminologyServerResourceTest {
       String deleteUrl = baseUrlBp + "/" + BP_VALUE_SETS + "/" + vs.getId();
       Response findResponse = clientBuilder.build().target(findUrl).request().header(HTTP_HEADER_AUTHORIZATION,
           authHeader).get();
-      if (findResponse.getStatus() == Response.Status.OK.getStatusCode()) {
+      if (findResponse.getStatus() == CedarResponseStatus.OK.getStatusCode()) {
         Response deleteResponse =
             clientBuilder.build().target(deleteUrl).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).delete();
-        if (deleteResponse.getStatus() != Response.Status.NO_CONTENT.getStatusCode()) {
+        if (deleteResponse.getStatus() != CedarResponseStatus.NO_CONTENT.getStatusCode()) {
           throw new Exception("Couldn't delete value set: Id = " + vs.getLdId());
         }
       } else {
@@ -389,7 +390,7 @@ public abstract class AbstractTerminologyServerResourceTest {
       response =
           clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(v));
       // Check HTTP response
-      Assert.assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
+      Assert.assertEquals(CedarResponseStatus.CREATED.getStatusCode(), response.getStatus());
       Value created = response.readEntity(Value.class);
       createdValues.add(created);
       return created;
@@ -408,10 +409,10 @@ public abstract class AbstractTerminologyServerResourceTest {
       String deleteUrl = baseUrlBp + "/" + BP_VALUES + "/" + v.getId();
       Response findResponse = clientBuilder.build().target(findUrl).request().header(HTTP_HEADER_AUTHORIZATION,
           authHeader).get();
-      if (findResponse.getStatus() == Response.Status.OK.getStatusCode()) {
+      if (findResponse.getStatus() == CedarResponseStatus.OK.getStatusCode()) {
         Response deleteResponse =
             clientBuilder.build().target(deleteUrl).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).delete();
-        if (deleteResponse.getStatus() != Response.Status.NO_CONTENT.getStatusCode()) {
+        if (deleteResponse.getStatus() != CedarResponseStatus.NO_CONTENT.getStatusCode()) {
           throw new Exception("Couldn't delete value: Id = " + v.getId());
         }
       } else {
@@ -428,7 +429,7 @@ public abstract class AbstractTerminologyServerResourceTest {
       response =
           clientBuilder.build().target(baseUrlBpPropertySearch).queryParam("q", q).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
       // Check HTTP response
-      Assert.assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+      Assert.assertEquals(CedarResponseStatus.OK.getStatusCode(), response.getStatus());
       // Check Content-Type
       Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
       // Check the number of results
@@ -459,7 +460,7 @@ public abstract class AbstractTerminologyServerResourceTest {
           String deleteUrl = baseUrlBp + "/" + BP_CLASSES + "/" + pc.getId();
           Response deleteResponse =
               clientBuilder.build().target(deleteUrl).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).delete();
-          if (deleteResponse.getStatus() != Response.Status.NO_CONTENT.getStatusCode()) {
+          if (deleteResponse.getStatus() != CedarResponseStatus.NO_CONTENT.getStatusCode()) {
             throw new Exception("Couldn't delete class: Id = " + pc.getLdId());
           }
           deletedCount++;
