@@ -46,11 +46,9 @@ public class Cache {
       ontologiesCachePath = getCacheObjectsPath() + "/" + ONTOLOGIES_CACHE_FILE;
       executor = Executors.newSingleThreadScheduledExecutor();
       executor.scheduleWithFixedDelay(
-          new Runnable() {
-            public void run() {
-              ontologiesCache.refresh("ontologies");
-              valueSetsCache.refresh("value-sets");
-            }
+          () -> {
+            ontologiesCache.refresh("ontologies");
+            valueSetsCache.refresh("value-sets");
           }, refreshInitialDelay, refreshDelay, delayUnit);
     }
   }
@@ -98,11 +96,7 @@ public class Cache {
             Ontology> prevOntologies) {
           // asynchronous!
           //Logger.info("Reloading 'ontologies' cache asynchronously");
-          ListenableFutureTask<LinkedHashMap<String, Ontology>> task = ListenableFutureTask.create(new Callable<LinkedHashMap<String, Ontology>>() {
-            public LinkedHashMap<String, Ontology> call() throws IOException {
-              return getAllOntologiesAsMap();
-            }
-          });
+          ListenableFutureTask<LinkedHashMap<String, Ontology>> task = ListenableFutureTask.create(() -> getAllOntologiesAsMap());
           executor.execute(task);
           return task;
         }

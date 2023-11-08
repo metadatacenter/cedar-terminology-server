@@ -5,7 +5,6 @@ import org.metadatacenter.cedar.terminology.resources.AbstractTerminologyServerR
 import org.metadatacenter.cedar.terminology.validation.integratedsearch.IntegratedSearchBody;
 import org.metadatacenter.config.CedarConfig;
 import org.metadatacenter.exception.CedarException;
-import org.metadatacenter.rest.context.CedarRequestContext;
 import org.metadatacenter.rest.exception.CedarAssertionException;
 import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.util.json.JsonMapper;
@@ -20,8 +19,6 @@ import javax.ws.rs.core.Response;
 import javax.xml.ws.http.HTTPException;
 import java.io.IOException;
 import java.util.Optional;
-
-import static org.metadatacenter.rest.assertion.GenericAssertions.LoggedIn;
 
 @Path("/bioportal")
 @Produces(MediaType.APPLICATION_JSON)

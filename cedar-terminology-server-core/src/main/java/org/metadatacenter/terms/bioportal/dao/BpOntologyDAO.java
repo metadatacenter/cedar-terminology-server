@@ -5,7 +5,6 @@ import org.apache.http.HttpResponse;
 import org.apache.http.client.fluent.Request;
 import org.apache.http.util.EntityUtils;
 import org.metadatacenter.terms.bioportal.domainObjects.*;
-import static org.metadatacenter.cedar.terminology.util.Constants.*;
 import org.metadatacenter.terms.util.HttpUtil;
 import org.metadatacenter.terms.util.Util;
 import org.slf4j.Logger;

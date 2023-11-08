@@ -12,8 +12,8 @@ public abstract class AbstractTerminologyServerResource extends CedarMicroservic
 
   protected AbstractTerminologyServerResource(CedarConfig cedarConfig) {
     super(cedarConfig);
-    this.apiKey = cedarConfig.getTerminologyConfig().getBioPortal().getApiKey();
-    this.defaultPageSize = cedarConfig.getTerminologyConfig().getBioPortal().getDefaultPageSize();
+    apiKey = cedarConfig.getTerminologyConfig().getBioPortal().getApiKey();
+    defaultPageSize = cedarConfig.getTerminologyConfig().getBioPortal().getDefaultPageSize();
   }
 
   public static void injectTerminologyService(TerminologyService terminologyService) {

@@ -102,7 +102,7 @@ public abstract class AbstractTerminologyServerResourceTest {
         .getConnectTimeout());
     clientBuilder.property(ClientProperties.READ_TIMEOUT,
         cedarConfig.getTerminologyConfig().getBioPortal().getSocketTimeout
-        () * 20); // enough time to build the ontologies and value sets cache if it has not been created yet
+            () * 20); // enough time to build the ontologies and value sets cache if it has not been created yet
 
     authHeader = TestUserUtil.getTestUser1AuthHeader(cedarConfig);
 
@@ -433,7 +433,7 @@ public abstract class AbstractTerminologyServerResourceTest {
       // Check Content-Type
       Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
       // Check the number of results
-      PagedResults<SearchResult> properties = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
+      PagedResults<SearchResult> properties = response.readEntity(new GenericType<>() {
       });
       return properties;
     } finally {
@@ -450,7 +450,7 @@ public abstract class AbstractTerminologyServerResourceTest {
     String url = baseUrlBp + "/" + BP_PROVISIONAL_CLASSES + "?pageSize=5000";
     // Service invocation
     Response response = clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
-    PagedResults<OntologyClass> results = response.readEntity(new GenericType<PagedResults<OntologyClass>>() {
+    PagedResults<OntologyClass> results = response.readEntity(new GenericType<>() {
     });
     int deletedCount = 0;
     for (OntologyClass pc : results.getCollection()) {

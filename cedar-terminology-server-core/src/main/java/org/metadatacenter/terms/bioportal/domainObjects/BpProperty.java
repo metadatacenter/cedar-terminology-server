@@ -1,10 +1,8 @@
 package org.metadatacenter.terms.bioportal.domainObjects;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import org.metadatacenter.terms.bioportal.domainObjects.jackson.BpPropertyDeserializer;
-import org.metadatacenter.terms.bioportal.domainObjects.jackson.BpTreeNodeDeserializer;
 
 import java.util.List;
 

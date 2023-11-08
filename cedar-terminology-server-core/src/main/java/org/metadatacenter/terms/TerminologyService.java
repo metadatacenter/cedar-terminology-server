@@ -13,7 +13,6 @@ import org.metadatacenter.terms.util.Util;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.ws.rs.core.Response;
 import javax.xml.ws.http.HTTPException;
 import java.io.IOException;
 import java.util.*;
@@ -69,7 +68,7 @@ public class TerminologyService implements ITerminologyService {
         // In this case, the value set is just an ontology branch. The value set corresponds to the root of the branch
         // and the values are all the branch subclasses. Therefore, we can use the branch search endpoint to find all
         // the values.
-        results = search(q, Arrays.asList(BP_SEARCH_SCOPE_VALUES), new ArrayList<>(), true, vsCollection,
+        results = search(q, List.of(BP_SEARCH_SCOPE_VALUES), new ArrayList<>(), true, vsCollection,
             vsId, 0, page, pageSize, false, true, apiKey, new ArrayList<>());
       } else { // Provisional value set
         List<SearchResult> values = new ArrayList<>();
@@ -498,7 +497,7 @@ public class TerminologyService implements ITerminologyService {
   private PagedResults<SearchResult> integratedSearchOntologies(Optional<String> q,
                                                                 List<OntologyValueConstraint> ontologyValueConstraints,
                                                                 int page, int pageSize, String apiKey) throws IOException {
-    return search(q.get(), Arrays.asList(BP_SEARCH_SCOPE_CLASSES),
+    return search(q.get(), List.of(BP_SEARCH_SCOPE_CLASSES),
         IntegratedSearchUtil.extractOntologyAcronyms(ontologyValueConstraints), true, null,
         null, 1, page, pageSize,
         false, true, apiKey, new ArrayList<>());
@@ -553,7 +552,7 @@ public class TerminologyService implements ITerminologyService {
 
     if (q.isPresent()) { // Find classes by name in a given list of ontology branches
 
-      results = search(q.get(), Arrays.asList(BP_SEARCH_SCOPE_CLASSES),
+      results = search(q.get(), List.of(BP_SEARCH_SCOPE_CLASSES),
           new ArrayList<>(), true, ontologyAcronym,
           rootClassUri, 0, page, pageSize,
           false, true, apiKey, new ArrayList<>());

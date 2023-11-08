@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.fluent.Request;
 import org.apache.http.util.EntityUtils;
-import org.metadatacenter.terms.bioportal.customObjects.BpPagedResults;
 import org.metadatacenter.terms.bioportal.domainObjects.BpProperty;
 import org.metadatacenter.terms.bioportal.domainObjects.BpTreeNode;
 import org.metadatacenter.terms.util.HttpUtil;
@@ -18,7 +17,6 @@ import org.slf4j.LoggerFactory;
 import javax.ws.rs.core.Response.Status;
 import javax.xml.ws.http.HTTPException;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 
 import static org.metadatacenter.cedar.terminology.util.Constants.*;

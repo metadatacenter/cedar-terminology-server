@@ -14,6 +14,7 @@ import org.metadatacenter.terms.util.Util;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 import static org.metadatacenter.cedar.terminology.utils.Constants.*;
@@ -108,11 +109,7 @@ public class PropertyResourceTest extends AbstractTerminologyServerResourceTest 
     String propertyId = "http://id.loc.gov/ontologies/bibframe/copyrightDate";
     String parentPropertyId = "http://id.loc.gov/ontologies/bibframe/date";
     String encodedPropertyId = null;
-    try {
-      encodedPropertyId = URLEncoder.encode(propertyId, "UTF-8");
-    } catch (UnsupportedEncodingException e) {
-      e.printStackTrace();
-    }
+    encodedPropertyId = URLEncoder.encode(propertyId, StandardCharsets.UTF_8);
     String url = baseUrlBpOntologies + "/" + ontology + "/" + BP_PROPERTIES + "/" + encodedPropertyId + "/" + BP_TREE;
     // Service invocation
     Response response = clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
@@ -124,15 +121,15 @@ public class PropertyResourceTest extends AbstractTerminologyServerResourceTest 
     List<TreeNode> tree = response.readEntity(new GenericType<List<TreeNode>>() {
     });
     response.close();
-    Assert.assertTrue("Empty tree", tree.size() > 0);
+    Assert.assertTrue("Empty tree", !tree.isEmpty());
     TreeNode foundChild = null;
     for (TreeNode node : tree) {
       // If "Date"
       if (node.getLdId().equals(parentPropertyId)) {
         Assert.assertTrue("The 'hasChildren' property for this resource should be set to 'true'",
-            node.getHasChildren() == true);
+            node.getHasChildren());
         Assert.assertTrue("The number of children returned for this resource should be greater than 0",
-            node.getChildren().size() > 0);
+            !node.getChildren().isEmpty());
         for (TreeNode childrenNode : node.getChildren()) {
           // If "Copyright date"
           if (childrenNode.getLdId().equals(propertyId)) {
@@ -144,7 +141,7 @@ public class PropertyResourceTest extends AbstractTerminologyServerResourceTest 
     }
     Assert.assertTrue("Given property not found in the returned tree", foundChild != null);
     Assert.assertTrue("Preferred label not found for child property",
-        foundChild.getPrefLabel() != null && foundChild.getPrefLabel().length() > 0);
+        foundChild.getPrefLabel() != null && !foundChild.getPrefLabel().isEmpty());
   }
 
   @Test
@@ -154,13 +151,8 @@ public class PropertyResourceTest extends AbstractTerminologyServerResourceTest 
     String propertyId = "http://id.loc.gov/ontologies/bibframe/date";
     String childPropertyId = "http://id.loc.gov/ontologies/bibframe/copyrightDate";
     String encodedPropertyId = null;
-    try {
-      encodedPropertyId = URLEncoder.encode(propertyId, "UTF-8");
-    } catch (UnsupportedEncodingException e) {
-      e.printStackTrace();
-    }
-    String url =
-        baseUrlBpOntologies + "/" + ontology + "/" + BP_PROPERTIES + "/" + encodedPropertyId + "/" + BP_CHILDREN;
+    encodedPropertyId = URLEncoder.encode(propertyId, StandardCharsets.UTF_8);
+    String url = baseUrlBpOntologies + "/" + ontology + "/" + BP_PROPERTIES + "/" + encodedPropertyId + "/" + BP_CHILDREN;
     // Service invocation
     Response response = clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check HTTP response
@@ -173,11 +165,12 @@ public class PropertyResourceTest extends AbstractTerminologyServerResourceTest 
     List<OntologyProperty> children = response.readEntity(new GenericType<List<OntologyProperty>>() {
     });
     response.close();
-    Assert.assertTrue("No children returned", children.size() > 0);
+    Assert.assertTrue("No children returned", !children.isEmpty());
     boolean childFound = false;
     for (OntologyProperty property : children) {
       if (property.getLdId().equals(childPropertyId)) {
         childFound = true;
+        break;
       }
     }
     Assert.assertTrue("Child " + childPropertyId + " not found for the given property" + propertyId, childFound);
@@ -193,13 +186,8 @@ public class PropertyResourceTest extends AbstractTerminologyServerResourceTest 
     String descendant1PropertyId = "http://id.loc.gov/ontologies/bibframe/accompaniedBy";
     String descendant2PropertyId = "http://id.loc.gov/ontologies/bibframe/supplement";
     String encodedPropertyId = null;
-    try {
-      encodedPropertyId = URLEncoder.encode(propertyId, "UTF-8");
-    } catch (UnsupportedEncodingException e) {
-      e.printStackTrace();
-    }
-    String url =
-        baseUrlBpOntologies + "/" + ontology + "/" + BP_PROPERTIES + "/" + encodedPropertyId + "/" + BP_DESCENDANTS;
+    encodedPropertyId = URLEncoder.encode(propertyId, StandardCharsets.UTF_8);
+    String url = baseUrlBpOntologies + "/" + ontology + "/" + BP_PROPERTIES + "/" + encodedPropertyId + "/" + BP_DESCENDANTS;
     // Service invocation
     Response response = clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check HTTP response
@@ -212,7 +200,7 @@ public class PropertyResourceTest extends AbstractTerminologyServerResourceTest 
     List<OntologyProperty> descendants = response.readEntity(new GenericType<List<OntologyProperty>>() {
     });
     response.close();
-    Assert.assertTrue("No descendants returned", descendants.size() > 0);
+    Assert.assertTrue("No descendants returned", !descendants.isEmpty());
     boolean descendant1Found = false;
     boolean descendant2Found = false;
     for (OntologyProperty property : descendants) {
@@ -235,13 +223,8 @@ public class PropertyResourceTest extends AbstractTerminologyServerResourceTest 
     String propertyId = "http://id.loc.gov/ontologies/bibframe/copyrightDate";
     String parentPropertyId = "http://id.loc.gov/ontologies/bibframe/date";
     String encodedPropertyId = null;
-    try {
-      encodedPropertyId = URLEncoder.encode(propertyId, "UTF-8");
-    } catch (UnsupportedEncodingException e) {
-      e.printStackTrace();
-    }
-    String url =
-        baseUrlBpOntologies + "/" + ontology + "/" + BP_PROPERTIES + "/" + encodedPropertyId + "/" + BP_PARENTS;
+    encodedPropertyId = URLEncoder.encode(propertyId, StandardCharsets.UTF_8);
+    String url = baseUrlBpOntologies + "/" + ontology + "/" + BP_PROPERTIES + "/" + encodedPropertyId + "/" + BP_PARENTS;
     // Service invocation
     Response response = clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check HTTP response
@@ -252,11 +235,12 @@ public class PropertyResourceTest extends AbstractTerminologyServerResourceTest 
     List<OntologyProperty> parents = response.readEntity(new GenericType<List<OntologyProperty>>() {
     });
     response.close();
-    Assert.assertTrue("No parents returned", parents.size() > 0);
+    Assert.assertTrue("No parents returned", !parents.isEmpty());
     boolean parentFound = false;
     for (OntologyProperty property : parents) {
       if (property.getLdId().equals(parentPropertyId)) {
         parentFound = true;
+        break;
       }
     }
     Assert.assertTrue("Parent " + parentPropertyId + " not found for the given property " + propertyId, parentFound);

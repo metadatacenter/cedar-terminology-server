@@ -12,8 +12,8 @@ import org.metadatacenter.terms.domainObjects.OntologyClass;
 import org.metadatacenter.terms.domainObjects.TreeNode;
 import org.metadatacenter.terms.util.Util;
 
-import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.HashSet;
 import java.util.List;
 
@@ -140,11 +140,7 @@ public class ClassResourceTest extends AbstractTerminologyServerResourceTest {
     String classId = "http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C20480";
     String parentClassId = "http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C17828";
     String encodedClassId = null;
-    try {
-      encodedClassId = URLEncoder.encode(classId, "UTF-8");
-    } catch (UnsupportedEncodingException e) {
-      e.printStackTrace();
-    }
+    encodedClassId = URLEncoder.encode(classId, StandardCharsets.UTF_8);
     String url = baseUrlBpOntologies + "/" + ontology + "/" + BP_CLASSES + "/" + encodedClassId + "/" + BP_TREE;
     // Service invocation
     Response response = clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
@@ -156,24 +152,25 @@ public class ClassResourceTest extends AbstractTerminologyServerResourceTest {
     List<TreeNode> tree = response.readEntity(new GenericType<List<TreeNode>>() {
     });
     response.close();
-    Assert.assertTrue("Empty tree", tree.size() > 0);
+    Assert.assertTrue("Empty tree", !tree.isEmpty());
     boolean classFound = false;
     for (TreeNode node : tree) {
       // If "Biological Process"
       if (node.getLdId().equals(parentClassId)) {
         Assert.assertTrue("The 'hasChildren' property for this resource should be set to 'true'",
-            node.getHasChildren() == true);
+            node.getHasChildren());
         Assert.assertTrue("The number of children returned for this resource shouldn't be 0",
-            node.getChildren().size() > 0);
+            !node.getChildren().isEmpty());
         for (TreeNode childrenNode : node.getChildren()) {
           // If "Cellular Process"
           if (childrenNode.getLdId().equals(classId)) {
             classFound = true;
+            break;
           }
         }
       } else {
         Assert.assertTrue("The number of children returned for this resource should be 0",
-            node.getChildren().size() == 0);
+            node.getChildren().isEmpty());
       }
     }
     Assert.assertTrue("Given class not found in the returned tree", classFound);
@@ -187,11 +184,7 @@ public class ClassResourceTest extends AbstractTerminologyServerResourceTest {
     String classId = "http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C17828";
     String childClassId = "http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C20480";
     String encodedClassId = null;
-    try {
-      encodedClassId = URLEncoder.encode(classId, "UTF-8");
-    } catch (UnsupportedEncodingException e) {
-      e.printStackTrace();
-    }
+    encodedClassId = URLEncoder.encode(classId, StandardCharsets.UTF_8);
     String url = baseUrlBpOntologies + "/" + ontology + "/" + BP_CLASSES + "/" + encodedClassId + "/" + BP_CHILDREN;
     // Service invocation
     Response response = clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
@@ -205,11 +198,12 @@ public class ClassResourceTest extends AbstractTerminologyServerResourceTest {
     PagedResults<OntologyClass> children = response.readEntity(new GenericType<PagedResults<OntologyClass>>() {
     });
     response.close();
-    Assert.assertTrue("No children returned", children.getCollection().size() > 0);
+    Assert.assertTrue("No children returned", !children.getCollection().isEmpty());
     boolean childFound = false;
     for (OntologyClass c : children.getCollection()) {
       if (c.getLdId().equals(childClassId)) {
         childFound = true;
+        break;
       }
     }
     Assert.assertTrue("Child " + childClassId + " not found for the given class" + classId, childFound);
@@ -226,11 +220,7 @@ public class ClassResourceTest extends AbstractTerminologyServerResourceTest {
     String descendant1ClassId = "http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C86518";
     String descendant2ClassId = "http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C86897";
     String encodedClassId = null;
-    try {
-      encodedClassId = URLEncoder.encode(classId, "UTF-8");
-    } catch (UnsupportedEncodingException e) {
-      e.printStackTrace();
-    }
+    encodedClassId = URLEncoder.encode(classId, StandardCharsets.UTF_8);
     String url = baseUrlBpOntologies + "/" + ontology + "/" + BP_CLASSES + "/" + encodedClassId + "/" + BP_DESCENDANTS;
     // Service invocation
     Response response = clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
@@ -268,11 +258,7 @@ public class ClassResourceTest extends AbstractTerminologyServerResourceTest {
     String classId = "http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C20480";
     String parentClassId = "http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C17828";
     String encodedClassId = null;
-    try {
-      encodedClassId = URLEncoder.encode(classId, "UTF-8");
-    } catch (UnsupportedEncodingException e) {
-      e.printStackTrace();
-    }
+    encodedClassId = URLEncoder.encode(classId, StandardCharsets.UTF_8);
     String url = baseUrlBpOntologies + "/" + ontology + "/" + BP_CLASSES + "/" + encodedClassId + "/" + BP_PARENTS;
     // Service invocation
     Response response = clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
@@ -284,11 +270,12 @@ public class ClassResourceTest extends AbstractTerminologyServerResourceTest {
     List<OntologyClass> parents = response.readEntity(new GenericType<List<OntologyClass>>() {
     });
     response.close();
-    Assert.assertTrue("No parents returned", parents.size() > 0);
+    Assert.assertTrue("No parents returned", !parents.isEmpty());
     boolean parentFound = false;
     for (OntologyClass c : parents) {
       if (c.getLdId().equals(parentClassId)) {
         parentFound = true;
+        break;
       }
     }
     Assert.assertTrue("Parent " + parentClassId + " not found for the given class " + classId, parentFound);
@@ -307,7 +294,7 @@ public class ClassResourceTest extends AbstractTerminologyServerResourceTest {
     PagedResults<OntologyClass> results = response.readEntity(new GenericType<PagedResults<OntologyClass>>() {
     });
     response.close();
-    Assert.assertTrue("Empty array returned", results.getCollection().size() > 0);
+    Assert.assertTrue("Empty array returned", !results.getCollection().isEmpty());
     // Check that the classes returned are provisional
     for (OntologyClass pc : results.getCollection()) {
       Assert.assertTrue("Provisional class expected, but non provisional class found", pc.isProvisional());
@@ -330,7 +317,7 @@ public class ClassResourceTest extends AbstractTerminologyServerResourceTest {
     PagedResults<OntologyClass> results = response.readEntity(new GenericType<PagedResults<OntologyClass>>() {
     });
     response.close();
-    Assert.assertTrue("Empty array returned", results.getCollection().size() > 0);
+    Assert.assertTrue("Empty array returned", !results.getCollection().isEmpty());
     // Check that the classes returned are provisional
     for (OntologyClass pc : results.getCollection()) {
       Assert.assertTrue("Provisional class expected, but non provisional class found", pc.isProvisional());
