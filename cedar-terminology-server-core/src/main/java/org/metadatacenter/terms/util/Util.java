@@ -73,9 +73,9 @@ public class Util {
    */
   public static String getShortIdentifier(String id) {
     if (isUrl(id)) {
-      String shortId = id.substring(id.lastIndexOf("/") + 1, id.length());
+      String shortId = id.substring(id.lastIndexOf("/") + 1);
       if (shortId.contains("#")) {
-        shortId = shortId.substring(shortId.lastIndexOf("#") + 1, shortId.length());
+        shortId = shortId.substring(shortId.lastIndexOf("#") + 1);
       }
       return shortId;
     }
@@ -87,7 +87,7 @@ public class Util {
    */
   public static String getShortType(String type) {
     if (isUrl(type)) {
-      return type.substring(type.lastIndexOf("#") + 1, type.length());
+      return type.substring(type.lastIndexOf("#") + 1);
     }
     return type;
   }
@@ -194,7 +194,7 @@ public class Util {
 
   public static List<SearchResult> sortByClosestMatch(String query, List<SearchResult> results) {
     if (results.size() > 1) {
-      Collections.sort(results, new SearchResultComparator(query));
+      results.sort(new SearchResultComparator(query));
     }
     return results;
   }

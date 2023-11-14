@@ -7,7 +7,6 @@ import org.slf4j.LoggerFactory;
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerResponseContext;
 import javax.ws.rs.container.ContainerResponseFilter;
-import javax.ws.rs.core.Response;
 import java.io.IOException;
 
 public class LogResponseFilter implements ContainerResponseFilter {

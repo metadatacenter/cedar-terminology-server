@@ -62,7 +62,7 @@ public class SearchResource extends AbstractTerminologyServerResource {
       List<String> scopeList = new ArrayList<>();
       List<String> referenceScopeList = Arrays
           .asList(BP_SEARCH_SCOPE_ALL, BP_SEARCH_SCOPE_CLASSES, BP_SEARCH_SCOPE_VALUE_SETS, BP_SEARCH_SCOPE_VALUES);
-      for (String s : Arrays.asList(scope.split("\\s*,\\s*"))) {
+      for (String s : scope.split("\\s*,\\s*")) {
         if (!referenceScopeList.contains(s)) {
           return CedarResponse.badRequest()
               .errorKey(CedarErrorKey.INVALID_INPUT)
@@ -74,7 +74,7 @@ public class SearchResource extends AbstractTerminologyServerResource {
       }
       // Sources list
       List<String> sourcesList = new ArrayList<>();
-      if (sources != null && sources.length() > 0) {
+      if (sources != null && !sources.isEmpty()) {
         sourcesList = Arrays.asList(sources.split("\\s*,\\s*"));
       }
       List<String> valueSetsIds = new ArrayList<>(Cache.valueSetsCache.get("value-sets").keySet());

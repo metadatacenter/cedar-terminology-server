@@ -14,6 +14,7 @@ import org.metadatacenter.terms.util.Util;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.HashSet;
 
 import static org.metadatacenter.cedar.terminology.utils.Constants.*;
@@ -130,11 +131,7 @@ public class ValueResourceTest extends AbstractTerminologyServerResourceTest {
     Value createdValue1 = createValue(createdVs.getLdId(), value1);
     Value createdValue2 = createValue(createdVs.getLdId(), value2);
     String encodedValue1Id = null;
-    try {
-      encodedValue1Id = URLEncoder.encode(createdValue1.getLdId(), "UTF-8");
-    } catch (UnsupportedEncodingException e) {
-      e.printStackTrace();
-    }
+    encodedValue1Id = URLEncoder.encode(createdValue1.getLdId(), StandardCharsets.UTF_8);
     String url = baseUrlBpVSCollections + "/" + Util.getShortIdentifier(createdValue1.getVsCollection())
         + "/" + BP_VALUES + "/" + encodedValue1Id + "/" + BP_ALL_VALUES;
     // Wait to be sure that the BioPortal search index was updated

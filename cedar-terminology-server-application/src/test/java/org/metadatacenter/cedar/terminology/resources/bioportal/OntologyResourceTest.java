@@ -60,7 +60,7 @@ public class OntologyResourceTest extends AbstractTerminologyServerResourceTest 
     // Check Content-Type
     Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check the results returned
-    List<Ontology> ontologies = response.readEntity(new GenericType<List<Ontology>>() {
+    List<Ontology> ontologies = response.readEntity(new GenericType<>() {
     });
     response.close();
     Assert.assertTrue("No ontologies returned", ontologies.size() > 0);
@@ -93,7 +93,7 @@ public class OntologyResourceTest extends AbstractTerminologyServerResourceTest 
     // Check Content-Type
     Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check results
-    List<OntologyClass> roots = response.readEntity(new GenericType<List<OntologyClass>>() {
+    List<OntologyClass> roots = response.readEntity(new GenericType<>() {
     });
     response.close();
     Assert.assertTrue("No roots returned", roots.size() > 0);
@@ -120,7 +120,7 @@ public class OntologyResourceTest extends AbstractTerminologyServerResourceTest 
     // Check Content-Type
     Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check results
-    List<OntologyProperty> roots = response.readEntity(new GenericType<List<OntologyProperty>>() {
+    List<OntologyProperty> roots = response.readEntity(new GenericType<>() {
     });
     response.close();
     Assert.assertTrue("No roots returned", roots.size() > 0);

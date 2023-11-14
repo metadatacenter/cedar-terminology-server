@@ -2,21 +2,16 @@ package org.metadatacenter.terms.bioportal.domainObjects.jackson;
 
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.JsonNode;
-import org.metadatacenter.terms.bioportal.domainObjects.BpClass;
 import org.metadatacenter.terms.bioportal.domainObjects.BpLinks;
 import org.metadatacenter.terms.bioportal.domainObjects.BpProperty;
-import org.metadatacenter.terms.bioportal.domainObjects.BpTreeNode;
 import org.metadatacenter.terms.util.Util;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-
-import static org.metadatacenter.util.json.JsonMapper.MAPPER;
 
 public class BpPropertyDeserializer extends JsonDeserializer<BpProperty> {
   @Override

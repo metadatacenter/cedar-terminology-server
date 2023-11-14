@@ -96,7 +96,7 @@ public class BioPortalService implements IBioPortalService {
 
     /** Add sources **/
     if (sources.size() > 0) {
-      url += "&ontologies=" + (sources.stream().map(number -> String.valueOf(number)).collect(Collectors.joining(",")));
+      url += "&ontologies=" + (sources.stream().map(String::valueOf).collect(Collectors.joining(",")));
     }
 
     /** Add suggest **/
@@ -158,7 +158,7 @@ public class BioPortalService implements IBioPortalService {
 
     /** Add sources **/
     if (sources.size() > 0) {
-      url += "&ontologies=" + (sources.stream().map(number -> String.valueOf(number)).collect(Collectors.joining(",")));
+      url += "&ontologies=" + (sources.stream().map(String::valueOf).collect(Collectors.joining(",")));
     }
 
     /** Add exactMatch **/
