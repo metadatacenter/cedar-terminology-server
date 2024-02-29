@@ -168,6 +168,36 @@ paths:
           $ref: '#/responses/internal_error'
       security:
         - api_key: []
+  /integrated-retrieve:
+    post:
+      summary: Retrieve classes and values based on CEDAR value constraints
+      tags:
+        - Classes
+        - Value sets
+        - Values
+      description: Retrieve ontology classes, value sets, and values based on CEDAR value constraints. This endpoint takes a controlled term field specification and any user-supplied initial characters and returns conforming values. <br /> <br /> Some sample calls in Insomnia (https://insomnia.rest/) format are available at https://github.com/metadatacenter/cedar-util/blob/master/api-calls/CEDAR_Insomnia_API_calls.json. <br /> <br />Note that in some cases, the server will need to sort the results obtained from BioPortal and the original pagination information will not be valid any more. In those situations, the values of some of the pagination fields returned as part of the results (e.g., pageCount, nextPage, etc.) cannot be computed consistently, and the server will assign a 'null' value to those fields.
+      parameters:
+        - name: request body
+          required: true
+          in: body
+          description: Object that encapsulates the information needed to run the search query. The "valueConstraints" field specification is based on CEDAR's "_valueConstraints" field. See https://more.metadatacenter.org/tools-training/outreach/cedar-template-model for more details.
+          schema:
+            "$ref": "#/definitions/IntegratedRetrieveRequestBody"
+      responses:
+        200:
+          description: A paginated list of search results
+          schema:
+            "$ref": "#/definitions/IntegratedRetrieveResults"
+        400:
+          $ref: '#/responses/bad_request'
+        422:
+          $ref: '#/responses/unprocessable_entity'
+        401:
+          $ref: '#/responses/unauthorized'
+        500:
+          $ref: '#/responses/internal_error'
+      security:
+        - api_key: []
   /search:
     get:
       summary: Search
@@ -1107,6 +1137,7 @@ paths:
 #                              Definitions                                     #
 ################################################################################
 definitions:
+
   IntegratedSearchRequestBody:
     type: object
     required:
@@ -1201,7 +1232,148 @@ definitions:
         $ref: '#/parameters/page'
       pageSize:
         $ref: '#/parameters/page_size'
+
+  IntegratedRetrieveRequestBody:
+    type: object
+    required:
+      - parameterObject
+    properties:
+      valueConstraints:
+        type: object
+        required:
+          - classes
+          - ontologies
+          - branches
+          - valueSets
+        properties:
+          classes:
+            type: array
+            items:
+              type: object
+              required:
+                - uri
+                - prefLabel
+                - type
+                - source
+              properties:
+                uri:
+                  type: string
+                prefLabel:
+                  type: string
+                type:
+                  type: string
+                source:
+                  type: string
+          ontologies:
+            type: array
+            items:
+              type: object
+              required:
+                - acronym
+              properties:
+                acronym:
+                  type: string
+          branches:
+            type: array
+            items:
+              type: object
+              required:
+                - uri
+                - acronym
+              properties:
+                uri:
+                  type: string
+                acronym:
+                  type: string
+          valueSets:
+            type: array
+            items:
+              type: object
+              required:
+                - uri
+                - vsCollection
+              properties:
+                uri:
+                  type: string
+                vsCollection:
+                  type: string
+          actions:
+            type: array
+            items:
+              type: object
+              required:
+                - action
+                - termUri
+                - type
+                - source
+              properties:
+                action:
+                  type: string
+                termUri:
+                  type: string
+                type:
+                  type: string
+                source:
+                  type: string
+      inputText:
+        type: string
+  page:
+    $ref: '#/parameters/page'
+  pageSize:
+    $ref: '#/parameters/page_size'
+
   IntegratedSearchResults:
+    type: array
+    items:
+      type: object
+      required:
+        - page
+        - pageCount
+        - pageSize
+        - totalCount
+        - prevPage
+        - nextPage
+        - collection
+      properties:
+        page:
+          type: integer
+        pageCount:
+          type: integer
+        pageSize:
+          type: integer
+        totalCount:
+          type: integer
+        prevPage:
+          type: integer
+        nextPage:
+          type: integer
+        collection:
+          type: array
+          items:
+            type: object
+            required:
+              - id
+              - at_id
+              - at_type
+              - type
+              - prefLabel
+              - notation
+              - definition
+            properties:
+              id:
+                type: string
+              at_id:
+                type: string
+              at_type:
+                type: string
+              prefLabel:
+                type: string
+              notation:
+                type: string
+              definition:
+                type: string
+
+  IntegratedRetrieveResults:
     type: array
     items:
       type: object

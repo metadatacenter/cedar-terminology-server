@@ -46,6 +46,7 @@ public abstract class AbstractTerminologyServerResourceTest {
   protected static String baseUrlBp;
   protected static String baseUrlBpSearch;
   protected static String baseUrlBpIntegratedSearch;
+  protected static String baseUrlBpIntegratedRetrieve;
   protected static String baseUrlBpPropertySearch;
   protected static String baseUrlBpOntologies;
   protected static String baseUrlBpVSCollections;
@@ -93,6 +94,7 @@ public abstract class AbstractTerminologyServerResourceTest {
     baseUrlBp = BASE_URL + ":" + RULE.getLocalPort() + "/" + BP_ENDPOINT;
     baseUrlBpSearch = baseUrlBp + "/" + BP_SEARCH;
     baseUrlBpIntegratedSearch = baseUrlBp + "/" + BP_INTEGRATED_SEARCH;
+    baseUrlBpIntegratedRetrieve = baseUrlBp + "/" + BP_INTEGRATED_RETRIEVE;
     baseUrlBpPropertySearch = baseUrlBp + "/" + BP_PROPERTY_SEARCH;
     baseUrlBpOntologies = baseUrlBp + "/" + BP_ONTOLOGIES;
     baseUrlBpVSCollections = baseUrlBp + "/" + BP_VALUE_SET_COLLECTIONS;

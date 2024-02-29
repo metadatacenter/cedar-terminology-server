@@ -12,6 +12,7 @@ public class Constants {
   public static final String BP_ENDPOINT = "bioportal";
   public static final String BP_SEARCH = "search";
   public static final String BP_INTEGRATED_SEARCH = "integrated-search";
+  public static final String BP_INTEGRATED_RETRIEVE = "integrated-retrieve";
   public static final String BP_PROPERTY_SEARCH = "property_search";
   public static final String BP_CLASSES = "classes";
   public static final String BP_PROPERTIES = "properties";

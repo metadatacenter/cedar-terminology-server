@@ -136,6 +136,16 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
   }
 
   @Test
+  public void retrieveEmptyBody() {
+    ObjectNode emptyBody = mapper.createObjectNode();
+    // Service invocation
+    Response response = clientBuilder.build().target(baseUrlBpIntegratedRetrieve).request()
+      .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(emptyBody));
+    // Check HTTP response
+    Assert.assertEquals(STATUS_CODE_UNPROCESSABLE_ENTITY, response.getStatus());
+  }
+
+  @Test
   public void searchEmptyParamObject() {
     ObjectNode requestBody = mapper.createObjectNode();
     requestBody.set(BP_INTEGRATED_SEARCH_PARAMS_FIELD, mapper.createObjectNode());

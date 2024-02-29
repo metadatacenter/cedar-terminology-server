@@ -40,6 +40,9 @@ public class Constants
   public static final String BP_INTEGRATED_SEARCH_PARAM_VALUE_CONSTRAINTS = "valueConstraints";
   public static final String BP_INTEGRATED_SEARCH_PARAM_INPUT_TEXT = "inputText";
 
+  /** CEDAR Integrated Retrieve - Request **/
+  public static final String BP_INTEGRATED_RETRIEVE_VALUE_CONSTRAINTS = "valueConstraints";
+
   /** BioPortal API endpoint parameters **/
   public static final String BP_INCLUDE_ALL = "include=all";
 
