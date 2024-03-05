@@ -1,0 +1,16 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="TerminologyServerApplication" type="Application" factoryName="Application" nameIsGenerated="true">
+    <option name="MAIN_CLASS_NAME" value="org.metadatacenter.cedar.terminology.TerminologyServerApplication" />
+    <module name="cedar-terminology-server-application" />
+    <option name="PROGRAM_PARAMETERS" value="server" />
+    <extension name="coverage">
+      <pattern>
+        <option name="PATTERN" value="org.metadatacenter.cedar.terminology.*" />
+        <option name="ENABLED" value="true" />
+      </pattern>
+    </extension>
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>
