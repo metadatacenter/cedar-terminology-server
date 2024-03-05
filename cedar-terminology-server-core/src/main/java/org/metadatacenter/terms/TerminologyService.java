@@ -349,39 +349,37 @@ public class TerminologyService implements ITerminologyService {
   {
     List<SearchResult> allResults = new ArrayList<>();
     int requestedStartIndex = (page - 1) * pageSize; // Example: page = 2, pageSize = 50, startIndex = 100 (element 101)
-    int requestedEndIndex = requestedStartIndex + pageSize;
-    int numberOfResultsSoFar = 0;
-    int currentIndex = numberOfResultsSoFar;
+    int currentIndex = 0;
+    int numberOfRemainingResults = pageSize;
 
     for (SourceType sourceType : sourceTypes) {
       int numberOfSourcesOfType = IntegratedSearchUtil.getNumberOfSources(sourceType, valueConstraints);
 
       for (int currentSourceTypeIndex = 0; currentSourceTypeIndex < numberOfSourcesOfType; currentSourceTypeIndex++) {
-        int numberOfResultsInSourcePage = 0;
+        int numberOfResultsInSource = 0;
         if (sourceType.equals(SourceType.CLASSES))
-          numberOfResultsInSourcePage = valueConstraints.getClasses().size();
+          numberOfResultsInSource = valueConstraints.getClasses().size();
         else if (sourceType.equals(SourceType.ONTOLOGIES))
-          numberOfResultsInSourcePage = integratedSearchOntologiesEmptyQuery(
+          numberOfResultsInSource = integratedSearchOntologiesEmptyQuery(
             valueConstraints.getOntologies().get(currentSourceTypeIndex), 1, apiKey).getTotalCount();
         else if (sourceType.equals(SourceType.BRANCHES))
-          numberOfResultsInSourcePage = integratedSearchBranches(Optional.empty(),
+          numberOfResultsInSource = integratedSearchBranches(Optional.empty(),
             valueConstraints.getBranches().get(currentSourceTypeIndex), 1, 1, apiKey).getTotalCount();
         else if (sourceType.equals(SourceType.VALUE_SETS))
-          numberOfResultsInSourcePage = integratedSearchValueSets(Optional.empty(),
+          numberOfResultsInSource = integratedSearchValueSets(Optional.empty(),
             valueConstraints.getValueSets().get(currentSourceTypeIndex), 1, 1, apiKey).getTotalCount();
 
-        int effectiveEndIndexForSource = numberOfResultsSoFar + numberOfResultsInSourcePage - 1;
-        int numberOfRemainingResultsForSource =
-          requestedStartIndex < numberOfResultsInSourcePage ? numberOfResultsInSourcePage - requestedStartIndex: 0;
-        int numberOfRemainingResultsInPageForSource = Math.min(numberOfRemainingResultsForSource, pageSize);
+        int effectiveStartIndexForSource = currentIndex;
+        int effectiveEndIndexForSource = currentIndex + numberOfResultsInSource - 1;
 
-        if (requestedStartIndex <= effectiveEndIndexForSource) {
-          int effectivePageForSource = (requestedStartIndex / pageSize) + 1;
-          List<SearchResult> resultsForSourceInPage;
-          boolean finishedWithSource = false;
+        if (numberOfRemainingResults > 0 && requestedStartIndex <= effectiveEndIndexForSource) {
+          int effectivePageForSource = ((requestedStartIndex - effectiveStartIndexForSource) / pageSize) + 1;
+                   boolean finishedWithSource = false;
+          int expectedMaximumNumberOfResultsForSource = Math.min(numberOfResultsInSource, numberOfRemainingResults);
+          int numberOfResultsForSourceSoFar = 0;
 
           while (!finishedWithSource) {
-            PagedResults<SearchResult> pageOfResultsForSource = null;
+            PagedResults<SearchResult> pageOfResultsForSource = null; // TODO Typesafe switch when available
             if (sourceType.equals(SourceType.CLASSES))
               pageOfResultsForSource = integratedRetrieveEnumeratedClasses(valueConstraints.getClasses(),
                 effectivePageForSource, pageSize);
@@ -395,18 +393,24 @@ public class TerminologyService implements ITerminologyService {
               pageOfResultsForSource = integratedRetrieveValueSets(
                 valueConstraints.getValueSets().get(currentSourceTypeIndex), effectivePageForSource, pageSize, apiKey);
 
-            resultsForSourceInPage = pageOfResultsForSource.getCollection()
-              .subList(0, numberOfRemainingResultsInPageForSource);
-            numberOfRemainingResultsForSource -= numberOfRemainingResultsInPageForSource;
+            int numberOfResultsInPageForSource = pageOfResultsForSource.getCollection().size();
+            int numberOfRelevantResultsInPageForSource = Math.min(expectedMaximumNumberOfResultsForSource,
+              numberOfResultsInPageForSource);
+            List<SearchResult> resultsForSourceInPage = pageOfResultsForSource.getCollection()
+              .subList(0, numberOfRelevantResultsInPageForSource);
+
+            numberOfResultsForSourceSoFar += numberOfRelevantResultsInPageForSource;
+            numberOfRemainingResults -= numberOfRelevantResultsInPageForSource;
 
             allResults.addAll(resultsForSourceInPage);
 
-            if (numberOfRemainingResultsForSource <= 0)
+            if (numberOfResultsForSourceSoFar == expectedMaximumNumberOfResultsForSource || pageOfResultsForSource.getNextPage() == null)
               finishedWithSource = true;
             else
               effectivePageForSource++;
           }
         }
+        currentIndex += numberOfResultsInSource;
       }
     }
     // Notes: some parameters are set to null because calculating them would decrease performance
