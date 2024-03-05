@@ -350,32 +350,38 @@ public class TerminologyService implements ITerminologyService {
     List<SearchResult> allResults = new ArrayList<>();
     int requestedStartIndex = (page - 1) * pageSize; // Example: page = 2, pageSize = 50, startIndex = 100 (element 101)
     int currentIndex = 0;
-    int numberOfRemainingResults = pageSize;
+    int numberOfRemainingResultsInPage = pageSize;
+    int totalNumberOfResults = 0;
 
     for (SourceType sourceType : sourceTypes) {
       int numberOfSourcesOfType = IntegratedSearchUtil.getNumberOfSources(sourceType, valueConstraints);
 
       for (int currentSourceTypeIndex = 0; currentSourceTypeIndex < numberOfSourcesOfType; currentSourceTypeIndex++) {
         int numberOfResultsInSource = 0;
-        if (sourceType.equals(SourceType.CLASSES))
+        if (sourceType.equals(SourceType.CLASSES)) {
           numberOfResultsInSource = valueConstraints.getClasses().size();
-        else if (sourceType.equals(SourceType.ONTOLOGIES))
+          totalNumberOfResults += numberOfResultsInSource;
+        } else if (sourceType.equals(SourceType.ONTOLOGIES)) {
           numberOfResultsInSource = integratedSearchOntologiesEmptyQuery(
             valueConstraints.getOntologies().get(currentSourceTypeIndex), 1, apiKey).getTotalCount();
-        else if (sourceType.equals(SourceType.BRANCHES))
+          totalNumberOfResults += numberOfResultsInSource;
+        } else if (sourceType.equals(SourceType.BRANCHES)) {
           numberOfResultsInSource = integratedSearchBranches(Optional.empty(),
             valueConstraints.getBranches().get(currentSourceTypeIndex), 1, 1, apiKey).getTotalCount();
-        else if (sourceType.equals(SourceType.VALUE_SETS))
+          totalNumberOfResults += numberOfResultsInSource;
+        } else if (sourceType.equals(SourceType.VALUE_SETS)) {
           numberOfResultsInSource = integratedSearchValueSets(Optional.empty(),
             valueConstraints.getValueSets().get(currentSourceTypeIndex), 1, 1, apiKey).getTotalCount();
+          totalNumberOfResults += numberOfResultsInSource;
+        }
 
         int effectiveStartIndexForSource = currentIndex;
         int effectiveEndIndexForSource = currentIndex + numberOfResultsInSource - 1;
 
-        if (numberOfRemainingResults > 0 && requestedStartIndex <= effectiveEndIndexForSource) {
+        if (numberOfRemainingResultsInPage > 0 && requestedStartIndex <= effectiveEndIndexForSource) {
           int effectivePageForSource = ((requestedStartIndex - effectiveStartIndexForSource) / pageSize) + 1;
                    boolean finishedWithSource = false;
-          int expectedMaximumNumberOfResultsForSource = Math.min(numberOfResultsInSource, numberOfRemainingResults);
+          int expectedMaximumNumberOfResultsForSource = Math.min(numberOfResultsInSource, numberOfRemainingResultsInPage);
           int numberOfResultsForSourceSoFar = 0;
 
           while (!finishedWithSource) {
@@ -400,7 +406,7 @@ public class TerminologyService implements ITerminologyService {
               .subList(0, numberOfRelevantResultsInPageForSource);
 
             numberOfResultsForSourceSoFar += numberOfRelevantResultsInPageForSource;
-            numberOfRemainingResults -= numberOfRelevantResultsInPageForSource;
+            numberOfRemainingResultsInPage -= numberOfRelevantResultsInPageForSource;
 
             allResults.addAll(resultsForSourceInPage);
 
@@ -413,9 +419,12 @@ public class TerminologyService implements ITerminologyService {
         currentIndex += numberOfResultsInSource;
       }
     }
-    // Notes: some parameters are set to null because calculating them would decrease performance
     Integer prevPage = page > 1 ? page - 1 : null;
-    return new PagedResults(page, null, allResults.size(), null, prevPage, null, allResults);
+    Integer totalCount = totalNumberOfResults;
+    Integer pageCount = (int) Math.ceil((double) totalNumberOfResults / pageSize);
+    Integer nextPage = (page * pageSize <= totalNumberOfResults) ? (page + 1) : null;
+
+    return new PagedResults(page, pageCount, allResults.size(), totalCount, prevPage, nextPage, allResults);
   }
 
   private PagedResults<SearchResult> integratedSearchMultipleSourcesNonEmptyQuery(String q,
