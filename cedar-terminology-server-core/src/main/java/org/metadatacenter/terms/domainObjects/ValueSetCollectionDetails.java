@@ -17,7 +17,7 @@ public class ValueSetCollectionDetails {
   private String released;
   private String creationDate;
   private String homepage;
-  private String publication;
+  private List<String> publication;
   private String documentation;
   private String version;
 
@@ -25,7 +25,7 @@ public class ValueSetCollectionDetails {
   }
 
   public ValueSetCollectionDetails(String description, int numberOfClasses, List<String> categories, String
-      hasOntologyLanguage, String released, String creationDate, String homepage, String publication, String
+      hasOntologyLanguage, String released, String creationDate, String homepage, List<String> publication, String
                                        documentation, String version) {
     this.description = description;
     this.numberOfClasses = numberOfClasses;
@@ -95,11 +95,11 @@ public class ValueSetCollectionDetails {
     this.homepage = homepage;
   }
 
-  public String getPublication() {
+  public List<String> getPublication() {
     return publication;
   }
 
-  public void setPublication(String publication) {
+  public void setPublication(List<String> publication) {
     this.publication = publication;
   }
 

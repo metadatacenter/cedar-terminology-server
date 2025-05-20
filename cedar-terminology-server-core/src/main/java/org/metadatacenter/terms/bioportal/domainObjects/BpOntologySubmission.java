@@ -2,6 +2,8 @@ package org.metadatacenter.terms.bioportal.domainObjects;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
+import java.util.List;
+
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class BpOntologySubmission {
 
@@ -9,7 +11,7 @@ public class BpOntologySubmission {
   private String released;
   private String creationDate;
   private String homepage;
-  private String publication;
+  private List<String> publication;
   private String documentation;
   private String version;
   private String description;
@@ -18,7 +20,7 @@ public class BpOntologySubmission {
   }
 
   public BpOntologySubmission(String hasOntologyLanguage, String released, String creationDate, String homepage,
-                              String publication, String documentation, String version, String description) {
+                              List<String> publication, String documentation, String version, String description) {
     this.hasOntologyLanguage = hasOntologyLanguage;
     this.released = released;
     this.creationDate = creationDate;
@@ -61,11 +63,11 @@ public class BpOntologySubmission {
     this.homepage = homepage;
   }
 
-  public String getPublication() {
+  public List<String> getPublication() {
     return publication;
   }
 
-  public void setPublication(String publication) {
+  public void setPublication(List<String> publication) {
     this.publication = publication;
   }
 
