@@ -2,13 +2,16 @@ package org.metadatacenter.terms.bioportal;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.fluent.Request;
+import org.apache.hc.core5.http.ClassicHttpResponse;
+import org.apache.hc.core5.http.HttpResponse;
+import org.apache.hc.client5.http.fluent.Request;
+import org.apache.hc.core5.util.Timeout;
 import org.apache.http.util.EntityUtils;
 import org.metadatacenter.http.CedarResponseStatus;
 import org.metadatacenter.terms.bioportal.customObjects.BpPagedResults;
 import org.metadatacenter.terms.bioportal.dao.*;
 import org.metadatacenter.terms.bioportal.domainObjects.*;
+import org.metadatacenter.terms.util.HttpUtil;
 import org.metadatacenter.terms.util.Util;
 
 import javax.xml.ws.http.HTTPException;
@@ -131,14 +134,15 @@ public class BioPortalService implements IBioPortalService {
 
     System.out.println("Search url: " + url);
 
-    // Send request to the BioPortal API
-    HttpResponse response = Request.Get(url).addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
-        connectTimeout(connectTimeout).socketTimeout(socketTimeout).execute().returnResponse();
+    // Send the request to the BioPortal API
+    ClassicHttpResponse response = HttpUtil.makeHttpRequest(Request.get(url)
+        .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
+        connectTimeout(Timeout.ofMilliseconds(connectTimeout)).responseTimeout(Timeout.ofMilliseconds(socketTimeout)));
 
-    int statusCode = response.getStatusLine().getStatusCode();
+    int statusCode = response.getCode();
     // The request has succeeded
     if (statusCode == CedarResponseStatus.OK.getStatusCode()) {
-      JsonNode bpResult = MAPPER.readTree(new String(EntityUtils.toByteArray(response.getEntity())));
+      JsonNode bpResult = MAPPER.readTree(response.getEntity().getContent());
       return MAPPER.readValue(MAPPER.treeAsTokens(bpResult), new TypeReference<BpPagedResults<BpClass>>() {
       });
     } else {
@@ -179,14 +183,15 @@ public class BioPortalService implements IBioPortalService {
 
     System.out.println("Search url: " + url);
 
-    // Send request to the BioPortal API
-    HttpResponse response = Request.Get(url).addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
-        connectTimeout(connectTimeout).socketTimeout(socketTimeout).execute().returnResponse();
+    // Send the request to the BioPortal API
+    ClassicHttpResponse response = HttpUtil.makeHttpRequest(Request.get(url)
+        .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
+        connectTimeout(Timeout.ofMilliseconds(connectTimeout)).responseTimeout(Timeout.ofMilliseconds(socketTimeout)));
 
-    int statusCode = response.getStatusLine().getStatusCode();
+    int statusCode = response.getCode();
     // The request has succeeded
     if (statusCode == CedarResponseStatus.OK.getStatusCode()) {
-      JsonNode bpResult = MAPPER.readTree(new String(EntityUtils.toByteArray(response.getEntity())));
+      JsonNode bpResult = MAPPER.readTree(response.getEntity().getContent());
       return MAPPER.readValue(MAPPER.treeAsTokens(bpResult), new TypeReference<BpPagedResults<BpProperty>>() {
       });
     } else {
