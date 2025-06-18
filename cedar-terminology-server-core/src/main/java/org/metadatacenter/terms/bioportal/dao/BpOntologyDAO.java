@@ -1,11 +1,9 @@
 package org.metadatacenter.terms.bioportal.dao;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import org.apache.hc.core5.http.ClassicHttpResponse;
-import org.apache.hc.core5.http.HttpResponse;
 import org.apache.hc.client5.http.fluent.Request;
+import org.apache.hc.core5.http.ClassicHttpResponse;
 import org.apache.hc.core5.util.Timeout;
-import org.apache.http.util.EntityUtils;
 import org.metadatacenter.terms.bioportal.domainObjects.*;
 import org.metadatacenter.terms.util.HttpUtil;
 import org.metadatacenter.terms.util.Util;
