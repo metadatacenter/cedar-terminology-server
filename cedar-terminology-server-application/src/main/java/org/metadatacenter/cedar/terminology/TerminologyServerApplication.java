@@ -12,6 +12,7 @@ import org.metadatacenter.cedar.util.dw.CedarMicroserviceApplication;
 import org.metadatacenter.config.CedarConfig;
 import org.metadatacenter.model.ServerName;
 import org.metadatacenter.terms.TerminologyService;
+import org.metadatacenter.terms.util.HttpClientFactory;
 
 public class TerminologyServerApplication extends CedarMicroserviceApplication<TerminologyServerConfiguration> {
 
@@ -36,6 +37,9 @@ public class TerminologyServerApplication extends CedarMicroserviceApplication<T
 
   @Override
   public void initializeApp() {
+    // Force the HttpClientFactory static block to run and build the shared client:
+    HttpClientFactory.client();
+
     terminologyService = new TerminologyService(cedarConfig.getTerminologyConfig().getBioPortal().getBasePath(),
         cedarConfig.getTerminologyConfig().getBioPortal().getConnectTimeout(),
         cedarConfig.getTerminologyConfig().getBioPortal().getSocketTimeout());
