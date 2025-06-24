@@ -2,13 +2,15 @@ package org.metadatacenter.terms.bioportal.dao;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.fluent.Request;
-import org.apache.http.entity.ContentType;
+import org.apache.hc.client5.http.fluent.Request;
+import org.apache.hc.core5.http.ClassicHttpResponse;
+import org.apache.hc.core5.http.ContentType;
+import org.apache.hc.core5.http.HttpResponse;
+import org.apache.hc.core5.util.Timeout;
 import org.apache.http.util.EntityUtils;
+import org.metadatacenter.cedar.terminology.util.Constants;
 import org.metadatacenter.terms.bioportal.customObjects.BpPagedResults;
 import org.metadatacenter.terms.bioportal.domainObjects.BpProvisionalClass;
-import org.metadatacenter.cedar.terminology.util.Constants;
 import org.metadatacenter.terms.util.HttpUtil;
 import org.metadatacenter.terms.util.Util;
 import org.slf4j.Logger;
@@ -35,15 +37,15 @@ public class BpProvisionalClassDAO {
 
   public BpProvisionalClass create(BpProvisionalClass c, String apiKey) throws IOException {
     // Send request to the BioPortal API
-    HttpResponse response = HttpUtil.makeHttpRequest(Request.Post(BP_API_BASE + BP_PROVISIONAL_CLASSES)
+    ClassicHttpResponse response = HttpUtil.makeHttpRequest(Request.post(BP_API_BASE + BP_PROVISIONAL_CLASSES)
         .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
-            connectTimeout(connectTimeout).socketTimeout(socketTimeout)
+        connectTimeout(Timeout.ofMilliseconds(connectTimeout)).responseTimeout(Timeout.ofMilliseconds(socketTimeout))
         .bodyString(MAPPER.writeValueAsString(c), ContentType.APPLICATION_JSON));
 
-    int statusCode = response.getStatusLine().getStatusCode();
+    int statusCode = response.getCode();
     // The class was successfully created
     if (statusCode == Status.CREATED.getStatusCode()) {
-      JsonNode bpResult = MAPPER.readTree(new String(EntityUtils.toByteArray(response.getEntity())));
+      JsonNode bpResult = MAPPER.readTree(response.getEntity().getContent());
       return MAPPER.convertValue(bpResult, BpProvisionalClass.class);
     } else {
       throw new HTTPException(statusCode);
@@ -55,14 +57,14 @@ public class BpProvisionalClassDAO {
     String url = BP_API_BASE + BP_PROVISIONAL_CLASSES + id;
     logger.info("Url: " + url);
 
-    HttpResponse response = HttpUtil.makeHttpRequest(Request.Get(url)
+    ClassicHttpResponse response = HttpUtil.makeHttpRequest(Request.get(url)
         .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
-            connectTimeout(connectTimeout).socketTimeout(socketTimeout));
+        connectTimeout(Timeout.ofMilliseconds(connectTimeout)).responseTimeout(Timeout.ofMilliseconds(socketTimeout)));
 
-    int statusCode = response.getStatusLine().getStatusCode();
+    int statusCode = response.getCode();
     // The class was successfully retrieved
     if (statusCode == Status.OK.getStatusCode()) {
-      JsonNode bpResult = MAPPER.readTree(new String(EntityUtils.toByteArray(response.getEntity())));
+      JsonNode bpResult = MAPPER.readTree(response.getEntity().getContent());
       return MAPPER.convertValue(bpResult, BpProvisionalClass.class);
     } else {
       throw new HTTPException(statusCode);
@@ -80,22 +82,24 @@ public class BpProvisionalClassDAO {
     url = url + "?page=" + page + "&pagesize=" + pageSize;
     logger.info("Url: " + url);
 
-    HttpResponse response = HttpUtil.makeHttpRequest(Request.Get(url)
+    ClassicHttpResponse response = HttpUtil.makeHttpRequest(Request.get(url)
         .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
-            connectTimeout(connectTimeout).socketTimeout(socketTimeout));
+        connectTimeout(Timeout.ofMilliseconds(connectTimeout)).responseTimeout(Timeout.ofMilliseconds(socketTimeout)));
 
-    int statusCode = response.getStatusLine().getStatusCode();
+    int statusCode = response.getCode();
     if (statusCode == Status.OK.getStatusCode()) {
-      JsonNode bpResult = MAPPER.readTree(new String(EntityUtils.toByteArray(response.getEntity())));
+      JsonNode bpResult = MAPPER.readTree(response.getEntity().getContent());
       if (ontology != null) {
         // If the ontology is specified, BioPortal does not return paged results, so we have to build them.
         // TODO: task for the BioPortal team: provide paged results when the ontology is specified
-        List<BpProvisionalClass> provClasses = MAPPER.readValue(MAPPER.treeAsTokens(bpResult), new TypeReference<List<BpProvisionalClass>>() {});
+        List<BpProvisionalClass> provClasses = MAPPER.readValue(MAPPER.treeAsTokens(bpResult),
+            new TypeReference<List<BpProvisionalClass>>() {
+        });
         results = new BpPagedResults<>(1, 1, provClasses.size(), null, null, provClasses);
         return results;
-      }
-      else {
-        return MAPPER.readValue(MAPPER.treeAsTokens(bpResult), new TypeReference<BpPagedResults<BpProvisionalClass>>() {});
+      } else {
+        return MAPPER.readValue(MAPPER.treeAsTokens(bpResult), new TypeReference<BpPagedResults<BpProvisionalClass>>() {
+        });
       }
     } else {
       throw new HTTPException(statusCode);
@@ -107,12 +111,12 @@ public class BpProvisionalClassDAO {
     logger.info("Url: " + url);
 
     // Send request to the BioPortal API
-    HttpResponse response = HttpUtil.makeHttpRequest(Request.Patch(url)
+    HttpResponse response = HttpUtil.makeHttpRequest(Request.patch(url)
         .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
-            connectTimeout(connectTimeout).socketTimeout(socketTimeout)
+        connectTimeout(Timeout.ofMilliseconds(connectTimeout)).responseTimeout(Timeout.ofMilliseconds(socketTimeout))
         .bodyString(MAPPER.writeValueAsString(c), ContentType.APPLICATION_JSON));
 
-    int statusCode = response.getStatusLine().getStatusCode();
+    int statusCode = response.getCode();
     throw new HTTPException(statusCode);
   }
 
@@ -121,11 +125,11 @@ public class BpProvisionalClassDAO {
     logger.info("Url: " + url);
 
     // Send request to the BioPortal API
-    HttpResponse response = HttpUtil.makeHttpRequest(Request.Delete(url)
+    HttpResponse response = HttpUtil.makeHttpRequest(Request.delete(url)
         .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
-            connectTimeout(connectTimeout).socketTimeout(socketTimeout));
+        connectTimeout(Timeout.ofMilliseconds(connectTimeout)).responseTimeout(Timeout.ofMilliseconds(socketTimeout)));
 
-    int statusCode = response.getStatusLine().getStatusCode();
+    int statusCode = response.getCode();
     throw new HTTPException(statusCode);
   }
 

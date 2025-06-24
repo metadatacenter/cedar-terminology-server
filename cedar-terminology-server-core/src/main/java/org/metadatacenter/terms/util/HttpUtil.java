@@ -1,36 +1,25 @@
 package org.metadatacenter.terms.util;
 
-import org.apache.http.HttpResponse;
-import org.apache.http.client.fluent.Request;
+import org.apache.hc.client5.http.fluent.Executor;
+import org.apache.hc.client5.http.fluent.Request;
+import org.apache.hc.core5.http.ClassicHttpResponse;
 
 import java.io.IOException;
 
-import static org.metadatacenter.cedar.terminology.util.Constants.*;
-
 public class HttpUtil {
 
-  public static HttpResponse makeHttpRequest(Request request) throws IOException {
-    HttpResponse response = request.execute().returnResponse();
-//    int statusCode = response.getStatusLine().getStatusCode();
-//    int count = 0;
-//    int maxAttempts = 20;
-    // Repeat some requests for safety
-//    while ((statusCode == 429 || statusCode == 500) && count++ < maxAttempts) {
-//      System.out.println("BioPortal returned error " + statusCode + ". Trying it again...");
-//      //Delay between calls
-//      try {
-//        Thread.sleep(BP_API_WAIT_TIME * 5);
-//      } catch (InterruptedException e) {
-//        e.printStackTrace();
-//      }
-//      response = request.execute().returnResponse();
-//      statusCode = response.getStatusLine().getStatusCode();
-//    }
-    //Delay between calls to avoid status 429 (too many requests)
+  public static ClassicHttpResponse makeHttpRequest(Request request) throws IOException {
+    // honor any per-call .connectTimeout(...)/.responseTimeout(...) overrides,
+    // but run through our shared, pooled Executor:
+    Executor exec = HttpClientFactory.executor();
+
+    ClassicHttpResponse response = (ClassicHttpResponse) exec.execute(request).returnResponse();
+
+    // rate‐limit delay
     try {
-      Thread.sleep(BP_API_WAIT_TIME);
+      Thread.sleep(300);
     } catch (InterruptedException e) {
-      e.printStackTrace();
+      Thread.currentThread().interrupt();
     }
     return response;
   }

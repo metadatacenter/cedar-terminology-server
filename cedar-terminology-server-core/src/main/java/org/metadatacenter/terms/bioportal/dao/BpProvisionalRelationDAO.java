@@ -1,10 +1,11 @@
 package org.metadatacenter.terms.bioportal.dao;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.fluent.Request;
-import org.apache.http.entity.ContentType;
-import org.apache.http.util.EntityUtils;
+import org.apache.hc.client5.http.fluent.Request;
+import org.apache.hc.core5.http.ClassicHttpResponse;
+import org.apache.hc.core5.http.ContentType;
+import org.apache.hc.core5.http.HttpResponse;
+import org.apache.hc.core5.util.Timeout;
 import org.metadatacenter.terms.bioportal.domainObjects.BpProvisionalRelation;
 import org.metadatacenter.terms.util.HttpUtil;
 import org.metadatacenter.terms.util.Util;
@@ -15,7 +16,8 @@ import javax.ws.rs.core.Response.Status;
 import javax.xml.ws.http.HTTPException;
 import java.io.IOException;
 
-import static org.metadatacenter.cedar.terminology.util.Constants.*;
+import static org.metadatacenter.cedar.terminology.util.Constants.BP_API_BASE;
+import static org.metadatacenter.cedar.terminology.util.Constants.BP_PROVISIONAL_RELATIONS;
 import static org.metadatacenter.util.json.JsonMapper.MAPPER;
 
 public class BpProvisionalRelationDAO {
@@ -34,17 +36,17 @@ public class BpProvisionalRelationDAO {
     logger.info("Url: " + url);
 
     // Send request to the BioPortal API
-    HttpResponse response = HttpUtil.makeHttpRequest(Request.Post(url)
+    ClassicHttpResponse response = HttpUtil.makeHttpRequest(Request.post(url)
         .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
-            connectTimeout(connectTimeout).socketTimeout(socketTimeout)
+        connectTimeout(Timeout.ofMilliseconds(connectTimeout)).responseTimeout(Timeout.ofMilliseconds(socketTimeout))
         .bodyString(MAPPER.writeValueAsString(relation), ContentType.APPLICATION_JSON));
 
     // TODO: return the message returned by BioPortal to the top layers. response.getEntity() could be used for that:
     //EntityUtils.toString(response.getEntity(), "UTF-8");
-    int statusCode = response.getStatusLine().getStatusCode();
+    int statusCode = response.getCode();
     // The relation was successfully created
     if (statusCode == Status.CREATED.getStatusCode()) {
-      JsonNode bpResult = MAPPER.readTree(new String(EntityUtils.toByteArray(response.getEntity())));
+      JsonNode bpResult = MAPPER.readTree(response.getEntity().getContent());
       return MAPPER.convertValue(bpResult, BpProvisionalRelation.class);
     } else {
       throw new HTTPException(statusCode);
@@ -55,14 +57,14 @@ public class BpProvisionalRelationDAO {
     String url = BP_API_BASE + BP_PROVISIONAL_RELATIONS + id;
     logger.info("Url: " + url);
 
-    HttpResponse response = HttpUtil.makeHttpRequest(Request.Get(url)
+    ClassicHttpResponse response = HttpUtil.makeHttpRequest(Request.get(url)
         .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
-            connectTimeout(connectTimeout).socketTimeout(socketTimeout));
+        connectTimeout(Timeout.ofMilliseconds(connectTimeout)).responseTimeout(Timeout.ofMilliseconds(socketTimeout)));
 
-    int statusCode = response.getStatusLine().getStatusCode();
+    int statusCode = response.getCode();
     // The relation was successfully retrieved
     if (statusCode == Status.OK.getStatusCode()) {
-      JsonNode bpResult = MAPPER.readTree(new String(EntityUtils.toByteArray(response.getEntity())));
+      JsonNode bpResult = MAPPER.readTree(response.getEntity().getContent());
       return MAPPER.convertValue(bpResult, BpProvisionalRelation.class);
     } else {
       throw new HTTPException(statusCode);
@@ -76,10 +78,11 @@ public class BpProvisionalRelationDAO {
 //    HttpResponse response = Request.Patch(Constants.BP_PROVISIONAL_RELATIONS_BASE_URL + Util.getShortIdentifier
 // (relation.getId()))
 //        .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
-//            connectTimeout(connectTimeout).socketTimeout(socketTimeout)
+//            connectTimeout(Timeout.ofMilliseconds(connectTimeout)).responseTimeout(Timeout.ofMilliseconds
+//            (socketTimeout))
 //        .bodyString(mapper.writeValueAsString(relation), ContentType.APPLICATION_JSON).execute().returnResponse();
 //
-//    int statusCode = response.getStatusLine().getStatusCode();
+//    int statusCode = response.getCode();
 //    throw new HTTPException(statusCode);
 //  }
 
@@ -88,11 +91,11 @@ public class BpProvisionalRelationDAO {
     logger.info("Url: " + url);
 
     // Send request to the BioPortal API
-    HttpResponse response = HttpUtil.makeHttpRequest(Request.Delete(url)
+    HttpResponse response = HttpUtil.makeHttpRequest(Request.delete(url)
         .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
-            connectTimeout(connectTimeout).socketTimeout(socketTimeout));
+        connectTimeout(Timeout.ofMilliseconds(connectTimeout)).responseTimeout(Timeout.ofMilliseconds(socketTimeout)));
 
-    int statusCode = response.getStatusLine().getStatusCode();
+    int statusCode = response.getCode();
     throw new HTTPException(statusCode);
   }
 }
