@@ -1,2289 +1,2504 @@
 {
-  "swagger": "2.0",
-  "info": {
-    "title": "CEDAR Terminology Server API",
-    "description": "CEDAR Terminology Server API",
-    "version": "2.6.25-SNAPSHOT"
+  "swagger" : "2.0",
+  "info" : {
+    "description" : "CEDAR Terminology Server API",
+    "version" : "2.8.3-SNAPSHOT",
+    "title" : "CEDAR Terminology Server API"
   },
-  "basePath": "/bioportal",
-  "schemes": [
-    "https"
-  ],
-  "consumes": [
-    "application/json"
-  ],
-  "produces": [
-    "application/json"
-  ],
-  "tags": [
-    {
-      "name": "Classes"
-    },
-    {
-      "name": "Ontologies"
-    },
-    {
-      "name": "Value sets"
-    },
-    {
-      "name": "Value set collections"
-    },
-    {
-      "name": "Values"
-    },
-    {
-      "name": "Relations"
-    }
-  ],
-  "securityDefinitions": {
-    "api_key": {
-      "type": "apiKey",
-      "name": "Authorization",
-      "description": "Your CEDAR API key, using the format 'apiKey &lt;yourApiKey&gt;'",
-      "in": "header"
-    }
-  },
-  "parameters": {
-    "page": {
-      "name": "page",
-      "in": "query",
-      "description": "Page to be returned. Example&#58; 7.",
-      "type": "integer",
-      "required": false,
-      "default": 1
-    },
-    "page_size": {
-      "name": "page_size",
-      "in": "query",
-      "description": "Number of results per page. Example&#58; 10.",
-      "type": "integer",
-      "required": false,
-      "default": 50
-    },
-    "ontology": {
-      "name": "ontology",
-      "in": "path",
-      "description": "BioPortal ontology identifier. Examples&#58; NCIT, FMA, OBI.",
-      "required": true,
-      "type": "string"
-    },
-    "ontology_id": {
-      "name": "id",
-      "in": "path",
-      "description": "BioPortal ontology identifier. Examples&#58; NCIT, FMA, OBI.",
-      "required": true,
-      "type": "string"
-    },
-    "class_id": {
-      "name": "id",
-      "in": "path",
-      "description": "Class identifier. Examples&#58; http://data.bioontology.org/provisional_classes/4f82a7f0-bbba-0133-b23e-005056010074 (provisional class). http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C3224 (regular class).",
-      "required": true,
-      "type": "string"
-    },
-    "class_id_regular": {
-      "name": "id",
-      "in": "path",
-      "description": "Class identifier. Example&#58; http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C3224.",
-      "required": true,
-      "type": "string"
-    },
-    "class_id_provisional": {
-      "name": "id",
-      "in": "path",
-      "description": "Provisional class identifier. Example&#58; http://data.bioontology.org/provisional_classes/4f82a7f0-bbba-0133-b23e-005056010074.",
-      "required": true,
-      "type": "string"
-    },
-    "relation_id": {
-      "name": "id",
-      "in": "path",
-      "description": "Provisional relation short identifier. Examples&#58; 720f50f0-ae6f-0133-848f-005056010073.",
-      "required": true,
-      "type": "string"
-    },
-    "vs_collection": {
-      "name": "vs_collection",
-      "in": "path",
-      "description": "Value set collection. Example&#58; CEDARVS.",
-      "required": true,
-      "type": "string"
-    },
-    "vs_id": {
-      "name": "id",
-      "in": "path",
-      "description": "Provisional value set short identifier. Example&#58; af033050-b04b-0133-981f-005056010074",
-      "required": true,
-      "type": "string"
-    },
-    "vs": {
-      "name": "vs",
-      "in": "path",
-      "description": "Value set identifier. Example&#58; http://www.semanticweb.org/jgraybeal/ontologies/2015/7/cedarvaluesets#Study_File_Type",
-      "required": true,
-      "type": "string"
-    },
-    "value_id": {
-      "name": "id",
-      "in": "path",
-      "description": "Value identifier. Example&#58; 42f22880-b04b-0133-848f-005056010073",
-      "required": true,
-      "type": "string"
-    },
-    "property_id": {
-      "name": "id",
-      "in": "path",
-      "description": "Property identifier. Examples&#58; http://id.loc.gov/ontologies/bibframe/place.",
-      "required": true,
-      "type": "string"
-    }
-  },
-  "responses": {
-    "ok": {
-      "description": "Successful operation"
-    },
-    "no_content": {
-      "description": "Successful operation (no content)"
-    },
-    "bad_request": {
-      "description": "Bad request"
-    },
-    "unauthorized": {
-      "description": "Unauthorized"
-    },
-    "unprocessable_entity": {
-      "description": "Unprocessable entity"
-    },
-    "not_found": {
-      "description": "Not found"
-    },
-    "internal_error": {
-      "description": "Internal server error"
-    }
-  },
-  "paths": {
-    "/integrated-search": {
-      "post": {
-        "summary": "Search for classes and values based on CEDAR value constraints",
-        "tags": [
-          "Classes",
-          "Value sets",
-          "Values"
-        ],
-        "description": "Search for ontology classes, value sets, and values based on CEDAR value constraints. This endpoint takes a controlled term field specification and any user-supplied initial characters and returns conforming values. <br /> <br /> Some sample calls in Insomnia (https://insomnia.rest/) format are available at https://github.com/metadatacenter/cedar-util/blob/master/api-calls/CEDAR_Insomnia_API_calls.json. <br /> <br />Note that in some cases, the server will need to sort the results obtained from BioPortal and the original pagination information will not be valid any more. In those situations, the values of some of the pagination fields returned as part of the results (e.g., pageCount, nextPage, etc.) cannot be computed consistently, and the server will assign a 'null' value to those fields.",
-        "parameters": [
-          {
-            "name": "request body",
-            "required": true,
-            "in": "body",
-            "description": "Object that encapsulates the information needed to run the search query. The \"valueConstraints\" field specification is based on CEDAR's \"_valueConstraints\" field. See https://more.metadatacenter.org/tools-training/outreach/cedar-template-model for more details.",
-            "schema": {
-              "$ref": "#/definitions/IntegratedSearchRequestBody"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "A paginated list of search results",
-            "schema": {
-              "$ref": "#/definitions/IntegratedSearchResults"
-            }
+  "tags" : [ {
+    "name" : "Classes"
+  }, {
+    "name" : "Ontologies"
+  }, {
+    "name" : "Properties"
+  }, {
+    "name" : "Relations"
+  }, {
+    "name" : "Value set collections"
+  }, {
+    "name" : "Value sets"
+  }, {
+    "name" : "Values"
+  } ],
+  "schemes" : [ "https" ],
+  "paths" : {
+    "/bioportal/classes/provisional" : {
+      "get" : {
+        "tags" : [ "Classes" ],
+        "summary" : "Get provisional classes",
+        "description" : "Get provisional classes (including provisional value sets and provisional values).",
+        "operationId" : "findAllProvisionalClasses",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "page",
+          "in" : "query",
+          "description" : "Page to be returned. Example: 7.",
+          "required" : false,
+          "type" : "integer",
+          "default" : 1,
+          "format" : "int32"
+        }, {
+          "name" : "pageSize",
+          "in" : "query",
+          "description" : "Number of results per page. Example: 10.",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int32"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Successful operation"
           },
-          "400": {
-            "$ref": "#/responses/bad_request"
+          "400" : {
+            "description" : "Bad request"
           },
-          "401": {
-            "$ref": "#/responses/unauthorized"
+          "401" : {
+            "description" : "Unauthorized"
           },
-          "422": {
-            "$ref": "#/responses/unprocessable_entity"
+          "403" : {
+            "description" : "Forbidden"
           },
-          "500": {
-            "$ref": "#/responses/internal_error"
+          "404" : {
+            "description" : "Not found"
+          },
+          "500" : {
+            "description" : "Internal server error"
           }
         },
-        "security": [
-          {
-            "api_key": []
-          }
-        ]
+        "security" : [ {
+          "api_key" : [ ]
+        } ]
       }
     },
-    "/integrated-retrieve": {
-      "post": {
-        "summary": "Return all classes and values based conforming to a CEDAR value constraint",
-        "tags": [
-          "Classes",
-          "Value sets",
-          "Values"
-        ],
-        "description": "Return all ontology classes, value sets, and values based on a CEDAR value constraint. This endpoint takes a controlled term field specification and returns conforming values. <br /> <br /> Some sample calls in Insomnia (https://insomnia.rest/) format are available at https://github.com/metadatacenter/cedar-util/blob/master/api-calls/CEDAR_Insomnia_API_calls.json. <br /> <br />Note that in some cases, the server will need to sort the results obtained from BioPortal and the original pagination information will not be valid any more. In those situations, the values of some of the pagination fields returned as part of the results (e.g., pageCount, nextPage, etc.) cannot be computed consistently, and the server will assign a 'null' value to those fields.",
-        "parameters": [
-          {
-            "name": "request body",
-            "required": true,
-            "in": "body",
-            "description": "Object that encapsulates the information needed to run the search query. The \"valueConstraints\" field specification is based on CEDAR's \"_valueConstraints\" field. See https://more.metadatacenter.org/tools-training/outreach/cedar-template-model for more details.",
-            "schema": {
-              "$ref": "#/definitions/IntegratedRetrieveRequestBody"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "A paginated list of search results",
-            "schema": {
-              "$ref": "#/definitions/IntegratedRetrieveResults"
-            }
+    "/bioportal/classes/{id}" : {
+      "put" : {
+        "tags" : [ "Classes" ],
+        "summary" : "Update a provisional class",
+        "description" : "Update a provisional class.",
+        "operationId" : "updateClass",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "description" : "Provisional class identifier. Example: http://data.bioontology.org/provisional_classes/4f82a7f0-bbba-0133-b23e-005056010074.",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "Successful operation (no content)"
           },
-          "400": {
-            "$ref": "#/responses/bad_request"
+          "400" : {
+            "description" : "Bad request"
           },
-          "401": {
-            "$ref": "#/responses/unauthorized"
+          "401" : {
+            "description" : "Unauthorized"
           },
-          "422": {
-            "$ref": "#/responses/unprocessable_entity"
+          "403" : {
+            "description" : "Forbidden"
           },
-          "500": {
-            "$ref": "#/responses/internal_error"
+          "404" : {
+            "description" : "Not found"
+          },
+          "500" : {
+            "description" : "Internal server error"
           }
         },
-        "security": [
-          {
-            "api_key": []
-          }
-        ]
-      }
-    },
-    "/search": {
-      "get": {
-        "summary": "Search",
-        "tags": [
-          "Classes",
-          "Value sets",
-          "Values"
-        ],
-        "description": "Search for ontology classes, value sets, and values.",
-        "parameters": [
-          {
-            "name": "q",
-            "in": "query",
-            "description": "Search query. Example&#58; melanoma.",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "scope",
-            "in": "query",
-            "description": "Comma-separated list of search scopes. Accepted values={all, classes, value_sets, values}. Default&#58; all.",
-            "required": false,
-            "type": "string",
-            "default": "all"
-          },
-          {
-            "name": "sources",
-            "in": "query",
-            "description": "Comma-separated list of target ontologies and/or value sets. Example&#58; 'ontologies=CEDARVS,NCIT'. By default, all BioPortal ontologies and value sets are considered. The value of 'scope' overrides the list of sources specified using this parameter.",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "suggest",
-            "in": "query",
-            "description": "Will perform a search specifically geared towards type-ahead suggestions. Default&#58; false.",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "subtree_root_id",
-            "in": "query",
-            "description": "Class identifier that limits the search to the branch rooted on that class. It must be URL encoded. Example&#58; http%3A%2F%2Fncicb.nci.nih.gov%2Fxml%2Fowl%2FEVS%2FThesaurus.owl%23C3224.",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "source",
-            "in": "query",
-            "description": "Ontology for which the subtree search will be performed. Example&#58; NCIT.",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "maxDepth",
-            "in": "query",
-            "description": "Subtree depth.",
-            "required": false,
-            "type": "integer",
-            "default": 1
-          },
-          {
-            "$ref": "#/parameters/page"
-          },
-          {
-            "$ref": "#/parameters/page_size"
-          }
-        ],
-        "responses": {
-          "200": {
-            "$ref": "#/responses/ok"
-          },
-          "400": {
-            "$ref": "#/responses/bad_request"
-          },
-          "401": {
-            "$ref": "#/responses/unauthorized"
-          },
-          "500": {
-            "$ref": "#/responses/internal_error"
-          }
-        },
-        "security": [
-          {
-            "api_key": []
-          }
-        ]
-      }
-    },
-    "/property_search": {
-      "get": {
-        "summary": "Property search",
-        "tags": [
-          "Properties"
-        ],
-        "description": "Search for properties.",
-        "parameters": [
-          {
-            "name": "q",
-            "in": "query",
-            "description": "Search query. Example&#58; title.",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "sources",
-            "in": "query",
-            "description": "Comma-separated list of target ontologies. Example&#58; 'ontologies=BIBFRAME'. By default, all BioPortal ontologies and value sets are considered.",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "exact_match",
-            "in": "query",
-            "description": "Restricts results only to the exact matches of the query in the property id, label, or the generated label (a label, auto-generated from the id). Default&#58; false.",
-            "required": false,
-            "type": "boolean"
-          },
-          {
-            "name": "require_definitions",
-            "in": "query",
-            "description": "Filter results only to those that include definitions.",
-            "required": false,
-            "type": "boolean"
-          },
-          {
-            "$ref": "#/parameters/page"
-          },
-          {
-            "$ref": "#/parameters/page_size"
-          }
-        ],
-        "responses": {
-          "200": {
-            "$ref": "#/responses/ok"
-          },
-          "400": {
-            "$ref": "#/responses/bad_request"
-          },
-          "401": {
-            "$ref": "#/responses/unauthorized"
-          },
-          "500": {
-            "$ref": "#/responses/internal_error"
-          }
-        },
-        "security": [
-          {
-            "api_key": []
-          }
-        ]
-      }
-    },
-    "/ontologies/{ontology}/classes": {
-      "post": {
-        "summary": "Create class",
-        "tags": [
-          "Classes"
-        ],
-        "description": "Create a provisional class.",
-        "parameters": [
-          {
-            "$ref": "#/parameters/ontology"
-          }
-        ],
-        "responses": {
-          "204": {
-            "$ref": "#/responses/no_content"
-          },
-          "400": {
-            "$ref": "#/responses/bad_request"
-          },
-          "401": {
-            "$ref": "#/responses/unauthorized"
-          },
-          "500": {
-            "$ref": "#/responses/internal_error"
-          }
-        },
-        "security": [
-          {
-            "api_key": []
-          }
-        ]
+        "security" : [ {
+          "api_key" : [ ]
+        } ]
       },
-      "get": {
-        "summary": "Get classes",
-        "tags": [
-          "Classes"
-        ],
-        "description": "Get all classes from a specific ontology (including both regular and provisional classes).",
-        "parameters": [
-          {
-            "$ref": "#/parameters/ontology"
+      "delete" : {
+        "tags" : [ "Classes" ],
+        "summary" : "Delete a provisional class",
+        "description" : "Update a provisional class.",
+        "operationId" : "deleteClass",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "description" : "Provisional class identifier. Example: http://data.bioontology.org/provisional_classes/4f82a7f0-bbba-0133-b23e-005056010074.",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "Successful operation (no content)"
           },
-          {
-            "$ref": "#/parameters/page"
+          "400" : {
+            "description" : "Bad request"
           },
-          {
-            "$ref": "#/parameters/page_size"
-          }
-        ],
-        "responses": {
-          "200": {
-            "$ref": "#/responses/ok"
+          "401" : {
+            "description" : "Unauthorized"
           },
-          "400": {
-            "$ref": "#/responses/bad_request"
+          "403" : {
+            "description" : "Forbidden"
           },
-          "401": {
-            "$ref": "#/responses/unauthorized"
+          "404" : {
+            "description" : "Not found"
           },
-          "500": {
-            "$ref": "#/responses/internal_error"
+          "500" : {
+            "description" : "Internal server error"
           }
         },
-        "security": [
-          {
-            "api_key": []
-          }
-        ]
+        "security" : [ {
+          "api_key" : [ ]
+        } ]
       }
     },
-    "/ontologies/{ontology}/classes/{id}": {
-      "get": {
-        "summary": "Find class",
-        "tags": [
-          "Classes"
-        ],
-        "description": "Find class (either regular or provisional) by ontology and class id.",
-        "parameters": [
-          {
-            "$ref": "#/parameters/ontology"
-          },
-          {
-            "$ref": "#/parameters/class_id"
-          }
-        ],
-        "responses": {
-          "200": {
-            "$ref": "#/responses/ok"
-          },
-          "400": {
-            "$ref": "#/responses/bad_request"
-          },
-          "401": {
-            "$ref": "#/responses/unauthorized"
-          },
-          "404": {
-            "$ref": "#/responses/not_found"
-          },
-          "500": {
-            "$ref": "#/responses/internal_error"
-          }
-        },
-        "security": [
-          {
-            "api_key": []
-          }
-        ]
-      }
-    },
-    "/ontologies/{ontology}/classes/{id}/tree": {
-      "get": {
-        "summary": "Get class tree",
-        "tags": [
-          "Classes"
-        ],
-        "description": "Get class tree (only for regular classes).",
-        "parameters": [
-          {
-            "$ref": "#/parameters/ontology"
-          },
-          {
-            "$ref": "#/parameters/class_id_regular"
-          }
-        ],
-        "responses": {
-          "200": {
-            "$ref": "#/responses/ok"
-          },
-          "400": {
-            "$ref": "#/responses/bad_request"
-          },
-          "401": {
-            "$ref": "#/responses/unauthorized"
-          },
-          "404": {
-            "$ref": "#/responses/not_found"
-          },
-          "500": {
-            "$ref": "#/responses/internal_error"
-          }
-        },
-        "security": [
-          {
-            "api_key": []
-          }
-        ]
-      }
-    },
-    "/ontologies/{ontology}/classes/{id}/children": {
-      "get": {
-        "summary": "Get class children",
-        "tags": [
-          "Classes"
-        ],
-        "description": "Get class children (only for regular classes).",
-        "parameters": [
-          {
-            "$ref": "#/parameters/ontology"
-          },
-          {
-            "$ref": "#/parameters/class_id_regular"
-          },
-          {
-            "$ref": "#/parameters/page"
-          },
-          {
-            "$ref": "#/parameters/page_size"
-          }
-        ],
-        "responses": {
-          "200": {
-            "$ref": "#/responses/ok"
-          },
-          "400": {
-            "$ref": "#/responses/bad_request"
-          },
-          "401": {
-            "$ref": "#/responses/unauthorized"
-          },
-          "404": {
-            "$ref": "#/responses/not_found"
-          },
-          "500": {
-            "$ref": "#/responses/internal_error"
-          }
-        },
-        "security": [
-          {
-            "api_key": []
-          }
-        ]
-      }
-    },
-    "/ontologies/{ontology}/classes/{id}/descendants": {
-      "get": {
-        "summary": "Get class descendants",
-        "tags": [
-          "Classes"
-        ],
-        "description": "Get class descendants.",
-        "parameters": [
-          {
-            "$ref": "#/parameters/ontology"
-          },
-          {
-            "$ref": "#/parameters/class_id"
-          },
-          {
-            "$ref": "#/parameters/page"
-          },
-          {
-            "$ref": "#/parameters/page_size"
-          }
-        ],
-        "responses": {
-          "200": {
-            "$ref": "#/responses/ok"
-          },
-          "400": {
-            "$ref": "#/responses/bad_request"
-          },
-          "401": {
-            "$ref": "#/responses/unauthorized"
-          },
-          "404": {
-            "$ref": "#/responses/not_found"
-          },
-          "500": {
-            "$ref": "#/responses/internal_error"
-          }
-        },
-        "security": [
-          {
-            "api_key": []
-          }
-        ]
-      }
-    },
-    "/ontologies/{ontology}/classes/{id}/parents": {
-      "get": {
-        "summary": "Get class parents",
-        "tags": [
-          "Classes"
-        ],
-        "description": "Get class parents.",
-        "parameters": [
-          {
-            "$ref": "#/parameters/ontology"
-          },
-          {
-            "$ref": "#/parameters/class_id_regular"
-          }
-        ],
-        "responses": {
-          "200": {
-            "$ref": "#/responses/ok"
-          },
-          "400": {
-            "$ref": "#/responses/bad_request"
-          },
-          "401": {
-            "$ref": "#/responses/unauthorized"
-          },
-          "404": {
-            "$ref": "#/responses/not_found"
-          },
-          "500": {
-            "$ref": "#/responses/internal_error"
-          }
-        },
-        "security": [
-          {
-            "api_key": []
-          }
-        ]
-      }
-    },
-    "/classes/provisional": {
-      "get": {
-        "summary": "Get provisional classes",
-        "tags": [
-          "Classes"
-        ],
-        "description": "Get provisional classes (including provisional value sets and provisional values).",
-        "parameters": [
-          {
-            "$ref": "#/parameters/page"
-          },
-          {
-            "$ref": "#/parameters/page_size"
-          }
-        ],
-        "responses": {
-          "200": {
-            "$ref": "#/responses/ok"
-          },
-          "400": {
-            "$ref": "#/responses/bad_request"
-          },
-          "401": {
-            "$ref": "#/responses/unauthorized"
-          },
-          "500": {
-            "$ref": "#/responses/internal_error"
-          }
-        },
-        "security": [
-          {
-            "api_key": []
-          }
-        ]
-      }
-    },
-    "/ontologies/{ontology}/classes/provisional": {
-      "get": {
-        "summary": "Get all provisional classes in a particular ontology",
-        "tags": [
-          "Classes"
-        ],
-        "description": "Get all provisional classes in a particular ontology (including provisional value sets and provisional values)",
-        "parameters": [
-          {
-            "$ref": "#/parameters/ontology"
-          },
-          {
-            "$ref": "#/parameters/page"
-          },
-          {
-            "$ref": "#/parameters/page_size"
-          }
-        ],
-        "responses": {
-          "200": {
-            "$ref": "#/responses/ok"
-          },
-          "400": {
-            "$ref": "#/responses/bad_request"
-          },
-          "401": {
-            "$ref": "#/responses/unauthorized"
-          },
-          "500": {
-            "$ref": "#/responses/internal_error"
-          }
-        },
-        "security": [
-          {
-            "api_key": []
-          }
-        ]
-      }
-    },
-    "/classes/{id}": {
-      "put": {
-        "summary": "Update a provisional class",
-        "tags": [
-          "Classes"
-        ],
-        "description": "Update a provisional class.",
-        "parameters": [
-          {
-            "$ref": "#/parameters/class_id_provisional"
-          }
-        ],
-        "responses": {
-          "204": {
-            "$ref": "#/responses/no_content"
-          },
-          "400": {
-            "$ref": "#/responses/bad_request"
-          },
-          "401": {
-            "$ref": "#/responses/unauthorized"
-          },
-          "404": {
-            "$ref": "#/responses/not_found"
-          },
-          "500": {
-            "$ref": "#/responses/internal_error"
-          }
-        },
-        "security": [
-          {
-            "api_key": []
-          }
-        ]
-      },
-      "delete": {
-        "summary": "Delete a provisional class",
-        "tags": [
-          "Classes"
-        ],
-        "description": "Update a provisional class.",
-        "parameters": [
-          {
-            "$ref": "#/parameters/class_id_provisional"
-          }
-        ],
-        "responses": {
-          "204": {
-            "$ref": "#/responses/no_content"
-          },
-          "400": {
-            "$ref": "#/responses/bad_request"
-          },
-          "401": {
-            "$ref": "#/responses/unauthorized"
-          },
-          "404": {
-            "$ref": "#/responses/not_found"
-          },
-          "500": {
-            "$ref": "#/responses/internal_error"
-          }
-        },
-        "security": [
-          {
-            "api_key": []
-          }
-        ]
-      }
-    },
-    "/ontologies": {
-      "get": {
-        "summary": "Find all ontologies",
-        "description": "Find all ontologies.",
-        "tags": [
-          "Ontologies"
-        ],
-        "responses": {
-          "200": {
-            "$ref": "#/responses/ok"
-          },
-          "400": {
-            "$ref": "#/responses/bad_request"
-          },
-          "401": {
-            "$ref": "#/responses/unauthorized"
-          },
-          "500": {
-            "$ref": "#/responses/internal_error"
-          }
-        },
-        "security": [
-          {
-            "api_key": []
-          }
-        ]
-      }
-    },
-    "/ontologies/{id}": {
-      "get": {
-        "summary": "Find ontology by id",
-        "description": "Find ontology by id.",
-        "tags": [
-          "Ontologies"
-        ],
-        "parameters": [
-          {
-            "$ref": "#/parameters/ontology_id"
-          }
-        ],
-        "responses": {
-          "200": {
-            "$ref": "#/responses/ok"
-          },
-          "400": {
-            "$ref": "#/responses/bad_request"
-          },
-          "401": {
-            "$ref": "#/responses/unauthorized"
-          },
-          "404": {
-            "$ref": "#/responses/not_found"
-          },
-          "500": {
-            "$ref": "#/responses/internal_error"
-          }
-        },
-        "security": [
-          {
-            "api_key": []
-          }
-        ]
-      }
-    },
-    "/ontologies/{ontology}/classes/roots": {
-      "get": {
-        "summary": "Get root classes",
-        "description": "Get root classes in a particular ontology. For the CEDARPC ontology, all provisional classes in it will be returned.",
-        "tags": [
-          "Classes",
-          "Ontologies"
-        ],
-        "parameters": [
-          {
-            "$ref": "#/parameters/ontology"
-          }
-        ],
-        "responses": {
-          "200": {
-            "$ref": "#/responses/ok"
-          },
-          "400": {
-            "$ref": "#/responses/bad_request"
-          },
-          "401": {
-            "$ref": "#/responses/unauthorized"
-          },
-          "404": {
-            "$ref": "#/responses/not_found"
-          },
-          "500": {
-            "$ref": "#/responses/internal_error"
-          }
-        },
-        "security": [
-          {
-            "api_key": []
-          }
-        ]
-      }
-    },
-    "/ontologies/{ontology}/properties/roots": {
-      "get": {
-        "summary": "Get root properties",
-        "description": "Get root properties in a particular ontology.",
-        "tags": [
-          "Properties",
-          "Ontologies"
-        ],
-        "parameters": [
-          {
-            "$ref": "#/parameters/ontology"
-          }
-        ],
-        "responses": {
-          "200": {
-            "$ref": "#/responses/ok"
-          },
-          "400": {
-            "$ref": "#/responses/bad_request"
-          },
-          "401": {
-            "$ref": "#/responses/unauthorized"
-          },
-          "404": {
-            "$ref": "#/responses/not_found"
-          },
-          "500": {
-            "$ref": "#/responses/internal_error"
-          }
-        },
-        "security": [
-          {
-            "api_key": []
-          }
-        ]
-      }
-    },
-    "/relations": {
-      "post": {
-        "summary": "Create a provisional relation",
-        "tags": [
-          "Relations"
-        ],
-        "description": "Create a provisional relation.",
-        "responses": {
-          "204": {
-            "$ref": "#/responses/no_content"
-          },
-          "400": {
-            "$ref": "#/responses/bad_request"
-          },
-          "401": {
-            "$ref": "#/responses/unauthorized"
-          },
-          "500": {
-            "$ref": "#/responses/internal_error"
-          }
-        },
-        "security": [
-          {
-            "api_key": []
-          }
-        ]
-      }
-    },
-    "/relations/{id}": {
-      "get": {
-        "summary": "Find provisional relation by id",
-        "description": "Find provisional relation by id.",
-        "tags": [
-          "Relations"
-        ],
-        "parameters": [
-          {
-            "$ref": "#/parameters/relation_id"
-          }
-        ],
-        "responses": {
-          "200": {
-            "$ref": "#/responses/ok"
-          },
-          "400": {
-            "$ref": "#/responses/bad_request"
-          },
-          "401": {
-            "$ref": "#/responses/unauthorized"
-          },
-          "404": {
-            "$ref": "#/responses/not_found"
-          },
-          "500": {
-            "$ref": "#/responses/internal_error"
-          }
-        },
-        "security": [
-          {
-            "api_key": []
-          }
-        ]
-      },
-      "delete": {
-        "summary": "Delete provisional relation",
-        "description": "Delete provisional relation by id.",
-        "tags": [
-          "Relations"
-        ],
-        "parameters": [
-          {
-            "$ref": "#/parameters/relation_id"
-          }
-        ],
-        "responses": {
-          "200": {
-            "$ref": "#/responses/ok"
-          },
-          "400": {
-            "$ref": "#/responses/bad_request"
-          },
-          "401": {
-            "$ref": "#/responses/unauthorized"
-          },
-          "404": {
-            "$ref": "#/responses/not_found"
-          },
-          "500": {
-            "$ref": "#/responses/internal_error"
-          }
-        },
-        "security": [
-          {
-            "api_key": []
-          }
-        ]
-      }
-    },
-    "/vs-collections": {
-      "get": {
-        "summary": "Find all value set collections",
-        "description": "Find all value set collections.",
-        "tags": [
-          "Value set collections"
-        ],
-        "responses": {
-          "200": {
-            "$ref": "#/responses/ok"
-          },
-          "400": {
-            "$ref": "#/responses/bad_request"
-          },
-          "401": {
-            "$ref": "#/responses/unauthorized"
-          },
-          "500": {
-            "$ref": "#/responses/internal_error"
-          }
-        },
-        "security": [
-          {
-            "api_key": []
-          }
-        ]
-      }
-    },
-    "/vs-collections/{vs_collection}/value-sets": {
-      "post": {
-        "summary": "Create a provisional value set",
-        "tags": [
-          "Value sets"
-        ],
-        "description": "Create a provisional value set in a particular value set collection.",
-        "parameters": [
-          {
-            "$ref": "#/parameters/vs_collection"
-          }
-        ],
-        "responses": {
-          "204": {
-            "$ref": "#/responses/no_content"
-          },
-          "400": {
-            "$ref": "#/responses/bad_request"
-          },
-          "401": {
-            "$ref": "#/responses/unauthorized"
-          },
-          "500": {
-            "$ref": "#/responses/internal_error"
-          }
-        },
-        "security": [
-          {
-            "api_key": []
-          }
-        ]
-      },
-      "get": {
-        "summary": "Get all value sets in a value set collection",
-        "tags": [
-          "Value sets"
-        ],
-        "description": "Get all value sets in a value set collection.",
-        "parameters": [
-          {
-            "$ref": "#/parameters/vs_collection"
-          },
-          {
-            "$ref": "#/parameters/page"
-          },
-          {
-            "$ref": "#/parameters/page_size"
-          }
-        ],
-        "responses": {
-          "200": {
-            "$ref": "#/responses/ok"
-          },
-          "400": {
-            "$ref": "#/responses/bad_request"
-          },
-          "401": {
-            "$ref": "#/responses/unauthorized"
-          },
-          "500": {
-            "$ref": "#/responses/internal_error"
-          }
-        },
-        "security": [
-          {
-            "api_key": []
-          }
-        ]
-      }
-    },
-    "/vs-collections/{vs_collection}/value-sets/{id}": {
-      "get": {
-        "summary": "Find value set by id",
-        "description": "Find provisional value set by id (either provisional or regular).",
-        "tags": [
-          "Value sets"
-        ],
-        "parameters": [
-          {
-            "$ref": "#/parameters/vs_collection"
-          },
-          {
-            "$ref": "#/parameters/vs_id"
-          }
-        ],
-        "responses": {
-          "200": {
-            "$ref": "#/responses/ok"
-          },
-          "400": {
-            "$ref": "#/responses/bad_request"
-          },
-          "401": {
-            "$ref": "#/responses/unauthorized"
-          },
-          "404": {
-            "$ref": "#/responses/not_found"
-          },
-          "500": {
-            "$ref": "#/responses/internal_error"
-          }
-        },
-        "security": [
-          {
-            "api_key": []
-          }
-        ]
-      }
-    },
-    "/vs-collections/{vs_collection}/values/{id}/value-set": {
-      "get": {
-        "summary": "Find the value set that contains a particular value",
-        "description": "Find the value set that contains a particular value.",
-        "tags": [
-          "Value sets"
-        ],
-        "parameters": [
-          {
-            "$ref": "#/parameters/vs_collection"
-          },
-          {
-            "$ref": "#/parameters/vs_id"
-          }
-        ],
-        "responses": {
-          "200": {
-            "$ref": "#/responses/ok"
-          },
-          "400": {
-            "$ref": "#/responses/bad_request"
-          },
-          "401": {
-            "$ref": "#/responses/unauthorized"
-          },
-          "404": {
-            "$ref": "#/responses/not_found"
-          },
-          "500": {
-            "$ref": "#/responses/internal_error"
-          }
-        },
-        "security": [
-          {
-            "api_key": []
-          }
-        ]
-      }
-    },
-    "/vs-collections/{vs_collection}/value-sets/{id}/tree": {
-      "get": {
-        "summary": "Get value set tree",
-        "tags": [
-          "Value sets"
-        ],
-        "description": "Get value set tree (only for regular value sets).",
-        "parameters": [
-          {
-            "$ref": "#/parameters/vs_collection"
-          },
-          {
-            "$ref": "#/parameters/vs_id"
-          }
-        ],
-        "responses": {
-          "200": {
-            "$ref": "#/responses/ok"
-          },
-          "400": {
-            "$ref": "#/responses/bad_request"
-          },
-          "401": {
-            "$ref": "#/responses/unauthorized"
-          },
-          "404": {
-            "$ref": "#/responses/not_found"
-          },
-          "500": {
-            "$ref": "#/responses/internal_error"
-          }
-        },
-        "security": [
-          {
-            "api_key": []
-          }
-        ]
-      }
-    },
-    "/value-sets": {
-      "get": {
-        "summary": "Find all value sets",
-        "description": "Find all value sets.",
-        "tags": [
-          "Value sets"
-        ],
-        "responses": {
-          "200": {
-            "$ref": "#/responses/ok"
-          },
-          "400": {
-            "$ref": "#/responses/bad_request"
-          },
-          "401": {
-            "$ref": "#/responses/unauthorized"
-          },
-          "500": {
-            "$ref": "#/responses/internal_error"
-          }
-        },
-        "security": [
-          {
-            "api_key": []
-          }
-        ]
-      }
-    },
-    "/value-sets/{id}": {
-      "put": {
-        "summary": "Update a provisional value set",
-        "tags": [
-          "Value sets"
-        ],
-        "description": "Update a provisional value set.",
-        "parameters": [
-          {
-            "$ref": "#/parameters/vs_id"
-          }
-        ],
-        "responses": {
-          "204": {
-            "$ref": "#/responses/no_content"
-          },
-          "400": {
-            "$ref": "#/responses/bad_request"
-          },
-          "401": {
-            "$ref": "#/responses/unauthorized"
-          },
-          "404": {
-            "$ref": "#/responses/not_found"
-          },
-          "500": {
-            "$ref": "#/responses/internal_error"
-          }
-        },
-        "security": [
-          {
-            "api_key": []
-          }
-        ]
-      },
-      "delete": {
-        "summary": "Delete a provisional value set",
-        "tags": [
-          "Value sets"
-        ],
-        "description": "Update a provisional value set.",
-        "parameters": [
-          {
-            "$ref": "#/parameters/vs_id"
-          }
-        ],
-        "responses": {
-          "204": {
-            "$ref": "#/responses/no_content"
-          },
-          "400": {
-            "$ref": "#/responses/bad_request"
-          },
-          "401": {
-            "$ref": "#/responses/unauthorized"
-          },
-          "404": {
-            "$ref": "#/responses/not_found"
-          },
-          "500": {
-            "$ref": "#/responses/internal_error"
-          }
-        },
-        "security": [
-          {
-            "api_key": []
-          }
-        ]
-      }
-    },
-    "/vs-collections/{vs_collection}/value-sets/{vs}/values": {
-      "post": {
-        "summary": "Create a provisional value",
-        "tags": [
-          "Values"
-        ],
-        "description": "Create a provisional value in a given value set.",
-        "parameters": [
-          {
-            "$ref": "#/parameters/vs_collection"
-          },
-          {
-            "$ref": "#/parameters/vs"
-          }
-        ],
-        "responses": {
-          "204": {
-            "$ref": "#/responses/no_content"
-          },
-          "400": {
-            "$ref": "#/responses/bad_request"
-          },
-          "401": {
-            "$ref": "#/responses/unauthorized"
-          },
-          "500": {
-            "$ref": "#/responses/internal_error"
-          }
-        },
-        "security": [
-          {
-            "api_key": []
-          }
-        ]
-      },
-      "get": {
-        "summary": "Find all values in a value set",
-        "tags": [
-          "Values"
-        ],
-        "description": "Find all values in a value set (either regular or provisional).",
-        "parameters": [
-          {
-            "$ref": "#/parameters/vs_collection"
-          },
-          {
-            "$ref": "#/parameters/vs"
-          },
-          {
-            "$ref": "#/parameters/page"
-          },
-          {
-            "$ref": "#/parameters/page_size"
-          }
-        ],
-        "responses": {
-          "200": {
-            "$ref": "#/responses/ok"
-          },
-          "400": {
-            "$ref": "#/responses/bad_request"
-          },
-          "401": {
-            "$ref": "#/responses/unauthorized"
-          },
-          "404": {
-            "$ref": "#/responses/not_found"
-          },
-          "500": {
-            "$ref": "#/responses/internal_error"
-          }
-        },
-        "security": [
-          {
-            "api_key": []
-          }
-        ]
-      }
-    },
-    "/vs-collections/{vs_collection}/values/{id}": {
-      "get": {
-        "summary": "Find value by id",
-        "description": "Find value by id.",
-        "tags": [
-          "Values"
-        ],
-        "parameters": [
-          {
-            "$ref": "#/parameters/vs_collection"
-          },
-          {
-            "$ref": "#/parameters/value_id"
-          }
-        ],
-        "responses": {
-          "200": {
-            "$ref": "#/responses/ok"
-          },
-          "400": {
-            "$ref": "#/responses/bad_request"
-          },
-          "401": {
-            "$ref": "#/responses/unauthorized"
-          },
-          "404": {
-            "$ref": "#/responses/not_found"
-          },
-          "500": {
-            "$ref": "#/responses/internal_error"
-          }
-        },
-        "security": [
-          {
-            "api_key": []
-          }
-        ]
-      }
-    },
-    "/vs-collections/{vs_collection}/values/{id}/tree": {
-      "get": {
-        "summary": "Get value tree",
-        "tags": [
-          "Values"
-        ],
-        "description": "Get value tree (only for regular values).",
-        "parameters": [
-          {
-            "$ref": "#/parameters/vs_collection"
-          },
-          {
-            "$ref": "#/parameters/value_id"
-          }
-        ],
-        "responses": {
-          "200": {
-            "$ref": "#/responses/ok"
-          },
-          "400": {
-            "$ref": "#/responses/bad_request"
-          },
-          "401": {
-            "$ref": "#/responses/unauthorized"
-          },
-          "404": {
-            "$ref": "#/responses/not_found"
-          },
-          "500": {
-            "$ref": "#/responses/internal_error"
-          }
-        },
-        "security": [
-          {
-            "api_key": []
-          }
-        ]
-      }
-    },
-    "/vs-collections/{vs_collection}/values/{id}/all-values": {
-      "get": {
-        "summary": "Find all values in the value set that the given value belongs to",
-        "tags": [
-          "Values"
-        ],
-        "description": "Find all values in the value set that the given value belongs to.",
-        "parameters": [
-          {
-            "$ref": "#/parameters/vs_collection"
-          },
-          {
-            "$ref": "#/parameters/value_id"
-          },
-          {
-            "$ref": "#/parameters/page"
-          },
-          {
-            "$ref": "#/parameters/page_size"
-          }
-        ],
-        "responses": {
-          "200": {
-            "$ref": "#/responses/ok"
-          },
-          "400": {
-            "$ref": "#/responses/bad_request"
-          },
-          "401": {
-            "$ref": "#/responses/unauthorized"
-          },
-          "404": {
-            "$ref": "#/responses/not_found"
-          },
-          "500": {
-            "$ref": "#/responses/internal_error"
-          }
-        },
-        "security": [
-          {
-            "api_key": []
-          }
-        ]
-      }
-    },
-    "/values/{id}": {
-      "put": {
-        "summary": "Update a provisional value",
-        "tags": [
-          "Values"
-        ],
-        "description": "Update a provisional value.",
-        "parameters": [
-          {
-            "$ref": "#/parameters/value_id"
-          }
-        ],
-        "responses": {
-          "204": {
-            "$ref": "#/responses/no_content"
-          },
-          "400": {
-            "$ref": "#/responses/bad_request"
-          },
-          "401": {
-            "$ref": "#/responses/unauthorized"
-          },
-          "404": {
-            "$ref": "#/responses/not_found"
-          },
-          "500": {
-            "$ref": "#/responses/internal_error"
-          }
-        },
-        "security": [
-          {
-            "api_key": []
-          }
-        ]
-      },
-      "delete": {
-        "summary": "Delete a provisional value",
-        "tags": [
-          "Values"
-        ],
-        "description": "Delete a provisional value.",
-        "parameters": [
-          {
-            "$ref": "#/parameters/value_id"
-          }
-        ],
-        "responses": {
-          "204": {
-            "$ref": "#/responses/no_content"
-          },
-          "400": {
-            "$ref": "#/responses/bad_request"
-          },
-          "401": {
-            "$ref": "#/responses/unauthorized"
-          },
-          "404": {
-            "$ref": "#/responses/not_found"
-          },
-          "500": {
-            "$ref": "#/responses/internal_error"
-          }
-        },
-        "security": [
-          {
-            "api_key": []
-          }
-        ]
-      }
-    },
-    "/ontologies/{ontology}/properties": {
-      "get": {
-        "summary": "Get properties",
-        "tags": [
-          "Properties"
-        ],
-        "description": "Get all properties from a specific ontology.",
-        "parameters": [
-          {
-            "$ref": "#/parameters/ontology"
-          }
-        ],
-        "responses": {
-          "200": {
-            "$ref": "#/responses/ok"
-          },
-          "400": {
-            "$ref": "#/responses/bad_request"
-          },
-          "401": {
-            "$ref": "#/responses/unauthorized"
-          },
-          "500": {
-            "$ref": "#/responses/internal_error"
-          }
-        },
-        "security": [
-          {
-            "api_key": []
-          }
-        ]
-      }
-    },
-    "/ontologies/{ontology}/properties/{id}": {
-      "get": {
-        "summary": "Find property",
-        "tags": [
-          "Properties"
-        ],
-        "description": "Find property by id.",
-        "parameters": [
-          {
-            "$ref": "#/parameters/ontology"
-          },
-          {
-            "$ref": "#/parameters/property_id"
-          }
-        ],
-        "responses": {
-          "200": {
-            "$ref": "#/responses/ok"
-          },
-          "400": {
-            "$ref": "#/responses/bad_request"
-          },
-          "401": {
-            "$ref": "#/responses/unauthorized"
-          },
-          "404": {
-            "$ref": "#/responses/not_found"
-          },
-          "500": {
-            "$ref": "#/responses/internal_error"
-          }
-        },
-        "security": [
-          {
-            "api_key": []
-          }
-        ]
-      }
-    },
-    "/ontologies/{ontology}/properties/{id}/tree": {
-      "get": {
-        "summary": "Get property tree",
-        "tags": [
-          "Properties"
-        ],
-        "description": "Get property tree.",
-        "parameters": [
-          {
-            "$ref": "#/parameters/ontology"
-          },
-          {
-            "$ref": "#/parameters/property_id"
-          }
-        ],
-        "responses": {
-          "200": {
-            "$ref": "#/responses/ok"
-          },
-          "400": {
-            "$ref": "#/responses/bad_request"
-          },
-          "401": {
-            "$ref": "#/responses/unauthorized"
-          },
-          "404": {
-            "$ref": "#/responses/not_found"
-          },
-          "500": {
-            "$ref": "#/responses/internal_error"
-          }
-        },
-        "security": [
-          {
-            "api_key": []
-          }
-        ]
-      }
-    },
-    "/ontologies/{ontology}/properties/{id}/children": {
-      "get": {
-        "summary": "Get property children",
-        "tags": [
-          "Properties"
-        ],
-        "description": "Get property children (only for regular classes).",
-        "parameters": [
-          {
-            "$ref": "#/parameters/ontology"
-          },
-          {
-            "$ref": "#/parameters/property_id"
-          }
-        ],
-        "responses": {
-          "200": {
-            "$ref": "#/responses/ok"
-          },
-          "400": {
-            "$ref": "#/responses/bad_request"
-          },
-          "401": {
-            "$ref": "#/responses/unauthorized"
-          },
-          "404": {
-            "$ref": "#/responses/not_found"
-          },
-          "500": {
-            "$ref": "#/responses/internal_error"
-          }
-        },
-        "security": [
-          {
-            "api_key": []
-          }
-        ]
-      }
-    },
-    "/ontologies/{ontology}/properties/{id}/descendants": {
-      "get": {
-        "summary": "Get property descendants",
-        "tags": [
-          "Properties"
-        ],
-        "description": "Get property descendants.",
-        "parameters": [
-          {
-            "$ref": "#/parameters/ontology"
-          },
-          {
-            "$ref": "#/parameters/property_id"
-          }
-        ],
-        "responses": {
-          "200": {
-            "$ref": "#/responses/ok"
-          },
-          "400": {
-            "$ref": "#/responses/bad_request"
-          },
-          "401": {
-            "$ref": "#/responses/unauthorized"
-          },
-          "404": {
-            "$ref": "#/responses/not_found"
-          },
-          "500": {
-            "$ref": "#/responses/internal_error"
-          }
-        },
-        "security": [
-          {
-            "api_key": []
-          }
-        ]
-      }
-    },
-    "/ontologies/{ontology}/properties/{id}/parents": {
-      "get": {
-        "summary": "Get property parents",
-        "tags": [
-          "Properties"
-        ],
-        "description": "Get property parents.",
-        "parameters": [
-          {
-            "$ref": "#/parameters/ontology"
-          },
-          {
-            "$ref": "#/parameters/property_id"
-          }
-        ],
-        "responses": {
-          "200": {
-            "$ref": "#/responses/ok"
-          },
-          "400": {
-            "$ref": "#/responses/bad_request"
-          },
-          "401": {
-            "$ref": "#/responses/unauthorized"
-          },
-          "404": {
-            "$ref": "#/responses/not_found"
-          },
-          "500": {
-            "$ref": "#/responses/internal_error"
-          }
-        },
-        "security": [
-          {
-            "api_key": []
-          }
-        ]
-      }
-    }
-  },
-  "definitions": {
-    "IntegratedSearchRequestBody": {
-      "type": "object",
-      "required": [
-        "parameterObject"
-      ],
-      "properties": {
-        "parameterObject": {
-          "type": "object",
-          "required": [
-            "valueConstraints",
-            "inputText"
-          ],
-          "properties": {
-            "valueConstraints": {
-              "type": "object",
-              "required": [
-                "classes",
-                "ontologies",
-                "branches",
-                "valueSets"
-              ],
-              "properties": {
-                "classes": {
-                  "type": "array",
-                  "items": {
-                    "type": "object",
-                    "required": [
-                      "uri",
-                      "prefLabel",
-                      "type",
-                      "source"
-                    ],
-                    "properties": {
-                      "uri": {
-                        "type": "string"
-                      },
-                      "prefLabel": {
-                        "type": "string"
-                      },
-                      "type": {
-                        "type": "string"
-                      },
-                      "source": {
-                        "type": "string"
-                      }
-                    }
-                  }
-                },
-                "ontologies": {
-                  "type": "array",
-                  "items": {
-                    "type": "object",
-                    "required": [
-                      "acronym"
-                    ],
-                    "properties": {
-                      "acronym": {
-                        "type": "string"
-                      }
-                    }
-                  }
-                },
-                "branches": {
-                  "type": "array",
-                  "items": {
-                    "type": "object",
-                    "required": [
-                      "uri",
-                      "acronym"
-                    ],
-                    "properties": {
-                      "uri": {
-                        "type": "string"
-                      },
-                      "acronym": {
-                        "type": "string"
-                      }
-                    }
-                  }
-                },
-                "valueSets": {
-                  "type": "array",
-                  "items": {
-                    "type": "object",
-                    "required": [
-                      "uri",
-                      "vsCollection"
-                    ],
-                    "properties": {
-                      "uri": {
-                        "type": "string"
-                      },
-                      "vsCollection": {
-                        "type": "string"
-                      }
-                    }
-                  }
-                },
-                "actions": {
-                  "type": "array",
-                  "items": {
-                    "type": "object",
-                    "required": [
-                      "action",
-                      "termUri",
-                      "type",
-                      "source"
-                    ],
-                    "properties": {
-                      "action": {
-                        "type": "string"
-                      },
-                      "termUri": {
-                        "type": "string"
-                      },
-                      "type": {
-                        "type": "string"
-                      },
-                      "source": {
-                        "type": "string"
-                      }
-                    }
-                  }
-                }
+    "/bioportal/integrated-retrieve" : {
+      "post" : {
+        "tags" : [ "Classes", "Value sets", "Values" ],
+        "summary" : "Retrieve classes and values based on CEDAR value constraints",
+        "description" : "Retrieve ontology classes, value sets, and values based on CEDAR value constraints. This endpoint takes a controlled term field specification and any user-supplied initial characters and returns conforming values. <br /> <br /> Some sample calls in Insomnia (https://insomnia.rest/) format are available at https://github.com/metadatacenter/cedar-util/blob/master/api-calls/CEDAR_Insomnia_API_calls.json. <br /> <br />Note that in some cases, the server will need to sort the results obtained from BioPortal and the original pagination information will not be valid any more. In those situations, the values of some of the pagination fields returned as part of the results (e.g., pageCount, nextPage, etc.) cannot be computed consistently, and the server will assign a 'null' value to those fields.",
+        "operationId" : "cedarIntegratedRetrieve",
+        "consumes" : [ "application/json" ],
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "in" : "body",
+          "name" : "request body",
+          "description" : "Object that encapsulates the information needed to run the search query. The \"valueConstraints\" field specification is based on CEDAR's \"_valueConstraints\" field. See https://more.metadatacenter.org/tools-training/outreach/cedar-template-model for more details.",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/definitions/IntegratedRetrieveRequestBody"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "A paginated list of search results",
+            "schema" : {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/definitions/IntegratedRetrieveResults"
               }
-            },
-            "inputText": {
-              "type": "string"
             }
+          },
+          "400" : {
+            "description" : "Bad request"
+          },
+          "401" : {
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "description" : "Not found"
+          },
+          "500" : {
+            "description" : "Internal server error"
           }
         },
-        "page": {
-          "$ref": "#/parameters/page"
+        "security" : [ {
+          "api_key" : [ ]
+        } ]
+      }
+    },
+    "/bioportal/integrated-search" : {
+      "post" : {
+        "tags" : [ "Classes", "Value sets", "Values" ],
+        "summary" : "Search for classes and values based on CEDAR value constraints",
+        "description" : "Search for ontology classes, value sets, and values based on CEDAR value constraints. This endpoint takes a controlled term field specification and any user-supplied initial characters and returns conforming values. <br /> <br /> Some sample calls in Insomnia (https://insomnia.rest/) format are available at https://github.com/metadatacenter/cedar-util/blob/master/api-calls/CEDAR_Insomnia_API_calls.json. <br /> <br />Note that in some cases, the server will need to sort the results obtained from BioPortal and the original pagination information will not be valid any more. In those situations, the values of some of the pagination fields returned as part of the results (e.g., pageCount, nextPage, etc.) cannot be computed consistently, and the server will assign a 'null' value to those fields.",
+        "operationId" : "cedarIntegratedSearch",
+        "consumes" : [ "application/json" ],
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "in" : "body",
+          "name" : "request body",
+          "description" : "Object that encapsulates the information needed to run the search query. The \"valueConstraints\" field specification is based on CEDAR's \"_valueConstraints\" field. See https://more.metadatacenter.org/tools-training/outreach/cedar-template-model for more details.",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/definitions/IntegratedSearchRequestBody"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "A paginated list of search results",
+            "schema" : {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/definitions/IntegratedSearchResults"
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad request"
+          },
+          "401" : {
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "description" : "Not found"
+          },
+          "500" : {
+            "description" : "Internal server error"
+          }
         },
-        "pageSize": {
-          "$ref": "#/parameters/page_size"
+        "security" : [ {
+          "api_key" : [ ]
+        } ]
+      }
+    },
+    "/bioportal/ontologies" : {
+      "get" : {
+        "tags" : [ "Ontologies" ],
+        "summary" : "Find all ontologies",
+        "description" : "Find all ontologies.",
+        "operationId" : "findAllOntologies",
+        "produces" : [ "application/json" ],
+        "responses" : {
+          "200" : {
+            "description" : "Successful operation"
+          },
+          "400" : {
+            "description" : "Bad request"
+          },
+          "401" : {
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "description" : "Not found"
+          },
+          "500" : {
+            "description" : "Internal server error"
+          }
+        },
+        "security" : [ {
+          "api_key" : [ ]
+        } ]
+      }
+    },
+    "/bioportal/ontologies/{id}" : {
+      "get" : {
+        "tags" : [ "Ontologies" ],
+        "summary" : "Find ontology by id",
+        "description" : "Find ontology by id.",
+        "operationId" : "findOntology",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "description" : "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Successful operation"
+          },
+          "400" : {
+            "description" : "Bad request"
+          },
+          "401" : {
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "description" : "Not found"
+          },
+          "500" : {
+            "description" : "Internal server error"
+          }
+        },
+        "security" : [ {
+          "api_key" : [ ]
+        } ]
+      }
+    },
+    "/bioportal/ontologies/{ontology}/classes" : {
+      "get" : {
+        "tags" : [ "Classes" ],
+        "summary" : "Get classes",
+        "description" : "Get all classes from a specific ontology (including both regular and provisional classes).",
+        "operationId" : "findAllClassesForOntology",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "ontology",
+          "in" : "path",
+          "description" : "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "page",
+          "in" : "query",
+          "description" : "Page to be returned. Example: 7.",
+          "required" : false,
+          "type" : "integer",
+          "default" : 1,
+          "format" : "int32"
+        }, {
+          "name" : "pageSize",
+          "in" : "query",
+          "description" : "Number of results per page. Example: 10.",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int32"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Successful operation"
+          },
+          "400" : {
+            "description" : "Bad request"
+          },
+          "401" : {
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "description" : "Not found"
+          },
+          "500" : {
+            "description" : "Internal server error"
+          }
+        },
+        "security" : [ {
+          "api_key" : [ ]
+        } ]
+      },
+      "post" : {
+        "tags" : [ "Classes" ],
+        "summary" : "Create class",
+        "description" : "Create a provisional class.",
+        "operationId" : "createClass",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "ontology",
+          "in" : "path",
+          "description" : "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "Successful operation (no content)"
+          },
+          "400" : {
+            "description" : "Bad request"
+          },
+          "401" : {
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "description" : "Not found"
+          },
+          "500" : {
+            "description" : "Internal server error"
+          }
+        },
+        "security" : [ {
+          "api_key" : [ ]
+        } ]
+      }
+    },
+    "/bioportal/ontologies/{ontology}/classes/provisional" : {
+      "get" : {
+        "tags" : [ "Classes" ],
+        "summary" : "Get all provisional classes in a particular ontology",
+        "description" : "Get all provisional classes in a particular ontology (including provisional value sets and provisional values)",
+        "operationId" : "findAllProvisionalClassesForOntology",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "ontology",
+          "in" : "path",
+          "description" : "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "page",
+          "in" : "query",
+          "description" : "Page to be returned. Example: 7.",
+          "required" : false,
+          "type" : "integer",
+          "default" : 1,
+          "format" : "int32"
+        }, {
+          "name" : "pageSize",
+          "in" : "query",
+          "description" : "Number of results per page. Example: 10.",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int32"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Successful operation"
+          },
+          "400" : {
+            "description" : "Bad request"
+          },
+          "401" : {
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "description" : "Not found"
+          },
+          "500" : {
+            "description" : "Internal server error"
+          }
+        },
+        "security" : [ {
+          "api_key" : [ ]
+        } ]
+      }
+    },
+    "/bioportal/ontologies/{ontology}/classes/roots" : {
+      "get" : {
+        "tags" : [ "Classes", "Ontologies" ],
+        "summary" : "Get root classes",
+        "description" : "Get root classes in a particular ontology. For the CEDARPC ontology, all provisional classes in it will be returned.",
+        "operationId" : "findRootClasses",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "ontology",
+          "in" : "path",
+          "description" : "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Successful operation"
+          },
+          "400" : {
+            "description" : "Bad request"
+          },
+          "401" : {
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "description" : "Not found"
+          },
+          "500" : {
+            "description" : "Internal server error"
+          }
+        },
+        "security" : [ {
+          "api_key" : [ ]
+        } ]
+      }
+    },
+    "/bioportal/ontologies/{ontology}/classes/{id}" : {
+      "get" : {
+        "tags" : [ "Classes" ],
+        "summary" : "Find class",
+        "description" : "Find class (either regular or provisional) by ontology and class id.",
+        "operationId" : "findClass",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "description" : "Class identifier. Examples: http://data.bioontology.org/provisional_classes/4f82a7f0-bbba-0133-b23e-005056010074 (provisional class). http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C3224 (regular class).",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "ontology",
+          "in" : "path",
+          "description" : "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Successful operation"
+          },
+          "400" : {
+            "description" : "Bad request"
+          },
+          "401" : {
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "description" : "Not found"
+          },
+          "500" : {
+            "description" : "Internal server error"
+          }
+        },
+        "security" : [ {
+          "api_key" : [ ]
+        } ]
+      }
+    },
+    "/bioportal/ontologies/{ontology}/classes/{id}/children" : {
+      "get" : {
+        "tags" : [ "Classes" ],
+        "summary" : "Get class children",
+        "description" : "Get class children (only for regular classes).",
+        "operationId" : "findClassChildren",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "description" : "Class identifier. Example: http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C3224.",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "ontology",
+          "in" : "path",
+          "description" : "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "page",
+          "in" : "query",
+          "description" : "Page to be returned. Example: 7.",
+          "required" : false,
+          "type" : "integer",
+          "default" : 1,
+          "format" : "int32"
+        }, {
+          "name" : "pageSize",
+          "in" : "query",
+          "description" : "Number of results per page. Example: 10.",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int32"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Successful operation"
+          },
+          "400" : {
+            "description" : "Bad request"
+          },
+          "401" : {
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "description" : "Not found"
+          },
+          "500" : {
+            "description" : "Internal server error"
+          }
+        },
+        "security" : [ {
+          "api_key" : [ ]
+        } ]
+      }
+    },
+    "/bioportal/ontologies/{ontology}/classes/{id}/descendants" : {
+      "get" : {
+        "tags" : [ "Classes" ],
+        "summary" : "Get class descendants",
+        "description" : "Get class descendants.",
+        "operationId" : "findClassDescendants",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "description" : "Class identifier. Examples: http://data.bioontology.org/provisional_classes/4f82a7f0-bbba-0133-b23e-005056010074 (provisional class). http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C3224 (regular class).",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "ontology",
+          "in" : "path",
+          "description" : "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "page",
+          "in" : "query",
+          "description" : "Page to be returned. Example: 7.",
+          "required" : false,
+          "type" : "integer",
+          "default" : 1,
+          "format" : "int32"
+        }, {
+          "name" : "pageSize",
+          "in" : "query",
+          "description" : "Number of results per page. Example: 10.",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int32"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Successful operation"
+          },
+          "400" : {
+            "description" : "Bad request"
+          },
+          "401" : {
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "description" : "Not found"
+          },
+          "500" : {
+            "description" : "Internal server error"
+          }
+        },
+        "security" : [ {
+          "api_key" : [ ]
+        } ]
+      }
+    },
+    "/bioportal/ontologies/{ontology}/classes/{id}/parents" : {
+      "get" : {
+        "tags" : [ "Classes" ],
+        "summary" : "Get class parents",
+        "description" : "Get class parents.",
+        "operationId" : "findClassParents",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "description" : "Class identifier. Example: http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C3224.",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "ontology",
+          "in" : "path",
+          "description" : "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Successful operation"
+          },
+          "400" : {
+            "description" : "Bad request"
+          },
+          "401" : {
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "description" : "Not found"
+          },
+          "500" : {
+            "description" : "Internal server error"
+          }
+        },
+        "security" : [ {
+          "api_key" : [ ]
+        } ]
+      }
+    },
+    "/bioportal/ontologies/{ontology}/classes/{id}/tree" : {
+      "get" : {
+        "tags" : [ "Classes" ],
+        "summary" : "Get class tree",
+        "description" : "Get class tree (only for regular classes).",
+        "operationId" : "findClassTree",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "description" : "Class identifier. Example: http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C3224.",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "ontology",
+          "in" : "path",
+          "description" : "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Successful operation"
+          },
+          "400" : {
+            "description" : "Bad request"
+          },
+          "401" : {
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "description" : "Not found"
+          },
+          "500" : {
+            "description" : "Internal server error"
+          }
+        },
+        "security" : [ {
+          "api_key" : [ ]
+        } ]
+      }
+    },
+    "/bioportal/ontologies/{ontology}/properties" : {
+      "get" : {
+        "tags" : [ "Properties" ],
+        "summary" : "Get properties",
+        "description" : "Get all properties from a specific ontology.",
+        "operationId" : "findAllPropertiesForOntology",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "ontology",
+          "in" : "path",
+          "description" : "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Successful operation"
+          },
+          "400" : {
+            "description" : "Bad request"
+          },
+          "401" : {
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "description" : "Not found"
+          },
+          "500" : {
+            "description" : "Internal server error"
+          }
+        },
+        "security" : [ {
+          "api_key" : [ ]
+        } ]
+      }
+    },
+    "/bioportal/ontologies/{ontology}/properties/roots" : {
+      "get" : {
+        "tags" : [ "Properties", "Ontologies" ],
+        "summary" : "Get root properties",
+        "description" : "Get root properties in a particular ontology.",
+        "operationId" : "findRootProperties",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "ontology",
+          "in" : "path",
+          "description" : "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Successful operation"
+          },
+          "400" : {
+            "description" : "Bad request"
+          },
+          "401" : {
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "description" : "Not found"
+          },
+          "500" : {
+            "description" : "Internal server error"
+          }
+        },
+        "security" : [ {
+          "api_key" : [ ]
+        } ]
+      }
+    },
+    "/bioportal/ontologies/{ontology}/properties/{id}" : {
+      "get" : {
+        "tags" : [ "Properties" ],
+        "summary" : "Find property",
+        "description" : "Find property by id.",
+        "operationId" : "findProperty",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "description" : "Property identifier. Examples: http://id.loc.gov/ontologies/bibframe/place.",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "ontology",
+          "in" : "path",
+          "description" : "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Successful operation"
+          },
+          "400" : {
+            "description" : "Bad request"
+          },
+          "401" : {
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "description" : "Not found"
+          },
+          "500" : {
+            "description" : "Internal server error"
+          }
+        },
+        "security" : [ {
+          "api_key" : [ ]
+        } ]
+      }
+    },
+    "/bioportal/ontologies/{ontology}/properties/{id}/children" : {
+      "get" : {
+        "tags" : [ "Properties" ],
+        "summary" : "Get property children",
+        "description" : "Get property children (only for regular classes).",
+        "operationId" : "findPropertyChildren",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "description" : "Property identifier. Examples: http://id.loc.gov/ontologies/bibframe/place.",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "ontology",
+          "in" : "path",
+          "description" : "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Successful operation"
+          },
+          "400" : {
+            "description" : "Bad request"
+          },
+          "401" : {
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "description" : "Not found"
+          },
+          "500" : {
+            "description" : "Internal server error"
+          }
+        },
+        "security" : [ {
+          "api_key" : [ ]
+        } ]
+      }
+    },
+    "/bioportal/ontologies/{ontology}/properties/{id}/descendants" : {
+      "get" : {
+        "tags" : [ "Properties" ],
+        "summary" : "Get property descendants",
+        "description" : "Get property descendants.",
+        "operationId" : "findPropertyDescendants",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "description" : "Property identifier. Examples: http://id.loc.gov/ontologies/bibframe/place.",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "ontology",
+          "in" : "path",
+          "description" : "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Successful operation"
+          },
+          "400" : {
+            "description" : "Bad request"
+          },
+          "401" : {
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "description" : "Not found"
+          },
+          "500" : {
+            "description" : "Internal server error"
+          }
+        },
+        "security" : [ {
+          "api_key" : [ ]
+        } ]
+      }
+    },
+    "/bioportal/ontologies/{ontology}/properties/{id}/parents" : {
+      "get" : {
+        "tags" : [ "Properties" ],
+        "summary" : "Get property parents",
+        "description" : "Get property parents.",
+        "operationId" : "findPropertyParents",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "description" : "Property identifier. Examples: http://id.loc.gov/ontologies/bibframe/place.",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "ontology",
+          "in" : "path",
+          "description" : "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Successful operation"
+          },
+          "400" : {
+            "description" : "Bad request"
+          },
+          "401" : {
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "description" : "Not found"
+          },
+          "500" : {
+            "description" : "Internal server error"
+          }
+        },
+        "security" : [ {
+          "api_key" : [ ]
+        } ]
+      }
+    },
+    "/bioportal/ontologies/{ontology}/properties/{id}/tree" : {
+      "get" : {
+        "tags" : [ "Properties" ],
+        "summary" : "Get property tree",
+        "description" : "Get property tree.",
+        "operationId" : "findPropertyTree",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "description" : "Property identifier. Examples: http://id.loc.gov/ontologies/bibframe/place.",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "ontology",
+          "in" : "path",
+          "description" : "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Successful operation"
+          },
+          "400" : {
+            "description" : "Bad request"
+          },
+          "401" : {
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "description" : "Not found"
+          },
+          "500" : {
+            "description" : "Internal server error"
+          }
+        },
+        "security" : [ {
+          "api_key" : [ ]
+        } ]
+      }
+    },
+    "/bioportal/property_search" : {
+      "get" : {
+        "tags" : [ "Properties" ],
+        "summary" : "Property search",
+        "description" : "Search for properties.",
+        "operationId" : "propertySearch",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "q",
+          "in" : "query",
+          "description" : "Search query. Example: title.",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "sources",
+          "in" : "query",
+          "description" : "Comma-separated list of target ontologies. Example: 'ontologies=BIBFRAME'. By default, all BioPortal ontologies and value sets are considered.",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "name" : "exact_match",
+          "in" : "query",
+          "description" : "Restricts results only to the exact matches of the query in the property id, label, or the generated label (a label, auto-generated from the id). Default: false.",
+          "required" : false,
+          "type" : "boolean"
+        }, {
+          "name" : "require_definitions",
+          "in" : "query",
+          "description" : "Filter results only to those that include definitions.",
+          "required" : false,
+          "type" : "boolean"
+        }, {
+          "name" : "page",
+          "in" : "query",
+          "description" : "Page to be returned. Example: 7.",
+          "required" : false,
+          "type" : "integer",
+          "default" : 1,
+          "format" : "int32"
+        }, {
+          "name" : "page_size",
+          "in" : "query",
+          "description" : "Number of results per page. Example: 10.",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int32"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Successful operation"
+          },
+          "400" : {
+            "description" : "Bad request"
+          },
+          "401" : {
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "description" : "Not found"
+          },
+          "500" : {
+            "description" : "Internal server error"
+          }
+        },
+        "security" : [ {
+          "api_key" : [ ]
+        } ]
+      }
+    },
+    "/bioportal/relations" : {
+      "post" : {
+        "tags" : [ "Relations" ],
+        "summary" : "Create a provisional relation",
+        "description" : "Create a provisional relation.",
+        "operationId" : "createRelation",
+        "produces" : [ "application/json" ],
+        "responses" : {
+          "204" : {
+            "description" : "Successful operation (no content)"
+          },
+          "400" : {
+            "description" : "Bad request"
+          },
+          "401" : {
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "description" : "Not found"
+          },
+          "500" : {
+            "description" : "Internal server error"
+          }
+        },
+        "security" : [ {
+          "api_key" : [ ]
+        } ]
+      }
+    },
+    "/bioportal/relations/{id}" : {
+      "get" : {
+        "tags" : [ "Relations" ],
+        "summary" : "Find provisional relation by id",
+        "description" : "Find provisional relation by id.",
+        "operationId" : "findRelation",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "description" : "Provisional relation short identifier. Examples: 720f50f0-ae6f-0133-848f-005056010073.",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Successful operation"
+          },
+          "400" : {
+            "description" : "Bad request"
+          },
+          "401" : {
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "description" : "Not found"
+          },
+          "500" : {
+            "description" : "Internal server error"
+          }
+        },
+        "security" : [ {
+          "api_key" : [ ]
+        } ]
+      },
+      "delete" : {
+        "tags" : [ "Relations" ],
+        "summary" : "Delete provisional relation",
+        "description" : "Delete provisional relation by id.",
+        "operationId" : "deleteRelation",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "description" : "Provisional relation short identifier. Examples: 720f50f0-ae6f-0133-848f-005056010073.",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Successful operation"
+          },
+          "400" : {
+            "description" : "Bad request"
+          },
+          "401" : {
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "description" : "Not found"
+          },
+          "500" : {
+            "description" : "Internal server error"
+          }
+        },
+        "security" : [ {
+          "api_key" : [ ]
+        } ]
+      }
+    },
+    "/bioportal/search" : {
+      "get" : {
+        "tags" : [ "Classes", "Value sets", "Values" ],
+        "summary" : "Search",
+        "description" : "Search for ontology classes, value sets, and values.",
+        "operationId" : "search",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "q",
+          "in" : "query",
+          "description" : "Search query. Example: melanoma.",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "scope",
+          "in" : "query",
+          "description" : "Comma-separated list of search scopes. Accepted values={all, classes, value_sets, values}. Default: all.",
+          "required" : false,
+          "type" : "string",
+          "default" : "all"
+        }, {
+          "name" : "sources",
+          "in" : "query",
+          "description" : "Comma-separated list of target ontologies and/or value sets. Example: 'ontologies=CEDARVS,NCIT'. By default, all BioPortal ontologies and value sets are considered. The value of 'scope' overrides the list of sources specified using this parameter.",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "name" : "suggest",
+          "in" : "query",
+          "description" : "Will perform a search specifically geared towards type-ahead suggestions. Default: false.",
+          "required" : false,
+          "type" : "boolean"
+        }, {
+          "name" : "source",
+          "in" : "query",
+          "description" : "Ontology for which the subtree search will be performed. Example: NCIT.",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "name" : "subtree_root_id",
+          "in" : "query",
+          "description" : "Class identifier that limits the search to the branch rooted on that class. It must be URL encoded. Example: http%3A%2F%2Fncicb.nci.nih.gov%2Fxml%2Fowl%2FEVS%2FThesaurus.owl%23C3224.",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "name" : "max_depth",
+          "in" : "query",
+          "description" : "Subtree depth.",
+          "required" : false,
+          "type" : "integer",
+          "default" : 1,
+          "format" : "int32"
+        }, {
+          "name" : "page",
+          "in" : "query",
+          "description" : "Page to be returned. Example: 7.",
+          "required" : false,
+          "type" : "integer",
+          "default" : 1,
+          "format" : "int32"
+        }, {
+          "name" : "page_size",
+          "in" : "query",
+          "description" : "Number of results per page. Example: 10.",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int32"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Successful operation"
+          },
+          "400" : {
+            "description" : "Bad request"
+          },
+          "401" : {
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "description" : "Not found"
+          },
+          "500" : {
+            "description" : "Internal server error"
+          }
+        },
+        "security" : [ {
+          "api_key" : [ ]
+        } ]
+      }
+    },
+    "/bioportal/value-sets" : {
+      "get" : {
+        "tags" : [ "Value sets" ],
+        "summary" : "Find all value sets",
+        "description" : "Find all value sets.",
+        "operationId" : "findAllValueSets",
+        "produces" : [ "application/json" ],
+        "responses" : {
+          "200" : {
+            "description" : "Successful operation"
+          },
+          "400" : {
+            "description" : "Bad request"
+          },
+          "401" : {
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "description" : "Not found"
+          },
+          "500" : {
+            "description" : "Internal server error"
+          }
+        },
+        "security" : [ {
+          "api_key" : [ ]
+        } ]
+      }
+    },
+    "/bioportal/value-sets/{id}" : {
+      "put" : {
+        "tags" : [ "Value sets" ],
+        "summary" : "Update a provisional value set",
+        "description" : "Update a provisional value set.",
+        "operationId" : "updateValueSet",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "description" : "Provisional value set short identifier. Example: af033050-b04b-0133-981f-005056010074",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "Successful operation (no content)"
+          },
+          "400" : {
+            "description" : "Bad request"
+          },
+          "401" : {
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "description" : "Not found"
+          },
+          "500" : {
+            "description" : "Internal server error"
+          }
+        },
+        "security" : [ {
+          "api_key" : [ ]
+        } ]
+      },
+      "delete" : {
+        "tags" : [ "Value sets" ],
+        "summary" : "Delete a provisional value set",
+        "description" : "Update a provisional value set.",
+        "operationId" : "deleteValueSet",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "description" : "Provisional value set short identifier. Example: af033050-b04b-0133-981f-005056010074",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "Successful operation (no content)"
+          },
+          "400" : {
+            "description" : "Bad request"
+          },
+          "401" : {
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "description" : "Not found"
+          },
+          "500" : {
+            "description" : "Internal server error"
+          }
+        },
+        "security" : [ {
+          "api_key" : [ ]
+        } ]
+      }
+    },
+    "/bioportal/values/{id}" : {
+      "put" : {
+        "tags" : [ "Values" ],
+        "summary" : "Update a provisional value",
+        "description" : "Update a provisional value.",
+        "operationId" : "updateValue",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "description" : "Value identifier. Example: 42f22880-b04b-0133-848f-005056010073",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "Successful operation (no content)"
+          },
+          "400" : {
+            "description" : "Bad request"
+          },
+          "401" : {
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "description" : "Not found"
+          },
+          "500" : {
+            "description" : "Internal server error"
+          }
+        },
+        "security" : [ {
+          "api_key" : [ ]
+        } ]
+      },
+      "delete" : {
+        "tags" : [ "Values" ],
+        "summary" : "Delete a provisional value",
+        "description" : "Delete a provisional value.",
+        "operationId" : "deleteValue",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "description" : "Value identifier. Example: 42f22880-b04b-0133-848f-005056010073",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "Successful operation (no content)"
+          },
+          "400" : {
+            "description" : "Bad request"
+          },
+          "401" : {
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "description" : "Not found"
+          },
+          "500" : {
+            "description" : "Internal server error"
+          }
+        },
+        "security" : [ {
+          "api_key" : [ ]
+        } ]
+      }
+    },
+    "/bioportal/vs-collections" : {
+      "get" : {
+        "tags" : [ "Value set collections" ],
+        "summary" : "Find all value set collections",
+        "description" : "Find all value set collections.",
+        "operationId" : "findAllVSCollections",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "include_details",
+          "in" : "query",
+          "description" : "If true, additional details about each value set collection will be included in the response. Default: false.",
+          "required" : false,
+          "type" : "boolean",
+          "default" : false
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Successful operation"
+          },
+          "400" : {
+            "description" : "Bad request"
+          },
+          "401" : {
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "description" : "Not found"
+          },
+          "500" : {
+            "description" : "Internal server error"
+          }
+        },
+        "security" : [ {
+          "api_key" : [ ]
+        } ]
+      }
+    },
+    "/bioportal/vs-collections/{vs_collection}/value-sets" : {
+      "get" : {
+        "tags" : [ "Value sets" ],
+        "summary" : "Get all value sets in a value set collection",
+        "description" : "Get all value sets in a value set collection.",
+        "operationId" : "findValueSetsByVsCollection",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "vs_collection",
+          "in" : "path",
+          "description" : "Value set collection. Example: CEDARVS.",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "page",
+          "in" : "query",
+          "description" : "Page to be returned. Example: 7.",
+          "required" : false,
+          "type" : "integer",
+          "default" : 1,
+          "format" : "int32"
+        }, {
+          "name" : "pageSize",
+          "in" : "query",
+          "description" : "Number of results per page. Example: 10.",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int32"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Successful operation"
+          },
+          "400" : {
+            "description" : "Bad request"
+          },
+          "401" : {
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "description" : "Not found"
+          },
+          "500" : {
+            "description" : "Internal server error"
+          }
+        },
+        "security" : [ {
+          "api_key" : [ ]
+        } ]
+      },
+      "post" : {
+        "tags" : [ "Value sets" ],
+        "summary" : "Create a provisional value set",
+        "description" : "Create a provisional value set in a particular value set collection.",
+        "operationId" : "createValueSet",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "vs_collection",
+          "in" : "path",
+          "description" : "Value set collection. Example: CEDARVS.",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "Successful operation (no content)"
+          },
+          "400" : {
+            "description" : "Bad request"
+          },
+          "401" : {
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "description" : "Not found"
+          },
+          "500" : {
+            "description" : "Internal server error"
+          }
+        },
+        "security" : [ {
+          "api_key" : [ ]
+        } ]
+      }
+    },
+    "/bioportal/vs-collections/{vs_collection}/value-sets/{id}" : {
+      "get" : {
+        "tags" : [ "Value sets" ],
+        "summary" : "Find value set by id",
+        "description" : "Find provisional value set by id (either provisional or regular).",
+        "operationId" : "findValueSet",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "description" : "Provisional value set short identifier. Example: af033050-b04b-0133-981f-005056010074",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "vs_collection",
+          "in" : "path",
+          "description" : "Value set collection. Example: CEDARVS.",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Successful operation"
+          },
+          "400" : {
+            "description" : "Bad request"
+          },
+          "401" : {
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "description" : "Not found"
+          },
+          "500" : {
+            "description" : "Internal server error"
+          }
+        },
+        "security" : [ {
+          "api_key" : [ ]
+        } ]
+      }
+    },
+    "/bioportal/vs-collections/{vs_collection}/value-sets/{id}/tree" : {
+      "get" : {
+        "tags" : [ "Value sets" ],
+        "summary" : "Get value set tree",
+        "description" : "Get value set tree (only for regular value sets).",
+        "operationId" : "findValueSetTree",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "description" : "Provisional value set short identifier. Example: af033050-b04b-0133-981f-005056010074",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "vs_collection",
+          "in" : "path",
+          "description" : "Value set collection. Example: CEDARVS.",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Successful operation"
+          },
+          "400" : {
+            "description" : "Bad request"
+          },
+          "401" : {
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "description" : "Not found"
+          },
+          "500" : {
+            "description" : "Internal server error"
+          }
+        },
+        "security" : [ {
+          "api_key" : [ ]
+        } ]
+      }
+    },
+    "/bioportal/vs-collections/{vs_collection}/value-sets/{vs}/values" : {
+      "get" : {
+        "tags" : [ "Values" ],
+        "summary" : "Find all values in a value set",
+        "description" : "Find all values in a value set (either regular or provisional).",
+        "operationId" : "findValuesByValueSet",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "vs_collection",
+          "in" : "path",
+          "description" : "Value set collection. Example: CEDARVS.",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "vs",
+          "in" : "path",
+          "description" : "Value set identifier. Example: http://www.semanticweb.org/jgraybeal/ontologies/2015/7/cedarvaluesets#Study_File_Type",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "page",
+          "in" : "query",
+          "description" : "Page to be returned. Example: 7.",
+          "required" : false,
+          "type" : "integer",
+          "default" : 1,
+          "format" : "int32"
+        }, {
+          "name" : "pageSize",
+          "in" : "query",
+          "description" : "Number of results per page. Example: 10.",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int32"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Successful operation"
+          },
+          "400" : {
+            "description" : "Bad request"
+          },
+          "401" : {
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "description" : "Not found"
+          },
+          "500" : {
+            "description" : "Internal server error"
+          }
+        },
+        "security" : [ {
+          "api_key" : [ ]
+        } ]
+      },
+      "post" : {
+        "tags" : [ "Values" ],
+        "summary" : "Create a provisional value",
+        "description" : "Create a provisional value in a given value set.",
+        "operationId" : "createValue",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "vs_collection",
+          "in" : "path",
+          "description" : "Value set collection. Example: CEDARVS.",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "vs",
+          "in" : "path",
+          "description" : "Value set identifier. Example: http://www.semanticweb.org/jgraybeal/ontologies/2015/7/cedarvaluesets#Study_File_Type",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "Successful operation (no content)"
+          },
+          "400" : {
+            "description" : "Bad request"
+          },
+          "401" : {
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "description" : "Not found"
+          },
+          "500" : {
+            "description" : "Internal server error"
+          }
+        },
+        "security" : [ {
+          "api_key" : [ ]
+        } ]
+      }
+    },
+    "/bioportal/vs-collections/{vs_collection}/values/{id}" : {
+      "get" : {
+        "tags" : [ "Values" ],
+        "summary" : "Find value by id",
+        "description" : "Find value by id.",
+        "operationId" : "findValue",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "description" : "Value identifier. Example: 42f22880-b04b-0133-848f-005056010073",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "vs_collection",
+          "in" : "path",
+          "description" : "Value set collection. Example: CEDARVS.",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Successful operation"
+          },
+          "400" : {
+            "description" : "Bad request"
+          },
+          "401" : {
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "description" : "Not found"
+          },
+          "500" : {
+            "description" : "Internal server error"
+          }
+        },
+        "security" : [ {
+          "api_key" : [ ]
+        } ]
+      }
+    },
+    "/bioportal/vs-collections/{vs_collection}/values/{id}/all-values" : {
+      "get" : {
+        "tags" : [ "Values" ],
+        "summary" : "Find all values in the value set that the given value belongs to",
+        "description" : "Find all values in the value set that the given value belongs to.",
+        "operationId" : "findAllValuesInValueSetByValue",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "description" : "Value identifier. Example: 42f22880-b04b-0133-848f-005056010073",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "vs_collection",
+          "in" : "path",
+          "description" : "Value set collection. Example: CEDARVS.",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "page",
+          "in" : "query",
+          "description" : "Page to be returned. Example: 7.",
+          "required" : false,
+          "type" : "integer",
+          "default" : 1,
+          "format" : "int32"
+        }, {
+          "name" : "pageSize",
+          "in" : "query",
+          "description" : "Number of results per page. Example: 10.",
+          "required" : false,
+          "type" : "integer",
+          "format" : "int32"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Successful operation"
+          },
+          "400" : {
+            "description" : "Bad request"
+          },
+          "401" : {
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "description" : "Not found"
+          },
+          "500" : {
+            "description" : "Internal server error"
+          }
+        },
+        "security" : [ {
+          "api_key" : [ ]
+        } ]
+      }
+    },
+    "/bioportal/vs-collections/{vs_collection}/values/{id}/tree" : {
+      "get" : {
+        "tags" : [ "Values" ],
+        "summary" : "Get value tree",
+        "description" : "Get value tree (only for regular values).",
+        "operationId" : "findValueTree",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "description" : "Value identifier. Example: 42f22880-b04b-0133-848f-005056010073",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "vs_collection",
+          "in" : "path",
+          "description" : "Value set collection. Example: CEDARVS.",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Successful operation"
+          },
+          "400" : {
+            "description" : "Bad request"
+          },
+          "401" : {
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "description" : "Not found"
+          },
+          "500" : {
+            "description" : "Internal server error"
+          }
+        },
+        "security" : [ {
+          "api_key" : [ ]
+        } ]
+      }
+    },
+    "/bioportal/vs-collections/{vs_collection}/values/{id}/value-set" : {
+      "get" : {
+        "tags" : [ "Value sets" ],
+        "summary" : "Find the value set that contains a particular value",
+        "description" : "Find the value set that contains a particular value.",
+        "operationId" : "findValueSetByValue",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "description" : "Value identifier. Example: 42f22880-b04b-0133-848f-005056010073",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "vs_collection",
+          "in" : "path",
+          "description" : "Value set collection. Example: CEDARVS.",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Successful operation"
+          },
+          "400" : {
+            "description" : "Bad request"
+          },
+          "401" : {
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "description" : "Not found"
+          },
+          "500" : {
+            "description" : "Internal server error"
+          }
+        },
+        "security" : [ {
+          "api_key" : [ ]
+        } ]
+      }
+    }
+  },
+  "securityDefinitions" : {
+    "api_key" : {
+      "description" : "Your CEDAR API key, using the format 'apiKey <yourApiKey>'",
+      "type" : "apiKey",
+      "name" : "Authorization",
+      "in" : "header"
+    }
+  },
+  "definitions" : {
+    "IntegratedRetrieveConstraintAction" : {
+      "type" : "object",
+      "required" : [ "action", "source", "termUri", "type" ],
+      "properties" : {
+        "action" : {
+          "type" : "string",
+          "description" : "Action to be applied."
+        },
+        "source" : {
+          "type" : "string",
+          "description" : "Source of the term."
+        },
+        "termUri" : {
+          "type" : "string",
+          "description" : "Term URI the action applies to."
+        },
+        "type" : {
+          "type" : "string",
+          "description" : "Type of the term."
         }
       }
     },
-    "IntegratedRetrieveRequestBody": {
-      "type": "object",
-      "required": [
-        "valueConstraints"
-      ],
-      "properties": {
-        "valueConstraints": {
-          "type": "object",
-          "required": [
-            "classes",
-            "ontologies",
-            "branches",
-            "valueSets"
-          ],
-          "properties": {
-            "classes": {
-              "type": "array",
-              "items": {
-                "type": "object",
-                "required": [
-                  "uri",
-                  "prefLabel",
-                  "type",
-                  "source"
-                ],
-                "properties": {
-                  "uri": {
-                    "type": "string"
-                  },
-                  "prefLabel": {
-                    "type": "string"
-                  },
-                  "type": {
-                    "type": "string"
-                  },
-                  "source": {
-                    "type": "string"
-                  }
-                }
-              }
-            },
-            "ontologies": {
-              "type": "array",
-              "items": {
-                "type": "object",
-                "required": [
-                  "acronym"
-                ],
-                "properties": {
-                  "acronym": {
-                    "type": "string"
-                  }
-                }
-              }
-            },
-            "branches": {
-              "type": "array",
-              "items": {
-                "type": "object",
-                "required": [
-                  "uri",
-                  "acronym"
-                ],
-                "properties": {
-                  "uri": {
-                    "type": "string"
-                  },
-                  "acronym": {
-                    "type": "string"
-                  }
-                }
-              }
-            },
-            "valueSets": {
-              "type": "array",
-              "items": {
-                "type": "object",
-                "required": [
-                  "uri",
-                  "vsCollection"
-                ],
-                "properties": {
-                  "uri": {
-                    "type": "string"
-                  },
-                  "vsCollection": {
-                    "type": "string"
-                  }
-                }
-              }
-            },
-            "actions": {
-              "type": "array",
-              "items": {
-                "type": "object",
-                "required": [
-                  "action",
-                  "termUri",
-                  "type",
-                  "source"
-                ],
-                "properties": {
-                  "action": {
-                    "type": "string"
-                  },
-                  "termUri": {
-                    "type": "string"
-                  },
-                  "type": {
-                    "type": "string"
-                  },
-                  "source": {
-                    "type": "string"
-                  }
-                }
-              }
-            }
-          }
+    "IntegratedRetrieveConstraintBranch" : {
+      "type" : "object",
+      "required" : [ "acronym", "uri" ],
+      "properties" : {
+        "acronym" : {
+          "type" : "string",
+          "description" : "Ontology acronym."
         },
-        "page": {
-          "$ref": "#/parameters/page"
-        },
-        "pageSize": {
-          "$ref": "#/parameters/page_size"
+        "uri" : {
+          "type" : "string",
+          "description" : "Branch URI."
         }
       }
     },
-    "IntegratedSearchResults": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "required": [
-          "page",
-          "pageCount",
-          "pageSize",
-          "totalCount",
-          "prevPage",
-          "nextPage",
-          "collection"
-        ],
-        "properties": {
-          "page": {
-            "type": "integer"
-          },
-          "pageCount": {
-            "type": "integer"
-          },
-          "pageSize": {
-            "type": "integer"
-          },
-          "totalCount": {
-            "type": "integer"
-          },
-          "prevPage": {
-            "type": "integer"
-          },
-          "nextPage": {
-            "type": "integer"
-          },
-          "collection": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "required": [
-                "id",
-                "at_id",
-                "at_type",
-                "type",
-                "prefLabel",
-                "notation",
-                "definition"
-              ],
-              "properties": {
-                "id": {
-                  "type": "string"
-                },
-                "at_id": {
-                  "type": "string"
-                },
-                "at_type": {
-                  "type": "string"
-                },
-                "prefLabel": {
-                  "type": "string"
-                },
-                "notation": {
-                  "type": "string"
-                },
-                "definition": {
-                  "type": "string"
-                }
-              }
-            }
+    "IntegratedRetrieveConstraintClass" : {
+      "type" : "object",
+      "required" : [ "prefLabel", "source", "type", "uri" ],
+      "properties" : {
+        "prefLabel" : {
+          "type" : "string",
+          "description" : "Preferred label of the class."
+        },
+        "source" : {
+          "type" : "string",
+          "description" : "Source of the class."
+        },
+        "type" : {
+          "type" : "string",
+          "description" : "Type of the class."
+        },
+        "uri" : {
+          "type" : "string",
+          "description" : "Class URI."
+        }
+      }
+    },
+    "IntegratedRetrieveConstraintOntology" : {
+      "type" : "object",
+      "required" : [ "acronym" ],
+      "properties" : {
+        "acronym" : {
+          "type" : "string",
+          "description" : "Ontology acronym."
+        }
+      }
+    },
+    "IntegratedRetrieveConstraintValueSet" : {
+      "type" : "object",
+      "required" : [ "uri", "vsCollection" ],
+      "properties" : {
+        "uri" : {
+          "type" : "string",
+          "description" : "Value set URI."
+        },
+        "vsCollection" : {
+          "type" : "string",
+          "description" : "Value set collection."
+        }
+      }
+    },
+    "IntegratedRetrieveRequestBody" : {
+      "type" : "object",
+      "required" : [ "valueConstraints" ],
+      "properties" : {
+        "inputText" : {
+          "type" : "string",
+          "description" : "The user-supplied initial characters used to filter the conforming values."
+        },
+        "page" : {
+          "type" : "integer",
+          "format" : "int32",
+          "description" : "Page to be returned. Example: 7."
+        },
+        "pageSize" : {
+          "type" : "integer",
+          "format" : "int32",
+          "description" : "Number of results per page. Example: 10."
+        },
+        "valueConstraints" : {
+          "description" : "The value constraints field specification. Based on CEDAR's '_valueConstraints' field.",
+          "$ref" : "#/definitions/IntegratedRetrieveValueConstraints"
+        }
+      },
+      "description" : "Object that encapsulates the information needed to run the integrated-retrieve query."
+    },
+    "IntegratedRetrieveResult" : {
+      "type" : "object",
+      "required" : [ "@id", "@type", "definition", "id", "notation", "prefLabel", "type" ],
+      "properties" : {
+        "@id" : {
+          "type" : "string",
+          "description" : "Unique URL identifier of the result."
+        },
+        "@type" : {
+          "type" : "string",
+          "description" : "Type of the result."
+        },
+        "definition" : {
+          "type" : "string",
+          "description" : "Definition of the result."
+        },
+        "id" : {
+          "type" : "string",
+          "description" : "Result identifier."
+        },
+        "notation" : {
+          "type" : "string",
+          "description" : "Notation of the result."
+        },
+        "prefLabel" : {
+          "type" : "string",
+          "description" : "Preferred label of the result."
+        },
+        "type" : {
+          "type" : "string",
+          "description" : "Type of the result."
+        }
+      }
+    },
+    "IntegratedRetrieveResults" : {
+      "type" : "object",
+      "required" : [ "collection", "nextPage", "page", "pageCount", "pageSize", "prevPage", "totalCount" ],
+      "properties" : {
+        "collection" : {
+          "type" : "array",
+          "description" : "The results contained in this page.",
+          "items" : {
+            "$ref" : "#/definitions/IntegratedRetrieveResult"
+          }
+        },
+        "nextPage" : {
+          "type" : "integer",
+          "format" : "int32",
+          "description" : "Next page."
+        },
+        "page" : {
+          "type" : "integer",
+          "format" : "int32",
+          "description" : "Current page."
+        },
+        "pageCount" : {
+          "type" : "integer",
+          "format" : "int32",
+          "description" : "Total number of pages."
+        },
+        "pageSize" : {
+          "type" : "integer",
+          "format" : "int32",
+          "description" : "Number of results per page."
+        },
+        "prevPage" : {
+          "type" : "integer",
+          "format" : "int32",
+          "description" : "Previous page."
+        },
+        "totalCount" : {
+          "type" : "integer",
+          "format" : "int32",
+          "description" : "Total number of results."
+        }
+      },
+      "description" : "A paginated list of integrated-retrieve results."
+    },
+    "IntegratedRetrieveValueConstraints" : {
+      "type" : "object",
+      "required" : [ "branches", "classes", "ontologies", "valueSets" ],
+      "properties" : {
+        "actions" : {
+          "type" : "array",
+          "description" : "List of actions applied to the value constraints.",
+          "items" : {
+            "$ref" : "#/definitions/IntegratedRetrieveConstraintAction"
+          }
+        },
+        "branches" : {
+          "type" : "array",
+          "description" : "List of ontology branches used to constrain the values.",
+          "items" : {
+            "$ref" : "#/definitions/IntegratedRetrieveConstraintBranch"
+          }
+        },
+        "classes" : {
+          "type" : "array",
+          "description" : "List of ontology classes used to constrain the values.",
+          "items" : {
+            "$ref" : "#/definitions/IntegratedRetrieveConstraintClass"
+          }
+        },
+        "ontologies" : {
+          "type" : "array",
+          "description" : "List of ontologies used to constrain the values.",
+          "items" : {
+            "$ref" : "#/definitions/IntegratedRetrieveConstraintOntology"
+          }
+        },
+        "valueSets" : {
+          "type" : "array",
+          "description" : "List of value sets used to constrain the values.",
+          "items" : {
+            "$ref" : "#/definitions/IntegratedRetrieveConstraintValueSet"
           }
         }
       }
     },
-    "IntegratedRetrieveResults": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "required": [
-          "page",
-          "pageCount",
-          "pageSize",
-          "totalCount",
-          "prevPage",
-          "nextPage",
-          "collection"
-        ],
-        "properties": {
-          "page": {
-            "type": "integer"
-          },
-          "pageCount": {
-            "type": "integer"
-          },
-          "pageSize": {
-            "type": "integer"
-          },
-          "totalCount": {
-            "type": "integer"
-          },
-          "prevPage": {
-            "type": "integer"
-          },
-          "nextPage": {
-            "type": "integer"
-          },
-          "collection": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "required": [
-                "id",
-                "at_id",
-                "at_type",
-                "type",
-                "prefLabel",
-                "notation",
-                "definition"
-              ],
-              "properties": {
-                "id": {
-                  "type": "string"
-                },
-                "at_id": {
-                  "type": "string"
-                },
-                "at_type": {
-                  "type": "string"
-                },
-                "prefLabel": {
-                  "type": "string"
-                },
-                "notation": {
-                  "type": "string"
-                },
-                "definition": {
-                  "type": "string"
-                }
-              }
-            }
+    "IntegratedSearchConstraintAction" : {
+      "type" : "object",
+      "required" : [ "action", "source", "termUri", "type" ],
+      "properties" : {
+        "action" : {
+          "type" : "string",
+          "description" : "Action to be applied."
+        },
+        "source" : {
+          "type" : "string",
+          "description" : "Source of the term."
+        },
+        "termUri" : {
+          "type" : "string",
+          "description" : "Term URI the action applies to."
+        },
+        "type" : {
+          "type" : "string",
+          "description" : "Type of the term."
+        }
+      }
+    },
+    "IntegratedSearchConstraintBranch" : {
+      "type" : "object",
+      "required" : [ "acronym", "uri" ],
+      "properties" : {
+        "acronym" : {
+          "type" : "string",
+          "description" : "Ontology acronym."
+        },
+        "uri" : {
+          "type" : "string",
+          "description" : "Branch URI."
+        }
+      }
+    },
+    "IntegratedSearchConstraintClass" : {
+      "type" : "object",
+      "required" : [ "prefLabel", "source", "type", "uri" ],
+      "properties" : {
+        "prefLabel" : {
+          "type" : "string",
+          "description" : "Preferred label of the class."
+        },
+        "source" : {
+          "type" : "string",
+          "description" : "Source of the class."
+        },
+        "type" : {
+          "type" : "string",
+          "description" : "Type of the class."
+        },
+        "uri" : {
+          "type" : "string",
+          "description" : "Class URI."
+        }
+      }
+    },
+    "IntegratedSearchConstraintOntology" : {
+      "type" : "object",
+      "required" : [ "acronym" ],
+      "properties" : {
+        "acronym" : {
+          "type" : "string",
+          "description" : "Ontology acronym."
+        }
+      }
+    },
+    "IntegratedSearchConstraintValueSet" : {
+      "type" : "object",
+      "required" : [ "uri", "vsCollection" ],
+      "properties" : {
+        "uri" : {
+          "type" : "string",
+          "description" : "Value set URI."
+        },
+        "vsCollection" : {
+          "type" : "string",
+          "description" : "Value set collection."
+        }
+      }
+    },
+    "IntegratedSearchParameterObject" : {
+      "type" : "object",
+      "required" : [ "inputText", "valueConstraints" ],
+      "properties" : {
+        "inputText" : {
+          "type" : "string",
+          "description" : "The user-supplied initial characters used to filter the conforming values."
+        },
+        "valueConstraints" : {
+          "description" : "The value constraints field specification. Based on CEDAR's '_valueConstraints' field.",
+          "$ref" : "#/definitions/IntegratedSearchValueConstraints"
+        }
+      }
+    },
+    "IntegratedSearchRequestBody" : {
+      "type" : "object",
+      "required" : [ "parameterObject" ],
+      "properties" : {
+        "page" : {
+          "type" : "integer",
+          "format" : "int32",
+          "description" : "Page to be returned. Example: 7."
+        },
+        "pageSize" : {
+          "type" : "integer",
+          "format" : "int32",
+          "description" : "Number of results per page. Example: 10."
+        },
+        "parameterObject" : {
+          "description" : "Object that encapsulates the value constraints and the input text used to run the search query.",
+          "$ref" : "#/definitions/IntegratedSearchParameterObject"
+        }
+      },
+      "description" : "Object that encapsulates the information needed to run the integrated-search query."
+    },
+    "IntegratedSearchResult" : {
+      "type" : "object",
+      "required" : [ "@id", "@type", "definition", "id", "notation", "prefLabel", "type" ],
+      "properties" : {
+        "@id" : {
+          "type" : "string",
+          "description" : "Unique URL identifier of the result."
+        },
+        "@type" : {
+          "type" : "string",
+          "description" : "Type of the result."
+        },
+        "definition" : {
+          "type" : "string",
+          "description" : "Definition of the result."
+        },
+        "id" : {
+          "type" : "string",
+          "description" : "Result identifier."
+        },
+        "notation" : {
+          "type" : "string",
+          "description" : "Notation of the result."
+        },
+        "prefLabel" : {
+          "type" : "string",
+          "description" : "Preferred label of the result."
+        },
+        "type" : {
+          "type" : "string",
+          "description" : "Type of the result."
+        }
+      }
+    },
+    "IntegratedSearchResults" : {
+      "type" : "object",
+      "required" : [ "collection", "nextPage", "page", "pageCount", "pageSize", "prevPage", "totalCount" ],
+      "properties" : {
+        "collection" : {
+          "type" : "array",
+          "description" : "The results contained in this page.",
+          "items" : {
+            "$ref" : "#/definitions/IntegratedSearchResult"
+          }
+        },
+        "nextPage" : {
+          "type" : "integer",
+          "format" : "int32",
+          "description" : "Next page."
+        },
+        "page" : {
+          "type" : "integer",
+          "format" : "int32",
+          "description" : "Current page."
+        },
+        "pageCount" : {
+          "type" : "integer",
+          "format" : "int32",
+          "description" : "Total number of pages."
+        },
+        "pageSize" : {
+          "type" : "integer",
+          "format" : "int32",
+          "description" : "Number of results per page."
+        },
+        "prevPage" : {
+          "type" : "integer",
+          "format" : "int32",
+          "description" : "Previous page."
+        },
+        "totalCount" : {
+          "type" : "integer",
+          "format" : "int32",
+          "description" : "Total number of results."
+        }
+      },
+      "description" : "A paginated list of integrated-search results."
+    },
+    "IntegratedSearchValueConstraints" : {
+      "type" : "object",
+      "required" : [ "branches", "classes", "ontologies", "valueSets" ],
+      "properties" : {
+        "actions" : {
+          "type" : "array",
+          "description" : "List of actions applied to the value constraints.",
+          "items" : {
+            "$ref" : "#/definitions/IntegratedSearchConstraintAction"
+          }
+        },
+        "branches" : {
+          "type" : "array",
+          "description" : "List of ontology branches used to constrain the values.",
+          "items" : {
+            "$ref" : "#/definitions/IntegratedSearchConstraintBranch"
+          }
+        },
+        "classes" : {
+          "type" : "array",
+          "description" : "List of ontology classes used to constrain the values.",
+          "items" : {
+            "$ref" : "#/definitions/IntegratedSearchConstraintClass"
+          }
+        },
+        "ontologies" : {
+          "type" : "array",
+          "description" : "List of ontologies used to constrain the values.",
+          "items" : {
+            "$ref" : "#/definitions/IntegratedSearchConstraintOntology"
+          }
+        },
+        "valueSets" : {
+          "type" : "array",
+          "description" : "List of value sets used to constrain the values.",
+          "items" : {
+            "$ref" : "#/definitions/IntegratedSearchConstraintValueSet"
           }
         }
       }
