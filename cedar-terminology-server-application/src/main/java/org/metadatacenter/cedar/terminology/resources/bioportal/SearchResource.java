@@ -2,6 +2,12 @@ package org.metadatacenter.cedar.terminology.resources.bioportal;
 
 import com.codahale.metrics.annotation.Timed;
 import com.fasterxml.jackson.databind.JsonNode;
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiParam;
+import io.swagger.annotations.ApiResponse;
+import io.swagger.annotations.ApiResponses;
+import io.swagger.annotations.Authorization;
 import org.hibernate.validator.constraints.NotEmpty;
 import org.metadatacenter.cedar.cache.Cache;
 import org.metadatacenter.cedar.terminology.resources.AbstractTerminologyServerResource;
@@ -29,6 +35,7 @@ import static org.metadatacenter.cedar.terminology.util.Constants.*;
 
 @Path("/bioportal")
 @Produces(MediaType.APPLICATION_JSON)
+@Api(value = "/bioportal", tags = "Classes", authorizations = {@Authorization("api_key")})
 public class SearchResource extends AbstractTerminologyServerResource {
 
   public SearchResource(CedarConfig cedarConfig) {
@@ -41,15 +48,39 @@ public class SearchResource extends AbstractTerminologyServerResource {
   @GET
   @Timed
   @Path("/search")
-  public Response search(@QueryParam("q") @NotEmpty String q,
-                         @QueryParam("scope") @DefaultValue("all") String scope,
-                         @QueryParam("sources") String sources,
-                         @QueryParam("suggest") boolean suggest,
-                         @QueryParam("source") String source,
-                         @QueryParam("subtree_root_id") String subtreeRootId,
-                         @QueryParam("max_depth") @DefaultValue("1") int maxDepth,
-                         @QueryParam("page") @DefaultValue("1") int page,
-                         @QueryParam("page_size") int pageSize) throws CedarException {
+  @ApiOperation(value = "Search", notes = "Search for ontology classes, value sets, and values.",
+      tags = {"Classes", "Value sets", "Values"})
+  @ApiResponses({
+      @ApiResponse(code = 200, message = "Successful operation"),
+      @ApiResponse(code = 400, message = "Bad request"),
+      @ApiResponse(code = 401, message = "Unauthorized"),
+      @ApiResponse(code = 403, message = "Forbidden"),
+      @ApiResponse(code = 404, message = "Not found"),
+      @ApiResponse(code = 500, message = "Internal server error")
+  })
+  public Response search(
+      @ApiParam(value = "Search query. Example: melanoma.", required = true)
+      @QueryParam("q") @NotEmpty String q,
+      @ApiParam(value = "Comma-separated list of search scopes. Accepted values={all, classes, value_sets, values}. " +
+          "Default: all.")
+      @QueryParam("scope") @DefaultValue("all") String scope,
+      @ApiParam(value = "Comma-separated list of target ontologies and/or value sets. Example: " +
+          "'ontologies=CEDARVS,NCIT'. By default, all BioPortal ontologies and value sets are considered. The value " +
+          "of 'scope' overrides the list of sources specified using this parameter.")
+      @QueryParam("sources") String sources,
+      @ApiParam(value = "Will perform a search specifically geared towards type-ahead suggestions. Default: false.")
+      @QueryParam("suggest") boolean suggest,
+      @ApiParam(value = "Ontology for which the subtree search will be performed. Example: NCIT.")
+      @QueryParam("source") String source,
+      @ApiParam(value = "Class identifier that limits the search to the branch rooted on that class. It must be URL " +
+          "encoded. Example: http%3A%2F%2Fncicb.nci.nih.gov%2Fxml%2Fowl%2FEVS%2FThesaurus.owl%23C3224.")
+      @QueryParam("subtree_root_id") String subtreeRootId,
+      @ApiParam(value = "Subtree depth.")
+      @QueryParam("max_depth") @DefaultValue("1") int maxDepth,
+      @ApiParam(value = "Page to be returned. Example: 7.")
+      @QueryParam("page") @DefaultValue("1") int page,
+      @ApiParam(value = "Number of results per page. Example: 10.")
+      @QueryParam("page_size") int pageSize) throws CedarException {
 
     CedarRequestContext c = buildAnonymousRequestContext();
 
@@ -98,12 +129,30 @@ public class SearchResource extends AbstractTerminologyServerResource {
   @GET
   @Timed
   @Path("/property_search")
-  public Response propertySearch(@QueryParam("q") @NotEmpty String q,
-                                 @QueryParam("sources") String sources,
-                                 @QueryParam("exact_match") boolean exactMatch,
-                                 @QueryParam("require_definitions") boolean requireDefinitions,
-                                 @QueryParam("page") @DefaultValue("1") int page,
-                                 @QueryParam("page_size") int pageSize) throws CedarException {
+  @ApiOperation(value = "Property search", notes = "Search for properties.", tags = {"Properties"})
+  @ApiResponses({
+      @ApiResponse(code = 200, message = "Successful operation"),
+      @ApiResponse(code = 400, message = "Bad request"),
+      @ApiResponse(code = 401, message = "Unauthorized"),
+      @ApiResponse(code = 403, message = "Forbidden"),
+      @ApiResponse(code = 404, message = "Not found"),
+      @ApiResponse(code = 500, message = "Internal server error")
+  })
+  public Response propertySearch(
+      @ApiParam(value = "Search query. Example: title.", required = true)
+      @QueryParam("q") @NotEmpty String q,
+      @ApiParam(value = "Comma-separated list of target ontologies. Example: 'ontologies=BIBFRAME'. By default, all " +
+          "BioPortal ontologies and value sets are considered.")
+      @QueryParam("sources") String sources,
+      @ApiParam(value = "Restricts results only to the exact matches of the query in the property id, label, or the " +
+          "generated label (a label, auto-generated from the id). Default: false.")
+      @QueryParam("exact_match") boolean exactMatch,
+      @ApiParam(value = "Filter results only to those that include definitions.")
+      @QueryParam("require_definitions") boolean requireDefinitions,
+      @ApiParam(value = "Page to be returned. Example: 7.")
+      @QueryParam("page") @DefaultValue("1") int page,
+      @ApiParam(value = "Number of results per page. Example: 10.")
+      @QueryParam("page_size") int pageSize) throws CedarException {
 
     CedarRequestContext c = buildRequestContext();
     c.must(c.user()).be(LoggedIn);

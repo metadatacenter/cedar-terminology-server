@@ -1,0 +1,8 @@
+{
+  "api_key": {
+    "type": "apiKey",
+    "name": "Authorization",
+    "in": "header",
+    "description": "Your CEDAR API key, using the format 'apiKey <yourApiKey>'"
+  }
+}

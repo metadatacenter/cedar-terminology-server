@@ -3,6 +3,12 @@ package org.metadatacenter.cedar.terminology.resources.bioportal;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectWriter;
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiParam;
+import io.swagger.annotations.ApiResponse;
+import io.swagger.annotations.ApiResponses;
+import io.swagger.annotations.Authorization;
 import org.metadatacenter.cedar.cache.Cache;
 import org.metadatacenter.cedar.terminology.resources.AbstractTerminologyServerResource;
 import org.metadatacenter.config.CedarConfig;
@@ -29,6 +35,7 @@ import static org.metadatacenter.rest.assertion.GenericAssertions.LoggedIn;
 
 @Path("/bioportal")
 @Produces(MediaType.APPLICATION_JSON)
+@Api(value = "/bioportal", tags = "Classes", authorizations = {@Authorization("api_key")})
 public class ClassResource extends AbstractTerminologyServerResource {
 
   public ClassResource(CedarConfig cedarConfig) {
@@ -37,7 +44,18 @@ public class ClassResource extends AbstractTerminologyServerResource {
 
   @POST
   @Path("ontologies/{ontology}/classes")
-  public Response createClass(@PathParam("ontology") String ontology) throws CedarException {
+  @ApiOperation(value = "Create class", notes = "Create a provisional class.")
+  @ApiResponses({
+      @ApiResponse(code = 204, message = "Successful operation (no content)"),
+      @ApiResponse(code = 400, message = "Bad request"),
+      @ApiResponse(code = 401, message = "Unauthorized"),
+      @ApiResponse(code = 403, message = "Forbidden"),
+      @ApiResponse(code = 404, message = "Not found"),
+      @ApiResponse(code = 500, message = "Internal server error")
+  })
+  public Response createClass(
+      @ApiParam(value = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
+      @PathParam("ontology") String ontology) throws CedarException {
     CedarRequestContext ctx = buildAnonymousRequestContext();
     try {
       OntologyClass c = JsonMapper.MAPPER.convertValue(ctx.request().getRequestBody().asJson(), OntologyClass.class);
@@ -54,7 +72,22 @@ public class ClassResource extends AbstractTerminologyServerResource {
 
   @GET
   @Path("ontologies/{ontology}/classes/{id}")
-  public Response findClass(@PathParam("id") @Encoded String id, @PathParam("ontology") String ontology) throws
+  @ApiOperation(value = "Find class", notes = "Find class (either regular or provisional) by ontology and class id.")
+  @ApiResponses({
+      @ApiResponse(code = 200, message = "Successful operation"),
+      @ApiResponse(code = 400, message = "Bad request"),
+      @ApiResponse(code = 401, message = "Unauthorized"),
+      @ApiResponse(code = 403, message = "Forbidden"),
+      @ApiResponse(code = 404, message = "Not found"),
+      @ApiResponse(code = 500, message = "Internal server error")
+  })
+  public Response findClass(
+      @ApiParam(value = "Class identifier. Examples: http://data.bioontology.org/provisional_classes/" +
+          "4f82a7f0-bbba-0133-b23e-005056010074 (provisional class). " +
+          "http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C3224 (regular class).", required = true)
+      @PathParam("id") @Encoded String id,
+      @ApiParam(value = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
+      @PathParam("ontology") String ontology) throws
       CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
@@ -70,9 +103,23 @@ public class ClassResource extends AbstractTerminologyServerResource {
 
   @GET
   @Path("ontologies/{ontology}/classes")
-  public Response findAllClassesForOntology(@PathParam("ontology") String ontology,
-                                            @QueryParam("page") @DefaultValue("1") int page,
-                                            @QueryParam("pageSize") int pageSize) throws CedarException {
+  @ApiOperation(value = "Get classes",
+      notes = "Get all classes from a specific ontology (including both regular and provisional classes).")
+  @ApiResponses({
+      @ApiResponse(code = 200, message = "Successful operation"),
+      @ApiResponse(code = 400, message = "Bad request"),
+      @ApiResponse(code = 401, message = "Unauthorized"),
+      @ApiResponse(code = 403, message = "Forbidden"),
+      @ApiResponse(code = 404, message = "Not found"),
+      @ApiResponse(code = 500, message = "Internal server error")
+  })
+  public Response findAllClassesForOntology(
+      @ApiParam(value = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
+      @PathParam("ontology") String ontology,
+      @ApiParam(value = "Page to be returned. Example: 7.")
+      @QueryParam("page") @DefaultValue("1") int page,
+      @ApiParam(value = "Number of results per page. Example: 10.")
+      @QueryParam("pageSize") int pageSize) throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
     // If pageSize not defined, set default value
@@ -92,7 +139,21 @@ public class ClassResource extends AbstractTerminologyServerResource {
 
   @GET
   @Path("ontologies/{ontology}/classes/{id}/tree")
-  public Response findClassTree(@PathParam("id") @Encoded String id, @PathParam("ontology") String ontology) throws
+  @ApiOperation(value = "Get class tree", notes = "Get class tree (only for regular classes).")
+  @ApiResponses({
+      @ApiResponse(code = 200, message = "Successful operation"),
+      @ApiResponse(code = 400, message = "Bad request"),
+      @ApiResponse(code = 401, message = "Unauthorized"),
+      @ApiResponse(code = 403, message = "Forbidden"),
+      @ApiResponse(code = 404, message = "Not found"),
+      @ApiResponse(code = 500, message = "Internal server error")
+  })
+  public Response findClassTree(
+      @ApiParam(value = "Class identifier. Example: http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C3224.",
+          required = true)
+      @PathParam("id") @Encoded String id,
+      @ApiParam(value = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
+      @PathParam("ontology") String ontology) throws
       CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
@@ -109,8 +170,25 @@ public class ClassResource extends AbstractTerminologyServerResource {
 
   @GET
   @Path("ontologies/{ontology}/classes/{id}/children")
-  public Response findClassChildren(@PathParam("id") @Encoded String id, @PathParam("ontology") String ontology,
-                                    @QueryParam("page") @DefaultValue("1") int page, @QueryParam("pageSize")
+  @ApiOperation(value = "Get class children", notes = "Get class children (only for regular classes).")
+  @ApiResponses({
+      @ApiResponse(code = 200, message = "Successful operation"),
+      @ApiResponse(code = 400, message = "Bad request"),
+      @ApiResponse(code = 401, message = "Unauthorized"),
+      @ApiResponse(code = 403, message = "Forbidden"),
+      @ApiResponse(code = 404, message = "Not found"),
+      @ApiResponse(code = 500, message = "Internal server error")
+  })
+  public Response findClassChildren(
+      @ApiParam(value = "Class identifier. Example: http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C3224.",
+          required = true)
+      @PathParam("id") @Encoded String id,
+      @ApiParam(value = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
+      @PathParam("ontology") String ontology,
+      @ApiParam(value = "Page to be returned. Example: 7.")
+      @QueryParam("page") @DefaultValue("1") int page,
+      @ApiParam(value = "Number of results per page. Example: 10.")
+      @QueryParam("pageSize")
                                         int pageSize) throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
@@ -132,9 +210,26 @@ public class ClassResource extends AbstractTerminologyServerResource {
 
   @GET
   @Path("ontologies/{ontology}/classes/{id}/descendants")
-  public Response findClassDescendants(@PathParam("id") @Encoded String id, @PathParam("ontology") String ontology,
-                                       @QueryParam("page") @DefaultValue("1") int page,
-                                       @QueryParam("pageSize") int pageSize)
+  @ApiOperation(value = "Get class descendants", notes = "Get class descendants.")
+  @ApiResponses({
+      @ApiResponse(code = 200, message = "Successful operation"),
+      @ApiResponse(code = 400, message = "Bad request"),
+      @ApiResponse(code = 401, message = "Unauthorized"),
+      @ApiResponse(code = 403, message = "Forbidden"),
+      @ApiResponse(code = 404, message = "Not found"),
+      @ApiResponse(code = 500, message = "Internal server error")
+  })
+  public Response findClassDescendants(
+      @ApiParam(value = "Class identifier. Examples: http://data.bioontology.org/provisional_classes/" +
+          "4f82a7f0-bbba-0133-b23e-005056010074 (provisional class). " +
+          "http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C3224 (regular class).", required = true)
+      @PathParam("id") @Encoded String id,
+      @ApiParam(value = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
+      @PathParam("ontology") String ontology,
+      @ApiParam(value = "Page to be returned. Example: 7.")
+      @QueryParam("page") @DefaultValue("1") int page,
+      @ApiParam(value = "Number of results per page. Example: 10.")
+      @QueryParam("pageSize") int pageSize)
       throws CedarException {
     CedarRequestContext ctx = buildAnonymousRequestContext();
     // If pageSize not defined, set default value
@@ -154,7 +249,21 @@ public class ClassResource extends AbstractTerminologyServerResource {
 
   @GET
   @Path("ontologies/{ontology}/classes/{id}/parents")
-  public Response findClassParents(@PathParam("id") @Encoded String id, @PathParam("ontology") String ontology)
+  @ApiOperation(value = "Get class parents", notes = "Get class parents.")
+  @ApiResponses({
+      @ApiResponse(code = 200, message = "Successful operation"),
+      @ApiResponse(code = 400, message = "Bad request"),
+      @ApiResponse(code = 401, message = "Unauthorized"),
+      @ApiResponse(code = 403, message = "Forbidden"),
+      @ApiResponse(code = 404, message = "Not found"),
+      @ApiResponse(code = 500, message = "Internal server error")
+  })
+  public Response findClassParents(
+      @ApiParam(value = "Class identifier. Example: http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C3224.",
+          required = true)
+      @PathParam("id") @Encoded String id,
+      @ApiParam(value = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
+      @PathParam("ontology") String ontology)
       throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
@@ -170,8 +279,21 @@ public class ClassResource extends AbstractTerminologyServerResource {
 
   @GET
   @Path("classes/provisional")
-  public Response findAllProvisionalClasses(@QueryParam("page") @DefaultValue("1") int page,
-                                            @QueryParam("pageSize") int pageSize) throws CedarException {
+  @ApiOperation(value = "Get provisional classes",
+      notes = "Get provisional classes (including provisional value sets and provisional values).")
+  @ApiResponses({
+      @ApiResponse(code = 200, message = "Successful operation"),
+      @ApiResponse(code = 400, message = "Bad request"),
+      @ApiResponse(code = 401, message = "Unauthorized"),
+      @ApiResponse(code = 403, message = "Forbidden"),
+      @ApiResponse(code = 404, message = "Not found"),
+      @ApiResponse(code = 500, message = "Internal server error")
+  })
+  public Response findAllProvisionalClasses(
+      @ApiParam(value = "Page to be returned. Example: 7.")
+      @QueryParam("page") @DefaultValue("1") int page,
+      @ApiParam(value = "Number of results per page. Example: 10.")
+      @QueryParam("pageSize") int pageSize) throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
     // If pageSize not defined, set default value
@@ -193,8 +315,24 @@ public class ClassResource extends AbstractTerminologyServerResource {
 
   @GET
   @Path("ontologies/{ontology}/classes/provisional")
-  public Response findAllProvisionalClassesForOntology(@PathParam("ontology") String ontology, @QueryParam
-      ("page") @DefaultValue("1") int page, @QueryParam("pageSize") int pageSize) throws CedarException {
+  @ApiOperation(value = "Get all provisional classes in a particular ontology",
+      notes = "Get all provisional classes in a particular ontology (including provisional value sets and " +
+          "provisional values)")
+  @ApiResponses({
+      @ApiResponse(code = 200, message = "Successful operation"),
+      @ApiResponse(code = 400, message = "Bad request"),
+      @ApiResponse(code = 401, message = "Unauthorized"),
+      @ApiResponse(code = 403, message = "Forbidden"),
+      @ApiResponse(code = 404, message = "Not found"),
+      @ApiResponse(code = 500, message = "Internal server error")
+  })
+  public Response findAllProvisionalClassesForOntology(
+      @ApiParam(value = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
+      @PathParam("ontology") String ontology,
+      @ApiParam(value = "Page to be returned. Example: 7.") @QueryParam
+      ("page") @DefaultValue("1") int page,
+      @ApiParam(value = "Number of results per page. Example: 10.")
+      @QueryParam("pageSize") int pageSize) throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
     // If pageSize not defined, set default value
@@ -217,7 +355,19 @@ public class ClassResource extends AbstractTerminologyServerResource {
 
   @PUT
   @Path("classes/{id}")
-  public Response updateClass(@PathParam("id") String id) throws CedarException {
+  @ApiOperation(value = "Update a provisional class", notes = "Update a provisional class.")
+  @ApiResponses({
+      @ApiResponse(code = 204, message = "Successful operation (no content)"),
+      @ApiResponse(code = 400, message = "Bad request"),
+      @ApiResponse(code = 401, message = "Unauthorized"),
+      @ApiResponse(code = 403, message = "Forbidden"),
+      @ApiResponse(code = 404, message = "Not found"),
+      @ApiResponse(code = 500, message = "Internal server error")
+  })
+  public Response updateClass(
+      @ApiParam(value = "Provisional class identifier. Example: http://data.bioontology.org/provisional_classes/" +
+          "4f82a7f0-bbba-0133-b23e-005056010074.", required = true)
+      @PathParam("id") String id) throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
     try {
@@ -234,7 +384,19 @@ public class ClassResource extends AbstractTerminologyServerResource {
 
   @DELETE
   @Path("classes/{id}")
-  public Response deleteClass(@PathParam("id") String id) throws CedarException {
+  @ApiOperation(value = "Delete a provisional class", notes = "Update a provisional class.")
+  @ApiResponses({
+      @ApiResponse(code = 204, message = "Successful operation (no content)"),
+      @ApiResponse(code = 400, message = "Bad request"),
+      @ApiResponse(code = 401, message = "Unauthorized"),
+      @ApiResponse(code = 403, message = "Forbidden"),
+      @ApiResponse(code = 404, message = "Not found"),
+      @ApiResponse(code = 500, message = "Internal server error")
+  })
+  public Response deleteClass(
+      @ApiParam(value = "Provisional class identifier. Example: http://data.bioontology.org/provisional_classes/" +
+          "4f82a7f0-bbba-0133-b23e-005056010074.", required = true)
+      @PathParam("id") String id) throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
     try {

@@ -1,6 +1,12 @@
 package org.metadatacenter.cedar.terminology.resources.bioportal;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiParam;
+import io.swagger.annotations.ApiResponse;
+import io.swagger.annotations.ApiResponses;
+import io.swagger.annotations.Authorization;
 import org.metadatacenter.cedar.cache.Cache;
 import org.metadatacenter.cedar.terminology.resources.AbstractTerminologyServerResource;
 import org.metadatacenter.config.CedarConfig;
@@ -28,6 +34,7 @@ import static org.metadatacenter.rest.assertion.GenericAssertions.LoggedIn;
 
 @Path("/bioportal")
 @Produces(MediaType.APPLICATION_JSON)
+@Api(value = "/bioportal", tags = "Value sets", authorizations = {@Authorization("api_key")})
 public class ValueSetResource extends AbstractTerminologyServerResource {
 
   public ValueSetResource(CedarConfig cedarConfig) {
@@ -36,7 +43,19 @@ public class ValueSetResource extends AbstractTerminologyServerResource {
 
   @POST
   @Path("vs-collections/{vs_collection}/value-sets")
-  public Response createValueSet(@PathParam("vs_collection") String vsCollection) throws CedarException {
+  @ApiOperation(value = "Create a provisional value set",
+      notes = "Create a provisional value set in a particular value set collection.")
+  @ApiResponses({
+      @ApiResponse(code = 204, message = "Successful operation (no content)"),
+      @ApiResponse(code = 400, message = "Bad request"),
+      @ApiResponse(code = 401, message = "Unauthorized"),
+      @ApiResponse(code = 403, message = "Forbidden"),
+      @ApiResponse(code = 404, message = "Not found"),
+      @ApiResponse(code = 500, message = "Internal server error")
+  })
+  public Response createValueSet(
+      @ApiParam(value = "Value set collection. Example: CEDARVS.", required = true)
+      @PathParam("vs_collection") String vsCollection) throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
     try {
@@ -56,7 +75,22 @@ public class ValueSetResource extends AbstractTerminologyServerResource {
 
   @GET
   @Path("vs-collections/{vs_collection}/value-sets/{id}")
-  public Response findValueSet(@PathParam("id") @Encoded String id, @PathParam("vs_collection") String vsCollection)
+  @ApiOperation(value = "Find value set by id", notes = "Find provisional value set by id (either provisional or " +
+      "regular).")
+  @ApiResponses({
+      @ApiResponse(code = 200, message = "Successful operation"),
+      @ApiResponse(code = 400, message = "Bad request"),
+      @ApiResponse(code = 401, message = "Unauthorized"),
+      @ApiResponse(code = 403, message = "Forbidden"),
+      @ApiResponse(code = 404, message = "Not found"),
+      @ApiResponse(code = 500, message = "Internal server error")
+  })
+  public Response findValueSet(
+      @ApiParam(value = "Provisional value set short identifier. Example: af033050-b04b-0133-981f-005056010074",
+          required = true)
+      @PathParam("id") @Encoded String id,
+      @ApiParam(value = "Value set collection. Example: CEDARVS.", required = true)
+      @PathParam("vs_collection") String vsCollection)
       throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
@@ -72,9 +106,23 @@ public class ValueSetResource extends AbstractTerminologyServerResource {
 
   @GET
   @Path("vs-collections/{vs_collection}/value-sets")
-  public Response findValueSetsByVsCollection(@PathParam("vs_collection") String vsCollection,
-                                              @QueryParam("page") @DefaultValue("1") int page,
-                                              @QueryParam("pageSize") int pageSize) throws CedarException {
+  @ApiOperation(value = "Get all value sets in a value set collection",
+      notes = "Get all value sets in a value set collection.")
+  @ApiResponses({
+      @ApiResponse(code = 200, message = "Successful operation"),
+      @ApiResponse(code = 400, message = "Bad request"),
+      @ApiResponse(code = 401, message = "Unauthorized"),
+      @ApiResponse(code = 403, message = "Forbidden"),
+      @ApiResponse(code = 404, message = "Not found"),
+      @ApiResponse(code = 500, message = "Internal server error")
+  })
+  public Response findValueSetsByVsCollection(
+      @ApiParam(value = "Value set collection. Example: CEDARVS.", required = true)
+      @PathParam("vs_collection") String vsCollection,
+      @ApiParam(value = "Page to be returned. Example: 7.")
+      @QueryParam("page") @DefaultValue("1") int page,
+      @ApiParam(value = "Number of results per page. Example: 10.")
+      @QueryParam("pageSize") int pageSize) throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
     // If pageSize not defined, set default value
@@ -97,8 +145,21 @@ public class ValueSetResource extends AbstractTerminologyServerResource {
 
   @GET
   @Path("vs-collections/{vs_collection}/values/{id}/value-set")
-  public Response findValueSetByValue(@PathParam("id") @Encoded String id,
-                                      @PathParam("vs_collection") String vsCollection) throws CedarException {
+  @ApiOperation(value = "Find the value set that contains a particular value",
+      notes = "Find the value set that contains a particular value.")
+  @ApiResponses({
+      @ApiResponse(code = 200, message = "Successful operation"),
+      @ApiResponse(code = 400, message = "Bad request"),
+      @ApiResponse(code = 401, message = "Unauthorized"),
+      @ApiResponse(code = 403, message = "Forbidden"),
+      @ApiResponse(code = 404, message = "Not found"),
+      @ApiResponse(code = 500, message = "Internal server error")
+  })
+  public Response findValueSetByValue(
+      @ApiParam(value = "Value identifier. Example: 42f22880-b04b-0133-848f-005056010073", required = true)
+      @PathParam("id") @Encoded String id,
+      @ApiParam(value = "Value set collection. Example: CEDARVS.", required = true)
+      @PathParam("vs_collection") String vsCollection) throws CedarException {
     try {
       ValueSet vs = terminologyService.findValueSetByValue(id, vsCollection, apiKey);
       return Response.ok().entity(JsonMapper.MAPPER.valueToTree(vs)).build();
@@ -111,7 +172,21 @@ public class ValueSetResource extends AbstractTerminologyServerResource {
 
   @GET
   @Path("vs-collections/{vs_collection}/value-sets/{id}/tree")
-  public Response findValueSetTree(@PathParam("id") @Encoded String id, @PathParam("vs_collection") String vsCollection)
+  @ApiOperation(value = "Get value set tree", notes = "Get value set tree (only for regular value sets).")
+  @ApiResponses({
+      @ApiResponse(code = 200, message = "Successful operation"),
+      @ApiResponse(code = 400, message = "Bad request"),
+      @ApiResponse(code = 401, message = "Unauthorized"),
+      @ApiResponse(code = 403, message = "Forbidden"),
+      @ApiResponse(code = 404, message = "Not found"),
+      @ApiResponse(code = 500, message = "Internal server error")
+  })
+  public Response findValueSetTree(
+      @ApiParam(value = "Provisional value set short identifier. Example: af033050-b04b-0133-981f-005056010074",
+          required = true)
+      @PathParam("id") @Encoded String id,
+      @ApiParam(value = "Value set collection. Example: CEDARVS.", required = true)
+      @PathParam("vs_collection") String vsCollection)
       throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
@@ -127,6 +202,15 @@ public class ValueSetResource extends AbstractTerminologyServerResource {
 
   @GET
   @Path("value-sets")
+  @ApiOperation(value = "Find all value sets", notes = "Find all value sets.")
+  @ApiResponses({
+      @ApiResponse(code = 200, message = "Successful operation"),
+      @ApiResponse(code = 400, message = "Bad request"),
+      @ApiResponse(code = 401, message = "Unauthorized"),
+      @ApiResponse(code = 403, message = "Forbidden"),
+      @ApiResponse(code = 404, message = "Not found"),
+      @ApiResponse(code = 500, message = "Internal server error")
+  })
   public Response findAllValueSets() throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
@@ -142,7 +226,19 @@ public class ValueSetResource extends AbstractTerminologyServerResource {
 
   @PUT
   @Path("value-sets/{id}")
-  public Response updateValueSet(@PathParam("id") String id) throws CedarException {
+  @ApiOperation(value = "Update a provisional value set", notes = "Update a provisional value set.")
+  @ApiResponses({
+      @ApiResponse(code = 204, message = "Successful operation (no content)"),
+      @ApiResponse(code = 400, message = "Bad request"),
+      @ApiResponse(code = 401, message = "Unauthorized"),
+      @ApiResponse(code = 403, message = "Forbidden"),
+      @ApiResponse(code = 404, message = "Not found"),
+      @ApiResponse(code = 500, message = "Internal server error")
+  })
+  public Response updateValueSet(
+      @ApiParam(value = "Provisional value set short identifier. Example: af033050-b04b-0133-981f-005056010074",
+          required = true)
+      @PathParam("id") String id) throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
     try {
@@ -158,7 +254,19 @@ public class ValueSetResource extends AbstractTerminologyServerResource {
 
   @DELETE
   @Path("value-sets/{id}")
-  public Response deleteValueSet(@PathParam("id") String id) throws CedarException {
+  @ApiOperation(value = "Delete a provisional value set", notes = "Update a provisional value set.")
+  @ApiResponses({
+      @ApiResponse(code = 204, message = "Successful operation (no content)"),
+      @ApiResponse(code = 400, message = "Bad request"),
+      @ApiResponse(code = 401, message = "Unauthorized"),
+      @ApiResponse(code = 403, message = "Forbidden"),
+      @ApiResponse(code = 404, message = "Not found"),
+      @ApiResponse(code = 500, message = "Internal server error")
+  })
+  public Response deleteValueSet(
+      @ApiParam(value = "Provisional value set short identifier. Example: af033050-b04b-0133-981f-005056010074",
+          required = true)
+      @PathParam("id") String id) throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
     try {
