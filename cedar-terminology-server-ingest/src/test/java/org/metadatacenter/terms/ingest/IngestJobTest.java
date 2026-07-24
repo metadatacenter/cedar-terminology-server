@@ -156,6 +156,46 @@ public class IngestJobTest {
     assertTrue(catalog.resolveLatest("RESTRICTED").isEmpty());
   }
 
+  @Test
+  public void ingestAllSkipsFailingSubmission() throws Exception {
+    SubmissionSource flaky = new SubmissionSource() {
+      @Override
+      public OntologyAccess accessInfo(String acronym) {
+        return new OntologyAccess("public", null);
+      }
+
+      @Override
+      public List<Submission> listSubmissions(String acronym) {
+        return List.of(new Submission(1, "v1", "2024-01-01", "OWL"),
+            new Submission(2, "v2", "2025-01-01", "OWL"));
+      }
+
+      @Override
+      public Submission latestSubmission(String acronym) {
+        return new Submission(2, "v2", "2025-01-01", "OWL");
+      }
+
+      @Override
+      public Path download(String acronym, int submissionId, Path targetDir) throws IOException {
+        if (submissionId == 1) {
+          throw new IOException("simulated download failure");
+        }
+        Files.createDirectories(targetDir);
+        Path dest = targetDir.resolve("source.owl");
+        Files.copy(sourceOwl, dest, StandardCopyOption.REPLACE_EXISTING);
+        return dest;
+      }
+    };
+
+    IngestJob job = new IngestJob(flaky);
+    List<IngestJob.IngestResult> results = job.ingestAll(catalog, "EX", tempDir.resolve("snapshots"));
+
+    assertEquals(1, results.size());                 // submission 1 failed and was skipped
+    assertEquals(2, results.get(0).submissionId());
+    assertEquals(1, catalog.listSnapshots("EX").size());
+    assertEquals("v2", catalog.resolveLatest("EX").orElseThrow().declaredVersion()); // latest = the good one
+  }
+
   private static void buildOntology(Path file) throws Exception {
     OWLOntologyManager m = OWLManager.createOWLOntologyManager();
     OWLDataFactory df = m.getOWLDataFactory();

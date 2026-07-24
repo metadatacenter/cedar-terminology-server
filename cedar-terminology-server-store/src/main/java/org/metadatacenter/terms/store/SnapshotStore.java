@@ -75,7 +75,6 @@ public class SnapshotStore implements AutoCloseable {
           CREATE TABLE IF NOT EXISTS closure (
             ancestor_id   INTEGER NOT NULL,
             descendant_id INTEGER NOT NULL,
-            depth         INTEGER,
             PRIMARY KEY (ancestor_id, descendant_id)
           ) WITHOUT ROWID""");
       s.executeUpdate("CREATE INDEX IF NOT EXISTS idx_closure_desc ON closure(descendant_id)");
@@ -179,16 +178,19 @@ public class SnapshotStore implements AutoCloseable {
   public void materialize() throws SQLException {
     try (Statement s = connection.createStatement()) {
       s.executeUpdate("DELETE FROM closure");
+      // Cycle-safe: UNION over (ancestor, descendant) pairs terminates once no new pair appears,
+      // even if the asserted hierarchy contains a cycle (a cyclic node ends up as its own
+      // ancestor/descendant, which callers can detect). Depth is not tracked (it was never read and
+      // its ever-increasing values made the recursion non-terminating on cycles).
       s.executeUpdate("""
-          INSERT INTO closure (ancestor_id, descendant_id, depth)
-          WITH RECURSIVE walk(ancestor_id, descendant_id, depth) AS (
-              SELECT parent_id, child_id, 1 FROM edge
+          INSERT INTO closure (ancestor_id, descendant_id)
+          WITH RECURSIVE walk(ancestor_id, descendant_id) AS (
+              SELECT parent_id, child_id FROM edge
             UNION
-              SELECT w.ancestor_id, e.child_id, w.depth + 1
+              SELECT w.ancestor_id, e.child_id
               FROM walk w JOIN edge e ON e.parent_id = w.descendant_id
           )
-          SELECT ancestor_id, descendant_id, MIN(depth)
-          FROM walk GROUP BY ancestor_id, descendant_id""");
+          SELECT ancestor_id, descendant_id FROM walk""");
       s.executeUpdate("DELETE FROM root");
       s.executeUpdate("""
           INSERT INTO root (concept_id)

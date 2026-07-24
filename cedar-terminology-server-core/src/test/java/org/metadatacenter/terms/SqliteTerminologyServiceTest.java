@@ -120,4 +120,16 @@ public class SqliteTerminologyServiceTest {
     assertThrows(UnsupportedOperationException.class, () -> service.getClassTree(iri("dog"), EX, false, null));
     assertThrows(UnsupportedOperationException.class, () -> service.findProperty(iri("dog"), EX, null));
   }
+
+  @Test
+  public void getClassChildren_paginates() throws Exception {
+    // mammal has two children: cat, dog (ordered by iri)
+    PagedResults<OntologyClass> page1 = service.getClassChildren(iri("mammal"), EX, 1, 1, null);
+    assertEquals(Integer.valueOf(2), page1.getTotalCount());
+    assertEquals(Integer.valueOf(2), page1.getPageCount());
+    assertEquals(List.of("cat"), ids(page1.getCollection()));
+
+    PagedResults<OntologyClass> page2 = service.getClassChildren(iri("mammal"), EX, 2, 1, null);
+    assertEquals(List.of("dog"), ids(page2.getCollection()));
+  }
 }

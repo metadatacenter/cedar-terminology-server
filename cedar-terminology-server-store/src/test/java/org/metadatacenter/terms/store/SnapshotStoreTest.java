@@ -100,4 +100,59 @@ public class SnapshotStoreTest {
     assertEquals("Dog", store.prefLabel("dog").orElseThrow());
     assertTrue(store.prefLabel("unicorn").isEmpty());
   }
+
+  @Test
+  public void materialize_terminatesOnCycle() throws Exception {
+    try (SnapshotStore s = SnapshotStore.openInMemory()) {
+      s.initSchema();
+      s.addConcept("a", "A");
+      s.addConcept("b", "B");
+      s.addEdge("a", "b", "isa");
+      s.addEdge("b", "a", "isa"); // cycle: a <-> b
+      s.materialize();            // must terminate rather than loop forever
+      assertTrue(s.subsumes("a", "b"));
+      assertTrue(s.subsumes("b", "a"));
+      // a cyclic node is its own ancestor, which is how callers can detect the cycle
+      assertTrue(s.ancestors("a").contains("a"));
+    }
+  }
+
+  @Test
+  public void emptySnapshotIsUsable() throws Exception {
+    try (SnapshotStore s = SnapshotStore.openInMemory()) {
+      s.initSchema();
+      s.materialize();
+      assertTrue(s.roots().isEmpty());
+      assertTrue(s.children("anything").isEmpty());
+      assertFalse(s.contains("anything"));
+    }
+  }
+
+  @Test
+  public void relations_forwardAndReverseLookups() throws Exception {
+    try (SnapshotStore s = SnapshotStore.openInMemory()) {
+      s.initSchema();
+      s.addConcept("drug", "Drug");
+      s.addConcept("aspirin", "Aspirin");
+      s.addRelation("drug", "has_ingredient", "aspirin");
+      s.addRelation("drug", "has_ingredient", "ghost"); // object not a concept -> ignored
+      List<String[]> from = s.relationsFrom("drug");
+      assertEquals(1, from.size());
+      assertEquals("has_ingredient", from.get(0)[0]);
+      assertEquals("aspirin", from.get(0)[1]);
+      assertEquals(List.of("drug"), s.subjectsWith("has_ingredient", "aspirin"));
+    }
+  }
+
+  @Test
+  public void addRelationsBatchIgnoresNonConcepts() throws Exception {
+    try (SnapshotStore s = SnapshotStore.openInMemory()) {
+      s.initSchema();
+      s.addConcept("a", "A");
+      s.addConcept("b", "B");
+      s.addRelations(List.of(new String[]{"a", "rel", "b"}, new String[]{"a", "rel", "missing"}));
+      assertEquals(List.of("a"), s.subjectsWith("rel", "b"));
+      assertTrue(s.subjectsWith("rel", "missing").isEmpty());
+    }
+  }
 }
