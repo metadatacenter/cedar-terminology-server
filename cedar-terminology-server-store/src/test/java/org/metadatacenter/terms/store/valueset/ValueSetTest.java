@@ -110,6 +110,34 @@ public class ValueSetTest {
   }
 
   @Test
+  public void diffDescendantsAcrossVersions() throws Exception {
+    // v2 of the ontology: carcinoma is gone, sarcoma is added under cancer.
+    Path v2 = tempDir.resolve("snap2.sqlite");
+    try (SnapshotStore s = SnapshotStore.openFile(v2.toString())) {
+      s.initSchema();
+      for (String c : new String[]{"disease", "cancer", "melanoma", "sarcoma"}) {
+        s.addConcept(B + c, c);
+      }
+      s.addEdge(B + "cancer", B + "disease", "isa");
+      s.addEdge(B + "melanoma", B + "cancer", "isa");
+      s.addEdge(B + "sarcoma", B + "cancer", "isa");
+      s.materialize();
+    }
+    catalog.addSnapshot(new CatalogStore.SnapshotInfo("v2", "EX", "2.0", "2026-01-01", "2026-01-01T00:00:00Z",
+        "OWL", "subsumption", 4, 3, v2.toString(), "v2", "public"));
+
+    try (ValueSetExpander expander = new ValueSetExpander(catalog)) {
+      ValueSetDiff d = expander.diff(
+          ValueSetDefinition.descendants(V1, B + "cancer", false),
+          ValueSetDefinition.descendants("v2", B + "cancer", false));
+      assertEquals(2, d.fromCount()); // melanoma, carcinoma
+      assertEquals(2, d.toCount());   // melanoma, sarcoma
+      assertEquals(List.of(B + "sarcoma"), d.added());
+      assertEquals(List.of(B + "carcinoma"), d.removed());
+    }
+  }
+
+  @Test
   public void definitionRoundTrips() throws Exception {
     valueSets.upsertValueSet("vs:x", "X", null);
     valueSets.putVersion("vs:x", "1", ValueSetDefinition.relation(V1, HAS_INGREDIENT, B + "aspirin"));

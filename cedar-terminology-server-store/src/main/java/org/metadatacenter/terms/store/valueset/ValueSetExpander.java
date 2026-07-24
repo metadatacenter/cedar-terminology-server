@@ -56,6 +56,28 @@ public class ValueSetExpander implements AutoCloseable {
     };
   }
 
+  /**
+   * Compares the membership of two definitions (e.g. one intensional rule pinned to two snapshot
+   * versions), reporting concepts added and removed.
+   */
+  public ValueSetDiff diff(ValueSetDefinition from, ValueSetDefinition to) throws SQLException {
+    java.util.Set<String> before = new java.util.TreeSet<>(expand(from));
+    java.util.Set<String> after = new java.util.TreeSet<>(expand(to));
+    List<String> added = new ArrayList<>();
+    for (String iri : after) {
+      if (!before.contains(iri)) {
+        added.add(iri);
+      }
+    }
+    List<String> removed = new ArrayList<>();
+    for (String iri : before) {
+      if (!after.contains(iri)) {
+        removed.add(iri);
+      }
+    }
+    return new ValueSetDiff(before.size(), after.size(), added, removed);
+  }
+
   private SnapshotStore snapshot(String versionId) throws SQLException {
     SnapshotStore cached = openByVersion.get(versionId);
     if (cached != null) {
@@ -82,24 +104,43 @@ public class ValueSetExpander implements AutoCloseable {
    * Usage:
    *   ValueSetExpander &lt;catalogDb&gt; descendants &lt;versionId&gt; &lt;rootIri&gt; [includeRoot]
    *   ValueSetExpander &lt;catalogDb&gt; relation    &lt;versionId&gt; &lt;predicate&gt; &lt;objectIri&gt;
-   * Prints the member count and a sample.
+   *   ValueSetExpander &lt;catalogDb&gt; diff-descendants &lt;versionA&gt; &lt;versionB&gt; &lt;rootIri&gt;
+   * Prints member counts / diff summary and a sample.
    */
   public static void main(String[] args) throws Exception {
     if (args.length < 3) {
       System.err.println("Usage: ValueSetExpander <catalogDb> descendants <versionId> <rootIri> [includeRoot]");
       System.err.println("       ValueSetExpander <catalogDb> relation <versionId> <predicate> <objectIri>");
+      System.err.println("       ValueSetExpander <catalogDb> diff-descendants <versionA> <versionB> <rootIri>");
       System.exit(2);
     }
-    ValueSetDefinition def = switch (args[1]) {
-      case "descendants" -> ValueSetDefinition.descendants(args[2], args[3], args.length > 4 && Boolean.parseBoolean(args[4]));
-      case "relation" -> ValueSetDefinition.relation(args[2], args[3], args[4]);
-      default -> throw new IllegalArgumentException("Unknown kind: " + args[1]);
-    };
     try (CatalogStore catalog = CatalogStore.openFile(args[0]);
          ValueSetExpander expander = new ValueSetExpander(catalog)) {
-      List<String> members = expander.expand(def);
-      System.out.println("members: " + members.size());
-      members.stream().limit(10).forEach(m -> System.out.println("  " + m));
+      if ("diff-descendants".equals(args[1])) {
+        ValueSetDiff d = expander.diff(
+            ValueSetDefinition.descendants(args[2], args[4], false),
+            ValueSetDefinition.descendants(args[3], args[4], false));
+        System.out.println(d.summary());
+        sample("added", d.added());
+        sample("removed", d.removed());
+      } else {
+        ValueSetDefinition def = switch (args[1]) {
+          case "descendants" -> ValueSetDefinition.descendants(args[2], args[3],
+              args.length > 4 && Boolean.parseBoolean(args[4]));
+          case "relation" -> ValueSetDefinition.relation(args[2], args[3], args[4]);
+          default -> throw new IllegalArgumentException("Unknown kind: " + args[1]);
+        };
+        List<String> members = expander.expand(def);
+        System.out.println("members: " + members.size());
+        members.stream().limit(10).forEach(m -> System.out.println("  " + m));
+      }
+    }
+  }
+
+  private static void sample(String label, List<String> items) {
+    if (!items.isEmpty()) {
+      System.out.println(label + " (" + items.size() + ", showing up to 10):");
+      items.stream().limit(10).forEach(m -> System.out.println("  " + m));
     }
   }
 }
