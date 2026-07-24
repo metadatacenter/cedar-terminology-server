@@ -74,7 +74,7 @@ public class SnapshotValidatorTest {
     String ex = "http://ex/rel/";
     IRI isa = IRI.create(ex + "isa");
     IRI prefLabel = IRI.create("http://www.w3.org/2004/02/skos/core#prefLabel");
-    HierarchyConfig cfg = new HierarchyConfig(Set.of(isa), Set.of(), prefLabel, "subsumption");
+    HierarchyConfig cfg = new HierarchyConfig(Set.of(isa), Set.of(), prefLabel, "subsumption", false);
 
     OWLOntologyManager m = OWLManager.createOWLOntologyManager();
     OWLDataFactory df = m.getOWLDataFactory();

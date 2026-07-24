@@ -80,6 +80,16 @@ public class SnapshotStore implements AutoCloseable {
           ) WITHOUT ROWID""");
       s.executeUpdate("CREATE INDEX IF NOT EXISTS idx_closure_desc ON closure(descendant_id)");
       s.executeUpdate("CREATE TABLE IF NOT EXISTS root (concept_id INTEGER PRIMARY KEY)");
+      // Level-1 typed relations: non-hierarchical object relations retained for compositional
+      // vocabularies (e.g. RxNorm has_ingredient / has_dose_form), for filtered expansion.
+      s.executeUpdate("""
+          CREATE TABLE IF NOT EXISTS relation (
+            subject_id INTEGER NOT NULL,
+            predicate  TEXT NOT NULL,
+            object_id  INTEGER NOT NULL,
+            PRIMARY KEY (subject_id, predicate, object_id)
+          ) WITHOUT ROWID""");
+      s.executeUpdate("CREATE INDEX IF NOT EXISTS idx_relation_obj ON relation(predicate, object_id)");
     }
   }
 
@@ -120,6 +130,45 @@ public class SnapshotStore implements AutoCloseable {
       ps.setString(2, childIri);
       ps.setString(3, parentIri);
       ps.executeUpdate();
+    }
+  }
+
+  /**
+   * Adds a non-hierarchical typed relation {@code subject --predicate--> object} (e.g.
+   * {@code drug has_ingredient ingredient}). Both endpoints must already be concepts; a relation to
+   * a non-concept is silently ignored.
+   */
+  public void addRelation(String subjectIri, String predicate, String objectIri) throws SQLException {
+    try (PreparedStatement ps = connection.prepareStatement("""
+        INSERT OR IGNORE INTO relation (subject_id, predicate, object_id)
+        SELECT s.id, ?, o.id FROM concept s, concept o WHERE s.iri = ? AND o.iri = ?""")) {
+      ps.setString(1, predicate);
+      ps.setString(2, subjectIri);
+      ps.setString(3, objectIri);
+      ps.executeUpdate();
+    }
+  }
+
+  /**
+   * Bulk-adds typed relations, each as {@code [subjectIri, predicate, objectIri]}, in a single
+   * transaction. Relations whose endpoints are not both concepts are ignored.
+   */
+  public void addRelations(List<String[]> triples) throws SQLException {
+    boolean autoCommit = connection.getAutoCommit();
+    connection.setAutoCommit(false);
+    try (PreparedStatement ps = connection.prepareStatement("""
+        INSERT OR IGNORE INTO relation (subject_id, predicate, object_id)
+        SELECT s.id, ?, o.id FROM concept s, concept o WHERE s.iri = ? AND o.iri = ?""")) {
+      for (String[] t : triples) {
+        ps.setString(1, t[1]);
+        ps.setString(2, t[0]);
+        ps.setString(3, t[2]);
+        ps.addBatch();
+      }
+      ps.executeBatch();
+      connection.commit();
+    } finally {
+      connection.setAutoCommit(autoCommit);
     }
   }
 
@@ -219,6 +268,43 @@ public class SnapshotStore implements AutoCloseable {
       ps.setString(2, descendantIri);
       try (ResultSet rs = ps.executeQuery()) {
         return rs.next();
+      }
+    }
+  }
+
+  /** Typed relations from a concept, as {@code [predicate, objectIri]} pairs. */
+  public List<String[]> relationsFrom(String subjectIri) throws SQLException {
+    try (PreparedStatement ps = connection.prepareStatement("""
+        SELECT r.predicate, o.iri FROM relation r
+        JOIN concept s ON s.id = r.subject_id
+        JOIN concept o ON o.id = r.object_id
+        WHERE s.iri = ? ORDER BY r.predicate, o.iri""")) {
+      ps.setString(1, subjectIri);
+      try (ResultSet rs = ps.executeQuery()) {
+        List<String[]> out = new ArrayList<>();
+        while (rs.next()) {
+          out.add(new String[]{rs.getString(1), rs.getString(2)});
+        }
+        return out;
+      }
+    }
+  }
+
+  /** Subjects related to an object by a predicate (reverse: e.g. drugs whose has_ingredient is X). */
+  public List<String> subjectsWith(String predicate, String objectIri) throws SQLException {
+    try (PreparedStatement ps = connection.prepareStatement("""
+        SELECT s.iri FROM relation r
+        JOIN concept s ON s.id = r.subject_id
+        JOIN concept o ON o.id = r.object_id
+        WHERE r.predicate = ? AND o.iri = ? ORDER BY s.iri""")) {
+      ps.setString(1, predicate);
+      ps.setString(2, objectIri);
+      try (ResultSet rs = ps.executeQuery()) {
+        List<String> out = new ArrayList<>();
+        while (rs.next()) {
+          out.add(rs.getString(1));
+        }
+        return out;
       }
     }
   }

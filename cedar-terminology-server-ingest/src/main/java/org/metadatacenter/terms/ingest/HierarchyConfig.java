@@ -19,7 +19,8 @@ public record HierarchyConfig(
     Set<IRI> broaderPredicates,
     Set<IRI> narrowerPredicates,
     IRI labelPredicate,
-    String hierarchyStatus) {
+    String hierarchyStatus,
+    boolean retainRelations) {
 
   private static final String SKOS = "http://www.w3.org/2004/02/skos/core#";
 
@@ -29,6 +30,7 @@ public record HierarchyConfig(
         Set.of(IRI.create(SKOS + "broader"), IRI.create(SKOS + "broaderTransitive")),
         Set.of(IRI.create(SKOS + "narrower")),
         IRI.create(SKOS + "prefLabel"),
-        "subsumption");
+        "subsumption",
+        false);
   }
 }

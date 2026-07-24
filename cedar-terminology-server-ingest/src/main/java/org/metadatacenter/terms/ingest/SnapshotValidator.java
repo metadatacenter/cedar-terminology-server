@@ -281,7 +281,7 @@ public class SnapshotValidator {
       Report r;
       if (!broader.isEmpty()) {
         HierarchyConfig config = new HierarchyConfig(broader, Set.of(),
-            IRI.create("http://www.w3.org/2004/02/skos/core#prefLabel"), "subsumption");
+            IRI.create("http://www.w3.org/2004/02/skos/core#prefLabel"), "subsumption", false);
         r = v.validateFiles(source, store, config);
       } else if (skos) {
         r = v.validateSkosFiles(source, store);

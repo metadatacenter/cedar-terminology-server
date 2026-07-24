@@ -16,9 +16,11 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -61,6 +63,7 @@ public class RelationHierarchyExtractor implements HierarchyExtractor {
     Set<String> deprecated = new HashSet<>();
     Map<String, String> replacedBy = new HashMap<>();
     Set<String> edges = new LinkedHashSet<>(); // "child\tparent"
+    List<String[]> relations = new ArrayList<>(); // [subject, predicate, object] when retainRelations
 
     for (OWLAnnotationAssertionAxiom ax : ont.getAxioms(AxiomType.ANNOTATION_ASSERTION)) {
       if (!(ax.getSubject() instanceof IRI subject)) {
@@ -91,6 +94,10 @@ public class RelationHierarchyExtractor implements HierarchyExtractor {
         if (value instanceof OWLLiteral literal && literal.isBoolean() && literal.parseBoolean()) {
           deprecated.add(s);
         }
+      } else if (config.retainRelations() && value instanceof IRI object) {
+        // Any other IRI-valued predicate is a candidate Level-1 relation (kept below if both
+        // endpoints turn out to be concepts).
+        relations.add(new String[]{s, prop.toString(), object.toString()});
       }
     }
 
@@ -106,6 +113,8 @@ public class RelationHierarchyExtractor implements HierarchyExtractor {
         addEdge(edges, concepts, subj, obj);
       } else if (config.narrowerPredicates().contains(prop)) {
         addEdge(edges, concepts, obj, subj);
+      } else if (config.retainRelations()) {
+        relations.add(new String[]{subj, prop.toString(), obj});
       }
     }
 
@@ -128,6 +137,17 @@ public class RelationHierarchyExtractor implements HierarchyExtractor {
       int tab = edge.indexOf('\t');
       store.addEdge(edge.substring(0, tab), edge.substring(tab + 1), "hierarchy");
       edgeCount++;
+    }
+
+    if (config.retainRelations() && !relations.isEmpty()) {
+      List<String[]> kept = new ArrayList<>();
+      for (String[] triple : relations) {
+        if (concepts.contains(triple[0]) && concepts.contains(triple[2])) {
+          kept.add(triple);
+        }
+      }
+      store.addRelations(kept);
+      log.info("Retained {} Level-1 relations (of {} IRI-valued candidates)", kept.size(), relations.size());
     }
 
     store.materialize();
