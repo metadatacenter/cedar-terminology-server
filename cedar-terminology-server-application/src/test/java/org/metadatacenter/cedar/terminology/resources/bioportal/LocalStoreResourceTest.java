@@ -75,6 +75,8 @@ public class LocalStoreResourceTest {
         c.setTag(ONT, CatalogStore.TAG_LATEST, "v1");
       }
 
+      // Override the (empty) cedar-main.yml localStore config for this test. Uses the non-"cedar."
+      // property names the app recognizes, set before the app starts so the local store is enabled.
       System.setProperty("terminologyStore.catalogPath", catalog.toString());
       System.setProperty("terminologyStore.localOntologies", ONT);
     } catch (Exception e) {

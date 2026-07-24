@@ -10,6 +10,7 @@ import org.metadatacenter.cedar.terminology.resources.bioportal.*;
 import org.metadatacenter.cedar.terminology.utils.logging.LogResponseFilter;
 import org.metadatacenter.cedar.util.dw.CedarMicroserviceApplication;
 import org.metadatacenter.config.CedarConfig;
+import org.metadatacenter.config.LocalStoreConfig;
 import org.metadatacenter.model.ServerName;
 import org.metadatacenter.terms.CatalogSnapshotProvider;
 import org.metadatacenter.terms.ITerminologyService;
@@ -30,16 +31,12 @@ public class TerminologyServerApplication extends CedarMicroserviceApplication<T
 
   private static final Logger log = LoggerFactory.getLogger(TerminologyServerApplication.class);
 
-  /** Environment variable holding the path to the local terminology catalog SQLite database. */
-  static final String ENV_CATALOG_PATH = "CEDAR_TERMINOLOGY_CATALOG_PATH";
-  /** Environment variable holding a comma-separated allowlist of acronyms to serve locally. */
-  static final String ENV_LOCAL_ONTOLOGIES = "CEDAR_TERMINOLOGY_LOCAL_ONTOLOGIES";
-  // Note: these system-property names deliberately avoid the "cedar." prefix, which CedarConfig
-  // claims as its Dropwizard config-override namespace (a "cedar.*" property is parsed into the
-  // CedarConfig tree). A colliding name would be misread as an unknown config field.
-  /** System property equivalent of {@link #ENV_CATALOG_PATH} (takes precedence; handy for IDE run configs). */
+  // Optional overrides for the local-store config, primarily for tests and IDE run configs. They
+  // deliberately avoid the "cedar." prefix: CedarConfig claims "cedar.*" system properties as
+  // Dropwizard config overrides and applies them to every config it builds (main, search, rules),
+  // so a "cedar.terminology.*" property breaks the search/rules configs. The declarative source is
+  // terminology.localStore in cedar-main.yml; these properties, when set, take precedence.
   static final String PROP_CATALOG_PATH = "terminologyStore.catalogPath";
-  /** System property equivalent of {@link #ENV_LOCAL_ONTOLOGIES} (takes precedence). */
   static final String PROP_LOCAL_ONTOLOGIES = "terminologyStore.localOntologies";
 
   protected static ITerminologyService terminologyService;
@@ -82,15 +79,17 @@ public class TerminologyServerApplication extends CedarMicroserviceApplication<T
   }
 
   /**
-   * Builds the terminology service. When a local catalog path and a non-empty ontology allowlist
-   * are configured (via environment variables), routed requests for allowlisted, ingested
+   * Builds the terminology service from {@code terminology.localStore} configuration. When a
+   * catalog path and a non-empty ontology list are configured, routed requests for those ingested
    * ontologies are served from the local SQLite store, falling back to BioPortal for everything
    * else. Otherwise, or on any failure opening the catalog, the service is BioPortal-only.
    */
   private ITerminologyService buildTerminologyService(TerminologyService bioPortalService) {
-    String catalogPath = firstNonBlank(System.getProperty(PROP_CATALOG_PATH), System.getenv(ENV_CATALOG_PATH));
-    Set<String> localOntologies = parseAllowlist(
-        firstNonBlank(System.getProperty(PROP_LOCAL_ONTOLOGIES), System.getenv(ENV_LOCAL_ONTOLOGIES)));
+    LocalStoreConfig localStore = cedarConfig.getTerminologyConfig().getLocalStore();
+    String catalogPath = firstNonBlank(System.getProperty(PROP_CATALOG_PATH),
+        localStore == null ? null : localStore.getCatalogPath());
+    Set<String> localOntologies = parseAllowlist(firstNonBlank(System.getProperty(PROP_LOCAL_ONTOLOGIES),
+        localStore == null ? null : localStore.getLocalOntologies()));
     if (catalogPath == null || catalogPath.isBlank() || localOntologies.isEmpty()) {
       log.info("Local terminology store disabled; serving all ontologies via BioPortal");
       return new RoutingTerminologyService(bioPortalService);
