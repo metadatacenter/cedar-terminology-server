@@ -34,6 +34,10 @@ public class TerminologyServerApplication extends CedarMicroserviceApplication<T
   static final String ENV_CATALOG_PATH = "CEDAR_TERMINOLOGY_CATALOG_PATH";
   /** Environment variable holding a comma-separated allowlist of acronyms to serve locally. */
   static final String ENV_LOCAL_ONTOLOGIES = "CEDAR_TERMINOLOGY_LOCAL_ONTOLOGIES";
+  /** System property equivalent of {@link #ENV_CATALOG_PATH} (takes precedence; handy for IDE run configs). */
+  static final String PROP_CATALOG_PATH = "cedar.terminology.catalogPath";
+  /** System property equivalent of {@link #ENV_LOCAL_ONTOLOGIES} (takes precedence). */
+  static final String PROP_LOCAL_ONTOLOGIES = "cedar.terminology.localOntologies";
 
   protected static ITerminologyService terminologyService;
 
@@ -81,8 +85,9 @@ public class TerminologyServerApplication extends CedarMicroserviceApplication<T
    * else. Otherwise, or on any failure opening the catalog, the service is BioPortal-only.
    */
   private ITerminologyService buildTerminologyService(TerminologyService bioPortalService) {
-    String catalogPath = System.getenv(ENV_CATALOG_PATH);
-    Set<String> localOntologies = parseAllowlist(System.getenv(ENV_LOCAL_ONTOLOGIES));
+    String catalogPath = firstNonBlank(System.getProperty(PROP_CATALOG_PATH), System.getenv(ENV_CATALOG_PATH));
+    Set<String> localOntologies = parseAllowlist(
+        firstNonBlank(System.getProperty(PROP_LOCAL_ONTOLOGIES), System.getenv(ENV_LOCAL_ONTOLOGIES)));
     if (catalogPath == null || catalogPath.isBlank() || localOntologies.isEmpty()) {
       log.info("Local terminology store disabled; serving all ontologies via BioPortal");
       return new RoutingTerminologyService(bioPortalService);
@@ -98,6 +103,13 @@ public class TerminologyServerApplication extends CedarMicroserviceApplication<T
           catalogPath, e);
       return new RoutingTerminologyService(bioPortalService);
     }
+  }
+
+  private static String firstNonBlank(String a, String b) {
+    if (a != null && !a.isBlank()) {
+      return a;
+    }
+    return b;
   }
 
   private static Set<String> parseAllowlist(String csv) {
