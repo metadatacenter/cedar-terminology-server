@@ -11,12 +11,13 @@ import org.metadatacenter.cedar.terminology.utils.logging.LogResponseFilter;
 import org.metadatacenter.cedar.util.dw.CedarMicroserviceApplication;
 import org.metadatacenter.config.CedarConfig;
 import org.metadatacenter.model.ServerName;
+import org.metadatacenter.terms.ITerminologyService;
 import org.metadatacenter.terms.TerminologyService;
 import org.metadatacenter.terms.util.HttpClientFactory;
 
 public class TerminologyServerApplication extends CedarMicroserviceApplication<TerminologyServerConfiguration> {
 
-  protected static TerminologyService terminologyService;
+  protected static ITerminologyService terminologyService;
 
   public static void main(String[] args) throws Exception {
     new TerminologyServerApplication().run(args);

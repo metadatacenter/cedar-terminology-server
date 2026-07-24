@@ -29,6 +29,12 @@ public interface ITerminologyService {
                         int page, int pageSize, String apiKey) throws IOException;
 
   /**
+   * CEDAR Integrated Retrieve
+   */
+  PagedResults<SearchResult> integratedRetrieve(ValueConstraints valueConstraints,
+                        int page, int pageSize, String apiKey) throws IOException;
+
+  /**
    * Ontologies
    */
   List<Ontology> findAllOntologies(boolean includeDetails, String apiKey) throws IOException;
