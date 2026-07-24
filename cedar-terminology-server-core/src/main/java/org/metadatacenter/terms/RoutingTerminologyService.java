@@ -14,12 +14,13 @@ import java.util.Optional;
  *
  * This is the seam for the incremental migration away from the BioPortal proxy: an ontology is
  * served locally once it has been ingested and {@link LocalAvailability#isLocal(String)} reports
- * it as available; every other request falls through to the remote backend, so behavior is
- * unchanged until a local backend is wired in.
+ * it as available. Local backends may be partial — a routed call that the local backend answers
+ * with {@link UnsupportedOperationException} falls through to the remote backend, so local coverage
+ * can grow one operation at a time without breaking any request.
  *
  * Only the ontology-scoped hierarchy and lookup operations ("Bucket A") are eligible for local
- * routing. Search operations ("Bucket B") and provisional write operations ("Bucket C") are
- * always sent to the remote backend for now; both are migration decisions deferred to later work.
+ * routing. Search operations ("Bucket B") and provisional write operations ("Bucket C") are always
+ * sent to the remote backend for now; both are migration decisions deferred to later work.
  */
 public class RoutingTerminologyService implements ITerminologyService {
 
@@ -29,6 +30,11 @@ public class RoutingTerminologyService implements ITerminologyService {
   @FunctionalInterface
   public interface LocalAvailability {
     boolean isLocal(String ontology);
+  }
+
+  @FunctionalInterface
+  private interface Call<T> {
+    T apply(ITerminologyService service) throws IOException;
   }
 
   private final ITerminologyService remote;
@@ -51,14 +57,19 @@ public class RoutingTerminologyService implements ITerminologyService {
   }
 
   /**
-   * Returns the backend that should serve a request scoped to {@code ontology}: the local backend
-   * when it is present and reports the ontology as available, otherwise the remote backend.
+   * Serves an ontology-scoped call from the local backend when it is present and reports the
+   * ontology as available, falling back to the remote backend if the local backend is absent or
+   * does not implement the operation.
    */
-  private ITerminologyService route(String ontology) {
+  private <T> T dispatch(String ontology, Call<T> call) throws IOException {
     if (local != null && ontology != null && availability.isLocal(ontology)) {
-      return local;
+      try {
+        return call.apply(local);
+      } catch (UnsupportedOperationException notImplementedLocally) {
+        // Fall through to remote: local coverage is partial by design.
+      }
     }
-    return remote;
+    return call.apply(remote);
   }
 
   /* ---------------------------------------------------------------------------------------------
@@ -107,85 +118,85 @@ public class RoutingTerminologyService implements ITerminologyService {
 
   @Override
   public Ontology findOntology(String id, boolean includeDetails, String apiKey) throws IOException {
-    return route(id).findOntology(id, includeDetails, apiKey);
+    return dispatch(id, s -> s.findOntology(id, includeDetails, apiKey));
   }
 
   @Override
   public List<OntologyClass> getRootClasses(String ontologyId, boolean isFlat, String apiKey) throws IOException {
-    return route(ontologyId).getRootClasses(ontologyId, isFlat, apiKey);
+    return dispatch(ontologyId, s -> s.getRootClasses(ontologyId, isFlat, apiKey));
   }
 
   @Override
   public List<OntologyProperty> getRootProperties(String ontologyId, String apiKey) throws IOException {
-    return route(ontologyId).getRootProperties(ontologyId, apiKey);
+    return dispatch(ontologyId, s -> s.getRootProperties(ontologyId, apiKey));
   }
 
   @Override
   public OntologyClass findRegularClass(String id, String ontology, String apiKey) throws IOException {
-    return route(ontology).findRegularClass(id, ontology, apiKey);
+    return dispatch(ontology, s -> s.findRegularClass(id, ontology, apiKey));
   }
 
   @Override
   public OntologyClass findClass(String id, String ontology, String apiKey) throws IOException {
-    return route(ontology).findClass(id, ontology, apiKey);
+    return dispatch(ontology, s -> s.findClass(id, ontology, apiKey));
   }
 
   @Override
   public PagedResults<OntologyClass> findAllClassesInOntology(String ontology, int page, int pageSize, String apiKey)
       throws IOException {
-    return route(ontology).findAllClassesInOntology(ontology, page, pageSize, apiKey);
+    return dispatch(ontology, s -> s.findAllClassesInOntology(ontology, page, pageSize, apiKey));
   }
 
   @Override
   public List<TreeNode> getClassTree(String id, String ontology, boolean isFlat, String apiKey) throws IOException {
-    return route(ontology).getClassTree(id, ontology, isFlat, apiKey);
+    return dispatch(ontology, s -> s.getClassTree(id, ontology, isFlat, apiKey));
   }
 
   @Override
   public PagedResults<OntologyClass> getClassChildren(String id, String ontology, int page, int pageSize, String apiKey)
       throws IOException {
-    return route(ontology).getClassChildren(id, ontology, page, pageSize, apiKey);
+    return dispatch(ontology, s -> s.getClassChildren(id, ontology, page, pageSize, apiKey));
   }
 
   @Override
   public PagedResults<OntologyClass> getClassDescendants(String id, String ontology, int page, int pageSize,
                                                          String apiKey) throws IOException {
-    return route(ontology).getClassDescendants(id, ontology, page, pageSize, apiKey);
+    return dispatch(ontology, s -> s.getClassDescendants(id, ontology, page, pageSize, apiKey));
   }
 
   @Override
   public List<OntologyClass> getClassParents(String id, String ontology, String apiKey) throws IOException {
-    return route(ontology).getClassParents(id, ontology, apiKey);
+    return dispatch(ontology, s -> s.getClassParents(id, ontology, apiKey));
   }
 
   @Override
   public OntologyProperty findProperty(String id, String ontology, String apiKey) throws IOException {
-    return route(ontology).findProperty(id, ontology, apiKey);
+    return dispatch(ontology, s -> s.findProperty(id, ontology, apiKey));
   }
 
   @Override
   public List<OntologyProperty> findAllPropertiesInOntology(String ontology, String apiKey) throws IOException {
-    return route(ontology).findAllPropertiesInOntology(ontology, apiKey);
+    return dispatch(ontology, s -> s.findAllPropertiesInOntology(ontology, apiKey));
   }
 
   @Override
   public List<TreeNode> getPropertyTree(String id, String ontology, String apiKey) throws IOException {
-    return route(ontology).getPropertyTree(id, ontology, apiKey);
+    return dispatch(ontology, s -> s.getPropertyTree(id, ontology, apiKey));
   }
 
   @Override
   public List<OntologyProperty> getPropertyChildren(String id, String ontology, String apiKey) throws IOException {
-    return route(ontology).getPropertyChildren(id, ontology, apiKey);
+    return dispatch(ontology, s -> s.getPropertyChildren(id, ontology, apiKey));
   }
 
   @Override
   public List<OntologyProperty> getPropertyDescendants(String id, String ontology, String apiKey) throws IOException {
-    return route(ontology).getPropertyDescendants(id, ontology, apiKey);
+    return dispatch(ontology, s -> s.getPropertyDescendants(id, ontology, apiKey));
   }
 
   @Override
   public List<OntologyProperty> getPropertyParents(String id, String ontology, String apiKey) throws IOException {
-    return route(ontology).getPropertyParents(id, ontology, apiKey);
+    return dispatch(ontology, s -> s.getPropertyParents(id, ontology, apiKey));
   }
 
   /* ---------------------------------------------------------------------------------------------
@@ -194,18 +205,18 @@ public class RoutingTerminologyService implements ITerminologyService {
 
   @Override
   public Value findRegularValue(String id, String ontology, String apiKey) throws IOException {
-    return route(ontology).findRegularValue(id, ontology, apiKey);
+    return dispatch(ontology, s -> s.findRegularValue(id, ontology, apiKey));
   }
 
   @Override
   public Value findValue(String id, String ontology, String apiKey) throws IOException {
-    return route(ontology).findValue(id, ontology, apiKey);
+    return dispatch(ontology, s -> s.findValue(id, ontology, apiKey));
   }
 
   @Override
   public PagedResults<Value> findAllValuesInValueSetByValue(String id, String ontology, int page, int pageSize,
                                                             String apiKey) throws IOException {
-    return route(ontology).findAllValuesInValueSetByValue(id, ontology, page, pageSize, apiKey);
+    return dispatch(ontology, s -> s.findAllValuesInValueSetByValue(id, ontology, page, pageSize, apiKey));
   }
 
   /* ---------------------------------------------------------------------------------------------

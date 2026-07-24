@@ -28,6 +28,12 @@ import java.util.Optional;
  */
 public class SnapshotStore implements AutoCloseable {
 
+  /**
+   * A concept row with the fields callers commonly need together: its IRI, preferred label,
+   * obsolete flag, and whether it has any direct children (so a UI can render an expand control).
+   */
+  public record Concept(String iri, String prefLabel, boolean obsolete, boolean hasChildren) {}
+
   private final Connection connection;
 
   private SnapshotStore(Connection connection) {
@@ -212,6 +218,73 @@ public class SnapshotStore implements AutoCloseable {
         out.add(rs.getString(1));
       }
       return out;
+    }
+  }
+
+  /* --------------------------------------------------------------------------------------------
+   * Detail reads — return concept rows (iri + label + obsolete + hasChildren) in one query, so
+   * callers can build richer objects without a per-row follow-up.
+   * ------------------------------------------------------------------------------------------ */
+
+  /** The concept, if present, with its label and hasChildren flag. */
+  public Optional<Concept> get(String iri) throws SQLException {
+    List<Concept> rows = queryConcepts("""
+        SELECT c.iri, c.pref_label, c.obsolete,
+               EXISTS(SELECT 1 FROM edge e WHERE e.parent_id = c.id) AS has_children
+        FROM concept c WHERE c.iri = ?""", iri);
+    return rows.isEmpty() ? Optional.empty() : Optional.of(rows.get(0));
+  }
+
+  /** Direct children as concept rows. */
+  public List<Concept> childrenDetailed(String parentIri) throws SQLException {
+    return queryConcepts("""
+        SELECT c.iri, c.pref_label, c.obsolete,
+               EXISTS(SELECT 1 FROM edge e2 WHERE e2.parent_id = c.id) AS has_children
+        FROM edge e JOIN concept c ON c.id = e.child_id
+        JOIN concept p ON p.id = e.parent_id
+        WHERE p.iri = ? ORDER BY c.iri""", parentIri);
+  }
+
+  /** Direct parents as concept rows. */
+  public List<Concept> parentsDetailed(String childIri) throws SQLException {
+    return queryConcepts("""
+        SELECT p.iri, p.pref_label, p.obsolete,
+               EXISTS(SELECT 1 FROM edge e2 WHERE e2.parent_id = p.id) AS has_children
+        FROM edge e JOIN concept c ON c.id = e.child_id
+        JOIN concept p ON p.id = e.parent_id
+        WHERE c.iri = ? ORDER BY p.iri""", childIri);
+  }
+
+  /** All descendants as concept rows. */
+  public List<Concept> descendantsDetailed(String ancestorIri) throws SQLException {
+    return queryConcepts("""
+        SELECT d.iri, d.pref_label, d.obsolete,
+               EXISTS(SELECT 1 FROM edge e2 WHERE e2.parent_id = d.id) AS has_children
+        FROM closure cl JOIN concept a ON a.id = cl.ancestor_id
+        JOIN concept d ON d.id = cl.descendant_id
+        WHERE a.iri = ? ORDER BY d.iri""", ancestorIri);
+  }
+
+  /** Root concepts as concept rows. */
+  public List<Concept> rootsDetailed() throws SQLException {
+    return queryConcepts("""
+        SELECT c.iri, c.pref_label, c.obsolete,
+               EXISTS(SELECT 1 FROM edge e2 WHERE e2.parent_id = c.id) AS has_children
+        FROM root r JOIN concept c ON c.id = r.concept_id ORDER BY c.iri""", null);
+  }
+
+  private List<Concept> queryConcepts(String sql, String param) throws SQLException {
+    try (PreparedStatement ps = connection.prepareStatement(sql)) {
+      if (param != null) {
+        ps.setString(1, param);
+      }
+      try (ResultSet rs = ps.executeQuery()) {
+        List<Concept> out = new ArrayList<>();
+        while (rs.next()) {
+          out.add(new Concept(rs.getString(1), rs.getString(2), rs.getInt(3) != 0, rs.getInt(4) != 0));
+        }
+        return out;
+      }
     }
   }
 

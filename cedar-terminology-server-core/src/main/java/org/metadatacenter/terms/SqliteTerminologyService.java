@@ -1,0 +1,372 @@
+package org.metadatacenter.terms;
+
+import org.metadatacenter.cedar.terminology.validation.integratedsearch.ValueConstraints;
+import org.metadatacenter.terms.customObjects.PagedResults;
+import org.metadatacenter.terms.domainObjects.*;
+import org.metadatacenter.terms.store.SnapshotStore;
+import org.metadatacenter.terms.util.Util;
+
+import java.io.IOException;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+
+/**
+ * An {@link ITerminologyService} served from local, version-pinned {@link SnapshotStore} snapshots.
+ *
+ * This is a partial implementation: it serves the ontology-scoped class hierarchy and lookup
+ * operations ("Bucket A") that the snapshot store can answer, and throws
+ * {@link UnsupportedOperationException} for everything else. {@link RoutingTerminologyService} is
+ * expected to catch that and fall back to the remote backend, so coverage can grow one operation
+ * at a time without breaking any request.
+ *
+ * A {@link SnapshotProvider} maps an ontology acronym to the {@link SnapshotStore} that currently
+ * serves it (typically its {@code latest} snapshot, resolved via the catalog). An ontology with no
+ * provider entry is not served locally.
+ *
+ * Fidelity note: the snapshot store currently holds hierarchy plus preferred labels, so the
+ * {@link OntologyClass} objects produced here carry id, IRI, prefLabel, ontology, and hasChildren;
+ * definitions, synonyms, and relations are left null until the extractor captures them.
+ */
+public class SqliteTerminologyService implements ITerminologyService {
+
+  /** Resolves the snapshot store that currently serves an ontology, if any. */
+  @FunctionalInterface
+  public interface SnapshotProvider {
+    Optional<SnapshotStore> forOntology(String ontology);
+  }
+
+  private final SnapshotProvider provider;
+
+  public SqliteTerminologyService(SnapshotProvider provider) {
+    this.provider = provider;
+  }
+
+  /** Whether this backend currently serves the given ontology. */
+  public boolean isAvailable(String ontology) {
+    return ontology != null && provider.forOntology(ontology).isPresent();
+  }
+
+  private SnapshotStore store(String ontology) {
+    return provider.forOntology(ontology)
+        .orElseThrow(() -> new UnsupportedOperationException("Ontology not served locally: " + ontology));
+  }
+
+  private OntologyClass toClass(SnapshotStore.Concept c, String ontology) {
+    return new OntologyClass(Util.getShortIdentifier(c.iri()), c.iri(), c.prefLabel(), null, ontology,
+        null, null, null, null, false, null, c.hasChildren());
+  }
+
+  private PagedResults<OntologyClass> paginate(List<SnapshotStore.Concept> rows, String ontology,
+                                               int page, int pageSize) {
+    int total = rows.size();
+    int pageCount = pageSize <= 0 ? 1 : Math.max(1, (int) Math.ceil((double) total / pageSize));
+    int from = pageSize <= 0 ? 0 : Math.max(0, (page - 1) * pageSize);
+    int to = pageSize <= 0 ? total : Math.min(total, from + pageSize);
+    List<OntologyClass> slice = new ArrayList<>();
+    for (int i = from; i < to; i++) {
+      slice.add(toClass(rows.get(i), ontology));
+    }
+    Integer prev = page > 1 ? page - 1 : null;
+    Integer next = page < pageCount ? page + 1 : null;
+    return new PagedResults<>(page, pageCount, pageSize, total, prev, next, slice);
+  }
+
+  private static UnsupportedOperationException unsupported(String op) {
+    return new UnsupportedOperationException("Not served by the local snapshot backend: " + op);
+  }
+
+  /* --------------------------------------------------------------------------------------------
+   * Bucket A — implemented from the snapshot store.
+   * ------------------------------------------------------------------------------------------ */
+
+  @Override
+  public OntologyClass findClass(String id, String ontology, String apiKey) throws IOException {
+    try {
+      return store(ontology).get(id).map(c -> toClass(c, ontology)).orElse(null);
+    } catch (SQLException e) {
+      throw new IOException(e);
+    }
+  }
+
+  @Override
+  public OntologyClass findRegularClass(String id, String ontology, String apiKey) throws IOException {
+    // All classes in a snapshot are "regular" (non-provisional).
+    return findClass(id, ontology, apiKey);
+  }
+
+  @Override
+  public List<OntologyClass> getRootClasses(String ontologyId, boolean isFlat, String apiKey) throws IOException {
+    try {
+      List<OntologyClass> out = new ArrayList<>();
+      for (SnapshotStore.Concept c : store(ontologyId).rootsDetailed()) {
+        out.add(toClass(c, ontologyId));
+      }
+      return out;
+    } catch (SQLException e) {
+      throw new IOException(e);
+    }
+  }
+
+  @Override
+  public PagedResults<OntologyClass> getClassChildren(String id, String ontology, int page, int pageSize,
+                                                      String apiKey) throws IOException {
+    try {
+      return paginate(store(ontology).childrenDetailed(id), ontology, page, pageSize);
+    } catch (SQLException e) {
+      throw new IOException(e);
+    }
+  }
+
+  @Override
+  public PagedResults<OntologyClass> getClassDescendants(String id, String ontology, int page, int pageSize,
+                                                         String apiKey) throws IOException {
+    try {
+      return paginate(store(ontology).descendantsDetailed(id), ontology, page, pageSize);
+    } catch (SQLException e) {
+      throw new IOException(e);
+    }
+  }
+
+  @Override
+  public List<OntologyClass> getClassParents(String id, String ontology, String apiKey) throws IOException {
+    try {
+      List<OntologyClass> out = new ArrayList<>();
+      for (SnapshotStore.Concept c : store(ontology).parentsDetailed(id)) {
+        out.add(toClass(c, ontology));
+      }
+      return out;
+    } catch (SQLException e) {
+      throw new IOException(e);
+    }
+  }
+
+  /* --------------------------------------------------------------------------------------------
+   * Not yet served locally — throw so the router falls back to the remote backend.
+   * ------------------------------------------------------------------------------------------ */
+
+  @Override
+  public List<TreeNode> getClassTree(String id, String ontology, boolean isFlat, String apiKey) {
+    throw unsupported("getClassTree");
+  }
+
+  @Override
+  public Ontology findOntology(String id, boolean includeDetails, String apiKey) {
+    throw unsupported("findOntology");
+  }
+
+  @Override
+  public List<Ontology> findAllOntologies(boolean includeDetails, String apiKey) {
+    throw unsupported("findAllOntologies");
+  }
+
+  @Override
+  public PagedResults<OntologyClass> findAllClassesInOntology(String ontology, int page, int pageSize, String apiKey) {
+    throw unsupported("findAllClassesInOntology");
+  }
+
+  @Override
+  public List<OntologyProperty> getRootProperties(String ontologyId, String apiKey) {
+    throw unsupported("getRootProperties");
+  }
+
+  @Override
+  public OntologyProperty findProperty(String id, String ontology, String apiKey) {
+    throw unsupported("findProperty");
+  }
+
+  @Override
+  public List<OntologyProperty> findAllPropertiesInOntology(String ontology, String apiKey) {
+    throw unsupported("findAllPropertiesInOntology");
+  }
+
+  @Override
+  public List<TreeNode> getPropertyTree(String id, String ontology, String apiKey) {
+    throw unsupported("getPropertyTree");
+  }
+
+  @Override
+  public List<OntologyProperty> getPropertyChildren(String id, String ontology, String apiKey) {
+    throw unsupported("getPropertyChildren");
+  }
+
+  @Override
+  public List<OntologyProperty> getPropertyDescendants(String id, String ontology, String apiKey) {
+    throw unsupported("getPropertyDescendants");
+  }
+
+  @Override
+  public List<OntologyProperty> getPropertyParents(String id, String ontology, String apiKey) {
+    throw unsupported("getPropertyParents");
+  }
+
+  @Override
+  public Value findRegularValue(String id, String ontology, String apiKey) {
+    throw unsupported("findRegularValue");
+  }
+
+  @Override
+  public Value findValue(String id, String ontology, String apiKey) {
+    throw unsupported("findValue");
+  }
+
+  @Override
+  public PagedResults<Value> findAllValuesInValueSetByValue(String id, String ontology, int page, int pageSize,
+                                                            String apiKey) {
+    throw unsupported("findAllValuesInValueSetByValue");
+  }
+
+  @Override
+  public PagedResults<SearchResult> search(String q, List<String> scope, List<String> sources, boolean suggest,
+                                           String source, String subtreeRootId, int maxDepth, int page, int pageSize,
+                                           boolean displayContext, boolean displayLinks, String apiKey,
+                                           List<String> valueSetsIds) {
+    throw unsupported("search");
+  }
+
+  @Override
+  public PagedResults<SearchResult> propertySearch(String q, List<String> sources, boolean exactMatch,
+                                                   boolean requireDefinitions, int page, int pageSize,
+                                                   boolean displayContext, boolean displayLinks, String apiKey) {
+    throw unsupported("propertySearch");
+  }
+
+  @Override
+  public PagedResults<SearchResult> integratedSearch(Optional<String> q, ValueConstraints valueConstraints, int page,
+                                                     int pageSize, String apiKey) {
+    throw unsupported("integratedSearch");
+  }
+
+  @Override
+  public PagedResults<SearchResult> integratedRetrieve(ValueConstraints valueConstraints, int page, int pageSize,
+                                                       String apiKey) {
+    throw unsupported("integratedRetrieve");
+  }
+
+  @Override
+  public OntologyClass createProvisionalClass(OntologyClass c, String apiKey) {
+    throw unsupported("createProvisionalClass");
+  }
+
+  @Override
+  public OntologyClass findProvisionalClass(String id, String apiKey) {
+    throw unsupported("findProvisionalClass");
+  }
+
+  @Override
+  public PagedResults<OntologyClass> findAllProvisionalClasses(String ontology, int page, int pageSize, String apiKey) {
+    throw unsupported("findAllProvisionalClasses");
+  }
+
+  @Override
+  public void updateProvisionalClass(OntologyClass c, String apiKey) {
+    throw unsupported("updateProvisionalClass");
+  }
+
+  @Override
+  public void deleteProvisionalClass(String id, String apiKey) {
+    throw unsupported("deleteProvisionalClass");
+  }
+
+  @Override
+  public Relation createProvisionalRelation(Relation relation, String apiKey) {
+    throw unsupported("createProvisionalRelation");
+  }
+
+  @Override
+  public Relation findProvisionalRelation(String id, String apiKey) {
+    throw unsupported("findProvisionalRelation");
+  }
+
+  @Override
+  public void deleteProvisionalRelation(String id, String apiKey) {
+    throw unsupported("deleteProvisionalRelation");
+  }
+
+  @Override
+  public ValueSet createProvisionalValueSet(ValueSet vs, String apiKey) {
+    throw unsupported("createProvisionalValueSet");
+  }
+
+  @Override
+  public ValueSet findProvisionalValueSet(String id, String apiKey) {
+    throw unsupported("findProvisionalValueSet");
+  }
+
+  @Override
+  public ValueSet findRegularValueSet(String id, String vsCollection, String apiKey) {
+    throw unsupported("findRegularValueSet");
+  }
+
+  @Override
+  public ValueSet findValueSet(String id, String vsCollection, String apiKey) {
+    throw unsupported("findValueSet");
+  }
+
+  @Override
+  public ValueSet findValueSetByValue(String id, String vsCollection, String apiKey) {
+    throw unsupported("findValueSetByValue");
+  }
+
+  @Override
+  public void updateProvisionalValueSet(ValueSet vs, String apiKey) {
+    throw unsupported("updateProvisionalValueSet");
+  }
+
+  @Override
+  public void deleteProvisionalValueSet(String id, String apiKey) {
+    throw unsupported("deleteProvisionalValueSet");
+  }
+
+  @Override
+  public PagedResults<ValueSet> findValueSetsByVsCollection(String vsCollection, int page, int pageSize, String apiKey) {
+    throw unsupported("findValueSetsByVsCollection");
+  }
+
+  @Override
+  public List<ValueSet> findAllValueSets(String apiKey) {
+    throw unsupported("findAllValueSets");
+  }
+
+  @Override
+  public PagedResults<Value> findValuesByValueSet(String vsId, String vsCollection, int page, int pageSize,
+                                                  String apiKey) {
+    throw unsupported("findValuesByValueSet");
+  }
+
+  @Override
+  public List<ValueSetCollection> findAllVSCollections(boolean includeDetails, String apiKey) {
+    throw unsupported("findAllVSCollections");
+  }
+
+  @Override
+  public Value createProvisionalValue(Value v, String apiKey) {
+    throw unsupported("createProvisionalValue");
+  }
+
+  @Override
+  public Value findProvisionalValue(String id, String apiKey) {
+    throw unsupported("findProvisionalValue");
+  }
+
+  @Override
+  public void updateProvisionalValue(Value v, String apiKey) {
+    throw unsupported("updateProvisionalValue");
+  }
+
+  @Override
+  public void deleteProvisionalValue(String id, String apiKey) {
+    throw unsupported("deleteProvisionalValue");
+  }
+
+  @Override
+  public TreeNode getValueTree(String id, String vsCollection, String apiKey) {
+    throw unsupported("getValueTree");
+  }
+
+  @Override
+  public TreeNode getValueSetTree(String id, String vsCollection, String apiKey) {
+    throw unsupported("getValueSetTree");
+  }
+}
