@@ -64,6 +64,11 @@ public class MultiVersionIngestTest {
   private SubmissionSource twoVersionSource() {
     return new SubmissionSource() {
       @Override
+      public OntologyAccess accessInfo(String acronym) {
+        return new OntologyAccess("public", null);
+      }
+
+      @Override
       public List<Submission> listSubmissions(String acronym) {
         return List.of(new Submission(1, "v1", "2024-01-01", "OWL"),
             new Submission(2, "v2", "2025-01-01", "OWL"));

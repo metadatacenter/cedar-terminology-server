@@ -52,6 +52,18 @@ public class BioPortalDownloader implements SubmissionSource {
   }
 
   @Override
+  public OntologyAccess accessInfo(String acronym) throws IOException, InterruptedException {
+    String url = baseUrl + "/ontologies/" + acronym + "?display=viewingRestriction,hasLicense";
+    HttpRequest req = request(url).timeout(Duration.ofSeconds(60)).GET().build();
+    HttpResponse<String> resp = http.send(req, HttpResponse.BodyHandlers.ofString());
+    if (resp.statusCode() / 100 != 2) {
+      throw new IOException("HTTP " + resp.statusCode() + " fetching access info for " + acronym);
+    }
+    JsonNode n = MAPPER.readTree(resp.body());
+    return new OntologyAccess(textOrNull(n, "viewingRestriction"), textOrNull(n, "hasLicense"));
+  }
+
+  @Override
   public List<Submission> listSubmissions(String acronym) throws IOException, InterruptedException {
     String url = baseUrl + "/ontologies/" + acronym
         + "/submissions?display=submissionId,version,released,hasOntologyLanguage";

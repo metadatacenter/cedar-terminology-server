@@ -21,6 +21,7 @@ import java.util.Comparator;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 /**
@@ -69,6 +70,11 @@ public class IngestJobTest {
 
   private SubmissionSource fakeSource() {
     return new SubmissionSource() {
+      @Override
+      public OntologyAccess accessInfo(String acronym) {
+        return new OntologyAccess("public", null);
+      }
+
       @Override
       public List<Submission> listSubmissions(String acronym) {
         return List.of(submission());
@@ -119,6 +125,35 @@ public class IngestJobTest {
     IngestJob job = new IngestJob(fakeSource());
     IngestJob.IngestResult r = job.ingestLatest(catalog, "EX", tempDir.resolve("snapshots"));
     assertEquals(expected, r.versionId());
+  }
+
+  @Test
+  public void refusesRestrictedOntologyWithoutDownloading() throws Exception {
+    SubmissionSource restricted = new SubmissionSource() {
+      @Override
+      public OntologyAccess accessInfo(String acronym) {
+        return new OntologyAccess("private", null);
+      }
+
+      @Override
+      public List<Submission> listSubmissions(String acronym) {
+        return List.of(submission());
+      }
+
+      @Override
+      public Submission latestSubmission(String acronym) {
+        return submission();
+      }
+
+      @Override
+      public Path download(String acronym, int submissionId, Path targetDir) {
+        throw new AssertionError("download must not be called for restricted content");
+      }
+    };
+
+    IngestJob job = new IngestJob(restricted);
+    assertThrows(IOException.class, () -> job.ingestLatest(catalog, "RESTRICTED", tempDir.resolve("snapshots")));
+    assertTrue(catalog.resolveLatest("RESTRICTED").isEmpty());
   }
 
   private static void buildOntology(Path file) throws Exception {

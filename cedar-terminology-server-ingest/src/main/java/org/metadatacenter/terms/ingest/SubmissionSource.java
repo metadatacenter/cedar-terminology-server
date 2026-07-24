@@ -10,6 +10,9 @@ import java.util.List;
  */
 public interface SubmissionSource {
 
+  /** Access metadata (viewing restriction / license) for an ontology, for the licensing guard. */
+  OntologyAccess accessInfo(String acronym) throws IOException, InterruptedException;
+
   /** All submissions (versions) for an ontology, in the source's order. */
   List<Submission> listSubmissions(String acronym) throws IOException, InterruptedException;
 

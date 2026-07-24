@@ -96,6 +96,13 @@ public class IngestJob {
     log.info("Ingesting {} submission {} (version {}, format {})",
         acronym, sub.submissionId(), sub.version(), sub.format());
 
+    // Licensing guard: never download or ingest content BioPortal marks as restricted/licensed.
+    OntologyAccess access = source.accessInfo(acronym);
+    if (!access.isPublic()) {
+      throw new IOException("Refusing to ingest restricted ontology " + acronym
+          + " (viewingRestriction=" + access.viewingRestriction() + "); licensed content is not ingested");
+    }
+
     Path ontoDir = snapshotDir.resolve(acronym);
     Path raw = source.download(acronym, sub.submissionId(), ontoDir.resolve("raw"));
     String versionId = sha256(raw);
@@ -114,7 +121,8 @@ public class IngestJob {
     catalog.addSnapshot(new CatalogStore.SnapshotInfo(
         versionId, acronym, sub.version(), sub.released(), Instant.now().toString(),
         sub.format(), "subsumption", extracted.classCount(), extracted.edgeCount(),
-        snapshotFile.toString(), versionId, "open"));
+        snapshotFile.toString(), versionId,
+        access.viewingRestriction() == null ? "public" : access.viewingRestriction()));
     if (setAsLatest) {
       catalog.setTag(acronym, CatalogStore.TAG_LATEST, versionId);
     }
