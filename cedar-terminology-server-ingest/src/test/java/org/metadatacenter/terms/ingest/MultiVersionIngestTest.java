@@ -86,7 +86,7 @@ public class MultiVersionIngestTest {
 
   @Test
   public void ingestAll_registersEveryVersionAndTagsNewestLatest() throws Exception {
-    IngestJob job = new IngestJob(twoVersionSource(), new OwlHierarchyExtractor());
+    IngestJob job = new IngestJob(twoVersionSource());
     List<IngestJob.IngestResult> results = job.ingestAll(catalog, ONT, tempDir.resolve("snapshots"));
 
     assertEquals(2, results.size());
@@ -101,7 +101,7 @@ public class MultiVersionIngestTest {
 
   @Test
   public void diffBetweenVersionsReportsAddedAndRemoved() throws Exception {
-    IngestJob job = new IngestJob(twoVersionSource(), new OwlHierarchyExtractor());
+    IngestJob job = new IngestJob(twoVersionSource());
     List<IngestJob.IngestResult> results = job.ingestAll(catalog, ONT, tempDir.resolve("snapshots"));
 
     Path v1 = results.stream().filter(r -> r.submissionId() == 1).findFirst().orElseThrow().snapshotFile();

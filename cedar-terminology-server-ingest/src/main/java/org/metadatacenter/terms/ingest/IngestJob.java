@@ -36,11 +36,16 @@ public class IngestJob {
   public record IngestResult(int submissionId, String versionId, Path snapshotFile, int classCount, int edgeCount) {}
 
   private final SubmissionSource source;
-  private final OwlHierarchyExtractor extractor;
+  private final OwlHierarchyExtractor owlExtractor = new OwlHierarchyExtractor();
+  private final SkosHierarchyExtractor skosExtractor = new SkosHierarchyExtractor();
 
-  public IngestJob(SubmissionSource source, OwlHierarchyExtractor extractor) {
+  public IngestJob(SubmissionSource source) {
     this.source = source;
-    this.extractor = extractor;
+  }
+
+  /** Selects the extractor for a submission's declared format: SKOS vs OWL/OBO (the default). */
+  private HierarchyExtractor extractorFor(String format) {
+    return "SKOS".equalsIgnoreCase(format) ? skosExtractor : owlExtractor;
   }
 
   /**
@@ -97,10 +102,10 @@ public class IngestJob {
 
     Path snapshotFile = ontoDir.resolve(versionId + ".sqlite");
     Files.deleteIfExists(snapshotFile);
-    OwlHierarchyExtractor.Result extracted;
+    HierarchyExtractor.Result extracted;
     try (SnapshotStore store = SnapshotStore.openFile(snapshotFile.toString())) {
       store.initSchema();
-      extracted = extractor.extractFromFile(raw.toFile(), store);
+      extracted = extractorFor(sub.format()).extractFromFile(raw.toFile(), store);
     } catch (Exception e) {
       throw new IOException("Extraction failed for " + acronym + " submission " + sub.submissionId(), e);
     }
@@ -180,7 +185,7 @@ public class IngestJob {
     }
 
     BioPortalDownloader downloader = new BioPortalDownloader(apiKey);
-    IngestJob job = new IngestJob(downloader, new OwlHierarchyExtractor());
+    IngestJob job = new IngestJob(downloader);
     try (CatalogStore catalog = CatalogStore.openFile(catalogPath.toString())) {
       catalog.initSchema();
       for (String acronym : acronyms) {

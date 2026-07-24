@@ -35,20 +35,18 @@ import java.sql.SQLException;
  * {@code rdfs:label}. Obsolete flags and richer annotations (definitions, synonyms) are not yet
  * captured; see the hierarchy-extractor design note.
  */
-public class OwlHierarchyExtractor {
+public class OwlHierarchyExtractor implements HierarchyExtractor {
 
   private static final Logger log = LoggerFactory.getLogger(OwlHierarchyExtractor.class);
 
-  /** Counts produced by an extraction run. */
-  public record Result(int classCount, int edgeCount) {}
+  /** OBO "term replaced by": links an obsolete term to its successor. */
+  private static final IRI TERM_REPLACED_BY = IRI.create("http://purl.obolibrary.org/obo/IAO_0100001");
 
   /**
    * Extracts the hierarchy from an already-loaded ontology into the store and materializes the
    * closure. The store should be freshly initialized ({@link SnapshotStore#initSchema()}).
    */
-  /** OBO "term replaced by": links an obsolete term to its successor. */
-  private static final IRI TERM_REPLACED_BY = IRI.create("http://purl.obolibrary.org/obo/IAO_0100001");
-
+  @Override
   public Result extract(OWLOntology ont, SnapshotStore store) throws SQLException {
     OWLDataFactory df = ont.getOWLOntologyManager().getOWLDataFactory();
     OWLAnnotationProperty rdfsLabel = df.getRDFSLabel();
@@ -87,6 +85,7 @@ public class OwlHierarchyExtractor {
   }
 
   /** Loads an ontology from a file and extracts it into the store. */
+  @Override
   public Result extractFromFile(File file, SnapshotStore store)
       throws OWLOntologyCreationException, SQLException {
     OWLOntologyManager manager = OWLManager.createOWLOntologyManager();

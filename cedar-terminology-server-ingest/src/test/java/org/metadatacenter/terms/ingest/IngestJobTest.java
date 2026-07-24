@@ -91,7 +91,7 @@ public class IngestJobTest {
 
   @Test
   public void ingestLatest_writesSnapshotAndRegistersCatalog() throws Exception {
-    IngestJob job = new IngestJob(fakeSource(), new OwlHierarchyExtractor());
+    IngestJob job = new IngestJob(fakeSource());
     Path snapshotDir = tempDir.resolve("snapshots");
 
     IngestJob.IngestResult r = job.ingestLatest(catalog, "EX", snapshotDir);
@@ -116,7 +116,7 @@ public class IngestJobTest {
   @Test
   public void versionIdIsContentHashOfRawFile() throws Exception {
     String expected = IngestJob.sha256(sourceOwl);
-    IngestJob job = new IngestJob(fakeSource(), new OwlHierarchyExtractor());
+    IngestJob job = new IngestJob(fakeSource());
     IngestJob.IngestResult r = job.ingestLatest(catalog, "EX", tempDir.resolve("snapshots"));
     assertEquals(expected, r.versionId());
   }
