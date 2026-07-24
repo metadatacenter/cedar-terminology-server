@@ -389,6 +389,82 @@ public class SnapshotStore implements AutoCloseable {
         FROM root r JOIN concept c ON c.id = r.concept_id ORDER BY c.iri""", null);
   }
 
+  /** Every concept as a row, ordered by IRI — for whole-ontology enumeration. */
+  public List<Concept> allConceptsDetailed() throws SQLException {
+    return queryConcepts("""
+        SELECT c.iri, c.pref_label, c.obsolete,
+               EXISTS(SELECT 1 FROM edge e2 WHERE e2.parent_id = c.id) AS has_children
+        FROM concept c ORDER BY c.iri""", null);
+  }
+
+  /* --------------------------------------------------------------------------------------------
+   * Label search — the primitive behind the picker's class search and type-ahead autocomplete.
+   *
+   * This is a plain, case-insensitive match on the preferred label. It deliberately does NOT
+   * reproduce BioPortal's Solr behaviour (tokenization, stemming, synonym expansion, edge n-grams):
+   * a substring/prefix match will both miss some Solr hits and over-match others. The equivalence
+   * harness measures that divergence rather than assuming it away.
+   * ------------------------------------------------------------------------------------------ */
+
+  /**
+   * Concepts whose preferred label matches {@code query}. When {@code prefixOnly} is true the label
+   * must start with the query (type-ahead style); otherwise the query may occur anywhere in it.
+   * Matching is case-insensitive (SQLite {@code LIKE} folds ASCII case). Results lead with the
+   * shortest labels (a "closest match first" heuristic), then label, then IRI, capped at
+   * {@code limit} ({@code <= 0} means no cap).
+   */
+  public List<Concept> searchByLabel(String query, boolean prefixOnly, int limit) throws SQLException {
+    return labelSearch(null, query, prefixOnly, limit);
+  }
+
+  /** As {@link #searchByLabel}, but restricted to {@code rootIri} together with its descendants. */
+  public List<Concept> searchByLabelUnderRoot(String rootIri, String query, boolean prefixOnly, int limit)
+      throws SQLException {
+    return labelSearch(rootIri, query, prefixOnly, limit);
+  }
+
+  private List<Concept> labelSearch(String rootIri, String query, boolean prefixOnly, int limit) throws SQLException {
+    String escaped = escapeLike(query == null ? "" : query);
+    String pattern = prefixOnly ? escaped + "%" : "%" + escaped + "%";
+    StringBuilder sql = new StringBuilder(
+        "SELECT c.iri, c.pref_label, c.obsolete,\n" +
+        "       EXISTS(SELECT 1 FROM edge e2 WHERE e2.parent_id = c.id) AS has_children\n" +
+        "FROM concept c\n");
+    if (rootIri != null) {
+      // The branch root itself plus everything transitively under it.
+      sql.append("WHERE (c.iri = ? OR c.id IN (\n" +
+                 "        SELECT cl.descendant_id FROM closure cl\n" +
+                 "        JOIN concept a ON a.id = cl.ancestor_id WHERE a.iri = ?))\n" +
+                 "  AND c.pref_label LIKE ? ESCAPE '\\'\n");
+    } else {
+      sql.append("WHERE c.pref_label LIKE ? ESCAPE '\\'\n");
+    }
+    sql.append("ORDER BY length(c.pref_label), c.pref_label, c.iri");
+    if (limit > 0) {
+      sql.append(" LIMIT ").append(limit);
+    }
+    try (PreparedStatement ps = connection.prepareStatement(sql.toString())) {
+      int i = 1;
+      if (rootIri != null) {
+        ps.setString(i++, rootIri);
+        ps.setString(i++, rootIri);
+      }
+      ps.setString(i, pattern);
+      try (ResultSet rs = ps.executeQuery()) {
+        List<Concept> out = new ArrayList<>();
+        while (rs.next()) {
+          out.add(new Concept(rs.getString(1), rs.getString(2), rs.getInt(3) != 0, rs.getInt(4) != 0));
+        }
+        return out;
+      }
+    }
+  }
+
+  /** Escapes the SQL {@code LIKE} metacharacters so a query is matched literally. */
+  private static String escapeLike(String s) {
+    return s.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
+  }
+
   private List<Concept> queryConcepts(String sql, String param) throws SQLException {
     try (PreparedStatement ps = connection.prepareStatement(sql)) {
       if (param != null) {

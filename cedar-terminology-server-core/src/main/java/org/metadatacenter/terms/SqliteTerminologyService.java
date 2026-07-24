@@ -4,6 +4,7 @@ import org.metadatacenter.cedar.terminology.validation.integratedsearch.ValueCon
 import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.terms.domainObjects.*;
 import org.metadatacenter.terms.store.SnapshotStore;
+import org.metadatacenter.terms.util.ObjectConverter;
 import org.metadatacenter.terms.util.Util;
 
 import java.io.IOException;
@@ -73,6 +74,32 @@ public class SqliteTerminologyService implements ITerminologyService {
     Integer prev = page > 1 ? page - 1 : null;
     Integer next = page < pageCount ? page + 1 : null;
     return new PagedResults<>(page, pageCount, pageSize, total, prev, next, slice);
+  }
+
+  /**
+   * Paginates a flat list of matched concepts into a {@link SearchResult} page, reproducing
+   * BioPortal's single-source contract: {@code totalCount} is the full match count,
+   * {@code pageCount} is derived from the requested page size, and the {@code pageSize} field
+   * carries the number of items actually on this page (not the requested size). An empty match set
+   * yields {@code pageCount = 0} and {@code pageSize = 0}, as BioPortal does.
+   */
+  private PagedResults<SearchResult> pagedSearchResults(List<SnapshotStore.Concept> rows, String ontology,
+                                                        int page, int pageSize) {
+    int total = rows.size();
+    if (total == 0) {
+      return new PagedResults<>(page, 0, 0, 0, null, null, new ArrayList<>());
+    }
+    int reqSize = pageSize <= 0 ? total : pageSize;
+    int pageCount = (int) Math.ceil((double) total / reqSize);
+    int from = Math.max(0, (page - 1) * reqSize);
+    int to = Math.min(total, from + reqSize);
+    List<SearchResult> slice = new ArrayList<>();
+    for (int i = from; i < to; i++) {
+      slice.add(ObjectConverter.toSearchResult(toClass(rows.get(i), ontology)));
+    }
+    Integer prev = page > 1 ? page - 1 : null;
+    Integer next = page < pageCount ? page + 1 : null;
+    return new PagedResults<>(page, pageCount, slice.size(), total, prev, next, slice);
   }
 
   private static UnsupportedOperationException unsupported(String op) {
@@ -173,8 +200,15 @@ public class SqliteTerminologyService implements ITerminologyService {
   }
 
   @Override
-  public PagedResults<OntologyClass> findAllClassesInOntology(String ontology, int page, int pageSize, String apiKey) {
-    throw unsupported("findAllClassesInOntology");
+  public PagedResults<OntologyClass> findAllClassesInOntology(String ontology, int page, int pageSize, String apiKey)
+      throws IOException {
+    // Whole-ontology enumeration — backs the picker's "select the whole ontology" dropdown, which
+    // opens with an empty query. Ordered by IRI for a deterministic page sequence.
+    try {
+      return paginate(store(ontology).allConceptsDetailed(), ontology, page, pageSize);
+    } catch (SQLException e) {
+      throw new IOException(e);
+    }
   }
 
   @Override
@@ -228,12 +262,51 @@ public class SqliteTerminologyService implements ITerminologyService {
     throw unsupported("findAllValuesInValueSetByValue");
   }
 
+  /**
+   * Class search over a single locally-served ontology — the primitive behind the picker's term
+   * search and the type-ahead autocomplete. Two shapes are served:
+   * <ul>
+   *   <li>ontology-scoped: a single acronym in {@code sources}, matching labels across the ontology;</li>
+   *   <li>branch-scoped: {@code source} + {@code subtreeRootId}, matching labels within that class
+   *       and its descendants.</li>
+   * </ul>
+   * Everything else falls through to the remote backend by throwing {@link UnsupportedOperationException}:
+   * non-class scopes (value sets, values, properties), multi-source searches, and the {@code all}
+   * scope (which would also need value sets).
+   *
+   * <p>Limitations, deliberately left to the equivalence harness to quantify: matching is a plain
+   * case-insensitive substring on the preferred label, not BioPortal's Solr behaviour, so
+   * {@code suggest} is treated the same as a normal search; and {@code maxDepth} is not honoured —
+   * a branch search returns the whole subtree.
+   */
   @Override
   public PagedResults<SearchResult> search(String q, List<String> scope, List<String> sources, boolean suggest,
                                            String source, String subtreeRootId, int maxDepth, int page, int pageSize,
                                            boolean displayContext, boolean displayLinks, String apiKey,
-                                           List<String> valueSetsIds) {
-    throw unsupported("search");
+                                           List<String> valueSetsIds) throws IOException {
+    boolean classOnly = scope != null && !scope.isEmpty()
+        && scope.stream().allMatch(s -> s.equalsIgnoreCase("classes"));
+    if (!classOnly) {
+      throw unsupported("search (only class-scoped search is served locally)");
+    }
+    String query = q == null ? "" : q.trim();
+    try {
+      List<SnapshotStore.Concept> rows;
+      String ontology;
+      if (subtreeRootId != null && !subtreeRootId.isEmpty()) {
+        ontology = source;
+        rows = store(ontology).searchByLabelUnderRoot(subtreeRootId, query, false, 0);
+      } else {
+        if (sources == null || sources.size() != 1) {
+          throw unsupported("search (expects a single ontology source)");
+        }
+        ontology = sources.get(0);
+        rows = store(ontology).searchByLabel(query, false, 0);
+      }
+      return pagedSearchResults(rows, ontology, page, pageSize);
+    } catch (SQLException e) {
+      throw new IOException(e);
+    }
   }
 
   @Override

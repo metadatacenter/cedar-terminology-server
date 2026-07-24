@@ -4,6 +4,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
@@ -154,5 +155,62 @@ public class SnapshotStoreTest {
       assertEquals(List.of("a"), s.subjectsWith("rel", "b"));
       assertTrue(s.subjectsWith("rel", "missing").isEmpty());
     }
+  }
+
+  /* Label search — the primitive behind the picker's class search and type-ahead. */
+
+  private static List<String> iris(List<SnapshotStore.Concept> concepts) {
+    List<String> out = new ArrayList<>();
+    for (SnapshotStore.Concept c : concepts) {
+      out.add(c.iri());
+    }
+    return out;
+  }
+
+  @Test
+  public void searchByLabel_containsMatchIsCaseInsensitiveAndShortestFirst() throws Exception {
+    // Labels containing "a": Animal, Mammal, Cat -> ordered shortest-label first (Cat), then by label.
+    assertEquals(List.of("cat", "animal", "mammal"), iris(store.searchByLabel("a", false, 0)));
+    assertEquals(List.of("cat", "animal", "mammal"), iris(store.searchByLabel("A", false, 0)));
+  }
+
+  @Test
+  public void searchByLabel_prefixOnlyAnchorsAtLabelStart() throws Exception {
+    assertEquals(List.of("mammal"), iris(store.searchByLabel("mam", true, 0)));
+    // A mid-label substring does not match in prefix mode.
+    assertEquals(List.of(), iris(store.searchByLabel("ammal", true, 0)));
+    // ...but does in contains mode.
+    assertTrue(iris(store.searchByLabel("ammal", false, 0)).contains("mammal"));
+  }
+
+  @Test
+  public void searchByLabel_respectsLimit() throws Exception {
+    assertEquals(1, store.searchByLabel("a", false, 1).size());
+  }
+
+  @Test
+  public void searchByLabel_escapesLikeMetacharacters() throws Exception {
+    try (SnapshotStore s = SnapshotStore.openInMemory()) {
+      s.initSchema();
+      s.addConcept("p1", "50% off");
+      s.addConcept("p2", "50 off");
+      s.materialize();
+      // "%" is matched literally, not as a wildcard, so "50 off" is not a hit.
+      assertEquals(List.of("p1"), iris(s.searchByLabel("50%", false, 0)));
+    }
+  }
+
+  @Test
+  public void searchByLabelUnderRoot_restrictsToTheBranch() throws Exception {
+    // Under mammal (the root itself plus descendants cat, dog); labels containing "a": Mammal, Cat.
+    assertEquals(List.of("cat", "mammal"), iris(store.searchByLabelUnderRoot("mammal", "a", false, 0)));
+    // "pet" is outside the mammal branch.
+    assertEquals(List.of(), iris(store.searchByLabelUnderRoot("mammal", "pet", false, 0)));
+  }
+
+  @Test
+  public void allConceptsDetailed_returnsEveryConceptOrderedByIri() throws Exception {
+    assertEquals(List.of("animal", "cat", "dog", "mammal", "pet", "thing"),
+        iris(store.allConceptsDetailed()));
   }
 }

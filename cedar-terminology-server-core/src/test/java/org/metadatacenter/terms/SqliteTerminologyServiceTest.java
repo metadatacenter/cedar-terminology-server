@@ -5,6 +5,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.terms.domainObjects.OntologyClass;
+import org.metadatacenter.terms.domainObjects.SearchResult;
 import org.metadatacenter.terms.store.SnapshotStore;
 
 import java.util.List;
@@ -131,5 +132,87 @@ public class SqliteTerminologyServiceTest {
 
     PagedResults<OntologyClass> page2 = service.getClassChildren(iri("mammal"), EX, 2, 1, null);
     assertEquals(List.of("dog"), ids(page2.getCollection()));
+  }
+
+  /* search + enumeration */
+
+  private static List<String> ldIds(List<SearchResult> results) {
+    return results.stream().map(SearchResult::getLdId).collect(Collectors.toList());
+  }
+
+  private PagedResults<SearchResult> classSearch(String q, int page, int pageSize) throws Exception {
+    return service.search(q, List.of("classes"), List.of(EX), false, null, null, 0, page, pageSize,
+        false, false, null, null);
+  }
+
+  @Test
+  public void search_matchesLabelsInOntologyShortestFirst() throws Exception {
+    // Labels containing "a": Cat (shortest), then Animal, Mammal. Results carry the class IRI as @id.
+    assertEquals(List.of(iri("cat"), iri("animal"), iri("mammal")), ldIds(classSearch("a", 1, 50).getCollection()));
+    // Result fields match the BioPortal SearchResult shaping.
+    SearchResult first = classSearch("a", 1, 50).getCollection().get(0);
+    assertEquals("cat", first.getId());
+    assertEquals("Cat", first.getPrefLabel());
+    assertEquals("OntologyClass", first.getType());
+  }
+
+  @Test
+  public void search_paginatesWithBioPortalSemantics() throws Exception {
+    PagedResults<SearchResult> p1 = classSearch("a", 1, 1);
+    assertEquals(List.of(iri("cat")), ldIds(p1.getCollection()));
+    assertEquals(Integer.valueOf(3), p1.getTotalCount());
+    assertEquals(Integer.valueOf(3), p1.getPageCount());
+    assertEquals(Integer.valueOf(1), p1.getPageSize()); // items on this page, not the requested size
+    assertNull(p1.getPrevPage());
+    assertEquals(Integer.valueOf(2), p1.getNextPage());
+
+    PagedResults<SearchResult> p2 = classSearch("a", 2, 1);
+    assertEquals(List.of(iri("animal")), ldIds(p2.getCollection()));
+    assertEquals(Integer.valueOf(1), p2.getPrevPage());
+    assertEquals(Integer.valueOf(3), p2.getNextPage());
+  }
+
+  @Test
+  public void search_emptyMatchUsesBioPortalEmptyContract() throws Exception {
+    PagedResults<SearchResult> r = classSearch("zzz", 1, 50);
+    assertTrue(r.getCollection().isEmpty());
+    assertEquals(Integer.valueOf(0), r.getTotalCount());
+    assertEquals(Integer.valueOf(0), r.getPageCount());
+    assertEquals(Integer.valueOf(0), r.getPageSize());
+  }
+
+  @Test
+  public void search_branchScopedRestrictsToSubtree() throws Exception {
+    // Within the mammal branch (mammal + cat + dog), labels containing "a": Cat, Mammal.
+    PagedResults<SearchResult> r = service.search("a", List.of("classes"), null, false, EX, iri("mammal"),
+        0, 1, 50, false, false, null, null);
+    assertEquals(List.of(iri("cat"), iri("mammal")), ldIds(r.getCollection()));
+  }
+
+  @Test
+  public void search_nonClassScopeIsNotServedLocally() {
+    assertThrows(UnsupportedOperationException.class, () -> service.search("a", List.of("value_sets"),
+        List.of(EX), false, null, null, 0, 1, 50, false, false, null, null));
+    // "all" would also need value sets, so it is not served locally either.
+    assertThrows(UnsupportedOperationException.class, () -> service.search("a", List.of("all"),
+        List.of(EX), false, null, null, 0, 1, 50, false, false, null, null));
+  }
+
+  @Test
+  public void search_multiSourceIsNotServedLocally() {
+    assertThrows(UnsupportedOperationException.class, () -> service.search("a", List.of("classes"),
+        List.of(EX, "OTHER"), false, null, null, 0, 1, 50, false, false, null, null));
+  }
+
+  @Test
+  public void findAllClassesInOntology_enumeratesEveryClassOrderedByIri() throws Exception {
+    PagedResults<OntologyClass> all = service.findAllClassesInOntology(EX, 1, 50, null);
+    assertEquals(Integer.valueOf(6), all.getTotalCount());
+    assertEquals(List.of("animal", "cat", "dog", "mammal", "pet", "thing"), ids(all.getCollection()));
+  }
+
+  @Test
+  public void findAllClassesInOntology_unavailableOntologyThrows() {
+    assertThrows(UnsupportedOperationException.class, () -> service.findAllClassesInOntology("NOPE", 1, 50, null));
   }
 }

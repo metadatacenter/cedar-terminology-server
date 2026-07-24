@@ -3,13 +3,16 @@ package org.metadatacenter.terms;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.terms.domainObjects.OntologyClass;
+import org.metadatacenter.terms.domainObjects.SearchResult;
 import org.metadatacenter.terms.domainObjects.TreeNode;
 import org.metadatacenter.terms.store.SnapshotStore;
 
 import java.lang.reflect.Proxy;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertEquals;
 
@@ -41,6 +44,9 @@ public class RoutingTerminologyServiceTest {
           case "getClassTree" -> List.of(new TreeNode(null, null, null, null, REMOTE, null, false, null, false));
           case "findClass", "findRegularClass" ->
               new OntologyClass(REMOTE, iri("remote"), REMOTE, null, REMOTE, null, null, null, null, false, null, false);
+          case "search" -> new PagedResults<>(1, 1, 1, 1, null, null,
+              List.of(new SearchResult(REMOTE, iri("remote"), null, "OntologyClass", REMOTE, null, null, REMOTE, null,
+                  null)));
           default -> throw new UnsupportedOperationException("remote stub does not implement " + method.getName());
         });
   }
@@ -88,5 +94,48 @@ public class RoutingTerminologyServiceTest {
   @Test
   public void localChildren_servedByLocal() throws Exception {
     assertEquals(Integer.valueOf(2), router.getClassChildren(iri("mammal"), EX, 1, 50, null).getTotalCount());
+  }
+
+  /* search routing — the seam the equivalence harness relies on */
+
+  private static List<String> ldIds(PagedResults<SearchResult> r) {
+    return r.getCollection().stream().map(SearchResult::getLdId).collect(Collectors.toList());
+  }
+
+  @Test
+  public void searchScopedToOneLocalOntology_servedByLocal() throws Exception {
+    // Labels containing "a" in EX: Cat, Mammal — from the local store, not the REMOTE sentinel.
+    PagedResults<SearchResult> r = router.search("a", List.of("classes"), List.of(EX), false, null, null, 0, 1, 50,
+        false, false, null, null);
+    assertEquals(List.of(iri("cat"), iri("mammal")), ldIds(r));
+  }
+
+  @Test
+  public void branchSearchInLocalOntology_servedByLocal() throws Exception {
+    PagedResults<SearchResult> r = router.search("a", List.of("classes"), null, false, EX, iri("mammal"), 0, 1, 50,
+        false, false, null, null);
+    assertEquals(List.of(iri("cat"), iri("mammal")), ldIds(r));
+  }
+
+  @Test
+  public void searchAcrossMultipleSources_servedByRemote() throws Exception {
+    PagedResults<SearchResult> r = router.search("a", List.of("classes"), List.of(EX, "OTHER"), false, null, null, 0,
+        1, 50, false, false, null, null);
+    assertEquals(REMOTE, r.getCollection().get(0).getPrefLabel());
+  }
+
+  @Test
+  public void searchNonClassScopeInLocalOntology_fallsBackToRemote() throws Exception {
+    // Single local source, but a value-set scope the local backend cannot serve -> remote sentinel.
+    PagedResults<SearchResult> r = router.search("a", List.of("value_sets"), List.of(EX), false, null, null, 0, 1, 50,
+        false, false, null, null);
+    assertEquals(REMOTE, r.getCollection().get(0).getPrefLabel());
+  }
+
+  @Test
+  public void searchInNonLocalOntology_servedByRemote() throws Exception {
+    PagedResults<SearchResult> r = router.search("a", List.of("classes"), List.of("OTHER"), false, null, null, 0, 1,
+        50, false, false, null, null);
+    assertEquals(REMOTE, r.getCollection().get(0).getPrefLabel());
   }
 }

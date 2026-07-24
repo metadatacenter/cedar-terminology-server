@@ -73,7 +73,9 @@ public class RoutingTerminologyService implements ITerminologyService {
   }
 
   /* ---------------------------------------------------------------------------------------------
-   * Bucket B — search. Always remote (ranking is not yet reproduced locally).
+   * Bucket B — search. Routed to local when the search targets a single locally-served ontology
+   * (a class search scoped to one ontology, or a branch search); anything the local backend cannot
+   * answer (multi-source, non-class scopes, value sets) throws and falls through to remote.
    * ------------------------------------------------------------------------------------------- */
 
   @Override
@@ -81,8 +83,32 @@ public class RoutingTerminologyService implements ITerminologyService {
                                            String source, String subtreeRootId, int maxDepth, int page, int pageSize,
                                            boolean displayContext, boolean displayLinks, String apiKey,
                                            List<String> valueSetsIds) throws IOException {
+    String localOntology = singleLocalSearchOntology(sources, source, subtreeRootId);
+    if (local != null && localOntology != null) {
+      try {
+        return local.search(q, scope, sources, suggest, source, subtreeRootId, maxDepth, page, pageSize,
+            displayContext, displayLinks, apiKey, valueSetsIds);
+      } catch (UnsupportedOperationException notImplementedLocally) {
+        // Fall through to remote.
+      }
+    }
     return remote.search(q, scope, sources, suggest, source, subtreeRootId, maxDepth, page, pageSize, displayContext,
         displayLinks, apiKey, valueSetsIds);
+  }
+
+  /**
+   * The single locally-served ontology a search targets, or {@code null} if it is not a candidate
+   * for local routing. A branch search names its ontology in {@code source}; an ontology-scoped
+   * search names exactly one acronym in {@code sources}.
+   */
+  private String singleLocalSearchOntology(List<String> sources, String source, String subtreeRootId) {
+    if (subtreeRootId != null && !subtreeRootId.isEmpty()) {
+      return source != null && availability.isLocal(source) ? source : null;
+    }
+    if (sources != null && sources.size() == 1 && availability.isLocal(sources.get(0))) {
+      return sources.get(0);
+    }
+    return null;
   }
 
   @Override
