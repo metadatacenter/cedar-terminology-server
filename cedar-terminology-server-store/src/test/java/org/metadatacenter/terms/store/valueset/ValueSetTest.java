@@ -165,6 +165,25 @@ public class ValueSetTest {
   }
 
   @Test
+  public void descendantsDefinitionRoundTrips() throws Exception {
+    ValueSetDefinition def = ValueSetDefinition.descendants(V1, B + "cancer", true);
+    valueSets.upsertValueSet("vs:d", "D", null);
+    valueSets.putVersion("vs:d", "1", def);
+    assertEquals(def, valueSets.getDefinition("vs:d", "1").orElseThrow());
+  }
+
+  @Test
+  public void extensionalDefinitionRoundTrips() throws Exception {
+    // members given in concept-iri order so the reloaded (ORDER BY concept_iri) list matches
+    ValueSetDefinition def = ValueSetDefinition.extensional(List.of(
+        new PinnedConcept(V1, B + "aspirin"),
+        new PinnedConcept(V1, B + "melanoma")));
+    valueSets.upsertValueSet("vs:e", "E", "picked");
+    valueSets.putVersion("vs:e", "1", def);
+    assertEquals(def, valueSets.getDefinition("vs:e", "1").orElseThrow());
+  }
+
+  @Test
   public void definitionRoundTrips() throws Exception {
     valueSets.upsertValueSet("vs:x", "X", null);
     valueSets.putVersion("vs:x", "1", ValueSetDefinition.relation(V1, HAS_INGREDIENT, B + "aspirin"));

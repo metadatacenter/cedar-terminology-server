@@ -89,6 +89,22 @@ public class CatalogStoreTest {
   }
 
   @Test
+  public void snapshotInfoRoundTrips() throws Exception {
+    // Every field survives persist -> reload (record equality covers all 12 columns).
+    SnapshotInfo info = new SnapshotInfo("rt", "DOID", "release/x", "2025-03-03", "2025-03-04T00:00:00Z",
+        "OWL", "subsumption", 111, 222, "/snapshots/DOID/rt.sqlite", "rt", "public");
+    catalog.addSnapshot(info);
+    assertEquals(info, catalog.getSnapshot("rt").orElseThrow());
+  }
+
+  @Test
+  public void ontologyInfoRoundTrips() throws Exception {
+    OntologyInfo o = new OntologyInfo("ONT2", "Ontology Two", "http://example.org/ont2", "SKOS");
+    catalog.upsertOntology(o);
+    assertTrue(catalog.listOntologies().contains(o));
+  }
+
+  @Test
   public void unknownResolutionsAreEmpty() throws Exception {
     assertTrue(catalog.resolveLatest("NCIT").isEmpty());
     assertTrue(catalog.getSnapshot("nope").isEmpty());
