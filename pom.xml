@@ -28,6 +28,7 @@
     <module>cedar-terminology-server-application</module>
     <module>cedar-terminology-server-common</module>
     <module>cedar-terminology-server-store</module>
+    <module>cedar-terminology-server-ingest</module>
   </modules>
 
   <build>
