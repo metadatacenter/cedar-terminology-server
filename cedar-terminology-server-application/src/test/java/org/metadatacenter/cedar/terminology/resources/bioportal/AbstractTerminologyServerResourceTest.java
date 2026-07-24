@@ -21,7 +21,7 @@ import org.metadatacenter.model.SystemComponent;
 import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.terms.domainObjects.*;
 import org.metadatacenter.terms.util.Util;
-import org.metadatacenter.util.test.TestUserUtil;
+import org.metadatacenter.util.test.TestAuthUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -106,7 +106,10 @@ public abstract class AbstractTerminologyServerResourceTest {
         cedarConfig.getTerminologyConfig().getBioPortal().getSocketTimeout
             () * 20); // enough time to build the ontologies and value sets cache if it has not been created yet
 
-    authHeader = TestUserUtil.getTestUser1AuthHeader(cedarConfig);
+    // Replace the Neo4j-backed user service wired at application startup with an in-memory one,
+    // so API-key authentication needs no live Neo4j (and no Keycloak)
+    TestAuthUtil.installInMemoryUserService(cedarConfig);
+    authHeader = TestAuthUtil.getTestUser1AuthHeader(cedarConfig);
 
     mapper = new ObjectMapper();
 
