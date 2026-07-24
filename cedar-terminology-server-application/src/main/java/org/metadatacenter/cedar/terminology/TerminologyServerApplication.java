@@ -11,12 +11,29 @@ import org.metadatacenter.cedar.terminology.utils.logging.LogResponseFilter;
 import org.metadatacenter.cedar.util.dw.CedarMicroserviceApplication;
 import org.metadatacenter.config.CedarConfig;
 import org.metadatacenter.model.ServerName;
+import org.metadatacenter.terms.CatalogSnapshotProvider;
 import org.metadatacenter.terms.ITerminologyService;
 import org.metadatacenter.terms.RoutingTerminologyService;
+import org.metadatacenter.terms.SqliteTerminologyService;
 import org.metadatacenter.terms.TerminologyService;
+import org.metadatacenter.terms.store.CatalogStore;
 import org.metadatacenter.terms.util.HttpClientFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.Arrays;
+import java.util.LinkedHashSet;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public class TerminologyServerApplication extends CedarMicroserviceApplication<TerminologyServerConfiguration> {
+
+  private static final Logger log = LoggerFactory.getLogger(TerminologyServerApplication.class);
+
+  /** Environment variable holding the path to the local terminology catalog SQLite database. */
+  static final String ENV_CATALOG_PATH = "CEDAR_TERMINOLOGY_CATALOG_PATH";
+  /** Environment variable holding a comma-separated allowlist of acronyms to serve locally. */
+  static final String ENV_LOCAL_ONTOLOGIES = "CEDAR_TERMINOLOGY_LOCAL_ONTOLOGIES";
 
   protected static ITerminologyService terminologyService;
 
@@ -46,14 +63,51 @@ public class TerminologyServerApplication extends CedarMicroserviceApplication<T
         new TerminologyService(cedarConfig.getTerminologyConfig().getBioPortal().getBasePath(),
             cedarConfig.getTerminologyConfig().getBioPortal().getConnectTimeout(),
             cedarConfig.getTerminologyConfig().getBioPortal().getSocketTimeout());
-    // Route each request to a local (version-aware) backend when available, else BioPortal.
-    // No local backend is wired in yet, so every request is served by BioPortal (behavior unchanged).
-    terminologyService = new RoutingTerminologyService(bioPortalService);
+    // Route each request to a local (version-aware) backend when the ontology is served locally,
+    // else BioPortal. The local backend is enabled only when a catalog path and a non-empty
+    // allowlist are configured; otherwise every request is served by BioPortal (behavior unchanged).
+    terminologyService = buildTerminologyService(bioPortalService);
     AbstractTerminologyServerResource.injectTerminologyService(terminologyService);
     // Initialize cache (note that this must be done after initializing the terminologyService)
     // When running the application on testing mode, the cache is loaded from the files stored into the test
     // resources folder
     Cache.init(isTestMode());
+  }
+
+  /**
+   * Builds the terminology service. When a local catalog path and a non-empty ontology allowlist
+   * are configured (via environment variables), routed requests for allowlisted, ingested
+   * ontologies are served from the local SQLite store, falling back to BioPortal for everything
+   * else. Otherwise, or on any failure opening the catalog, the service is BioPortal-only.
+   */
+  private ITerminologyService buildTerminologyService(TerminologyService bioPortalService) {
+    String catalogPath = System.getenv(ENV_CATALOG_PATH);
+    Set<String> localOntologies = parseAllowlist(System.getenv(ENV_LOCAL_ONTOLOGIES));
+    if (catalogPath == null || catalogPath.isBlank() || localOntologies.isEmpty()) {
+      log.info("Local terminology store disabled; serving all ontologies via BioPortal");
+      return new RoutingTerminologyService(bioPortalService);
+    }
+    try {
+      CatalogStore catalog = CatalogStore.openFile(catalogPath);
+      CatalogSnapshotProvider provider = new CatalogSnapshotProvider(catalog, localOntologies);
+      SqliteTerminologyService local = new SqliteTerminologyService(provider);
+      log.info("Local terminology store enabled from {} for ontologies {}", catalogPath, localOntologies);
+      return new RoutingTerminologyService(bioPortalService, local, local::isAvailable);
+    } catch (Exception e) {
+      log.error("Failed to enable local terminology store from {}; serving via BioPortal only",
+          catalogPath, e);
+      return new RoutingTerminologyService(bioPortalService);
+    }
+  }
+
+  private static Set<String> parseAllowlist(String csv) {
+    if (csv == null || csv.isBlank()) {
+      return Set.of();
+    }
+    return Arrays.stream(csv.split(","))
+        .map(String::trim)
+        .filter(s -> !s.isEmpty())
+        .collect(Collectors.toCollection(LinkedHashSet::new));
   }
 
   @Override
