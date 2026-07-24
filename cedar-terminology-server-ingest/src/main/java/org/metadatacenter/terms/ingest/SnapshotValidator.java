@@ -3,8 +3,14 @@ package org.metadatacenter.terms.ingest;
 import org.metadatacenter.terms.store.SnapshotStore;
 import org.semanticweb.owlapi.apibinding.OWLManager;
 import org.semanticweb.owlapi.model.AxiomType;
+import org.semanticweb.owlapi.model.IRI;
+import org.semanticweb.owlapi.model.OWLAnnotationAssertionAxiom;
+import org.semanticweb.owlapi.model.OWLAnnotationValue;
 import org.semanticweb.owlapi.model.OWLClass;
+import org.semanticweb.owlapi.model.OWLClassAssertionAxiom;
 import org.semanticweb.owlapi.model.OWLClassExpression;
+import org.semanticweb.owlapi.model.OWLLiteral;
+import org.semanticweb.owlapi.model.OWLObjectPropertyAssertionAxiom;
 import org.semanticweb.owlapi.model.OWLOntology;
 import org.semanticweb.owlapi.model.OWLOntologyManager;
 import org.semanticweb.owlapi.model.OWLSubClassOfAxiom;
@@ -22,14 +28,15 @@ import java.util.Set;
 import java.util.TreeSet;
 
 /**
- * Validates a {@link SnapshotStore} against the OWL ontology it was built from, and re-derives the
- * transitive closure independently to check the store's materialization.
+ * Validates a {@link SnapshotStore} against the ontology it was built from, and re-derives the
+ * transitive closure independently to check the store's materialization. Works for both OWL/OBO
+ * ({@code rdfs:subClassOf}) and SKOS ({@code skos:broader}/{@code narrower}) sources.
  *
- * This is a correctness oracle that does not depend on BioPortal: it recomputes the expected named
- * {@code subClassOf} edge set straight from the axioms (the same rule the extractor applies) and
- * compares it to what the store holds, then computes the transitive closure of the store's edges in
- * plain Java and compares it to the store's precomputed closure. Discrepancies in either direction
- * are reported, along with any cycles found.
+ * This is a correctness oracle that does not depend on BioPortal: it recomputes the expected concept
+ * and edge sets straight from the source axioms (the same rule the matching extractor applies) and
+ * compares them to what the store holds, then computes the transitive closure of the store's edges
+ * in plain Java and compares it to the store's precomputed closure. Discrepancies in either
+ * direction are reported, along with any cycles found.
  */
 public class SnapshotValidator {
 
@@ -69,15 +76,44 @@ public class SnapshotValidator {
 
   private static final int SAMPLE_CAP = 20;
 
+  private static final String SKOS = "http://www.w3.org/2004/02/skos/core#";
+  private static final IRI SKOS_BROADER = IRI.create(SKOS + "broader");
+  private static final IRI SKOS_BROADER_TRANSITIVE = IRI.create(SKOS + "broaderTransitive");
+  private static final IRI SKOS_NARROWER = IRI.create(SKOS + "narrower");
+  private static final IRI SKOS_PREF_LABEL = IRI.create(SKOS + "prefLabel");
+  private static final IRI SKOS_CONCEPT = IRI.create(SKOS + "Concept");
+
+  /** Expected concept and edge ("child\tparent") sets derived from the source ontology. */
+  private record Expected(Set<String> concepts, Set<String> edges) {}
+
+  /** Validates an OWL/OBO snapshot (hierarchy = named-class {@code rdfs:subClassOf}). */
   public Report validate(OWLOntology ont, SnapshotStore store) throws SQLException {
-    // Expected concepts and edges, derived directly from the ontology (extractor's rule).
-    Set<String> expectedConcepts = new HashSet<>();
+    return compare(deriveOwl(ont), store);
+  }
+
+  /** Validates a SKOS snapshot (hierarchy = {@code skos:broader}/{@code narrower}). */
+  public Report validateSkos(OWLOntology ont, SnapshotStore store) throws SQLException {
+    return compare(deriveSkos(ont), store);
+  }
+
+  public Report validateFiles(File owl, SnapshotStore store) throws Exception {
+    return validate(load(owl), store);
+  }
+
+  public Report validateSkosFiles(File skos, SnapshotStore store) throws Exception {
+    return validateSkos(load(skos), store);
+  }
+
+  /* -------------------------------------------------------------------------------------------- */
+
+  private static Expected deriveOwl(OWLOntology ont) {
+    Set<String> concepts = new HashSet<>();
     for (OWLClass cls : ont.getClassesInSignature()) {
       if (!cls.isOWLThing() && !cls.isOWLNothing()) {
-        expectedConcepts.add(cls.getIRI().toString());
+        concepts.add(cls.getIRI().toString());
       }
     }
-    Set<String> expectedEdges = new HashSet<>();
+    Set<String> edges = new HashSet<>();
     for (OWLSubClassOfAxiom ax : ont.getAxioms(AxiomType.SUBCLASS_OF)) {
       OWLClassExpression sub = ax.getSubClass();
       OWLClassExpression sup = ax.getSuperClass();
@@ -89,39 +125,88 @@ public class SnapshotValidator {
       if (c.isOWLThing() || c.isOWLNothing() || p.isOWLThing() || p.isOWLNothing()) {
         continue;
       }
-      expectedEdges.add(edgeKey(c.getIRI().toString(), p.getIRI().toString()));
+      edges.add(c.getIRI() + "\t" + p.getIRI());
     }
+    return new Expected(concepts, edges);
+  }
 
-    // What the store actually holds.
+  private static Expected deriveSkos(OWLOntology ont) {
+    Set<String> concepts = new HashSet<>();
+    Set<String> edges = new HashSet<>();
+    for (OWLAnnotationAssertionAxiom ax : ont.getAxioms(AxiomType.ANNOTATION_ASSERTION)) {
+      if (!(ax.getSubject() instanceof IRI subject)) {
+        continue;
+      }
+      IRI prop = ax.getProperty().getIRI();
+      OWLAnnotationValue value = ax.getValue();
+      if ((prop.equals(SKOS_BROADER) || prop.equals(SKOS_BROADER_TRANSITIVE)) && value instanceof IRI parent) {
+        edges.add(subject + "\t" + parent);
+        concepts.add(subject.toString());
+        concepts.add(parent.toString());
+      } else if (prop.equals(SKOS_NARROWER) && value instanceof IRI child) {
+        edges.add(child + "\t" + subject);
+        concepts.add(subject.toString());
+        concepts.add(child.toString());
+      } else if (prop.equals(SKOS_PREF_LABEL) && value instanceof OWLLiteral) {
+        concepts.add(subject.toString());
+      }
+    }
+    for (OWLObjectPropertyAssertionAxiom ax : ont.getAxioms(AxiomType.OBJECT_PROPERTY_ASSERTION)) {
+      if (ax.getProperty().isAnonymous() || !ax.getSubject().isNamed() || !ax.getObject().isNamed()) {
+        continue;
+      }
+      IRI prop = ax.getProperty().asOWLObjectProperty().getIRI();
+      String subj = ax.getSubject().asOWLNamedIndividual().getIRI().toString();
+      String obj = ax.getObject().asOWLNamedIndividual().getIRI().toString();
+      if (prop.equals(SKOS_BROADER) || prop.equals(SKOS_BROADER_TRANSITIVE)) {
+        edges.add(subj + "\t" + obj);
+        concepts.add(subj);
+        concepts.add(obj);
+      } else if (prop.equals(SKOS_NARROWER)) {
+        edges.add(obj + "\t" + subj);
+        concepts.add(subj);
+        concepts.add(obj);
+      }
+    }
+    for (OWLClassAssertionAxiom ax : ont.getAxioms(AxiomType.CLASS_ASSERTION)) {
+      if (!ax.getClassExpression().isAnonymous()
+          && ax.getClassExpression().asOWLClass().getIRI().equals(SKOS_CONCEPT)
+          && ax.getIndividual().isNamed()) {
+        concepts.add(ax.getIndividual().asOWLNamedIndividual().getIRI().toString());
+      }
+    }
+    return new Expected(concepts, edges);
+  }
+
+  /** Compares an expected model to the store, and independently rechecks the closure. */
+  private Report compare(Expected expected, SnapshotStore store) throws SQLException {
     Set<String> storeConcepts = new HashSet<>(store.allConceptIris());
-    Set<String> storeEdges = new HashSet<>();
     List<String[]> edgePairs = store.allEdges();
+    Set<String> storeEdges = new HashSet<>();
     for (String[] e : edgePairs) {
-      storeEdges.add(edgeKey(e[0], e[1]));
+      storeEdges.add(e[0] + "\t" + e[1]);
     }
 
-    // Independent transitive closure of the store's edges.
     Set<String> cycles = new TreeSet<>();
     Set<String> recomputedClosure = recomputeClosure(storeConcepts, edgePairs, cycles);
     Set<String> storeClosure = store.allClosurePairs();
 
     return new Report(
-        expectedConcepts.size(), storeConcepts.size(),
-        sample(difference(expectedConcepts, storeConcepts)),
-        sample(difference(storeConcepts, expectedConcepts)),
-        expectedEdges.size(), storeEdges.size(),
-        sample(difference(expectedEdges, storeEdges)),
-        sample(difference(storeEdges, expectedEdges)),
+        expected.concepts().size(), storeConcepts.size(),
+        sample(difference(expected.concepts(), storeConcepts)),
+        sample(difference(storeConcepts, expected.concepts())),
+        expected.edges().size(), storeEdges.size(),
+        sample(difference(expected.edges(), storeEdges)),
+        sample(difference(storeEdges, expected.edges())),
         storeClosure.size(), recomputedClosure.size(),
         sample(difference(recomputedClosure, storeClosure)),
         sample(difference(storeClosure, recomputedClosure)),
         sample(cycles));
   }
 
-  public Report validateFiles(File owl, SnapshotStore store) throws Exception {
+  private static OWLOntology load(File file) throws Exception {
     OWLOntologyManager manager = OWLManager.createOWLOntologyManager();
-    OWLOntology ont = manager.loadOntologyFromOntologyDocument(owl);
-    return validate(ont, store);
+    return manager.loadOntologyFromOntologyDocument(file);
   }
 
   /** Ancestor->descendant closure of the given edges (edge = [child, parent]); records cyclic nodes. */
@@ -150,10 +235,6 @@ public class SnapshotValidator {
     return closure;
   }
 
-  private static String edgeKey(String child, String parent) {
-    return child + '\t' + parent;
-  }
-
   private static Set<String> difference(Set<String> a, Set<String> b) {
     Set<String> out = new TreeSet<>(a);
     out.removeAll(b);
@@ -171,14 +252,16 @@ public class SnapshotValidator {
     return out;
   }
 
-  /** Usage: SnapshotValidator &lt;owlFile&gt; &lt;snapshotFile&gt;. Exits non-zero if invalid. */
+  /** Usage: SnapshotValidator &lt;sourceFile&gt; &lt;snapshotFile&gt; [--skos]. Exits non-zero if invalid. */
   public static void main(String[] args) throws Exception {
-    if (args.length != 2) {
-      System.err.println("Usage: SnapshotValidator <owlFile> <snapshotFile>");
+    boolean skos = args.length == 3 && "--skos".equals(args[2]);
+    if (args.length < 2) {
+      System.err.println("Usage: SnapshotValidator <sourceFile> <snapshotFile> [--skos]");
       System.exit(2);
     }
     try (SnapshotStore store = SnapshotStore.openFile(args[1])) {
-      Report r = new SnapshotValidator().validateFiles(new File(args[0]), store);
+      SnapshotValidator v = new SnapshotValidator();
+      Report r = skos ? v.validateSkosFiles(new File(args[0]), store) : v.validateFiles(new File(args[0]), store);
       System.out.println(r.summary());
       if (!r.edgesMissingFromStore().isEmpty()) {
         System.out.println("edges missing from store (sample): " + r.edgesMissingFromStore());

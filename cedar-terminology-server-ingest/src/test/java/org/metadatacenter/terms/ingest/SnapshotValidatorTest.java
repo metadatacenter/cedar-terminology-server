@@ -6,6 +6,7 @@ import org.junit.Test;
 import org.metadatacenter.terms.store.SnapshotStore;
 import org.semanticweb.owlapi.apibinding.OWLManager;
 import org.semanticweb.owlapi.model.IRI;
+import org.semanticweb.owlapi.model.OWLAnnotationProperty;
 import org.semanticweb.owlapi.model.OWLClass;
 import org.semanticweb.owlapi.model.OWLDataFactory;
 import org.semanticweb.owlapi.model.OWLObjectProperty;
@@ -62,6 +63,31 @@ public class SnapshotValidatorTest {
     assertTrue(r.summary(), r.isValid());
     assertEquals(r.recomputedClosurePairs(), r.storeClosurePairs());
     assertTrue(r.cycles().isEmpty());
+  }
+
+  @Test
+  public void validatesSkosSnapshot() throws Exception {
+    String skos = "http://www.w3.org/2004/02/skos/core#";
+    String base = "http://ex/skos/";
+    OWLOntologyManager m = OWLManager.createOWLOntologyManager();
+    OWLDataFactory df = m.getOWLDataFactory();
+    OWLOntology o = m.createOntology(IRI.create(base + "scheme"));
+    OWLAnnotationProperty broader = df.getOWLAnnotationProperty(IRI.create(skos + "broader"));
+    OWLAnnotationProperty narrower = df.getOWLAnnotationProperty(IRI.create(skos + "narrower"));
+    OWLAnnotationProperty prefLabel = df.getOWLAnnotationProperty(IRI.create(skos + "prefLabel"));
+    m.addAxiom(o, df.getOWLAnnotationAssertionAxiom(broader, IRI.create(base + "A"), IRI.create(base + "B")));
+    m.addAxiom(o, df.getOWLAnnotationAssertionAxiom(broader, IRI.create(base + "B"), IRI.create(base + "root")));
+    m.addAxiom(o, df.getOWLAnnotationAssertionAxiom(narrower, IRI.create(base + "B"), IRI.create(base + "D")));
+    m.addAxiom(o, df.getOWLAnnotationAssertionAxiom(prefLabel, IRI.create(base + "A"), df.getOWLLiteral("A", "en")));
+
+    try (SnapshotStore s = SnapshotStore.openInMemory()) {
+      s.initSchema();
+      new SkosHierarchyExtractor().extract(o, s);
+      SnapshotValidator.Report r = new SnapshotValidator().validateSkos(o, s);
+      assertTrue(r.summary(), r.isValid());
+      assertEquals(r.recomputedClosurePairs(), r.storeClosurePairs());
+      assertTrue(r.cycles().isEmpty());
+    }
   }
 
   @Test
