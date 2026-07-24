@@ -16,6 +16,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Ingests ontology submissions into version-pinned SQLite snapshots and registers them in the
@@ -43,8 +44,15 @@ public class IngestJob {
     this.source = source;
   }
 
-  /** Selects the extractor for a submission's declared format: SKOS vs OWL/OBO (the default). */
-  private HierarchyExtractor extractorFor(String format) {
+  /**
+   * Selects the extractor for an ontology: a per-ontology hierarchy override if one is registered
+   * (e.g. RxNorm's isa backbone), otherwise the format default (SKOS relations vs OWL/OBO subClassOf).
+   */
+  private HierarchyExtractor extractorFor(String acronym, String format) {
+    Optional<HierarchyConfig> override = HierarchyConfigs.forOntology(acronym);
+    if (override.isPresent()) {
+      return new RelationHierarchyExtractor(override.get());
+    }
     return "SKOS".equalsIgnoreCase(format) ? skosExtractor : owlExtractor;
   }
 
@@ -112,7 +120,7 @@ public class IngestJob {
     HierarchyExtractor.Result extracted;
     try (SnapshotStore store = SnapshotStore.openFile(snapshotFile.toString())) {
       store.initSchema();
-      extracted = extractorFor(sub.format()).extractFromFile(raw.toFile(), store);
+      extracted = extractorFor(acronym, sub.format()).extractFromFile(raw.toFile(), store);
     } catch (Exception e) {
       throw new IOException("Extraction failed for " + acronym + " submission " + sub.submissionId(), e);
     }

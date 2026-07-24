@@ -13,6 +13,9 @@ import org.semanticweb.owlapi.model.OWLObjectProperty;
 import org.semanticweb.owlapi.model.OWLOntology;
 import org.semanticweb.owlapi.model.OWLOntologyManager;
 
+import java.util.List;
+import java.util.Set;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -63,6 +66,31 @@ public class SnapshotValidatorTest {
     assertTrue(r.summary(), r.isValid());
     assertEquals(r.recomputedClosurePairs(), r.storeClosurePairs());
     assertTrue(r.cycles().isEmpty());
+  }
+
+  @Test
+  public void validatesCustomHierarchyPredicateSnapshot() throws Exception {
+    // A vocabulary whose hierarchy is a custom "isa" predicate (as RxNorm uses), not skos:broader.
+    String ex = "http://ex/rel/";
+    IRI isa = IRI.create(ex + "isa");
+    IRI prefLabel = IRI.create("http://www.w3.org/2004/02/skos/core#prefLabel");
+    HierarchyConfig cfg = new HierarchyConfig(Set.of(isa), Set.of(), prefLabel, "subsumption");
+
+    OWLOntologyManager m = OWLManager.createOWLOntologyManager();
+    OWLDataFactory df = m.getOWLDataFactory();
+    OWLOntology o = m.createOntology(IRI.create(ex + "scheme"));
+    OWLAnnotationProperty isaProp = df.getOWLAnnotationProperty(isa);
+    OWLAnnotationProperty labelProp = df.getOWLAnnotationProperty(prefLabel);
+    m.addAxiom(o, df.getOWLAnnotationAssertionAxiom(isaProp, IRI.create(ex + "child"), IRI.create(ex + "parent")));
+    m.addAxiom(o, df.getOWLAnnotationAssertionAxiom(labelProp, IRI.create(ex + "child"), df.getOWLLiteral("Child", "en")));
+
+    try (SnapshotStore s = SnapshotStore.openInMemory()) {
+      s.initSchema();
+      new RelationHierarchyExtractor(cfg).extract(o, s);
+      assertEquals(List.of(ex + "child"), s.children(ex + "parent"));
+      SnapshotValidator.Report r = new SnapshotValidator().validate(o, s, cfg);
+      assertTrue(r.summary(), r.isValid());
+    }
   }
 
   @Test

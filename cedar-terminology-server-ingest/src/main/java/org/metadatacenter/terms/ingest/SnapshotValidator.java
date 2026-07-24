@@ -76,12 +76,7 @@ public class SnapshotValidator {
 
   private static final int SAMPLE_CAP = 20;
 
-  private static final String SKOS = "http://www.w3.org/2004/02/skos/core#";
-  private static final IRI SKOS_BROADER = IRI.create(SKOS + "broader");
-  private static final IRI SKOS_BROADER_TRANSITIVE = IRI.create(SKOS + "broaderTransitive");
-  private static final IRI SKOS_NARROWER = IRI.create(SKOS + "narrower");
-  private static final IRI SKOS_PREF_LABEL = IRI.create(SKOS + "prefLabel");
-  private static final IRI SKOS_CONCEPT = IRI.create(SKOS + "Concept");
+  private static final IRI SKOS_CONCEPT = IRI.create("http://www.w3.org/2004/02/skos/core#Concept");
 
   /** Expected concept and edge ("child\tparent") sets derived from the source ontology. */
   private record Expected(Set<String> concepts, Set<String> edges) {}
@@ -93,7 +88,12 @@ public class SnapshotValidator {
 
   /** Validates a SKOS snapshot (hierarchy = {@code skos:broader}/{@code narrower}). */
   public Report validateSkos(OWLOntology ont, SnapshotStore store) throws SQLException {
-    return compare(deriveSkos(ont), store);
+    return validate(ont, store, HierarchyConfig.skos());
+  }
+
+  /** Validates a relation-based snapshot against a hierarchy configuration (SKOS, RxNorm isa, ...). */
+  public Report validate(OWLOntology ont, SnapshotStore store, HierarchyConfig config) throws SQLException {
+    return compare(deriveRelations(ont, config), store);
   }
 
   public Report validateFiles(File owl, SnapshotStore store) throws Exception {
@@ -102,6 +102,10 @@ public class SnapshotValidator {
 
   public Report validateSkosFiles(File skos, SnapshotStore store) throws Exception {
     return validateSkos(load(skos), store);
+  }
+
+  public Report validateFiles(File file, SnapshotStore store, HierarchyConfig config) throws Exception {
+    return validate(load(file), store, config);
   }
 
   /* -------------------------------------------------------------------------------------------- */
@@ -130,7 +134,7 @@ public class SnapshotValidator {
     return new Expected(concepts, edges);
   }
 
-  private static Expected deriveSkos(OWLOntology ont) {
+  private static Expected deriveRelations(OWLOntology ont, HierarchyConfig config) {
     Set<String> concepts = new HashSet<>();
     Set<String> edges = new HashSet<>();
     for (OWLAnnotationAssertionAxiom ax : ont.getAxioms(AxiomType.ANNOTATION_ASSERTION)) {
@@ -139,15 +143,15 @@ public class SnapshotValidator {
       }
       IRI prop = ax.getProperty().getIRI();
       OWLAnnotationValue value = ax.getValue();
-      if ((prop.equals(SKOS_BROADER) || prop.equals(SKOS_BROADER_TRANSITIVE)) && value instanceof IRI parent) {
+      if (config.broaderPredicates().contains(prop) && value instanceof IRI parent) {
         edges.add(subject + "\t" + parent);
         concepts.add(subject.toString());
         concepts.add(parent.toString());
-      } else if (prop.equals(SKOS_NARROWER) && value instanceof IRI child) {
+      } else if (config.narrowerPredicates().contains(prop) && value instanceof IRI child) {
         edges.add(child + "\t" + subject);
         concepts.add(subject.toString());
         concepts.add(child.toString());
-      } else if (prop.equals(SKOS_PREF_LABEL) && value instanceof OWLLiteral) {
+      } else if (prop.equals(config.labelPredicate()) && value instanceof OWLLiteral) {
         concepts.add(subject.toString());
       }
     }
@@ -158,11 +162,11 @@ public class SnapshotValidator {
       IRI prop = ax.getProperty().asOWLObjectProperty().getIRI();
       String subj = ax.getSubject().asOWLNamedIndividual().getIRI().toString();
       String obj = ax.getObject().asOWLNamedIndividual().getIRI().toString();
-      if (prop.equals(SKOS_BROADER) || prop.equals(SKOS_BROADER_TRANSITIVE)) {
+      if (config.broaderPredicates().contains(prop)) {
         edges.add(subj + "\t" + obj);
         concepts.add(subj);
         concepts.add(obj);
-      } else if (prop.equals(SKOS_NARROWER)) {
+      } else if (config.narrowerPredicates().contains(prop)) {
         edges.add(obj + "\t" + subj);
         concepts.add(subj);
         concepts.add(obj);
@@ -252,16 +256,38 @@ public class SnapshotValidator {
     return out;
   }
 
-  /** Usage: SnapshotValidator &lt;sourceFile&gt; &lt;snapshotFile&gt; [--skos]. Exits non-zero if invalid. */
+  /**
+   * Usage: SnapshotValidator &lt;sourceFile&gt; &lt;snapshotFile&gt; [--skos | --broader &lt;IRI&gt; ...].
+   * With {@code --broader}, validates a relation-based snapshot whose hierarchy is the given
+   * predicate(s) (e.g. RxNorm's isa). Exits non-zero if invalid.
+   */
   public static void main(String[] args) throws Exception {
-    boolean skos = args.length == 3 && "--skos".equals(args[2]);
     if (args.length < 2) {
-      System.err.println("Usage: SnapshotValidator <sourceFile> <snapshotFile> [--skos]");
+      System.err.println("Usage: SnapshotValidator <sourceFile> <snapshotFile> [--skos | --broader <IRI> ...]");
       System.exit(2);
+    }
+    boolean skos = false;
+    Set<IRI> broader = new HashSet<>();
+    for (int i = 2; i < args.length; i++) {
+      if ("--skos".equals(args[i])) {
+        skos = true;
+      } else if ("--broader".equals(args[i]) && i + 1 < args.length) {
+        broader.add(IRI.create(args[++i]));
+      }
     }
     try (SnapshotStore store = SnapshotStore.openFile(args[1])) {
       SnapshotValidator v = new SnapshotValidator();
-      Report r = skos ? v.validateSkosFiles(new File(args[0]), store) : v.validateFiles(new File(args[0]), store);
+      File source = new File(args[0]);
+      Report r;
+      if (!broader.isEmpty()) {
+        HierarchyConfig config = new HierarchyConfig(broader, Set.of(),
+            IRI.create("http://www.w3.org/2004/02/skos/core#prefLabel"), "subsumption");
+        r = v.validateFiles(source, store, config);
+      } else if (skos) {
+        r = v.validateSkosFiles(source, store);
+      } else {
+        r = v.validateFiles(source, store);
+      }
       System.out.println(r.summary());
       if (!r.edgesMissingFromStore().isEmpty()) {
         System.out.println("edges missing from store (sample): " + r.edgesMissingFromStore());
