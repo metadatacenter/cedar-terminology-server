@@ -38,6 +38,9 @@ public class TerminologyServerApplication extends CedarMicroserviceApplication<T
   // terminology.localStore in cedar-main.yml; these properties, when set, take precedence.
   static final String PROP_CATALOG_PATH = "terminologyStore.catalogPath";
   static final String PROP_LOCAL_ONTOLOGIES = "terminologyStore.localOntologies";
+  // Strict mode: locally-served ontologies never fall back to BioPortal (used by the equivalence
+  // harness so a local gap fails loudly instead of being masked by a BioPortal answer).
+  static final String PROP_LOCAL_ONLY = "terminologyStore.localOnly";
 
   protected static ITerminologyService terminologyService;
 
@@ -98,8 +101,10 @@ public class TerminologyServerApplication extends CedarMicroserviceApplication<T
       CatalogStore catalog = CatalogStore.openFile(catalogPath);
       CatalogSnapshotProvider provider = new CatalogSnapshotProvider(catalog, localOntologies);
       SqliteTerminologyService local = new SqliteTerminologyService(provider);
-      log.info("Local terminology store enabled from {} for ontologies {}", catalogPath, localOntologies);
-      return new RoutingTerminologyService(bioPortalService, local, local::isAvailable);
+      boolean localOnly = Boolean.parseBoolean(System.getProperty(PROP_LOCAL_ONLY, "false"));
+      log.info("Local terminology store enabled from {} for ontologies {} (localOnly={})", catalogPath,
+          localOntologies, localOnly);
+      return new RoutingTerminologyService(bioPortalService, local, local::isAvailable, localOnly);
     } catch (Exception e) {
       log.error("Failed to enable local terminology store from {}; serving via BioPortal only",
           catalogPath, e);

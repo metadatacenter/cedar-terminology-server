@@ -18,6 +18,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
 
 /**
  * Verifies the router's dispatch: local when available and implemented, remote otherwise —
@@ -170,5 +171,26 @@ public class RoutingTerminologyServiceTest {
     PagedResults<SearchResult> r = router.integratedSearch(Optional.of("x"),
         vc("{\"ontologies\":[{\"acronym\":\"OTHER\"}]}"), 1, 50, null);
     assertEquals(REMOTE, r.getCollection().get(0).getPrefLabel());
+  }
+
+  /* localOnly — the strict mode the equivalence harness runs under */
+
+  private RoutingTerminologyService strictRouter() {
+    SqliteTerminologyService local = new SqliteTerminologyService(
+        ontology -> EX.equals(ontology) ? Optional.of(store) : Optional.empty());
+    return new RoutingTerminologyService(sentinelRemote(), local, local::isAvailable, true);
+  }
+
+  @Test
+  public void localOnly_localOntologyDoesNotFallBack() {
+    // getClassTree is unimplemented locally; strict mode must propagate, not return the REMOTE tree.
+    assertThrows(UnsupportedOperationException.class,
+        () -> strictRouter().getClassTree(iri("dog"), EX, false, null));
+  }
+
+  @Test
+  public void localOnly_nonLocalOntologyStillUsesRemote() throws Exception {
+    // localOnly only forbids fallback for locally-served ontologies; others are unaffected.
+    assertEquals(REMOTE, strictRouter().findClass(iri("dog"), "OTHER", null).getPrefLabel());
   }
 }

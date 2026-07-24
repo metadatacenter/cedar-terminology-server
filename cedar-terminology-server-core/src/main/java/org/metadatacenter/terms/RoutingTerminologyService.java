@@ -45,29 +45,47 @@ public class RoutingTerminologyService implements ITerminologyService {
   private final ITerminologyService remote;
   private final ITerminologyService local;
   private final LocalAvailability availability;
+  private final boolean localOnly;
 
   /**
    * Remote-only: every call is delegated to {@code remote}. Behavior is identical to using the
    * remote backend directly. Use this until a local backend exists.
    */
   public RoutingTerminologyService(ITerminologyService remote) {
-    this(remote, null, ontology -> false);
+    this(remote, null, ontology -> false, false);
   }
 
   public RoutingTerminologyService(ITerminologyService remote, ITerminologyService local,
                                    LocalAvailability availability) {
+    this(remote, local, availability, false);
+  }
+
+  /**
+   * When {@code localOnly} is true, a call for a locally-served ontology is never allowed to fall
+   * back to the remote backend: a local {@link UnsupportedOperationException} propagates instead of
+   * being masked by a remote result. This is the strict mode the equivalence harness runs under, so
+   * a gap in local coverage surfaces as a failure rather than a silent BioPortal answer. Ontologies
+   * not served locally are unaffected and still use the remote backend.
+   */
+  public RoutingTerminologyService(ITerminologyService remote, ITerminologyService local,
+                                   LocalAvailability availability, boolean localOnly) {
     this.remote = remote;
     this.local = local;
     this.availability = availability;
+    this.localOnly = localOnly;
   }
 
   /**
    * Serves an ontology-scoped call from the local backend when it is present and reports the
    * ontology as available, falling back to the remote backend if the local backend is absent or
-   * does not implement the operation.
+   * does not implement the operation. In {@code localOnly} mode a locally-served ontology does not
+   * fall back — an unimplemented operation propagates.
    */
   private <T> T dispatch(String ontology, Call<T> call) throws IOException {
     if (local != null && ontology != null && availability.isLocal(ontology)) {
+      if (localOnly) {
+        return call.apply(local);
+      }
       try {
         return call.apply(local);
       } catch (UnsupportedOperationException notImplementedLocally) {
@@ -90,6 +108,10 @@ public class RoutingTerminologyService implements ITerminologyService {
                                            List<String> valueSetsIds) throws IOException {
     String localOntology = singleLocalSearchOntology(sources, source, subtreeRootId);
     if (local != null && localOntology != null) {
+      if (localOnly) {
+        return local.search(q, scope, sources, suggest, source, subtreeRootId, maxDepth, page, pageSize,
+            displayContext, displayLinks, apiKey, valueSetsIds);
+      }
       try {
         return local.search(q, scope, sources, suggest, source, subtreeRootId, maxDepth, page, pageSize,
             displayContext, displayLinks, apiKey, valueSetsIds);
@@ -129,6 +151,9 @@ public class RoutingTerminologyService implements ITerminologyService {
   public PagedResults<SearchResult> integratedSearch(Optional<String> q, ValueConstraints valueConstraints, int page,
                                                      int pageSize, String apiKey) throws IOException {
     if (local != null && integratedSearchServedLocally(valueConstraints)) {
+      if (localOnly) {
+        return local.integratedSearch(q, valueConstraints, page, pageSize, apiKey);
+      }
       try {
         return local.integratedSearch(q, valueConstraints, page, pageSize, apiKey);
       } catch (UnsupportedOperationException notImplementedLocally) {
