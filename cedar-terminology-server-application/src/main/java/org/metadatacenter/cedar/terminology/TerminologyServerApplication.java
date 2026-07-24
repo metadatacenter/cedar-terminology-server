@@ -12,6 +12,7 @@ import org.metadatacenter.cedar.util.dw.CedarMicroserviceApplication;
 import org.metadatacenter.config.CedarConfig;
 import org.metadatacenter.model.ServerName;
 import org.metadatacenter.terms.ITerminologyService;
+import org.metadatacenter.terms.RoutingTerminologyService;
 import org.metadatacenter.terms.TerminologyService;
 import org.metadatacenter.terms.util.HttpClientFactory;
 
@@ -41,9 +42,13 @@ public class TerminologyServerApplication extends CedarMicroserviceApplication<T
     // Force the HttpClientFactory static block to run and build the shared client:
     HttpClientFactory.client();
 
-    terminologyService = new TerminologyService(cedarConfig.getTerminologyConfig().getBioPortal().getBasePath(),
-        cedarConfig.getTerminologyConfig().getBioPortal().getConnectTimeout(),
-        cedarConfig.getTerminologyConfig().getBioPortal().getSocketTimeout());
+    TerminologyService bioPortalService =
+        new TerminologyService(cedarConfig.getTerminologyConfig().getBioPortal().getBasePath(),
+            cedarConfig.getTerminologyConfig().getBioPortal().getConnectTimeout(),
+            cedarConfig.getTerminologyConfig().getBioPortal().getSocketTimeout());
+    // Route each request to a local (version-aware) backend when available, else BioPortal.
+    // No local backend is wired in yet, so every request is served by BioPortal (behavior unchanged).
+    terminologyService = new RoutingTerminologyService(bioPortalService);
     AbstractTerminologyServerResource.injectTerminologyService(terminologyService);
     // Initialize cache (note that this must be done after initializing the terminologyService)
     // When running the application on testing mode, the cache is loaded from the files stored into the test
