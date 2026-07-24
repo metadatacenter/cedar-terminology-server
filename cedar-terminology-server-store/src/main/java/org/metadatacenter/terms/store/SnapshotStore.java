@@ -53,29 +53,29 @@ public class SnapshotStore implements AutoCloseable {
   public void initSchema() throws SQLException {
     try (Statement s = connection.createStatement()) {
       s.executeUpdate("""
-          CREATE TABLE concept (
+          CREATE TABLE IF NOT EXISTS concept (
             id         INTEGER PRIMARY KEY,
             iri        TEXT NOT NULL UNIQUE,
             pref_label TEXT,
             obsolete   INTEGER NOT NULL DEFAULT 0
           )""");
       s.executeUpdate("""
-          CREATE TABLE edge (
+          CREATE TABLE IF NOT EXISTS edge (
             child_id    INTEGER NOT NULL,
             parent_id   INTEGER NOT NULL,
             source_pred TEXT,
             PRIMARY KEY (child_id, parent_id)
           ) WITHOUT ROWID""");
-      s.executeUpdate("CREATE INDEX idx_edge_parent ON edge(parent_id)");
+      s.executeUpdate("CREATE INDEX IF NOT EXISTS idx_edge_parent ON edge(parent_id)");
       s.executeUpdate("""
-          CREATE TABLE closure (
+          CREATE TABLE IF NOT EXISTS closure (
             ancestor_id   INTEGER NOT NULL,
             descendant_id INTEGER NOT NULL,
             depth         INTEGER,
             PRIMARY KEY (ancestor_id, descendant_id)
           ) WITHOUT ROWID""");
-      s.executeUpdate("CREATE INDEX idx_closure_desc ON closure(descendant_id)");
-      s.executeUpdate("CREATE TABLE root (concept_id INTEGER PRIMARY KEY)");
+      s.executeUpdate("CREATE INDEX IF NOT EXISTS idx_closure_desc ON closure(descendant_id)");
+      s.executeUpdate("CREATE TABLE IF NOT EXISTS root (concept_id INTEGER PRIMARY KEY)");
     }
   }
 

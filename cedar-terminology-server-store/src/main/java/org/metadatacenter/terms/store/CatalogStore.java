@@ -63,14 +63,14 @@ public class CatalogStore implements AutoCloseable {
   public void initSchema() throws SQLException {
     try (Statement s = connection.createStatement()) {
       s.executeUpdate("""
-          CREATE TABLE ontology (
+          CREATE TABLE IF NOT EXISTS ontology (
             acronym        TEXT PRIMARY KEY,
             name           TEXT NOT NULL,
             source_iri     TEXT,
             default_format TEXT
           )""");
       s.executeUpdate("""
-          CREATE TABLE snapshot (
+          CREATE TABLE IF NOT EXISTS snapshot (
             version_id       TEXT PRIMARY KEY,
             acronym          TEXT NOT NULL REFERENCES ontology(acronym),
             declared_version TEXT,
@@ -84,9 +84,9 @@ public class CatalogStore implements AutoCloseable {
             file_hash        TEXT NOT NULL,
             license_tier     TEXT NOT NULL
           )""");
-      s.executeUpdate("CREATE INDEX idx_snapshot_acronym ON snapshot(acronym, released_at)");
+      s.executeUpdate("CREATE INDEX IF NOT EXISTS idx_snapshot_acronym ON snapshot(acronym, released_at)");
       s.executeUpdate("""
-          CREATE TABLE version_tag (
+          CREATE TABLE IF NOT EXISTS version_tag (
             acronym    TEXT NOT NULL REFERENCES ontology(acronym),
             tag        TEXT NOT NULL,
             version_id TEXT NOT NULL REFERENCES snapshot(version_id),
