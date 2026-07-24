@@ -15,6 +15,7 @@ import org.semanticweb.owlapi.model.OWLOntologyManager;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 /**
@@ -104,5 +105,32 @@ public class OwlHierarchyExtractorTest {
     new OwlHierarchyExtractor().extract(ont, store);
     assertEquals("Dog", store.prefLabel(BASE + "dog").orElseThrow());
     assertEquals("Cat", store.prefLabel(BASE + "cat").orElseThrow());
+  }
+
+  @Test
+  public void capturesDeprecationAndReplacedBy() throws Exception {
+    OWLOntologyManager m = OWLManager.createOWLOntologyManager();
+    OWLDataFactory df = m.getOWLDataFactory();
+    OWLOntology o = m.createOntology(IRI.create(BASE + "obs"));
+    OWLClass oldTerm = df.getOWLClass(iri("oldterm"));
+    OWLClass newTerm = df.getOWLClass(iri("newterm"));
+    m.addAxiom(o, df.getOWLDeclarationAxiom(oldTerm));
+    m.addAxiom(o, df.getOWLDeclarationAxiom(newTerm));
+    m.addAxiom(o, df.getOWLAnnotationAssertionAxiom(df.getOWLDeprecated(), oldTerm.getIRI(), df.getOWLLiteral(true)));
+    m.addAxiom(o, df.getOWLAnnotationAssertionAxiom(
+        df.getOWLAnnotationProperty(IRI.create("http://purl.obolibrary.org/obo/IAO_0100001")),
+        oldTerm.getIRI(), iri("newterm")));
+
+    try (SnapshotStore s = SnapshotStore.openInMemory()) {
+      s.initSchema();
+      new OwlHierarchyExtractor().extract(o, s);
+      SnapshotStore.ConceptMeta old = s.allConceptMeta().stream()
+          .filter(c -> c.iri().equals(BASE + "oldterm")).findFirst().orElseThrow();
+      assertTrue(old.obsolete());
+      assertEquals(BASE + "newterm", old.replacedBy());
+      SnapshotStore.ConceptMeta neu = s.allConceptMeta().stream()
+          .filter(c -> c.iri().equals(BASE + "newterm")).findFirst().orElseThrow();
+      assertFalse(neu.obsolete());
+    }
   }
 }

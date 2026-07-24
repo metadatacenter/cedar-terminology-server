@@ -113,12 +113,23 @@ public class CatalogStore implements AutoCloseable {
     }
   }
 
-  /** Records an ingested snapshot. */
+  /**
+   * Records an ingested snapshot. Idempotent on {@code version_id}: re-ingesting the same content
+   * (same content-hash id) updates the existing row rather than failing, so a backfill can be
+   * re-run safely.
+   */
   public void addSnapshot(SnapshotInfo s) throws SQLException {
     try (PreparedStatement ps = connection.prepareStatement("""
         INSERT INTO snapshot (version_id, acronym, declared_version, released_at, ingested_at, format,
                               hierarchy_status, class_count, edge_count, file_path, file_hash, license_tier)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""")) {
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(version_id) DO UPDATE SET
+          acronym = excluded.acronym, declared_version = excluded.declared_version,
+          released_at = excluded.released_at, ingested_at = excluded.ingested_at,
+          format = excluded.format, hierarchy_status = excluded.hierarchy_status,
+          class_count = excluded.class_count, edge_count = excluded.edge_count,
+          file_path = excluded.file_path, file_hash = excluded.file_hash,
+          license_tier = excluded.license_tier""")) {
       ps.setString(1, s.versionId());
       ps.setString(2, s.acronym());
       ps.setString(3, s.declaredVersion());

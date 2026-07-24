@@ -3,8 +3,10 @@ package org.metadatacenter.terms.ingest;
 import org.metadatacenter.terms.store.SnapshotStore;
 import org.semanticweb.owlapi.apibinding.OWLManager;
 import org.semanticweb.owlapi.model.AxiomType;
+import org.semanticweb.owlapi.model.IRI;
 import org.semanticweb.owlapi.model.OWLAnnotation;
 import org.semanticweb.owlapi.model.OWLAnnotationProperty;
+import org.semanticweb.owlapi.model.OWLAnnotationValue;
 import org.semanticweb.owlapi.model.OWLClass;
 import org.semanticweb.owlapi.model.OWLClassExpression;
 import org.semanticweb.owlapi.model.OWLDataFactory;
@@ -44,16 +46,22 @@ public class OwlHierarchyExtractor {
    * Extracts the hierarchy from an already-loaded ontology into the store and materializes the
    * closure. The store should be freshly initialized ({@link SnapshotStore#initSchema()}).
    */
+  /** OBO "term replaced by": links an obsolete term to its successor. */
+  private static final IRI TERM_REPLACED_BY = IRI.create("http://purl.obolibrary.org/obo/IAO_0100001");
+
   public Result extract(OWLOntology ont, SnapshotStore store) throws SQLException {
     OWLDataFactory df = ont.getOWLOntologyManager().getOWLDataFactory();
     OWLAnnotationProperty rdfsLabel = df.getRDFSLabel();
+    OWLAnnotationProperty deprecated = df.getOWLDeprecated();
+    OWLAnnotationProperty replacedBy = df.getOWLAnnotationProperty(TERM_REPLACED_BY);
 
     int classCount = 0;
     for (OWLClass cls : ont.getClassesInSignature()) {
       if (cls.isOWLThing() || cls.isOWLNothing()) {
         continue;
       }
-      store.addConcept(cls.getIRI().toString(), label(cls, ont, rdfsLabel));
+      store.addConcept(cls.getIRI().toString(), label(cls, ont, rdfsLabel),
+          isDeprecated(cls, ont, deprecated), replacedBy(cls, ont, replacedBy));
       classCount++;
     }
 
@@ -89,6 +97,28 @@ public class OwlHierarchyExtractor {
   private static String label(OWLClass cls, OWLOntology ont, OWLAnnotationProperty rdfsLabel) {
     for (OWLAnnotation a : EntitySearcher.getAnnotations(cls, ont, rdfsLabel)) {
       if (a.getValue() instanceof OWLLiteral literal) {
+        return literal.getLiteral();
+      }
+    }
+    return null;
+  }
+
+  private static boolean isDeprecated(OWLClass cls, OWLOntology ont, OWLAnnotationProperty deprecated) {
+    for (OWLAnnotation a : EntitySearcher.getAnnotations(cls, ont, deprecated)) {
+      if (a.getValue() instanceof OWLLiteral literal && literal.isBoolean() && literal.parseBoolean()) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private static String replacedBy(OWLClass cls, OWLOntology ont, OWLAnnotationProperty replacedBy) {
+    for (OWLAnnotation a : EntitySearcher.getAnnotations(cls, ont, replacedBy)) {
+      OWLAnnotationValue value = a.getValue();
+      if (value instanceof IRI iri) {
+        return iri.toString();
+      }
+      if (value instanceof OWLLiteral literal) {
         return literal.getLiteral();
       }
     }

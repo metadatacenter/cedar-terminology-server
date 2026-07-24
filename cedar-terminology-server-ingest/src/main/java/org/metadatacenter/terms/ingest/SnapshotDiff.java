@@ -1,11 +1,14 @@
 package org.metadatacenter.terms.ingest;
 
 import org.metadatacenter.terms.store.SnapshotStore;
+import org.metadatacenter.terms.store.SnapshotStore.ConceptMeta;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -29,13 +32,14 @@ public class SnapshotDiff {
       int fromEdges,
       int toEdges,
       List<String> addedEdges,
-      List<String> removedEdges) {
+      List<String> removedEdges,
+      List<String> newlyObsoleted) {
 
     public String summary() {
       return String.format(
-          "concepts: %d -> %d (+%d -%d); edges: %d -> %d (+%d -%d)",
+          "concepts: %d -> %d (+%d -%d); edges: %d -> %d (+%d -%d); newly obsoleted: %d",
           fromConcepts, toConcepts, addedConcepts.size(), removedConcepts.size(),
-          fromEdges, toEdges, addedEdges.size(), removedEdges.size());
+          fromEdges, toEdges, addedEdges.size(), removedEdges.size(), newlyObsoleted.size());
     }
   }
 
@@ -50,7 +54,35 @@ public class SnapshotDiff {
         sortedDifference(fromConcepts, toConcepts),
         fromEdges.size(), toEdges.size(),
         sortedDifference(toEdges, fromEdges),
-        sortedDifference(fromEdges, toEdges));
+        sortedDifference(fromEdges, toEdges),
+        newlyObsoleted(from, to));
+  }
+
+  /**
+   * Concepts present and active in {@code from} but obsolete in {@code to} — the tracked
+   * obsoletion transition, annotated with the replacement IRI when the ontology provides one
+   * ({@code iri => replacementIri}). This is the identity-preserving signal that a naive
+   * added/removed comparison misses.
+   */
+  private static List<String> newlyObsoleted(SnapshotStore from, SnapshotStore to) throws SQLException {
+    Map<String, ConceptMeta> fromMeta = index(from.allConceptMeta());
+    List<String> out = new ArrayList<>();
+    for (ConceptMeta m : to.allConceptMeta()) {
+      ConceptMeta prev = fromMeta.get(m.iri());
+      if (m.obsolete() && prev != null && !prev.obsolete()) {
+        out.add(m.replacedBy() == null ? m.iri() : m.iri() + " => " + m.replacedBy());
+      }
+    }
+    out.sort(null);
+    return out;
+  }
+
+  private static Map<String, ConceptMeta> index(List<ConceptMeta> metas) {
+    Map<String, ConceptMeta> map = new HashMap<>();
+    for (ConceptMeta m : metas) {
+      map.put(m.iri(), m);
+    }
+    return map;
   }
 
   private static Set<String> edgeSet(SnapshotStore store) throws SQLException {
@@ -81,6 +113,7 @@ public class SnapshotDiff {
       printSample("removed concepts", d.removedConcepts());
       printSample("added edges", d.addedEdges());
       printSample("removed edges", d.removedEdges());
+      printSample("newly obsoleted", d.newlyObsoleted());
     }
   }
 

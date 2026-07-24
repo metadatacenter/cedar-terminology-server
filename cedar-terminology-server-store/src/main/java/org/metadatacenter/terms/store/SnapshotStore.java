@@ -34,6 +34,9 @@ public class SnapshotStore implements AutoCloseable {
    */
   public record Concept(String iri, String prefLabel, boolean obsolete, boolean hasChildren) {}
 
+  /** A concept's cross-version identity metadata: IRI, obsolete flag, and replacement IRI if any. */
+  public record ConceptMeta(String iri, boolean obsolete, String replacedBy) {}
+
   private final Connection connection;
 
   private SnapshotStore(Connection connection) {
@@ -54,10 +57,11 @@ public class SnapshotStore implements AutoCloseable {
     try (Statement s = connection.createStatement()) {
       s.executeUpdate("""
           CREATE TABLE IF NOT EXISTS concept (
-            id         INTEGER PRIMARY KEY,
-            iri        TEXT NOT NULL UNIQUE,
-            pref_label TEXT,
-            obsolete   INTEGER NOT NULL DEFAULT 0
+            id          INTEGER PRIMARY KEY,
+            iri         TEXT NOT NULL UNIQUE,
+            pref_label  TEXT,
+            obsolete    INTEGER NOT NULL DEFAULT 0,
+            replaced_by TEXT
           )""");
       s.executeUpdate("""
           CREATE TABLE IF NOT EXISTS edge (
@@ -83,12 +87,23 @@ public class SnapshotStore implements AutoCloseable {
    * Ingestion
    * ------------------------------------------------------------------------------------------ */
 
-  /** Adds a concept. Idempotent on IRI; a repeated IRI is ignored. */
+  /** Adds an active concept. Idempotent on IRI; a repeated IRI is ignored. */
   public void addConcept(String iri, String prefLabel) throws SQLException {
+    addConcept(iri, prefLabel, false, null);
+  }
+
+  /**
+   * Adds a concept, recording whether it is obsolete (deprecated) and, if so, the IRI of the
+   * concept that replaces it (from an OBO {@code term replaced by} annotation, when present).
+   * Idempotent on IRI.
+   */
+  public void addConcept(String iri, String prefLabel, boolean obsolete, String replacedBy) throws SQLException {
     try (PreparedStatement ps = connection.prepareStatement(
-        "INSERT OR IGNORE INTO concept (iri, pref_label) VALUES (?, ?)")) {
+        "INSERT OR IGNORE INTO concept (iri, pref_label, obsolete, replaced_by) VALUES (?, ?, ?, ?)")) {
       ps.setString(1, iri);
       ps.setString(2, prefLabel);
+      ps.setInt(3, obsolete ? 1 : 0);
+      ps.setString(4, replacedBy);
       ps.executeUpdate();
     }
   }
@@ -299,6 +314,18 @@ public class SnapshotStore implements AutoCloseable {
       List<String> out = new ArrayList<>();
       while (rs.next()) {
         out.add(rs.getString(1));
+      }
+      return out;
+    }
+  }
+
+  /** Every concept's cross-version identity metadata (IRI, obsolete flag, replacement IRI). */
+  public List<ConceptMeta> allConceptMeta() throws SQLException {
+    try (Statement s = connection.createStatement();
+         ResultSet rs = s.executeQuery("SELECT iri, obsolete, replaced_by FROM concept")) {
+      List<ConceptMeta> out = new ArrayList<>();
+      while (rs.next()) {
+        out.add(new ConceptMeta(rs.getString(1), rs.getInt(2) != 0, rs.getString(3)));
       }
       return out;
     }

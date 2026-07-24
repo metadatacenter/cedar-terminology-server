@@ -79,6 +79,16 @@ public class CatalogStoreTest {
   }
 
   @Test
+  public void addSnapshotIsIdempotentOnVersionId() throws Exception {
+    // Re-adding the same version_id (e.g. a re-run backfill) updates rather than failing.
+    catalog.addSnapshot(new SnapshotInfo("hashV1", "DOID", "release/updated", "2025-01-01",
+        "2026-01-01T00:00:00Z", "OWL", "subsumption", 15000, 21000,
+        "/snapshots/DOID/hashV1.sqlite", "hashV1", "open"));
+    assertEquals(2, catalog.listSnapshots("DOID").size()); // still two, not three
+    assertEquals("release/updated", catalog.getSnapshot("hashV1").orElseThrow().declaredVersion());
+  }
+
+  @Test
   public void unknownResolutionsAreEmpty() throws Exception {
     assertTrue(catalog.resolveLatest("NCIT").isEmpty());
     assertTrue(catalog.getSnapshot("nope").isEmpty());
