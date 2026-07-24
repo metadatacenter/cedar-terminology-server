@@ -1,8 +1,11 @@
 package org.metadatacenter.terms;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.metadatacenter.cedar.terminology.validation.integratedsearch.ValueConstraints;
 import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.terms.domainObjects.OntologyClass;
 import org.metadatacenter.terms.domainObjects.SearchResult;
@@ -44,7 +47,7 @@ public class RoutingTerminologyServiceTest {
           case "getClassTree" -> List.of(new TreeNode(null, null, null, null, REMOTE, null, false, null, false));
           case "findClass", "findRegularClass" ->
               new OntologyClass(REMOTE, iri("remote"), REMOTE, null, REMOTE, null, null, null, null, false, null, false);
-          case "search" -> new PagedResults<>(1, 1, 1, 1, null, null,
+          case "search", "integratedSearch" -> new PagedResults<>(1, 1, 1, 1, null, null,
               List.of(new SearchResult(REMOTE, iri("remote"), null, "OntologyClass", REMOTE, null, null, REMOTE, null,
                   null)));
           default -> throw new UnsupportedOperationException("remote stub does not implement " + method.getName());
@@ -136,6 +139,36 @@ public class RoutingTerminologyServiceTest {
   public void searchInNonLocalOntology_servedByRemote() throws Exception {
     PagedResults<SearchResult> r = router.search("a", List.of("classes"), List.of("OTHER"), false, null, null, 0, 1,
         50, false, false, null, null);
+    assertEquals(REMOTE, r.getCollection().get(0).getPrefLabel());
+  }
+
+  /* integratedSearch routing — the CEE surface */
+
+  private static final ObjectMapper VC = new ObjectMapper()
+      .setVisibility(new ObjectMapper().getVisibilityChecker().withFieldVisibility(JsonAutoDetect.Visibility.ANY));
+
+  private ValueConstraints vc(String json) throws Exception {
+    return VC.readValue(json, ValueConstraints.class);
+  }
+
+  @Test
+  public void integratedSearchInLocalOntology_servedByLocal() throws Exception {
+    // Empty text enumerates the local ontology (mammal, dog, cat) — not the REMOTE sentinel.
+    PagedResults<SearchResult> r = router.integratedSearch(Optional.empty(),
+        vc("{\"ontologies\":[{\"acronym\":\"" + EX + "\"}]}"), 1, 50, null);
+    assertEquals(Integer.valueOf(3), r.getTotalCount());
+  }
+
+  @Test
+  public void integratedSearchWithValueSets_servedByRemote() throws Exception {
+    PagedResults<SearchResult> r = router.integratedSearch(Optional.of("x"), vc("{\"valueSets\":[{}]}"), 1, 50, null);
+    assertEquals(REMOTE, r.getCollection().get(0).getPrefLabel());
+  }
+
+  @Test
+  public void integratedSearchInNonLocalOntology_servedByRemote() throws Exception {
+    PagedResults<SearchResult> r = router.integratedSearch(Optional.of("x"),
+        vc("{\"ontologies\":[{\"acronym\":\"OTHER\"}]}"), 1, 50, null);
     assertEquals(REMOTE, r.getCollection().get(0).getPrefLabel());
   }
 }

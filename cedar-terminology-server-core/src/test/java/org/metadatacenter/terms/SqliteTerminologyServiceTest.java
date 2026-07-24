@@ -1,8 +1,11 @@
 package org.metadatacenter.terms;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.metadatacenter.cedar.terminology.validation.integratedsearch.ValueConstraints;
 import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.terms.domainObjects.OntologyClass;
 import org.metadatacenter.terms.domainObjects.SearchResult;
@@ -214,5 +217,55 @@ public class SqliteTerminologyServiceTest {
   @Test
   public void findAllClassesInOntology_unavailableOntologyThrows() {
     assertThrows(UnsupportedOperationException.class, () -> service.findAllClassesInOntology("NOPE", 1, 50, null));
+  }
+
+  /* integratedSearch — the CEE's single call. valueConstraints built via a field-visible mapper. */
+
+  private static final ObjectMapper VC_MAPPER = new ObjectMapper()
+      .setVisibility(new ObjectMapper().getVisibilityChecker().withFieldVisibility(JsonAutoDetect.Visibility.ANY));
+
+  private PagedResults<SearchResult> integrated(Optional<String> q, String vcJson) throws Exception {
+    return service.integratedSearch(q, VC_MAPPER.readValue(vcJson, ValueConstraints.class), 1, 50, null);
+  }
+
+  @Test
+  public void integratedSearch_singleOntologyEmptyTextEnumerates() throws Exception {
+    PagedResults<SearchResult> r = integrated(Optional.empty(),
+        "{\"ontologies\":[{\"acronym\":\"EX\"}],\"branches\":[],\"valueSets\":[],\"classes\":[]}");
+    assertEquals(Integer.valueOf(6), r.getTotalCount());
+    assertEquals(6, r.getCollection().size());
+  }
+
+  @Test
+  public void integratedSearch_singleOntologyWithTextSearches() throws Exception {
+    PagedResults<SearchResult> r = integrated(Optional.of("a"), "{\"ontologies\":[{\"acronym\":\"EX\"}]}");
+    assertEquals(List.of(iri("cat"), iri("animal"), iri("mammal")), ldIds(r.getCollection()));
+  }
+
+  @Test
+  public void integratedSearch_singleBranchRestrictsToSubtree() throws Exception {
+    PagedResults<SearchResult> r = integrated(Optional.of("a"),
+        "{\"branches\":[{\"acronym\":\"EX\",\"uri\":\"" + iri("mammal") + "\"}]}");
+    assertEquals(List.of(iri("cat"), iri("mammal")), ldIds(r.getCollection()));
+  }
+
+  @Test
+  public void integratedSearch_enumeratedClassesFilteredAndSortedByLabel() throws Exception {
+    String json = "{\"classes\":["
+        + "{\"uri\":\"" + iri("zebra") + "\",\"prefLabel\":\"Zebra\",\"type\":\"OntologyClass\",\"source\":\"EX\"},"
+        + "{\"uri\":\"" + iri("ant") + "\",\"prefLabel\":\"Ant\",\"type\":\"OntologyClass\",\"source\":\"EX\"}]}";
+    assertEquals(List.of(iri("ant"), iri("zebra")), ldIds(integrated(Optional.empty(), json).getCollection()));
+    assertEquals(List.of(iri("ant")), ldIds(integrated(Optional.of("ant"), json).getCollection()));
+  }
+
+  @Test
+  public void integratedSearch_valueSetsNotServedLocally() {
+    assertThrows(UnsupportedOperationException.class, () -> integrated(Optional.of("x"), "{\"valueSets\":[{}]}"));
+  }
+
+  @Test
+  public void integratedSearch_multiOntologyNotServedLocally() {
+    assertThrows(UnsupportedOperationException.class,
+        () -> integrated(Optional.of("x"), "{\"ontologies\":[{\"acronym\":\"EX\"},{\"acronym\":\"OTHER\"}]}"));
   }
 }

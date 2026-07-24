@@ -1,10 +1,15 @@
 package org.metadatacenter.terms;
 
+import org.metadatacenter.cedar.terminology.validation.integratedsearch.BranchValueConstraint;
+import org.metadatacenter.cedar.terminology.validation.integratedsearch.ClassValueConstraint;
+import org.metadatacenter.cedar.terminology.validation.integratedsearch.OntologyValueConstraint;
 import org.metadatacenter.cedar.terminology.validation.integratedsearch.ValueConstraints;
 import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.terms.domainObjects.*;
+import org.metadatacenter.terms.util.Util;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -123,7 +128,51 @@ public class RoutingTerminologyService implements ITerminologyService {
   @Override
   public PagedResults<SearchResult> integratedSearch(Optional<String> q, ValueConstraints valueConstraints, int page,
                                                      int pageSize, String apiKey) throws IOException {
+    if (local != null && integratedSearchServedLocally(valueConstraints)) {
+      try {
+        return local.integratedSearch(q, valueConstraints, page, pageSize, apiKey);
+      } catch (UnsupportedOperationException notImplementedLocally) {
+        // Fall through to remote.
+      }
+    }
     return remote.integratedSearch(q, valueConstraints, page, pageSize, apiKey);
+  }
+
+  /**
+   * Whether an integrated search can be served locally: it names at least one source and every
+   * source it names — the ontology of each ontology/branch constraint and the source ontology of
+   * each enumerated class — is locally served. Value-set constraints are never local. This is
+   * conservative on purpose: a search touching any non-local source goes wholly to BioPortal.
+   */
+  private boolean integratedSearchServedLocally(ValueConstraints vc) {
+    if (vc == null || (vc.getValueSets() != null && !vc.getValueSets().isEmpty())) {
+      return false;
+    }
+    List<String> acronyms = new ArrayList<>();
+    if (vc.getOntologies() != null) {
+      for (OntologyValueConstraint o : vc.getOntologies()) {
+        acronyms.add(o.getAcronym());
+      }
+    }
+    if (vc.getBranches() != null) {
+      for (BranchValueConstraint b : vc.getBranches()) {
+        acronyms.add(b.getAcronym());
+      }
+    }
+    if (vc.getClasses() != null) {
+      for (ClassValueConstraint c : vc.getClasses()) {
+        acronyms.add(c.getSource() == null ? null : Util.getShortIdentifier(c.getSource()));
+      }
+    }
+    if (acronyms.isEmpty()) {
+      return false;
+    }
+    for (String acronym : acronyms) {
+      if (acronym == null || !availability.isLocal(acronym)) {
+        return false;
+      }
+    }
+    return true;
   }
 
   @Override

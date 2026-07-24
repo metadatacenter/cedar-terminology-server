@@ -1,6 +1,10 @@
 package org.metadatacenter.terms;
 
+import org.metadatacenter.cedar.terminology.validation.integratedsearch.BranchValueConstraint;
+import org.metadatacenter.cedar.terminology.validation.integratedsearch.ClassValueConstraint;
+import org.metadatacenter.cedar.terminology.validation.integratedsearch.OntologyValueConstraint;
 import org.metadatacenter.cedar.terminology.validation.integratedsearch.ValueConstraints;
+import org.metadatacenter.cedar.terminology.validation.integratedsearch.ValueSetValueConstraint;
 import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.terms.domainObjects.*;
 import org.metadatacenter.terms.store.SnapshotStore;
@@ -12,6 +16,7 @@ import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 
@@ -316,10 +321,90 @@ public class SqliteTerminologyService implements ITerminologyService {
     throw unsupported("propertySearch");
   }
 
+  /**
+   * The CEDAR Embeddable Editor's single terminology call: search for conforming values given a
+   * controlled-term field's {@code valueConstraints} and any typed text. Served locally for the
+   * single-source shapes the snapshot can answer:
+   * <ul>
+   *   <li>a single ontology — enumerate on empty text, else label search;</li>
+   *   <li>a single branch (class + descendants) — label search within the subtree;</li>
+   *   <li>an explicit set of enumerated classes — filtered and sorted by preferred label
+   *       (self-contained, needs no snapshot).</li>
+   * </ul>
+   * Value sets, multiple sources, and mixed constraints throw so the router falls back to BioPortal.
+   */
   @Override
   public PagedResults<SearchResult> integratedSearch(Optional<String> q, ValueConstraints valueConstraints, int page,
-                                                     int pageSize, String apiKey) {
-    throw unsupported("integratedSearch");
+                                                     int pageSize, String apiKey) throws IOException {
+    if (valueConstraints == null) {
+      throw unsupported("integratedSearch (no value constraints)");
+    }
+    List<OntologyValueConstraint> ontologies = valueConstraints.getOntologies();
+    List<BranchValueConstraint> branches = valueConstraints.getBranches();
+    List<ValueSetValueConstraint> valueSets = valueConstraints.getValueSets();
+    List<ClassValueConstraint> classes = valueConstraints.getClasses();
+    boolean hasOntologies = ontologies != null && !ontologies.isEmpty();
+    boolean hasBranches = branches != null && !branches.isEmpty();
+    boolean hasValueSets = valueSets != null && !valueSets.isEmpty();
+    boolean hasClasses = classes != null && !classes.isEmpty();
+
+    if (hasValueSets) {
+      throw unsupported("integratedSearch (value sets)");
+    }
+    // Enumerated classes on their own — self-contained, no snapshot needed.
+    if (hasClasses && !hasOntologies && !hasBranches) {
+      return integratedSearchEnumeratedClasses(q, classes, page, pageSize);
+    }
+    // A single ontology.
+    if (hasOntologies && ontologies.size() == 1 && !hasBranches && !hasClasses) {
+      String acronym = ontologies.get(0).getAcronym();
+      String query = q.map(String::trim).orElse("");
+      if (query.isEmpty()) {
+        return ObjectConverter.classResultsToSearchResults(findAllClassesInOntology(acronym, page, pageSize, apiKey));
+      }
+      return search(query, List.of("classes"), List.of(acronym), false, null, null, 0, page, pageSize,
+          false, false, apiKey, null);
+    }
+    // A single branch (class + descendants).
+    if (hasBranches && branches.size() == 1 && !hasOntologies && !hasClasses) {
+      BranchValueConstraint branch = branches.get(0);
+      return search(q.map(String::trim).orElse(""), List.of("classes"), null, false, branch.getAcronym(),
+          branch.getUri(), 0, page, pageSize, false, false, apiKey, null);
+    }
+    throw unsupported("integratedSearch (multi-source or mixed constraints)");
+  }
+
+  /**
+   * Filters an explicit set of enumerated classes by preferred label (case-insensitive substring),
+   * sorted by preferred label as BioPortal does, then paginates. The classes are self-describing, so
+   * this needs no snapshot.
+   */
+  private PagedResults<SearchResult> integratedSearchEnumeratedClasses(Optional<String> q,
+                                                                       List<ClassValueConstraint> classes,
+                                                                       int page, int pageSize) {
+    String query = q.map(String::trim).map(String::toLowerCase).orElse("");
+    List<SearchResult> all = new ArrayList<>();
+    classes.stream()
+        .filter(c -> c.getPrefLabel() != null && c.getPrefLabel().toLowerCase().contains(query))
+        .sorted(Comparator.comparing(ClassValueConstraint::getPrefLabel, String.CASE_INSENSITIVE_ORDER))
+        .forEach(c -> all.add(ObjectConverter.toSearchResult(c)));
+    return pageOf(all, page, pageSize);
+  }
+
+  /** Paginates an already-built, ordered result list using BioPortal's single-source contract. */
+  private PagedResults<SearchResult> pageOf(List<SearchResult> all, int page, int pageSize) {
+    int total = all.size();
+    if (total == 0) {
+      return new PagedResults<>(page, 0, 0, 0, null, null, new ArrayList<>());
+    }
+    int reqSize = pageSize <= 0 ? total : pageSize;
+    int pageCount = (int) Math.ceil((double) total / reqSize);
+    int from = Math.min(Math.max(0, (page - 1) * reqSize), total);
+    int to = Math.min(total, from + reqSize);
+    List<SearchResult> slice = new ArrayList<>(all.subList(from, to));
+    Integer prev = page > 1 ? page - 1 : null;
+    Integer next = page < pageCount ? page + 1 : null;
+    return new PagedResults<>(page, pageCount, slice.size(), total, prev, next, slice);
   }
 
   @Override
