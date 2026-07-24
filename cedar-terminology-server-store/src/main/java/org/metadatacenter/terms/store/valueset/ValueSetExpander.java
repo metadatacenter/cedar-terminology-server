@@ -78,6 +78,30 @@ public class ValueSetExpander implements AutoCloseable {
     return new ValueSetDiff(before.size(), after.size(), added, removed);
   }
 
+  /**
+   * Validates a value set's members against a target snapshot version: expands the definition (at
+   * its own pinned snapshot), then classifies each member in the target as still active, obsolete
+   * (annotated with its replacement IRI when known), or removed.
+   */
+  public ValueSetValidation validateAgainst(ValueSetDefinition def, String targetVersionId) throws SQLException {
+    List<String> members = expand(def);
+    SnapshotStore target = snapshot(targetVersionId);
+    int active = 0;
+    List<String> obsoleted = new ArrayList<>();
+    List<String> removed = new ArrayList<>();
+    for (String iri : members) {
+      Optional<SnapshotStore.ConceptMeta> meta = target.conceptMeta(iri);
+      if (meta.isEmpty()) {
+        removed.add(iri);
+      } else if (meta.get().obsolete()) {
+        obsoleted.add(meta.get().replacedBy() == null ? iri : iri + " => " + meta.get().replacedBy());
+      } else {
+        active++;
+      }
+    }
+    return new ValueSetValidation(members.size(), active, obsoleted, removed);
+  }
+
   private SnapshotStore snapshot(String versionId) throws SQLException {
     SnapshotStore cached = openByVersion.get(versionId);
     if (cached != null) {
@@ -112,6 +136,7 @@ public class ValueSetExpander implements AutoCloseable {
       System.err.println("Usage: ValueSetExpander <catalogDb> descendants <versionId> <rootIri> [includeRoot]");
       System.err.println("       ValueSetExpander <catalogDb> relation <versionId> <predicate> <objectIri>");
       System.err.println("       ValueSetExpander <catalogDb> diff-descendants <versionA> <versionB> <rootIri>");
+      System.err.println("       ValueSetExpander <catalogDb> validate-descendants <definedVersion> <targetVersion> <rootIri>");
       System.exit(2);
     }
     try (CatalogStore catalog = CatalogStore.openFile(args[0]);
@@ -123,6 +148,13 @@ public class ValueSetExpander implements AutoCloseable {
         System.out.println(d.summary());
         sample("added", d.added());
         sample("removed", d.removed());
+      } else if ("validate-descendants".equals(args[1])) {
+        // args: catalog validate-descendants <definedVersion> <targetVersion> <rootIri>
+        ValueSetValidation v = expander.validateAgainst(
+            ValueSetDefinition.descendants(args[2], args[4], false), args[3]);
+        System.out.println(v.summary());
+        sample("obsoleted", v.obsoleted());
+        sample("removed", v.removed());
       } else {
         ValueSetDefinition def = switch (args[1]) {
           case "descendants" -> ValueSetDefinition.descendants(args[2], args[3],

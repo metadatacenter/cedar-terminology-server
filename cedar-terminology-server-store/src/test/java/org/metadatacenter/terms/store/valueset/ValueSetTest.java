@@ -13,6 +13,7 @@ import java.util.Comparator;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 
 /**
  * Value sets over a synthetic snapshot: an is_a tree (disease > cancer > {melanoma, carcinoma})
@@ -134,6 +135,32 @@ public class ValueSetTest {
       assertEquals(2, d.toCount());   // melanoma, sarcoma
       assertEquals(List.of(B + "sarcoma"), d.added());
       assertEquals(List.of(B + "carcinoma"), d.removed());
+    }
+  }
+
+  @Test
+  public void validateAgainstNewerVersionFlagsObsoleteAndRemoved() throws Exception {
+    // v3: carcinoma is obsolete (replaced by sarcoma); melanoma is gone entirely.
+    Path v3 = tempDir.resolve("snap3.sqlite");
+    try (SnapshotStore s = SnapshotStore.openFile(v3.toString())) {
+      s.initSchema();
+      s.addConcept(B + "disease", "disease");
+      s.addConcept(B + "cancer", "cancer");
+      s.addConcept(B + "sarcoma", "sarcoma");
+      s.addConcept(B + "carcinoma", "carcinoma (obsolete)", true, B + "sarcoma");
+      s.materialize();
+    }
+    catalog.addSnapshot(new CatalogStore.SnapshotInfo("v3", "EX", "3.0", "2027-01-01", "2027-01-01T00:00:00Z",
+        "OWL", "subsumption", 4, 0, v3.toString(), "v3", "public"));
+
+    try (ValueSetExpander expander = new ValueSetExpander(catalog)) {
+      // The value set was defined against v1 (members: melanoma, carcinoma).
+      ValueSetValidation v = expander.validateAgainst(ValueSetDefinition.descendants(V1, B + "cancer", false), "v3");
+      assertEquals(2, v.total());
+      assertEquals(0, v.active());
+      assertEquals(List.of(B + "carcinoma => " + B + "sarcoma"), v.obsoleted());
+      assertEquals(List.of(B + "melanoma"), v.removed());
+      assertFalse(v.isClean());
     }
   }
 

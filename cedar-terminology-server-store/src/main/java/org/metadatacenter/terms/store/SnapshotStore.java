@@ -336,6 +336,19 @@ public class SnapshotStore implements AutoCloseable {
     return rows.isEmpty() ? Optional.empty() : Optional.of(rows.get(0));
   }
 
+  /** Cross-version identity metadata for one concept (obsolete flag + replacement IRI), if present. */
+  public Optional<ConceptMeta> conceptMeta(String iri) throws SQLException {
+    try (PreparedStatement ps = connection.prepareStatement(
+        "SELECT iri, obsolete, replaced_by FROM concept WHERE iri = ?")) {
+      ps.setString(1, iri);
+      try (ResultSet rs = ps.executeQuery()) {
+        return rs.next()
+            ? Optional.of(new ConceptMeta(rs.getString(1), rs.getInt(2) != 0, rs.getString(3)))
+            : Optional.empty();
+      }
+    }
+  }
+
   /** Direct children as concept rows. */
   public List<Concept> childrenDetailed(String parentIri) throws SQLException {
     return queryConcepts("""
