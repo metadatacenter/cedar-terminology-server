@@ -288,6 +288,52 @@ public class SnapshotStore implements AutoCloseable {
     }
   }
 
+  /* --------------------------------------------------------------------------------------------
+   * Bulk reads — enumerate the whole snapshot (for validation and export).
+   * ------------------------------------------------------------------------------------------ */
+
+  /** Every concept IRI in the snapshot. */
+  public List<String> allConceptIris() throws SQLException {
+    try (Statement s = connection.createStatement();
+         ResultSet rs = s.executeQuery("SELECT iri FROM concept")) {
+      List<String> out = new ArrayList<>();
+      while (rs.next()) {
+        out.add(rs.getString(1));
+      }
+      return out;
+    }
+  }
+
+  /** Every direct edge as a {@code [childIri, parentIri]} pair. */
+  public List<String[]> allEdges() throws SQLException {
+    try (Statement s = connection.createStatement();
+         ResultSet rs = s.executeQuery("""
+             SELECT c.iri, p.iri FROM edge e
+             JOIN concept c ON c.id = e.child_id
+             JOIN concept p ON p.id = e.parent_id""")) {
+      List<String[]> out = new ArrayList<>();
+      while (rs.next()) {
+        out.add(new String[]{rs.getString(1), rs.getString(2)});
+      }
+      return out;
+    }
+  }
+
+  /** Every closure pair, encoded as {@code ancestorIri + '\t' + descendantIri}. */
+  public java.util.Set<String> allClosurePairs() throws SQLException {
+    try (Statement s = connection.createStatement();
+         ResultSet rs = s.executeQuery("""
+             SELECT a.iri, d.iri FROM closure cl
+             JOIN concept a ON a.id = cl.ancestor_id
+             JOIN concept d ON d.id = cl.descendant_id""")) {
+      java.util.Set<String> out = new java.util.HashSet<>();
+      while (rs.next()) {
+        out.add(rs.getString(1) + '\t' + rs.getString(2));
+      }
+      return out;
+    }
+  }
+
   private List<String> queryIris(String sql, String param) throws SQLException {
     try (PreparedStatement ps = connection.prepareStatement(sql)) {
       ps.setString(1, param);
