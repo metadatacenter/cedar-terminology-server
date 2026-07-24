@@ -1,22 +1,37 @@
 package org.metadatacenter.cedar.terminology.resources.bioportal;
 
+import io.dropwizard.testing.ResourceHelpers;
+import io.dropwizard.testing.junit.DropwizardAppRule;
+import jakarta.ws.rs.client.ClientBuilder;
 import jakarta.ws.rs.core.GenericType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.Status;
+import org.jboss.resteasy.client.jaxrs.ResteasyClientBuilder;
 import org.junit.Assert;
+import org.junit.BeforeClass;
+import org.junit.ClassRule;
 import org.junit.Test;
+import org.metadatacenter.cedar.terminology.TerminologyServerApplicationTest;
+import org.metadatacenter.cedar.terminology.TerminologyServerConfiguration;
+import org.metadatacenter.config.CedarConfig;
+import org.metadatacenter.config.environment.CedarEnvironmentVariableProvider;
+import org.metadatacenter.model.SystemComponent;
 import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.terms.domainObjects.OntologyClass;
 import org.metadatacenter.terms.store.CatalogStore;
 import org.metadatacenter.terms.store.SnapshotStore;
+import org.metadatacenter.util.test.TestAuthUtil;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Map;
 
 import static org.metadatacenter.cedar.terminology.utils.Constants.BP_CHILDREN;
 import static org.metadatacenter.cedar.terminology.utils.Constants.BP_CLASSES;
+import static org.metadatacenter.cedar.terminology.utils.Constants.BP_ENDPOINT;
+import static org.metadatacenter.cedar.terminology.utils.Constants.BP_ONTOLOGIES;
 import static org.metadatacenter.constant.HttpConstants.HTTP_HEADER_AUTHORIZATION;
 
 /**
@@ -27,11 +42,11 @@ import static org.metadatacenter.constant.HttpConstants.HTTP_HEADER_AUTHORIZATIO
  * initializer, which runs before the {@code DropwizardAppRule} starts the app). The class-children
  * endpoint for a LOCALTEST class must then be answered from the snapshot, not BioPortal.
  *
- * Like the other tests here, this is a full-stack integration test: it inherits the authenticated
- * setup and therefore requires the CEDAR runtime (Neo4j-backed user resolution, a seeded test
- * user). It does not need BioPortal, since the request targets a locally served ontology.
+ * Auth is provided by {@link TestAuthUtil}'s in-memory user service (installed after startup), so
+ * this test needs neither Neo4j nor BioPortal — only the CEDAR environment variables that
+ * {@link CedarConfig} requires.
  */
-public class LocalStoreResourceTest extends AbstractTerminologyServerResourceTest {
+public class LocalStoreResourceTest {
 
   private static final String ONT = "LOCALTEST";
   private static final String BASE = "http://localtest/";
@@ -60,18 +75,40 @@ public class LocalStoreResourceTest extends AbstractTerminologyServerResourceTes
         c.setTag(ONT, CatalogStore.TAG_LATEST, "v1");
       }
 
-      System.setProperty("cedar.terminology.catalogPath", catalog.toString());
-      System.setProperty("cedar.terminology.localOntologies", ONT);
+      System.setProperty("terminologyStore.catalogPath", catalog.toString());
+      System.setProperty("terminologyStore.localOntologies", ONT);
     } catch (Exception e) {
       throw new ExceptionInInitializerError(e);
     }
+  }
+
+  @ClassRule
+  public static final DropwizardAppRule<TerminologyServerConfiguration> RULE =
+      new DropwizardAppRule<>(TerminologyServerApplicationTest.class,
+          ResourceHelpers.resourceFilePath("test-config.yml"));
+
+  private static ClientBuilder clientBuilder;
+  private static String authHeader;
+  private static String childrenUrlBase;
+
+  @BeforeClass
+  public static void setUp() {
+    Map<String, String> environment = CedarEnvironmentVariableProvider.getFor(SystemComponent.SERVER_TERMINOLOGY);
+    CedarConfig cedarConfig = CedarConfig.getInstance(environment);
+
+    // Replace the app's Neo4j-backed user service with an in-memory one (no auth backend needed).
+    TestAuthUtil.installInMemoryUserService(cedarConfig);
+    authHeader = TestAuthUtil.getTestUser1AuthHeader(cedarConfig);
+
+    clientBuilder = ResteasyClientBuilder.newBuilder();
+    childrenUrlBase = "http://localhost:" + RULE.getLocalPort() + "/" + BP_ENDPOINT + "/" + BP_ONTOLOGIES;
   }
 
   @Test
   public void childrenServedFromLocalStore() {
     String classId = BASE + "cancer";
     String encoded = URLEncoder.encode(classId, StandardCharsets.UTF_8);
-    String url = baseUrlBpOntologies + "/" + ONT + "/" + BP_CLASSES + "/" + encoded + "/" + BP_CHILDREN;
+    String url = childrenUrlBase + "/" + ONT + "/" + BP_CLASSES + "/" + encoded + "/" + BP_CHILDREN;
 
     Response response = clientBuilder.build().target(url).request()
         .header(HTTP_HEADER_AUTHORIZATION, authHeader).get();

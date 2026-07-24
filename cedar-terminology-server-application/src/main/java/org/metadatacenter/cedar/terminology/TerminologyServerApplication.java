@@ -34,10 +34,13 @@ public class TerminologyServerApplication extends CedarMicroserviceApplication<T
   static final String ENV_CATALOG_PATH = "CEDAR_TERMINOLOGY_CATALOG_PATH";
   /** Environment variable holding a comma-separated allowlist of acronyms to serve locally. */
   static final String ENV_LOCAL_ONTOLOGIES = "CEDAR_TERMINOLOGY_LOCAL_ONTOLOGIES";
+  // Note: these system-property names deliberately avoid the "cedar." prefix, which CedarConfig
+  // claims as its Dropwizard config-override namespace (a "cedar.*" property is parsed into the
+  // CedarConfig tree). A colliding name would be misread as an unknown config field.
   /** System property equivalent of {@link #ENV_CATALOG_PATH} (takes precedence; handy for IDE run configs). */
-  static final String PROP_CATALOG_PATH = "cedar.terminology.catalogPath";
+  static final String PROP_CATALOG_PATH = "terminologyStore.catalogPath";
   /** System property equivalent of {@link #ENV_LOCAL_ONTOLOGIES} (takes precedence). */
-  static final String PROP_LOCAL_ONTOLOGIES = "cedar.terminology.localOntologies";
+  static final String PROP_LOCAL_ONTOLOGIES = "terminologyStore.localOntologies";
 
   protected static ITerminologyService terminologyService;
 

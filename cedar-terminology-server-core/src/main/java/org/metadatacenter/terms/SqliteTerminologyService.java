@@ -7,6 +7,8 @@ import org.metadatacenter.terms.store.SnapshotStore;
 import org.metadatacenter.terms.util.Util;
 
 import java.io.IOException;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
@@ -77,6 +79,15 @@ public class SqliteTerminologyService implements ITerminologyService {
     return new UnsupportedOperationException("Not served by the local snapshot backend: " + op);
   }
 
+  /**
+   * Class ids arrive URL-encoded from the resource layer (the endpoints declare {@code @Encoded});
+   * the local store is keyed by the decoded IRI, so decode before looking up. Decoding is
+   * idempotent for already-decoded IRIs (which contain no percent-escapes).
+   */
+  private static String decodeIri(String id) {
+    return id == null ? null : URLDecoder.decode(id, StandardCharsets.UTF_8);
+  }
+
   /* --------------------------------------------------------------------------------------------
    * Bucket A — implemented from the snapshot store.
    * ------------------------------------------------------------------------------------------ */
@@ -84,7 +95,7 @@ public class SqliteTerminologyService implements ITerminologyService {
   @Override
   public OntologyClass findClass(String id, String ontology, String apiKey) throws IOException {
     try {
-      return store(ontology).get(id).map(c -> toClass(c, ontology)).orElse(null);
+      return store(ontology).get(decodeIri(id)).map(c -> toClass(c, ontology)).orElse(null);
     } catch (SQLException e) {
       throw new IOException(e);
     }
@@ -113,7 +124,7 @@ public class SqliteTerminologyService implements ITerminologyService {
   public PagedResults<OntologyClass> getClassChildren(String id, String ontology, int page, int pageSize,
                                                       String apiKey) throws IOException {
     try {
-      return paginate(store(ontology).childrenDetailed(id), ontology, page, pageSize);
+      return paginate(store(ontology).childrenDetailed(decodeIri(id)), ontology, page, pageSize);
     } catch (SQLException e) {
       throw new IOException(e);
     }
@@ -123,7 +134,7 @@ public class SqliteTerminologyService implements ITerminologyService {
   public PagedResults<OntologyClass> getClassDescendants(String id, String ontology, int page, int pageSize,
                                                          String apiKey) throws IOException {
     try {
-      return paginate(store(ontology).descendantsDetailed(id), ontology, page, pageSize);
+      return paginate(store(ontology).descendantsDetailed(decodeIri(id)), ontology, page, pageSize);
     } catch (SQLException e) {
       throw new IOException(e);
     }
@@ -133,7 +144,7 @@ public class SqliteTerminologyService implements ITerminologyService {
   public List<OntologyClass> getClassParents(String id, String ontology, String apiKey) throws IOException {
     try {
       List<OntologyClass> out = new ArrayList<>();
-      for (SnapshotStore.Concept c : store(ontology).parentsDetailed(id)) {
+      for (SnapshotStore.Concept c : store(ontology).parentsDetailed(decodeIri(id))) {
         out.add(toClass(c, ontology));
       }
       return out;
