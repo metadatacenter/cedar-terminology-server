@@ -60,6 +60,7 @@ public class EquivalenceTest {
 
   private static final String OBI_ASSAY = "http://purl.obolibrary.org/obo/OBI_0000070";
   private static final String UBERON_ORGAN = "http://purl.obolibrary.org/obo/UBERON_0000062";
+  private static final String CL_HEPATOCYTE = "http://purl.obolibrary.org/obo/CL_0000182";
   private static final ObjectMapper MAPPER = new ObjectMapper();
 
   private static ClientBuilder clientBuilder;
@@ -80,9 +81,11 @@ public class EquivalenceTest {
             "equivalence/snapshots/OBI.sqlite", "obi-2026-05-08", "2026-05-08", 5218, 6386);
         register(catalog, "UBERON", "Uberon multi-species anatomy ontology",
             "equivalence/snapshots/UBERON.sqlite", "uberon-2023-07-25", "2023-07-25", 26624, 48669);
+        register(catalog, "CL", "Cell Ontology",
+            "equivalence/snapshots/CL.sqlite", "cl-6abe12f1", "2024-01-01", 19167, 36335);
       }
       System.setProperty("terminologyStore.catalogPath", catalogPath.toString());
-      System.setProperty("terminologyStore.localOntologies", "OBI,UBERON");
+      System.setProperty("terminologyStore.localOntologies", "OBI,UBERON,CL");
       System.setProperty("terminologyStore.localOnly", "true");
     } catch (Exception e) {
       throw new ExceptionInInitializerError(e);
@@ -188,6 +191,42 @@ public class EquivalenceTest {
     assertParentSet("UBERON", UBERON_ORGAN, "organ_parents_ids");
   }
 
+  /* ---- CL: the whole-ontology case, probed via hepatocyte (the tutorial's cell type) ---- */
+
+  @Test
+  public void cl_hepatocyteChildren_matchBioPortalSet() throws Exception {
+    assertPagedClassSet("CL", CL_HEPATOCYTE, "children", 500, "hepatocyte_children_ids");
+  }
+
+  @Test
+  public void cl_hepatocyteDescendants_matchBioPortalSet() throws Exception {
+    assertPagedClassSet("CL", CL_HEPATOCYTE, "descendants", 500, "hepatocyte_descendants_ids");
+  }
+
+  @Test
+  public void cl_hepatocyteParents_matchBioPortalSet() throws Exception {
+    assertParentSet("CL", CL_HEPATOCYTE, "hepatocyte_parents_ids");
+  }
+
+  /**
+   * Roots are NOT identical to BioPortal's, and this is a characterized divergence in how a root is
+   * computed under imports. CL imports large upper ontologies (BFO, GO, PATO, …); many imported
+   * classes arrive as bare references with no {@code subClassOf} in the served file, so locally they
+   * are parentless and surface as roots (local 537 vs BioPortal 66). BioPortal lists as roots only
+   * the direct subclasses of {@code owl:Thing}. What must hold: every BioPortal root is also a local
+   * root (BioPortal's roots are a subset). Whether to align the root rule to BioPortal's (roots =
+   * asserted {@code owl:Thing} children) is a separate decision, like the genus fix.
+   */
+  @Test
+  public void cl_rootsIncludeAllBioPortalRoots() throws Exception {
+    Response r = get(baseBp + "/ontologies/CL/classes/roots");
+    Assert.assertEquals(200, r.getStatus());
+    List<OntologyClass> roots = r.readEntity(new GenericType<List<OntologyClass>>() {});
+    r.close();
+    Assert.assertTrue("every BioPortal CL root must also be a local root",
+        shortIds(roots).containsAll(loadGoldenIds("cl_roots_ids")));
+  }
+
   /* ---- the CEE's enumerated-classes path (deterministic) ---- */
 
   @Test
@@ -222,5 +261,53 @@ public class EquivalenceTest {
     List<String> actual = results.getCollection().stream().map(SearchResult::getLdId).collect(Collectors.toList());
     Assert.assertEquals(expected, actual);
     Assert.assertEquals(Integer.valueOf(expected.size()), results.getTotalCount());
+  }
+
+  /* ---- typed search: quantify the Solr divergence rather than assert exact equality ---- */
+
+  /**
+   * Local class search matches labels by case-insensitive substring; BioPortal search is Solr
+   * (tokenization, stemming, synonyms). The result SETS cannot be identical, but for a plain term
+   * they are very close — this guards that closeness and logs the exact divergence each run. For
+   * {@code assay} in OBI the overlap is ~0.985 (local over-matches a few substrings; Solr adds a few
+   * synonym hits).
+   */
+  @Test
+  public void obi_typedSearchIsCloseToBioPortalSolr() throws Exception {
+    ObjectNode ontology = MAPPER.createObjectNode();
+    ontology.put("acronym", "OBI");
+    ObjectNode valueConstraints = MAPPER.createObjectNode();
+    valueConstraints.set("ontologies", MAPPER.createArrayNode().add(ontology));
+    valueConstraints.set("branches", MAPPER.createArrayNode());
+    valueConstraints.set("valueSets", MAPPER.createArrayNode());
+    valueConstraints.set("classes", MAPPER.createArrayNode());
+    ObjectNode parameterObject = MAPPER.createObjectNode();
+    parameterObject.set("valueConstraints", valueConstraints);
+    parameterObject.put("inputText", "assay");
+    ObjectNode body = MAPPER.createObjectNode();
+    body.set("parameterObject", parameterObject);
+    body.put("page", 1);
+    body.put("pageSize", 3000);
+
+    Response r = clientBuilder.build().target(URI.create(baseBp + "/integrated-search")).request()
+        .post(Entity.json(body));
+    Assert.assertEquals(200, r.getStatus());
+    PagedResults<SearchResult> results = r.readEntity(new GenericType<PagedResults<SearchResult>>() {});
+    r.close();
+
+    Set<String> local = results.getCollection().stream()
+        .map(sr -> sr.getLdId().substring(sr.getLdId().lastIndexOf('/') + 1)).collect(Collectors.toSet());
+    Set<String> bp = loadGoldenIds("obi_search_assay_bp_ids");
+    Set<String> intersection = new java.util.HashSet<>(local);
+    intersection.retainAll(bp);
+    Set<String> union = new java.util.HashSet<>(local);
+    union.addAll(bp);
+    double jaccard = (double) intersection.size() / union.size();
+    System.out.printf("[equivalence] OBI /search 'assay': local=%d BioPortal=%d shared=%d Jaccard=%.3f "
+            + "local-only=%d BioPortal-only=%d%n",
+        local.size(), bp.size(), intersection.size(), jaccard,
+        local.size() - intersection.size(), bp.size() - intersection.size());
+    Assert.assertTrue("local substring search should overlap BioPortal Solr by Jaccard >= 0.9, was " + jaccard,
+        jaccard >= 0.9);
   }
 }
