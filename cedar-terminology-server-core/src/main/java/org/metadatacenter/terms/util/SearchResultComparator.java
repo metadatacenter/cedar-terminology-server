@@ -1,11 +1,13 @@
 package org.metadatacenter.terms.util;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.text.similarity.LevenshteinDistance;
 import org.metadatacenter.terms.domainObjects.SearchResult;
 
 import java.util.Comparator;
 
 public class SearchResultComparator implements Comparator<SearchResult> {
+
+  private static final LevenshteinDistance LEVENSHTEIN_DISTANCE = LevenshteinDistance.getDefaultInstance();
 
   private final String query;
 
@@ -25,8 +27,8 @@ public class SearchResultComparator implements Comparator<SearchResult> {
       return 1;
     }
     else { // both contain the query. Use Levenshtein
-      Integer distance1 = StringUtils.getLevenshteinDistance(prefLabel1, query);
-      Integer distance2 = StringUtils.getLevenshteinDistance(prefLabel2, query);
+      Integer distance1 = LEVENSHTEIN_DISTANCE.apply(prefLabel1, query);
+      Integer distance2 = LEVENSHTEIN_DISTANCE.apply(prefLabel2, query);
       return distance1.compareTo(distance2);
     }
   }

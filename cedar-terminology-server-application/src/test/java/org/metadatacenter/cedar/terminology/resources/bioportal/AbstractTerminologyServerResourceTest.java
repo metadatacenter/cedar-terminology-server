@@ -30,6 +30,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import static org.metadatacenter.cedar.terminology.util.Constants.BP_PROPERTY_SEARCH;
+import static org.metadatacenter.cedar.terminology.util.Constants.BP_SEARCH;
 import static org.metadatacenter.cedar.terminology.utils.Constants.*;
 import static org.metadatacenter.constant.HttpConstants.HTTP_HEADER_AUTHORIZATION;
 
