@@ -351,4 +351,98 @@ public class EquivalenceTest {
     Assert.assertTrue("local substring search should overlap BioPortal Solr by Jaccard >= 0.9, was " + jaccard,
         jaccard >= 0.9);
   }
+
+  /* ---- the tutorial pathway, end to end (the "Tissue Sample" template's three fields) ----
+   * https://metadatacenter.readthedocs.io/en/latest/tutorials/cedar_term_tutorial/
+   * Cell Type = whole CL (fill: hepatocyte); Organ = UBERON organ branch (fill: liver);
+   * Assay Type = three assembled OBI classes. Each field's runtime autocomplete is the CEE's
+   * integrated-search, replayed here against the local backend and checked against BioPortal. */
+
+  private static final String UBERON_LIVER = "UBERON_0002107";
+  private static final String CL_HEPATOCYTE_ID = "CL_0000182";
+
+  private ObjectNode valueConstraints(ArrayNode ontologies, ArrayNode branches, ArrayNode classes) {
+    ObjectNode vc = MAPPER.createObjectNode();
+    vc.set("ontologies", ontologies == null ? MAPPER.createArrayNode() : ontologies);
+    vc.set("branches", branches == null ? MAPPER.createArrayNode() : branches);
+    vc.set("valueSets", MAPPER.createArrayNode());
+    vc.set("classes", classes == null ? MAPPER.createArrayNode() : classes);
+    return vc;
+  }
+
+  private PagedResults<SearchResult> integratedSearch(ObjectNode valueConstraints, String inputText, int pageSize) {
+    ObjectNode parameterObject = MAPPER.createObjectNode();
+    parameterObject.set("valueConstraints", valueConstraints);
+    parameterObject.put("inputText", inputText);
+    ObjectNode body = MAPPER.createObjectNode();
+    body.set("parameterObject", parameterObject);
+    body.put("page", 1);
+    body.put("pageSize", pageSize);
+    Response r = clientBuilder.build().target(URI.create(baseBp + "/integrated-search")).request()
+        .post(Entity.json(body));
+    Assert.assertEquals(200, r.getStatus());
+    PagedResults<SearchResult> res = r.readEntity(new GenericType<PagedResults<SearchResult>>() {});
+    r.close();
+    return res;
+  }
+
+  private static Set<String> resultShortIds(List<SearchResult> results) {
+    return results.stream().map(sr -> sr.getLdId().substring(sr.getLdId().lastIndexOf('/') + 1))
+        .collect(Collectors.toSet());
+  }
+
+  private static double jaccard(Set<String> a, Set<String> b) {
+    Set<String> intersection = new java.util.HashSet<>(a);
+    intersection.retainAll(b);
+    Set<String> union = new java.util.HashSet<>(a);
+    union.addAll(b);
+    return union.isEmpty() ? 1.0 : (double) intersection.size() / union.size();
+  }
+
+  @Test
+  public void tutorial_cellType_wholeCL_autocompleteMatchesBioPortal() throws Exception {
+    // Cell Type constrained to the whole Cell Ontology; user types "hepatocyte".
+    ObjectNode cl = MAPPER.createObjectNode();
+    cl.put("acronym", "CL");
+    Set<String> local = resultShortIds(
+        integratedSearch(valueConstraints(MAPPER.createArrayNode().add(cl), null, null), "hepatocyte", 500)
+            .getCollection());
+    Set<String> bp = loadGoldenIds("hepatocyte_cl_search_bp_ids");
+    Assert.assertTrue("the tutorial's pick (hepatocyte) must be selectable", local.contains(CL_HEPATOCYTE_ID));
+    Assert.assertTrue("no local hits beyond BioPortal's", bp.containsAll(local));
+    double j = jaccard(local, bp);
+    System.out.printf("[tutorial] Cell Type 'hepatocyte'/CL: local=%d BioPortal=%d Jaccard=%.3f%n",
+        local.size(), bp.size(), j);
+    Assert.assertTrue("hepatocyte autocomplete should match BioPortal closely, Jaccard was " + j, j >= 0.9);
+  }
+
+  @Test
+  public void tutorial_organ_uberonBranch_autocompleteFindsLiverWithinTheBranch() throws Exception {
+    // Organ constrained to the UBERON organ branch; user types "liver".
+    ObjectNode branch = MAPPER.createObjectNode();
+    branch.put("acronym", "UBERON");
+    branch.put("uri", UBERON_ORGAN);
+    Set<String> local = resultShortIds(
+        integratedSearch(valueConstraints(null, MAPPER.createArrayNode().add(branch), null), "liver", 500)
+            .getCollection());
+    Set<String> organBranch = loadGoldenIds("organ_descendants_ids");
+    Assert.assertTrue("the tutorial's pick (liver) must be selectable", local.contains(UBERON_LIVER));
+    Assert.assertTrue("every autocomplete result stays within the organ branch (matches BioPortal exactly)",
+        organBranch.containsAll(local));
+    System.out.printf("[tutorial] Organ 'liver'/UBERON organ-branch: local=%d, all within the branch%n", local.size());
+  }
+
+  @Test
+  public void tutorial_assayType_threeAssembledObiClassesReturnedExactly() throws Exception {
+    // Assay Type constrained to three assembled OBI classes; the CEE filters them server-side.
+    ArrayNode assays = (ArrayNode) MAPPER.readTree(Files.readString(
+        Paths.get(ResourceHelpers.resourceFilePath("equivalence/golden/tutorial_assays_input.json"))));
+    List<String> actual = integratedSearch(valueConstraints(null, null, assays), "", 50)
+        .getCollection().stream().map(SearchResult::getLdId).collect(Collectors.toList());
+    // BioPortal returns the enumerated classes sorted by preferred label (histopathology, imaging, microscopy).
+    Assert.assertEquals(List.of(
+        "http://purl.obolibrary.org/obo/OBI_0002564",
+        "http://purl.obolibrary.org/obo/OBI_0000185",
+        "http://purl.obolibrary.org/obo/OBI_0002119"), actual);
+  }
 }

@@ -1,0 +1,20 @@
+[
+  {
+    "uri": "http://purl.obolibrary.org/obo/OBI_0002564",
+    "prefLabel": "histopathology assay",
+    "type": "OntologyClass",
+    "source": "OBI"
+  },
+  {
+    "uri": "http://purl.obolibrary.org/obo/OBI_0000185",
+    "prefLabel": "imaging assay",
+    "type": "OntologyClass",
+    "source": "OBI"
+  },
+  {
+    "uri": "http://purl.obolibrary.org/obo/OBI_0002119",
+    "prefLabel": "microscopy assay",
+    "type": "OntologyClass",
+    "source": "OBI"
+  }
+]
