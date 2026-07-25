@@ -108,7 +108,7 @@ public class SearchResource extends AbstractTerminologyServerResource {
       if (sources != null && !sources.isEmpty()) {
         sourcesList = Arrays.asList(sources.split("\\s*,\\s*"));
       }
-      List<String> valueSetsIds = new ArrayList<>(Cache.valueSetsCache.get("value-sets").keySet());
+      List<String> valueSetsIds = new ArrayList<>(Cache.getValueSets().keySet());
       // TODO: The valueSetsIds parameter is passed to the service to avoid making additional calls to BioPortal.
       // These ids are used to know if a particular result returned by BioPortal is a value or a value set.
       // BioPortal should provide this information and this parameter should be removed

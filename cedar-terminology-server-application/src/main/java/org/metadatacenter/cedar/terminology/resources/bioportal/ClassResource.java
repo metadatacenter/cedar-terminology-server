@@ -158,7 +158,7 @@ public class ClassResource extends AbstractTerminologyServerResource {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
     try {
-      boolean isFlat = Cache.ontologiesCache.get("ontologies").get(ontology).getIsFlat();
+      boolean isFlat = Cache.isFlat(ontology);
       List<TreeNode> tree = terminologyService.getClassTree(id, ontology, isFlat, apiKey);
       return Response.ok().entity(JsonMapper.MAPPER.valueToTree(tree)).build();
     } catch (HTTPException e) {

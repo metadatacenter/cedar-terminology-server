@@ -63,8 +63,6 @@ public class ValueSetResource extends AbstractTerminologyServerResource {
       vs.setVsCollection(vsCollection);
       ValueSet createdValueSet = terminologyService.createProvisionalValueSet(vs, apiKey);
       JsonNode createdValueSetJson = JsonMapper.MAPPER.valueToTree(createdValueSet);
-      // Refresh value sets cache
-      Cache.valueSetsCache.refresh("value-sets");
       return Response.created(new URI(createdValueSet.getLdId())).entity(createdValueSetJson).build();
     } catch (HTTPException e) {
       return Response.status(e.getStatusCode()).build();
@@ -215,7 +213,7 @@ public class ValueSetResource extends AbstractTerminologyServerResource {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
     try {
-      List<ValueSet> valueSets = new ArrayList<>(Cache.valueSetsCache.get("value-sets").values());
+      List<ValueSet> valueSets = new ArrayList<>(Cache.getValueSets().values());
       return Response.ok().entity(JsonMapper.MAPPER.valueToTree(valueSets)).build();
     } catch (HTTPException e) {
       return Response.status(e.getStatusCode()).build();

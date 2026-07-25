@@ -56,7 +56,7 @@ public class OntologyResource extends AbstractTerminologyServerResource {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
     try {
-      List<Ontology> ontologies = new ArrayList<>(Cache.ontologiesCache.get("ontologies").values());
+      List<Ontology> ontologies = new ArrayList<>(Cache.getOntologies().values());
       return Response.ok().entity(JsonMapper.MAPPER.valueToTree(ontologies)).build();
     } catch (HTTPException e) {
       return Response.status(e.getStatusCode()).build();
@@ -82,8 +82,7 @@ public class OntologyResource extends AbstractTerminologyServerResource {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
     try {
-      // Retrieve ontology from ontologies cache
-      Ontology ontologies = Cache.ontologiesCache.get("ontologies").get(id);
+      Ontology ontologies = Cache.getOntology(id);
       if (ontologies == null) {
         return CedarResponse.notFound().build();
       }
@@ -115,7 +114,7 @@ public class OntologyResource extends AbstractTerminologyServerResource {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
     try {
-      boolean isFlat = Cache.ontologiesCache.get("ontologies").get(ontology).getIsFlat();
+      boolean isFlat = Cache.isFlat(ontology);
       List<OntologyClass> roots = terminologyService.getRootClasses(ontology, isFlat, apiKey);
       return Response.ok().entity(JsonMapper.MAPPER.valueToTree(roots)).build();
     } catch (HTTPException e) {

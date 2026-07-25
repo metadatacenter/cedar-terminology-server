@@ -1,233 +1,81 @@
 package org.metadatacenter.cedar.cache;
 
-import com.google.common.cache.CacheBuilder;
-import com.google.common.cache.CacheLoader;
-import com.google.common.cache.LoadingCache;
-import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.ListenableFutureTask;
 import org.metadatacenter.cedar.terminology.resources.AbstractTerminologyServerResource;
 import org.metadatacenter.terms.domainObjects.Ontology;
 import org.metadatacenter.terms.domainObjects.ValueSet;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import java.io.*;
+import java.io.IOException;
 import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.concurrent.Callable;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.ExecutionException;
 
 import static org.metadatacenter.cedar.terminology.utils.Constants.*;
 
+/**
+ * Live pass-through to the terminology service for ontology and value-set metadata.
+ *
+ * <p>This previously warmed and periodically refreshed an in-memory cache of every BioPortal
+ * ontology and value set: on startup (or on first access) the server crawled ~1300 ontologies
+ * ({@code loaded (n/1317)…}), which was slow and meant it could not start offline. Caching has been
+ * removed — each accessor fetches on demand. The accessors still declare {@link ExecutionException}
+ * so the existing call sites, which catch it, compile unchanged.
+ */
 public class Cache {
 
-  private static ScheduledExecutorService executor;
-  private static final int refreshInitialDelay = 0;
-  private static final int refreshDelay = 1;
-  private static final TimeUnit delayUnit = TimeUnit.HOURS;
-  private static String valueSetsCachePath;
-  private static String ontologiesCachePath;
-  private static boolean firstLoadValueSets = true;
-  private static boolean firstLoadOntologies = true;
-  private static boolean isTestMode = false;
-
-  private static final Logger log = LoggerFactory.getLogger(Cache.class);
-
+  /** No-op: retained so the application startup call site is unchanged. Caching has been removed. */
   public static void init(boolean testMode) {
-    isTestMode = testMode;
-    if (isTestMode) {
-      ontologiesCachePath = TEST_CACHE_FOLDER_NAME + "/" + ONTOLOGIES_CACHE_FILE;
-      valueSetsCachePath = TEST_CACHE_FOLDER_NAME + "/" + VALUE_SETS_CACHE_FILE;
-    }
-    else {
-      valueSetsCachePath = getCacheObjectsPath() + "/" + VALUE_SETS_CACHE_FILE;
-      ontologiesCachePath = getCacheObjectsPath() + "/" + ONTOLOGIES_CACHE_FILE;
-      executor = Executors.newSingleThreadScheduledExecutor();
-      executor.scheduleWithFixedDelay(
-          () -> {
-            ontologiesCache.refresh("ontologies");
-            valueSetsCache.refresh("value-sets");
-          }, refreshInitialDelay, refreshDelay, delayUnit);
-    }
+    // Intentionally empty — no warmup, no background refresh, no on-disk cache.
   }
 
-  // Google Guava cache for all value sets. It has been implemented as a single-object cache that will contain a
-  // LinkedHashMap with all value sets, so that it is possible both getting them as an ordered list and quickly
-  // access to specific value sets by id.
-  public static LoadingCache<String, LinkedHashMap<String, ValueSet>> valueSetsCache = CacheBuilder.newBuilder()
-      .maximumSize(1)
-      .build(new CacheLoader<String, LinkedHashMap<String, ValueSet>>() {
-
-        public LinkedHashMap<String, ValueSet> load(String s) throws IOException {
-          //Logger.info("Loading 'value sets' cache");
-          return getAllValueSetsAsMap();
-        }
-
-//        public ListenableFuture<LinkedHashMap<String, ValueSet>> reload(final String key, LinkedHashMap<String,
-//            ValueSet> prevValueSets) {
-//          // asynchronous!
-//          Logger.info("Reloading 'value sets' cache asynchronously");
-//          ListenableFutureTask<LinkedHashMap<String, ValueSet>> task = ListenableFutureTask.create(new Callable<LinkedHashMap<String, ValueSet>>() {
-//            public LinkedHashMap<String, ValueSet> call() throws IOException {
-//              return getAllValueSetsAsMap();
-//            }
-//          });
-//          executor.execute(task);
-//          return task;
-//        }
-      });
-
-  // Google Guava cache for all ontologies. It has been implemented as a single-object cache that will contain a
-  // LinkedHashMap with all ontologies, so that it is possible to both get them as an ordered list and quickly
-  // access to specific ontologies by id.
-  public static LoadingCache<String, LinkedHashMap<String, Ontology>> ontologiesCache = CacheBuilder.newBuilder().maximumSize(1)
-          //.expireAfterAccess(5, TimeUnit.SECONDS)
-          //.recordStats()
-      .build(new CacheLoader<String, LinkedHashMap<String, Ontology>>() {
-
-        public LinkedHashMap<String, Ontology> load(String s) throws IOException {
-          //Logger.info("Loading 'ontologies' cache");
-          return getAllOntologiesAsMap();
-        }
-
-        public ListenableFuture<LinkedHashMap<String, Ontology>> reload(final String key, LinkedHashMap<String,
-            Ontology> prevOntologies) {
-          // asynchronous!
-          //Logger.info("Reloading 'ontologies' cache asynchronously");
-          ListenableFutureTask<LinkedHashMap<String, Ontology>> task = ListenableFutureTask.create(() -> getAllOntologiesAsMap());
-          executor.execute(task);
-          return task;
-        }
-      });
-
-  private static LinkedHashMap<String, ValueSet> getAllValueSetsAsMap() throws IOException {
-    List<ValueSet> valueSets = null;
-    // The value sets are loaded from a cache file if one of the following cases is met:
-    // 1) The cache file exists and the server was just started. The calls that will follow will force cache regeneration
-    // 2) The cache file exists and the server is in test mode (running tests)
-    if ((firstLoadValueSets && new File(valueSetsCachePath).isFile()) ||
-        (isTestMode && new File(valueSetsCachePath).isFile()))  {
-      log.info("Loading value sets from file");
-      valueSets = readValueSetsFromFile();
-    } else {
-      log.info("Loading value sets from BioPortal");
-      valueSets = AbstractTerminologyServerResource.terminologyService.findAllValueSets(BP_PUBLIC_API_KEY);
-      saveValueSetsToFile(valueSets);
-    }
-    firstLoadValueSets = false;
-    LinkedHashMap lhm = new LinkedHashMap();
-    for (ValueSet vs : valueSets) {
-      lhm.put(vs.getId(), vs);
-    }
-    log.info("Value sets loaded");
-    return lhm;
-  }
-
-  private static LinkedHashMap<String, Ontology> getAllOntologiesAsMap() throws IOException {
-    List<Ontology> ontologies = null;
-    // The ontologies are loaded from a cache file if one of the following cases is met:
-    // 1) The cache file exists and the server was just started. The calls that will follow will force cache regeneration
-    // 2) The cache file exists and the server is in test mode (running tests)
-
-    if ((firstLoadOntologies && new File(ontologiesCachePath).isFile()) ||
-    (isTestMode && new File(ontologiesCachePath).isFile())) {
-      log.info("Loading ontologies from file");
-      ontologies = readOntologiesFromFile();
-    } else {
-      log.info("Loading ontologies from BioPortal");
-      ontologies = AbstractTerminologyServerResource.terminologyService.findAllOntologies(true, BP_PUBLIC_API_KEY);
-      saveOntologiesToFile(ontologies);
-    }
-    firstLoadOntologies = false;
-    LinkedHashMap lhm = new LinkedHashMap();
-    for (Ontology o : ontologies) {
-      lhm.put(o.getId(), o);
-    }
-    log.info("Ontologies loaded");
-    return lhm;
-  }
-
-  private static void saveValueSetsToFile(List<ValueSet> ontologies) {
-    //Logger.info("Saving value sets to file");
+  /**
+   * Whether an ontology is flat (has no hierarchy). Fetched live; defaults to {@code false}
+   * (hierarchical) when metadata is unavailable — e.g. an ontology served from a local snapshot,
+   * which carries no BioPortal-style {@code isFlat} flag.
+   */
+  public static boolean isFlat(String ontology) throws IOException, ExecutionException {
     try {
-      // Create dirs if they don't exist
-      File targetFile = new File(ontologiesCachePath);
-      File parent = targetFile.getParentFile();
-      if(!parent.exists() && !parent.mkdirs()){
-        throw new IllegalStateException("Couldn't create dir: " + parent);
-      }
-      ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream(valueSetsCachePath));
-      out.writeObject(ontologies);
-      out.flush();
-      out.close();
-    } catch (IOException e) {
-      e.printStackTrace();
+      Ontology o = AbstractTerminologyServerResource.terminologyService.findOntology(ontology, false, BP_PUBLIC_API_KEY);
+      return o != null && o.getIsFlat();
+    } catch (RuntimeException metadataUnavailable) {
+      return false;
     }
-    //Logger.info("Value sets saved to file");
   }
 
-  private static void saveOntologiesToFile(List<Ontology> ontologies) {
-    //Logger.info("Saving ontologies to file");
+  /**
+   * Every ontology, keyed by id, fetched live from the terminology service. Wraps any
+   * {@link IOException} in {@link ExecutionException} to preserve the exception contract the call
+   * sites expect (they used to read through a Guava cache, whose {@code get} threw ExecutionException).
+   */
+  public static LinkedHashMap<String, Ontology> getOntologies() throws ExecutionException {
     try {
-      // Create dirs if they don't exist
-      File targetFile = new File(ontologiesCachePath);
-      File parent = targetFile.getParentFile();
-      if(!parent.exists() && !parent.mkdirs()){
-        throw new IllegalStateException("Couldn't create dir: " + parent);
+      LinkedHashMap<String, Ontology> map = new LinkedHashMap<>();
+      for (Ontology o : AbstractTerminologyServerResource.terminologyService.findAllOntologies(true, BP_PUBLIC_API_KEY)) {
+        map.put(o.getId(), o);
       }
-      ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream(ontologiesCachePath));
-      out.writeObject(ontologies);
-      out.flush();
-      out.close();
+      return map;
     } catch (IOException e) {
-      e.printStackTrace();
+      throw new ExecutionException(e);
     }
-    //Logger.info("Ontologies saved to file");
   }
 
-  private static List<ValueSet> readValueSetsFromFile() {
-    List<ValueSet> valueSets = null;
-    // Check if the file exists
-    if (!new File(valueSetsCachePath).isFile()) {
-      return null;
-    } else {
-      ObjectInputStream in = null;
-      try {
-        in = new ObjectInputStream(new FileInputStream(valueSetsCachePath));
-        valueSets = (List<ValueSet>) in.readObject();
-      } catch (IOException e) {
-        e.printStackTrace();
-      } catch (ClassNotFoundException e) {
-        e.printStackTrace();
+  /** A single ontology by id, fetched live. Wraps {@link IOException} in {@link ExecutionException}. */
+  public static Ontology getOntology(String id) throws ExecutionException {
+    try {
+      return AbstractTerminologyServerResource.terminologyService.findOntology(id, true, BP_PUBLIC_API_KEY);
+    } catch (IOException e) {
+      throw new ExecutionException(e);
+    }
+  }
+
+  /** Every value set, keyed by id, fetched live. Wraps {@link IOException} in {@link ExecutionException}. */
+  public static LinkedHashMap<String, ValueSet> getValueSets() throws ExecutionException {
+    try {
+      LinkedHashMap<String, ValueSet> map = new LinkedHashMap<>();
+      for (ValueSet vs : AbstractTerminologyServerResource.terminologyService.findAllValueSets(BP_PUBLIC_API_KEY)) {
+        map.put(vs.getId(), vs);
       }
-      return valueSets;
+      return map;
+    } catch (IOException e) {
+      throw new ExecutionException(e);
     }
   }
-
-  private static List<Ontology> readOntologiesFromFile() {
-    List<Ontology> ontologies = null;
-    // Check if the file exists
-    if (!new File(ontologiesCachePath).isFile()) {
-      return null;
-    } else {
-      ObjectInputStream in = null;
-      try {
-        in = new ObjectInputStream(new FileInputStream(ontologiesCachePath));
-        ontologies = (List<Ontology>) in.readObject();
-      } catch (IOException e) {
-        e.printStackTrace();
-      } catch (ClassNotFoundException e) {
-        e.printStackTrace();
-      }
-      return ontologies;
-    }
-  }
-
-  private static String getCacheObjectsPath() {
-    String path = System.getenv("CEDAR_HOME") + "/" + CACHE_FOLDER_NAME;
-    return path;
-  }
-
 }
