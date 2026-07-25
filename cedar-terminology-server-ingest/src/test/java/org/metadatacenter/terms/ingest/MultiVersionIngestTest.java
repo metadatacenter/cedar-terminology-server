@@ -1,8 +1,8 @@
 package org.metadatacenter.terms.ingest;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.metadatacenter.terms.store.CatalogStore;
 import org.metadatacenter.terms.store.SnapshotStore;
 import org.semanticweb.owlapi.apibinding.OWLManager;
@@ -18,8 +18,8 @@ import java.nio.file.StandardCopyOption;
 import java.util.Comparator;
 import java.util.List;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Backfills two versions of an ontology through {@link IngestJob#ingestAll} and then diffs the two
@@ -35,7 +35,7 @@ public class MultiVersionIngestTest {
   private Path owlV2;
   private CatalogStore catalog;
 
-  @Before
+  @BeforeEach
   public void setUp() throws Exception {
     tempDir = Files.createTempDirectory("multi-ingest");
     owlV1 = tempDir.resolve("v1.owl");
@@ -46,7 +46,7 @@ public class MultiVersionIngestTest {
     catalog.initSchema();
   }
 
-  @After
+  @AfterEach
   public void tearDown() throws Exception {
     catalog.close();
     if (tempDir != null) {

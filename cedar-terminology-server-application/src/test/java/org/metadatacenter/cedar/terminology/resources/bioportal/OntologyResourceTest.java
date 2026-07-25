@@ -5,7 +5,13 @@ import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.Status;
-import org.junit.*;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 import org.metadatacenter.terms.domainObjects.Ontology;
 import org.metadatacenter.terms.domainObjects.OntologyClass;
 import org.metadatacenter.terms.domainObjects.OntologyProperty;
@@ -26,7 +32,7 @@ public class OntologyResourceTest extends AbstractTerminologyServerResourceTest 
    * One-time initialization code.
    * (Called once before any of the test methods in the class).
    */
-  @BeforeClass
+  @BeforeAll
   public static void oneTimeSetUp() {
     // Initialize ontology information
     ontology1 = new Ontology("NCIT", "https://data.bioontology.org/ontologies/",
@@ -37,7 +43,7 @@ public class OntologyResourceTest extends AbstractTerminologyServerResourceTest 
    * Sets up the test fixture.
    * (Called before every test case method.)
    */
-  @Before
+  @BeforeEach
   public void setUp() {
   }
 
@@ -45,26 +51,26 @@ public class OntologyResourceTest extends AbstractTerminologyServerResourceTest 
    * Tears down the test fixture.
    * (Called after every test case method.)
    */
-  @After
+  @AfterEach
   public void tearDown() {
   }
 
   @Test
-  @Ignore
+  @Disabled
   public void findAllOntologiesTest() {
     String url = baseUrlBpOntologies;
     // Service invocation
     Response response = clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check HTTP response
-    Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
+    Assertions.assertEquals(Status.OK.getStatusCode(), response.getStatus());
     // Check Content-Type
-    Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
+    Assertions.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check the results returned
     List<Ontology> ontologies = response.readEntity(new GenericType<>() {
     });
     response.close();
-    Assert.assertTrue("No ontologies returned", ontologies.size() > 0);
-    Assert.assertTrue("Wrong number of ontologies returned", ontologies.size() > 525);
+    Assertions.assertTrue( ontologies.size() > 0,"No ontologies returned");
+    Assertions.assertTrue( ontologies.size() > 525,"Wrong number of ontologies returned");
   }
 
   @Test
@@ -73,14 +79,14 @@ public class OntologyResourceTest extends AbstractTerminologyServerResourceTest 
     // Service invocation
     Response response = clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check HTTP response
-    Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
+    Assertions.assertEquals(Status.OK.getStatusCode(), response.getStatus());
     // Check Content-Type
-    Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
+    Assertions.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check that the call returns the expected ontology
     Ontology ontology = response.readEntity(Ontology.class);
     response.close();
-    Assert.assertEquals("Wrong ontology id", "NCIT", ontology.getId());
-    Assert.assertEquals("Wrong ontology name", "National Cancer Institute Thesaurus", ontology.getName());
+    Assertions.assertEquals( "NCIT", ontology.getId(),"Wrong ontology id");
+    Assertions.assertEquals( "National Cancer Institute Thesaurus", ontology.getName(),"Wrong ontology name");
   }
 
   @Test
@@ -89,14 +95,14 @@ public class OntologyResourceTest extends AbstractTerminologyServerResourceTest 
     // Service invocation
     Response response = clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check HTTP response
-    Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
+    Assertions.assertEquals(Status.OK.getStatusCode(), response.getStatus());
     // Check Content-Type
-    Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
+    Assertions.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check results
     List<OntologyClass> roots = response.readEntity(new GenericType<>() {
     });
     response.close();
-    Assert.assertTrue("No roots returned", roots.size() > 0);
+    Assertions.assertTrue( roots.size() > 0,"No roots returned");
     // Basic check to see whether "Biological Process" is found
     String rootId = "http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C17828";
     boolean found = false;
@@ -106,7 +112,7 @@ public class OntologyResourceTest extends AbstractTerminologyServerResourceTest 
         break;
       }
     }
-    Assert.assertTrue("Expected root class not found", found);
+    Assertions.assertTrue( found,"Expected root class not found");
   }
 
   @Test
@@ -116,14 +122,14 @@ public class OntologyResourceTest extends AbstractTerminologyServerResourceTest 
     // Service invocation
     Response response = clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check HTTP response
-    Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
+    Assertions.assertEquals(Status.OK.getStatusCode(), response.getStatus());
     // Check Content-Type
-    Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
+    Assertions.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check results
     List<OntologyProperty> roots = response.readEntity(new GenericType<>() {
     });
     response.close();
-    Assert.assertTrue("No roots returned", roots.size() > 0);
+    Assertions.assertTrue( roots.size() > 0,"No roots returned");
     // Basic check to see if the "Administrative metadata" root property is found
     String rootId = "http://id.loc.gov/ontologies/bibframe/adminMetadata";
     boolean found = false;
@@ -133,7 +139,7 @@ public class OntologyResourceTest extends AbstractTerminologyServerResourceTest 
         break;
       }
     }
-    Assert.assertTrue("Expected root property not found", found);
+    Assertions.assertTrue( found,"Expected root property not found");
   }
 
 }

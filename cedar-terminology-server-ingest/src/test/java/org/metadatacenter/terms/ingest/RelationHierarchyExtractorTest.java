@@ -1,6 +1,6 @@
 package org.metadatacenter.terms.ingest;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.metadatacenter.terms.store.SnapshotStore;
 import org.semanticweb.owlapi.apibinding.OWLManager;
 import org.semanticweb.owlapi.model.IRI;
@@ -12,7 +12,7 @@ import org.semanticweb.owlapi.model.OWLOntologyManager;
 import java.util.List;
 import java.util.Set;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Verifies the RxNorm-shaped case: an isa hierarchy plus retained compositional relations

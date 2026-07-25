@@ -1,8 +1,8 @@
 package org.metadatacenter.terms;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.metadatacenter.terms.domainObjects.Ontology;
 import org.metadatacenter.terms.store.CatalogStore;
 import org.metadatacenter.terms.store.SnapshotStore;
@@ -15,10 +15,10 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Verifies catalog-backed local resolution: an ontology is served locally only when allowlisted
@@ -32,7 +32,7 @@ public class CatalogSnapshotProviderTest {
   private CatalogStore catalog;
   private CatalogSnapshotProvider provider;
 
-  @Before
+  @BeforeEach
   public void setUp() throws Exception {
     tempDir = Files.createTempDirectory("provider-test");
 
@@ -67,7 +67,7 @@ public class CatalogSnapshotProviderTest {
     provider = new CatalogSnapshotProvider(catalog, Set.of("EX", "OTHER"));
   }
 
-  @After
+  @AfterEach
   public void tearDown() throws Exception {
     provider.close(); // also closes the catalog
     if (tempDir != null) {
@@ -125,7 +125,7 @@ public class CatalogSnapshotProviderTest {
     Ontology ex = onts.get(0);
     assertEquals("EX", ex.getId());
     assertEquals("Example", ex.getName());
-    assertFalse("a hierarchical snapshot is not flat", ex.getIsFlat());
+    assertFalse( ex.getIsFlat(),"a hierarchical snapshot is not flat");
     assertEquals("https://data.bioontology.org/ontologies/EX", ex.getLdId());
   }
 

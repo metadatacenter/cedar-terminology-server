@@ -1,10 +1,11 @@
 package org.metadatacenter.cedar.terminology;
 
+import io.dropwizard.testing.DropwizardTestSupport;
 import io.dropwizard.testing.ResourceHelpers;
-import io.dropwizard.testing.junit.DropwizardAppRule;
-import org.junit.Assert;
-import org.junit.ClassRule;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -19,10 +20,19 @@ import java.net.http.HttpResponse;
  */
 public class TerminologyServerApplicationSmokeTest {
 
-  @ClassRule
-  public static final DropwizardAppRule<TerminologyServerConfiguration> SERVER =
-      new DropwizardAppRule<>(TerminologyServerApplicationTest.class,
+  public static final DropwizardTestSupport<TerminologyServerConfiguration> SERVER =
+      new DropwizardTestSupport<>(TerminologyServerApplicationTest.class,
           ResourceHelpers.resourceFilePath("test-config.yml"));
+
+  @BeforeAll
+  public static void startServer() throws Exception {
+    SERVER.before();
+  }
+
+  @AfterAll
+  public static void stopServer() {
+    SERVER.after();
+  }
 
   private static final HttpClient CLIENT = HttpClient.newHttpClient();
 
@@ -37,14 +47,14 @@ public class TerminologyServerApplicationSmokeTest {
   @Test
   public void indexIsServed() throws Exception {
     HttpResponse<String> response = get("/");
-    Assert.assertEquals(200, response.statusCode());
+    Assertions.assertEquals(200, response.statusCode());
   }
 
   @Test
   public void unauthenticatedBioPortalRequestIsRejected() throws Exception {
     // The logged-in assertion runs before any BioPortal call, so this needs no network access
     HttpResponse<String> response = get("/bioportal/ontologies");
-    Assert.assertEquals(401, response.statusCode());
+    Assertions.assertEquals(401, response.statusCode());
   }
 
 }

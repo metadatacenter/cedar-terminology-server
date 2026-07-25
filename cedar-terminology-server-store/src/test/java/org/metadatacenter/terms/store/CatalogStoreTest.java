@@ -1,8 +1,8 @@
 package org.metadatacenter.terms.store;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import org.metadatacenter.terms.store.CatalogStore.OntologyInfo;
 import org.metadatacenter.terms.store.CatalogStore.SnapshotInfo;
@@ -10,8 +10,8 @@ import org.metadatacenter.terms.store.CatalogStore.SnapshotInfo;
 import java.util.List;
 import java.util.Optional;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class CatalogStoreTest {
 
@@ -22,7 +22,7 @@ public class CatalogStoreTest {
         "OWL", "subsumption", 14000, 20000, "/snapshots/DOID/" + versionId + ".sqlite", versionId, "open");
   }
 
-  @Before
+  @BeforeEach
   public void setUp() throws Exception {
     catalog = CatalogStore.openInMemory();
     catalog.initSchema();
@@ -33,7 +33,7 @@ public class CatalogStoreTest {
     catalog.setTag("DOID", CatalogStore.TAG_LATEST, "hashV2");
   }
 
-  @After
+  @AfterEach
   public void tearDown() throws Exception {
     catalog.close();
   }

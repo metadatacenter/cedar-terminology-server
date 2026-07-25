@@ -1,8 +1,8 @@
 package org.metadatacenter.terms.ingest;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.metadatacenter.terms.store.SnapshotStore;
 import org.semanticweb.owlapi.apibinding.OWLManager;
 import org.semanticweb.owlapi.model.IRI;
@@ -13,8 +13,8 @@ import org.semanticweb.owlapi.model.OWLOntologyManager;
 
 import java.util.List;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Builds a small SKOS vocabulary in memory (skos:broader/narrower as annotation assertions with
@@ -43,7 +43,7 @@ public class SkosHierarchyExtractorTest {
     return IRI.create(BASE + s);
   }
 
-  @Before
+  @BeforeEach
   public void setUp() throws Exception {
     OWLOntologyManager m = OWLManager.createOWLOntologyManager();
     OWLDataFactory df = m.getOWLDataFactory();
@@ -79,7 +79,7 @@ public class SkosHierarchyExtractorTest {
     new SkosHierarchyExtractor().extract(ont, store);
   }
 
-  @After
+  @AfterEach
   public void tearDown() throws Exception {
     store.close();
   }

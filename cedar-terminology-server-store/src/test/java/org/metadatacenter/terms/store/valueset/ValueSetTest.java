@@ -1,8 +1,8 @@
 package org.metadatacenter.terms.store.valueset;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.metadatacenter.terms.store.CatalogStore;
 import org.metadatacenter.terms.store.SnapshotStore;
 
@@ -12,8 +12,8 @@ import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.List;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 /**
  * Value sets over a synthetic snapshot: an is_a tree (disease > cancer > {melanoma, carcinoma})
@@ -30,7 +30,7 @@ public class ValueSetTest {
   private CatalogStore catalog;
   private ValueSetStore valueSets;
 
-  @Before
+  @BeforeEach
   public void setUp() throws Exception {
     tempDir = Files.createTempDirectory("valueset-test");
 
@@ -57,7 +57,7 @@ public class ValueSetTest {
     valueSets.initSchema();
   }
 
-  @After
+  @AfterEach
   public void tearDown() throws Exception {
     valueSets.close();
     catalog.close();

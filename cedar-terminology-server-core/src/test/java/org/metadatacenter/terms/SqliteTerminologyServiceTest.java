@@ -2,9 +2,9 @@ package org.metadatacenter.terms;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.metadatacenter.cedar.terminology.validation.integratedsearch.ValueConstraints;
 import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.terms.domainObjects.OntologyClass;
@@ -15,11 +15,11 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertThrows;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * The adapter over a hand-populated in-memory snapshot (the same DAG used by the store tests),
@@ -35,7 +35,7 @@ public class SqliteTerminologyServiceTest {
     return "http://ex/" + s;
   }
 
-  @Before
+  @BeforeEach
   public void setUp() throws Exception {
     store = SnapshotStore.openInMemory();
     store.initSchema();
@@ -57,7 +57,7 @@ public class SqliteTerminologyServiceTest {
     service = new SqliteTerminologyService(provider);
   }
 
-  @After
+  @AfterEach
   public void tearDown() throws Exception {
     store.close();
   }

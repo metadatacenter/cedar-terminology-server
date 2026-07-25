@@ -1,10 +1,10 @@
 package org.metadatacenter.terms.ingest;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.metadatacenter.terms.store.SnapshotStore;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Diff semantics at the store level, focused on obsoletion as a tracked transition (distinct from
@@ -29,11 +29,11 @@ public class SnapshotDiffTest {
 
       SnapshotDiff.Diff d = new SnapshotDiff().diff(from, to);
 
-      assertTrue("C should be added", d.addedConcepts().contains("C"));
+      assertTrue( d.addedConcepts().contains("C"),"C should be added");
       // B is still present (deprecated), so it is not "removed" ...
-      assertFalse("B should not be reported as removed", d.removedConcepts().contains("B"));
+      assertFalse( d.removedConcepts().contains("B"),"B should not be reported as removed");
       // ... it is reported as a tracked obsoletion, with its replacement.
-      assertTrue("B => C obsoletion should be reported", d.newlyObsoleted().contains("B => C"));
+      assertTrue( d.newlyObsoleted().contains("B => C"),"B => C obsoletion should be reported");
     }
   }
 }

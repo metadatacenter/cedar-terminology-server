@@ -4,17 +4,17 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import io.dropwizard.testing.DropwizardTestSupport;
 import io.dropwizard.testing.ResourceHelpers;
-import io.dropwizard.testing.junit.DropwizardAppRule;
 import jakarta.ws.rs.client.ClientBuilder;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.GenericType;
 import jakarta.ws.rs.core.Response;
 import org.jboss.resteasy.client.jaxrs.ResteasyClientBuilder;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.ClassRule;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 import org.metadatacenter.cedar.terminology.TerminologyServerApplicationTest;
 import org.metadatacenter.cedar.terminology.TerminologyServerConfiguration;
 import org.metadatacenter.config.CedarConfig;
@@ -102,19 +102,24 @@ public class EquivalenceTest {
     catalog.setTag(acronym, CatalogStore.TAG_LATEST, versionId);
   }
 
-  @ClassRule
-  public static final DropwizardAppRule<TerminologyServerConfiguration> RULE =
-      new DropwizardAppRule<>(TerminologyServerApplicationTest.class,
+  public static final DropwizardTestSupport<TerminologyServerConfiguration> RULE =
+      new DropwizardTestSupport<>(TerminologyServerApplicationTest.class,
           ResourceHelpers.resourceFilePath("test-config.yml"));
 
-  @BeforeClass
-  public static void setUp() {
+  @BeforeAll
+  public static void setUp() throws Exception {
+    RULE.before();
     Map<String, String> environment = CedarEnvironmentVariableProvider.getFor(SystemComponent.SERVER_TERMINOLOGY);
     CedarConfig cedarConfig = CedarConfig.getInstance(environment);
     TestAuthUtil.installInMemoryUserService(cedarConfig);
     authHeader = TestAuthUtil.getTestUser1AuthHeader(cedarConfig);
     clientBuilder = ResteasyClientBuilder.newBuilder();
     baseBp = "http://localhost:" + RULE.getLocalPort() + "/bioportal";
+  }
+
+  @AfterAll
+  public static void tearDown() {
+    RULE.after();
   }
 
   /* ---- helpers ---- */
@@ -142,19 +147,19 @@ public class EquivalenceTest {
       throws Exception {
     Response r = get(baseBp + "/ontologies/" + ontology + "/classes/" + enc(iri) + "/" + relation
         + "?page=1&pageSize=" + pageSize);
-    Assert.assertEquals(200, r.getStatus());
+    Assertions.assertEquals(200, r.getStatus());
     PagedResults<OntologyClass> pr = r.readEntity(new GenericType<PagedResults<OntologyClass>>() {});
     r.close();
-    Assert.assertEquals(loadGoldenIds(golden), shortIds(pr.getCollection()));
+    Assertions.assertEquals(loadGoldenIds(golden), shortIds(pr.getCollection()));
   }
 
   /** GET the (unpaged) parents of a class and assert its id set equals the golden. */
   private void assertParentSet(String ontology, String iri, String golden) throws Exception {
     Response r = get(baseBp + "/ontologies/" + ontology + "/classes/" + enc(iri) + "/parents");
-    Assert.assertEquals(200, r.getStatus());
+    Assertions.assertEquals(200, r.getStatus());
     List<OntologyClass> parents = r.readEntity(new GenericType<List<OntologyClass>>() {});
     r.close();
-    Assert.assertEquals(loadGoldenIds(golden), shortIds(parents));
+    Assertions.assertEquals(loadGoldenIds(golden), shortIds(parents));
   }
 
   /* ---- OBI: the assay branch ---- */
@@ -214,7 +219,7 @@ public class EquivalenceTest {
   // they are all obo/ IRIs with no such ambiguity.
   private Set<String> rootIds(String ontology) throws Exception {
     Response r = get(baseBp + "/ontologies/" + ontology + "/classes/roots");
-    Assert.assertEquals(200, r.getStatus());
+    Assertions.assertEquals(200, r.getStatus());
     List<OntologyClass> roots = r.readEntity(new GenericType<List<OntologyClass>>() {});
     r.close();
     return roots.stream().map(OntologyClass::getLdId).collect(Collectors.toSet());
@@ -227,7 +232,7 @@ public class EquivalenceTest {
    */
   @Test
   public void obi_rootsMatchBioPortalSet() throws Exception {
-    Assert.assertEquals(loadGoldenIds("obi_roots_ids"), rootIds("OBI"));
+    Assertions.assertEquals(loadGoldenIds("obi_roots_ids"), rootIds("OBI"));
   }
 
   /**
@@ -242,14 +247,14 @@ public class EquivalenceTest {
    */
   @Test
   public void uberon_rootsIncludeAllBioPortalRoots() throws Exception {
-    Assert.assertTrue("every BioPortal UBERON root must also be a local root",
-        rootIds("UBERON").containsAll(loadGoldenIds("uberon_roots_ids")));
+    Assertions.assertTrue(
+        rootIds("UBERON").containsAll(loadGoldenIds("uberon_roots_ids")),"every BioPortal UBERON root must also be a local root");
   }
 
   @Test
   public void cl_rootsIncludeAllBioPortalRoots() throws Exception {
-    Assert.assertTrue("every BioPortal CL root must also be a local root",
-        rootIds("CL").containsAll(loadGoldenIds("cl_roots_ids")));
+    Assertions.assertTrue(
+        rootIds("CL").containsAll(loadGoldenIds("cl_roots_ids")),"every BioPortal CL root must also be a local root");
   }
 
   /* ---- the ontology list: catalog-backed, no BioPortal crawl ---- */
@@ -259,13 +264,13 @@ public class EquivalenceTest {
     // GET /bioportal/ontologies is answered from the local catalog, so it lists exactly the
     // ontologies this server versions (OBI, UBERON, CL) rather than crawling BioPortal's ~1300.
     Response r = get(baseBp + "/ontologies");
-    Assert.assertEquals(200, r.getStatus());
+    Assertions.assertEquals(200, r.getStatus());
     List<Ontology> ontologies = r.readEntity(new GenericType<List<Ontology>>() {});
     r.close();
-    Assert.assertEquals(Set.of("OBI", "UBERON", "CL"),
+    Assertions.assertEquals(Set.of("OBI", "UBERON", "CL"),
         ontologies.stream().map(Ontology::getId).collect(Collectors.toSet()));
     // Served hierarchically (not flat), so tree/roots endpoints render as a hierarchy.
-    Assert.assertTrue("versioned ontologies are hierarchical", ontologies.stream().noneMatch(Ontology::getIsFlat));
+    Assertions.assertTrue( ontologies.stream().noneMatch(Ontology::getIsFlat),"versioned ontologies are hierarchical");
   }
 
   /* ---- the CEE's enumerated-classes path (deterministic) ---- */
@@ -290,7 +295,7 @@ public class EquivalenceTest {
 
     Response r = clientBuilder.build().target(URI.create(baseBp + "/integrated-search")).request()
         .post(Entity.json(body));
-    Assert.assertEquals(200, r.getStatus());
+    Assertions.assertEquals(200, r.getStatus());
     PagedResults<SearchResult> results = r.readEntity(new GenericType<PagedResults<SearchResult>>() {});
     r.close();
 
@@ -300,8 +305,8 @@ public class EquivalenceTest {
         .map(n -> n.get("uri").asText())
         .collect(Collectors.toList());
     List<String> actual = results.getCollection().stream().map(SearchResult::getLdId).collect(Collectors.toList());
-    Assert.assertEquals(expected, actual);
-    Assert.assertEquals(Integer.valueOf(expected.size()), results.getTotalCount());
+    Assertions.assertEquals(expected, actual);
+    Assertions.assertEquals(Integer.valueOf(expected.size()), results.getTotalCount());
   }
 
   /* ---- typed search: quantify the Solr divergence rather than assert exact equality ---- */
@@ -332,7 +337,7 @@ public class EquivalenceTest {
 
     Response r = clientBuilder.build().target(URI.create(baseBp + "/integrated-search")).request()
         .post(Entity.json(body));
-    Assert.assertEquals(200, r.getStatus());
+    Assertions.assertEquals(200, r.getStatus());
     PagedResults<SearchResult> results = r.readEntity(new GenericType<PagedResults<SearchResult>>() {});
     r.close();
 
@@ -348,8 +353,8 @@ public class EquivalenceTest {
             + "local-only=%d BioPortal-only=%d%n",
         local.size(), bp.size(), intersection.size(), jaccard,
         local.size() - intersection.size(), bp.size() - intersection.size());
-    Assert.assertTrue("local substring search should overlap BioPortal Solr by Jaccard >= 0.9, was " + jaccard,
-        jaccard >= 0.9);
+    Assertions.assertTrue(
+        jaccard >= 0.9,"local substring search should overlap BioPortal Solr by Jaccard >= 0.9, was " + jaccard);
   }
 
   /* ---- the tutorial pathway, end to end (the "Tissue Sample" template's three fields) ----
@@ -380,7 +385,7 @@ public class EquivalenceTest {
     body.put("pageSize", pageSize);
     Response r = clientBuilder.build().target(URI.create(baseBp + "/integrated-search")).request()
         .post(Entity.json(body));
-    Assert.assertEquals(200, r.getStatus());
+    Assertions.assertEquals(200, r.getStatus());
     PagedResults<SearchResult> res = r.readEntity(new GenericType<PagedResults<SearchResult>>() {});
     r.close();
     return res;
@@ -408,12 +413,12 @@ public class EquivalenceTest {
         integratedSearch(valueConstraints(MAPPER.createArrayNode().add(cl), null, null), "hepatocyte", 500)
             .getCollection());
     Set<String> bp = loadGoldenIds("hepatocyte_cl_search_bp_ids");
-    Assert.assertTrue("the tutorial's pick (hepatocyte) must be selectable", local.contains(CL_HEPATOCYTE_ID));
-    Assert.assertTrue("no local hits beyond BioPortal's", bp.containsAll(local));
+    Assertions.assertTrue( local.contains(CL_HEPATOCYTE_ID),"the tutorial's pick (hepatocyte) must be selectable");
+    Assertions.assertTrue( bp.containsAll(local),"no local hits beyond BioPortal's");
     double j = jaccard(local, bp);
     System.out.printf("[tutorial] Cell Type 'hepatocyte'/CL: local=%d BioPortal=%d Jaccard=%.3f%n",
         local.size(), bp.size(), j);
-    Assert.assertTrue("hepatocyte autocomplete should match BioPortal closely, Jaccard was " + j, j >= 0.9);
+    Assertions.assertTrue( j >= 0.9,"hepatocyte autocomplete should match BioPortal closely, Jaccard was " + j);
   }
 
   @Test
@@ -426,9 +431,9 @@ public class EquivalenceTest {
         integratedSearch(valueConstraints(null, MAPPER.createArrayNode().add(branch), null), "liver", 500)
             .getCollection());
     Set<String> organBranch = loadGoldenIds("organ_descendants_ids");
-    Assert.assertTrue("the tutorial's pick (liver) must be selectable", local.contains(UBERON_LIVER));
-    Assert.assertTrue("every autocomplete result stays within the organ branch (matches BioPortal exactly)",
-        organBranch.containsAll(local));
+    Assertions.assertTrue( local.contains(UBERON_LIVER),"the tutorial's pick (liver) must be selectable");
+    Assertions.assertTrue(
+        organBranch.containsAll(local),"every autocomplete result stays within the organ branch (matches BioPortal exactly)");
     System.out.printf("[tutorial] Organ 'liver'/UBERON organ-branch: local=%d, all within the branch%n", local.size());
   }
 
@@ -440,7 +445,7 @@ public class EquivalenceTest {
     List<String> actual = integratedSearch(valueConstraints(null, null, assays), "", 50)
         .getCollection().stream().map(SearchResult::getLdId).collect(Collectors.toList());
     // BioPortal returns the enumerated classes sorted by preferred label (histopathology, imaging, microscopy).
-    Assert.assertEquals(List.of(
+    Assertions.assertEquals(List.of(
         "http://purl.obolibrary.org/obo/OBI_0002564",
         "http://purl.obolibrary.org/obo/OBI_0000185",
         "http://purl.obolibrary.org/obo/OBI_0002119"), actual);

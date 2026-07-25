@@ -2,9 +2,9 @@ package org.metadatacenter.terms;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.metadatacenter.cedar.terminology.validation.integratedsearch.ValueConstraints;
 import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.terms.domainObjects.OntologyClass;
@@ -17,8 +17,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * Verifies the router's dispatch: local when available and implemented, remote otherwise —
@@ -55,7 +55,7 @@ public class RoutingTerminologyServiceTest {
         });
   }
 
-  @Before
+  @BeforeEach
   public void setUp() throws Exception {
     store = SnapshotStore.openInMemory();
     store.initSchema();
@@ -71,7 +71,7 @@ public class RoutingTerminologyServiceTest {
     router = new RoutingTerminologyService(sentinelRemote(), local, local::isAvailable);
   }
 
-  @After
+  @AfterEach
   public void tearDown() throws Exception {
     store.close();
   }

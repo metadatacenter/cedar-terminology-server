@@ -1,8 +1,8 @@
 package org.metadatacenter.terms.ingest;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.metadatacenter.terms.store.SnapshotStore;
 import org.semanticweb.owlapi.apibinding.OWLManager;
 import org.semanticweb.owlapi.model.IRI;
@@ -16,9 +16,9 @@ import org.semanticweb.owlapi.model.OWLOntologyManager;
 import java.util.List;
 import java.util.Set;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class SnapshotValidatorTest {
 
@@ -31,7 +31,7 @@ public class SnapshotValidatorTest {
     return IRI.create(BASE + s);
   }
 
-  @Before
+  @BeforeEach
   public void setUp() throws Exception {
     OWLOntologyManager m = OWLManager.createOWLOntologyManager();
     OWLDataFactory df = m.getOWLDataFactory();
@@ -55,7 +55,7 @@ public class SnapshotValidatorTest {
     new OwlHierarchyExtractor().extract(ont, store);
   }
 
-  @After
+  @AfterEach
   public void tearDown() throws Exception {
     store.close();
   }
@@ -63,7 +63,7 @@ public class SnapshotValidatorTest {
   @Test
   public void correctlyExtractedSnapshotIsValid() throws Exception {
     SnapshotValidator.Report r = new SnapshotValidator().validate(ont, store);
-    assertTrue(r.summary(), r.isValid());
+    assertTrue(r.isValid(), r.summary());
     assertEquals(r.recomputedClosurePairs(), r.storeClosurePairs());
     assertTrue(r.cycles().isEmpty());
   }
@@ -89,7 +89,7 @@ public class SnapshotValidatorTest {
       new RelationHierarchyExtractor(cfg).extract(o, s);
       assertEquals(List.of(ex + "child"), s.children(ex + "parent"));
       SnapshotValidator.Report r = new SnapshotValidator().validate(o, s, cfg);
-      assertTrue(r.summary(), r.isValid());
+      assertTrue(r.isValid(), r.summary());
     }
   }
 
@@ -112,7 +112,7 @@ public class SnapshotValidatorTest {
       s.initSchema();
       new SkosHierarchyExtractor().extract(o, s);
       SnapshotValidator.Report r = new SnapshotValidator().validateSkos(o, s);
-      assertTrue(r.summary(), r.isValid());
+      assertTrue(r.isValid(), r.summary());
       assertEquals(r.recomputedClosurePairs(), r.storeClosurePairs());
       assertTrue(r.cycles().isEmpty());
     }

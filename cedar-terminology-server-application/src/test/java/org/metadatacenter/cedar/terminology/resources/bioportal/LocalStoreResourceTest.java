@@ -1,16 +1,16 @@
 package org.metadatacenter.cedar.terminology.resources.bioportal;
 
+import io.dropwizard.testing.DropwizardTestSupport;
 import io.dropwizard.testing.ResourceHelpers;
-import io.dropwizard.testing.junit.DropwizardAppRule;
 import jakarta.ws.rs.client.ClientBuilder;
 import jakarta.ws.rs.core.GenericType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.Status;
 import org.jboss.resteasy.client.jaxrs.ResteasyClientBuilder;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.ClassRule;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 import org.metadatacenter.cedar.terminology.TerminologyServerApplicationTest;
 import org.metadatacenter.cedar.terminology.TerminologyServerConfiguration;
 import org.metadatacenter.config.CedarConfig;
@@ -39,7 +39,7 @@ import static org.metadatacenter.constant.HttpConstants.HTTP_HEADER_AUTHORIZATIO
  *
  * A synthetic ontology "LOCALTEST" is written to a temporary catalog + snapshot before the app
  * starts, and the local store is enabled for it via system properties (set in the static
- * initializer, which runs before the {@code DropwizardAppRule} starts the app). The class-children
+ * initializer, which runs before the {@code DropwizardTestSupport} starts the app). The class-children
  * endpoint for a LOCALTEST class must then be answered from the snapshot, not BioPortal.
  *
  * Auth is provided by {@link TestAuthUtil}'s in-memory user service (installed after startup), so
@@ -84,17 +84,17 @@ public class LocalStoreResourceTest {
     }
   }
 
-  @ClassRule
-  public static final DropwizardAppRule<TerminologyServerConfiguration> RULE =
-      new DropwizardAppRule<>(TerminologyServerApplicationTest.class,
+  public static final DropwizardTestSupport<TerminologyServerConfiguration> RULE =
+      new DropwizardTestSupport<>(TerminologyServerApplicationTest.class,
           ResourceHelpers.resourceFilePath("test-config.yml"));
 
   private static ClientBuilder clientBuilder;
   private static String authHeader;
   private static String childrenUrlBase;
 
-  @BeforeClass
-  public static void setUp() {
+  @BeforeAll
+  public static void setUp() throws Exception {
+    RULE.before();
     Map<String, String> environment = CedarEnvironmentVariableProvider.getFor(SystemComponent.SERVER_TERMINOLOGY);
     CedarConfig cedarConfig = CedarConfig.getInstance(environment);
 
@@ -106,6 +106,11 @@ public class LocalStoreResourceTest {
     childrenUrlBase = "http://localhost:" + RULE.getLocalPort() + "/" + BP_ENDPOINT + "/" + BP_ONTOLOGIES;
   }
 
+  @AfterAll
+  public static void tearDown() {
+    RULE.after();
+  }
+
   @Test
   public void childrenServedFromLocalStore() {
     String classId = BASE + "cancer";
@@ -115,15 +120,15 @@ public class LocalStoreResourceTest {
     Response response = clientBuilder.build().target(url).request()
         .header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
 
-    Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
+    Assertions.assertEquals(Status.OK.getStatusCode(), response.getStatus());
     PagedResults<OntologyClass> children = response.readEntity(new GenericType<PagedResults<OntologyClass>>() {
     });
     response.close();
 
     // "melanoma" is the only child of "cancer" in the local snapshot; served without BioPortal.
-    Assert.assertEquals(Integer.valueOf(1), children.getTotalCount());
+    Assertions.assertEquals(Integer.valueOf(1), children.getTotalCount());
     OntologyClass child = children.getCollection().get(0);
-    Assert.assertEquals(BASE + "melanoma", child.getLdId());
-    Assert.assertEquals("Melanoma", child.getPrefLabel());
+    Assertions.assertEquals(BASE + "melanoma", child.getLdId());
+    Assertions.assertEquals("Melanoma", child.getPrefLabel());
   }
 }
