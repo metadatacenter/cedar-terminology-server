@@ -87,7 +87,14 @@ public class OwlHierarchyExtractor implements HierarchyExtractor {
       if (child.isOWLThing() || child.isOWLNothing()) {
         continue;
       }
-      edgeCount += addParents(store, child, namedParents(ax.getSuperClass()), "rdfs:subClassOf");
+      OWLClassExpression sup = ax.getSuperClass();
+      if (!sup.isAnonymous() && sup.asOWLClass().isOWLThing()) {
+        // An explicit "subClassOf owl:Thing" is a top-level declaration, not a hierarchy edge. Record
+        // it so a declared root is distinguished from a bare, parentless imported reference.
+        store.declareThingSubclass(child.getIRI().toString());
+        continue;
+      }
+      edgeCount += addParents(store, child, namedParents(sup), "rdfs:subClassOf");
     }
     // Defined classes: the named genus of an equivalentClass intersection (genus-differentia).
     for (OWLEquivalentClassesAxiom ax : ont.getAxioms(AxiomType.EQUIVALENT_CLASSES)) {

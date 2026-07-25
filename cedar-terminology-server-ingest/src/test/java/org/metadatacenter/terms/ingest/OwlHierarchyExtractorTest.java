@@ -144,6 +144,26 @@ public class OwlHierarchyExtractorTest {
   }
 
   @Test
+  public void subClassOfOwlThingBecomesARootNotAnEdge() throws Exception {
+    OWLOntologyManager m = OWLManager.createOWLOntologyManager();
+    OWLDataFactory df = m.getOWLDataFactory();
+    OWLOntology o = m.createOntology(IRI.create(BASE + "thing"));
+    OWLClass top = df.getOWLClass(iri("top"));
+    OWLClass sub = df.getOWLClass(iri("sub"));
+    m.addAxiom(o, df.getOWLSubClassOfAxiom(top, df.getOWLThing())); // explicit top -> root
+    m.addAxiom(o, df.getOWLSubClassOfAxiom(sub, top));             // sub under top
+
+    try (SnapshotStore s = SnapshotStore.openInMemory()) {
+      s.initSchema();
+      new OwlHierarchyExtractor().extract(o, s);
+      // owl:Thing is neither a concept nor an edge; top is the sole root, sub is a descendant.
+      assertFalse(s.contains("http://www.w3.org/2002/07/owl#Thing"));
+      assertEquals(List.of(BASE + "top"), s.roots());
+      assertTrue(s.descendants(BASE + "top").contains(BASE + "sub"));
+    }
+  }
+
+  @Test
   public void capturesDeprecationAndReplacedBy() throws Exception {
     OWLOntologyManager m = OWLManager.createOWLOntologyManager();
     OWLDataFactory df = m.getOWLDataFactory();

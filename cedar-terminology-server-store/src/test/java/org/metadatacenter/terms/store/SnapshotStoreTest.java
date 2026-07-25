@@ -213,4 +213,35 @@ public class SnapshotStoreTest {
     assertEquals(List.of("animal", "cat", "dog", "mammal", "pet", "thing"),
         iris(store.allConceptsDetailed()));
   }
+
+  /* Roots — BioPortal's rule: non-obsolete classes that assert subClassOf owl:Thing. */
+
+  @Test
+  public void roots_followOwlThingDeclarationAndExcludeObsolete() throws Exception {
+    try (SnapshotStore s = SnapshotStore.openInMemory()) {
+      s.initSchema();
+      s.addConcept("top", "Top");                     // declares owl:Thing -> root
+      s.addConcept("obsTop", "ObsTop", true, null);   // declares owl:Thing but obsolete -> not a root
+      s.addConcept("dangling", "Dangling");           // parentless, no owl:Thing declaration -> not a root
+      s.addConcept("child", "Child");
+      s.declareThingSubclass("top");
+      s.declareThingSubclass("obsTop");
+      s.addEdge("child", "top", "rdfs:subClassOf");
+      s.materialize();
+      assertEquals(List.of("top"), s.roots());
+      assertTrue(s.descendants("top").contains("child"));
+    }
+  }
+
+  @Test
+  public void roots_fallBackToParentlessWhenNoOwlThingDeclared() throws Exception {
+    try (SnapshotStore s = SnapshotStore.openInMemory()) {
+      s.initSchema();
+      s.addConcept("a", "A");
+      s.addConcept("b", "B");
+      s.addEdge("b", "a", "isa"); // no class declares owl:Thing -> fall back to parentless
+      s.materialize();
+      assertEquals(List.of("a"), s.roots());
+    }
+  }
 }

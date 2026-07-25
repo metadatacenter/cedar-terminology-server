@@ -208,23 +208,47 @@ public class EquivalenceTest {
     assertParentSet("CL", CL_HEPATOCYTE, "hepatocyte_parents_ids");
   }
 
-  /**
-   * Roots are NOT identical to BioPortal's, and this is a characterized divergence in how a root is
-   * computed under imports. CL imports large upper ontologies (BFO, GO, PATO, …); many imported
-   * classes arrive as bare references with no {@code subClassOf} in the served file, so locally they
-   * are parentless and surface as roots (local 537 vs BioPortal 66). BioPortal lists as roots only
-   * the direct subclasses of {@code owl:Thing}. What must hold: every BioPortal root is also a local
-   * root (BioPortal's roots are a subset). Whether to align the root rule to BioPortal's (roots =
-   * asserted {@code owl:Thing} children) is a separate decision, like the genus fix.
-   */
-  @Test
-  public void cl_rootsIncludeAllBioPortalRoots() throws Exception {
-    Response r = get(baseBp + "/ontologies/CL/classes/roots");
+  // Roots are compared on the full IRI (@id), not the short id: one root, oboInOwl#ObsoleteClass, is a
+  // hash IRI whose short id is ambiguous (split on '/' vs '#'). The branch goldens stay short ids —
+  // they are all obo/ IRIs with no such ambiguity.
+  private Set<String> rootIds(String ontology) throws Exception {
+    Response r = get(baseBp + "/ontologies/" + ontology + "/classes/roots");
     Assert.assertEquals(200, r.getStatus());
     List<OntologyClass> roots = r.readEntity(new GenericType<List<OntologyClass>>() {});
     r.close();
+    return roots.stream().map(OntologyClass::getLdId).collect(Collectors.toSet());
+  }
+
+  /**
+   * OBI roots match BioPortal exactly. The extractor computes roots BioPortal's way: a root is a
+   * non-obsolete class that asserts {@code subClassOf owl:Thing}. Excluding obsolete classes (OBI
+   * asserts owl:Thing for 19 classes, 9 of them deprecated) yields exactly BioPortal's 10.
+   */
+  @Test
+  public void obi_rootsMatchBioPortalSet() throws Exception {
+    Assert.assertEquals(loadGoldenIds("obi_roots_ids"), rootIds("OBI"));
+  }
+
+  /**
+   * UBERON and CL roots are a superset of BioPortal's — a characterized divergence with a known,
+   * bigger cause. The owl:Thing + obsolete rule (see {@link #obi_rootsMatchBioPortalSet}) brought CL
+   * from 537 roots to 250 and UBERON to 53, but BioPortal has 66 and 9. The remainder is flattened
+   * import stubs: these ontologies import NCBITaxon / GO / PATO / CHEBI etc., whose classes appear in
+   * the served file as bare {@code subClassOf owl:Thing} declarations with no real parent, so they
+   * look like roots locally. BioPortal resolves the imports fully and roots only each imported
+   * hierarchy's true top (e.g. NCBITaxon_1). Matching that needs import resolution, not a structural
+   * rule. The invariant that holds either way: every BioPortal root is also a local root.
+   */
+  @Test
+  public void uberon_rootsIncludeAllBioPortalRoots() throws Exception {
+    Assert.assertTrue("every BioPortal UBERON root must also be a local root",
+        rootIds("UBERON").containsAll(loadGoldenIds("uberon_roots_ids")));
+  }
+
+  @Test
+  public void cl_rootsIncludeAllBioPortalRoots() throws Exception {
     Assert.assertTrue("every BioPortal CL root must also be a local root",
-        shortIds(roots).containsAll(loadGoldenIds("cl_roots_ids")));
+        rootIds("CL").containsAll(loadGoldenIds("cl_roots_ids")));
   }
 
   /* ---- the CEE's enumerated-classes path (deterministic) ---- */

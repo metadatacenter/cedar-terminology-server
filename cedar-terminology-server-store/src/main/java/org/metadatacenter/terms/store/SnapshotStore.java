@@ -57,11 +57,12 @@ public class SnapshotStore implements AutoCloseable {
     try (Statement s = connection.createStatement()) {
       s.executeUpdate("""
           CREATE TABLE IF NOT EXISTS concept (
-            id          INTEGER PRIMARY KEY,
-            iri         TEXT NOT NULL UNIQUE,
-            pref_label  TEXT,
-            obsolete    INTEGER NOT NULL DEFAULT 0,
-            replaced_by TEXT
+            id             INTEGER PRIMARY KEY,
+            iri            TEXT NOT NULL UNIQUE,
+            pref_label     TEXT,
+            obsolete       INTEGER NOT NULL DEFAULT 0,
+            replaced_by    TEXT,
+            declares_thing INTEGER NOT NULL DEFAULT 0
           )""");
       s.executeUpdate("""
           CREATE TABLE IF NOT EXISTS edge (
@@ -113,6 +114,20 @@ public class SnapshotStore implements AutoCloseable {
       ps.setString(2, prefLabel);
       ps.setInt(3, obsolete ? 1 : 0);
       ps.setString(4, replacedBy);
+      ps.executeUpdate();
+    }
+  }
+
+  /**
+   * Marks a concept as asserting {@code subClassOf owl:Thing} — an explicit top-level declaration.
+   * {@code owl:Thing} itself is never materialized as a concept or edge; this flag lets
+   * {@link #materialize()} distinguish a declared top from a bare, parentless imported reference. The
+   * concept must already exist; a call for an unknown IRI is a no-op.
+   */
+  public void declareThingSubclass(String iri) throws SQLException {
+    try (PreparedStatement ps = connection.prepareStatement(
+        "UPDATE concept SET declares_thing = 1 WHERE iri = ?")) {
+      ps.setString(1, iri);
       ps.executeUpdate();
     }
   }
@@ -192,10 +207,18 @@ public class SnapshotStore implements AutoCloseable {
           )
           SELECT ancestor_id, descendant_id FROM walk""");
       s.executeUpdate("DELETE FROM root");
+      // Roots follow BioPortal: a root is a non-obsolete class that asserts subClassOf owl:Thing and
+      // has no other named parent. Obsolete classes are never roots, and a class that is merely
+      // parentless because it is a bare imported reference (no subClassOf axiom at all) is excluded.
+      // Fallback: if the ontology declares no owl:Thing subclass at all (a self-contained ontology
+      // that leaves its top classes parentless), roots are the non-obsolete parentless classes.
       s.executeUpdate("""
           INSERT INTO root (concept_id)
           SELECT c.id FROM concept c
-          WHERE NOT EXISTS (SELECT 1 FROM edge e WHERE e.child_id = c.id)""");
+          WHERE c.obsolete = 0
+            AND NOT EXISTS (SELECT 1 FROM edge e WHERE e.child_id = c.id)
+            AND (c.declares_thing = 1
+                 OR NOT EXISTS (SELECT 1 FROM concept t WHERE t.declares_thing = 1))""");
     }
   }
 
