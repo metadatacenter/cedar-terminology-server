@@ -108,6 +108,42 @@ public class OwlHierarchyExtractorTest {
   }
 
   @Test
+  public void genusOfDefinitionBecomesParent() throws Exception {
+    OWLOntologyManager m = OWLManager.createOWLOntologyManager();
+    OWLDataFactory df = m.getOWLDataFactory();
+    OWLOntology o = m.createOntology(IRI.create(BASE + "defs"));
+    OWLClass assay = df.getOWLClass(iri("assay"));
+    OWLClass input = df.getOWLClass(iri("input"));
+    OWLObjectProperty hasInput = df.getOWLObjectProperty(iri("has_input"));
+
+    // Defined class: mhcAssay ≡ assay AND (has_input some input)  — genus 'assay'.
+    OWLClass mhcAssay = df.getOWLClass(iri("mhcAssay"));
+    m.addAxiom(o, df.getOWLEquivalentClassesAxiom(mhcAssay,
+        df.getOWLObjectIntersectionOf(assay, df.getOWLObjectSomeValuesFrom(hasInput, input))));
+    // Genus-differentia via subClassOf-of-intersection: fancyAssay ⊑ assay AND (has_input some input).
+    OWLClass fancyAssay = df.getOWLClass(iri("fancyAssay"));
+    m.addAxiom(o, df.getOWLSubClassOfAxiom(fancyAssay,
+        df.getOWLObjectIntersectionOf(assay, df.getOWLObjectSomeValuesFrom(hasInput, input))));
+    // Plain equivalence between two named classes must NOT create a subsumption edge.
+    OWLClass synonymA = df.getOWLClass(iri("synonymA"));
+    OWLClass synonymB = df.getOWLClass(iri("synonymB"));
+    m.addAxiom(o, df.getOWLEquivalentClassesAxiom(synonymA, synonymB));
+
+    try (SnapshotStore s = SnapshotStore.openInMemory()) {
+      s.initSchema();
+      new OwlHierarchyExtractor().extract(o, s);
+      assertEquals(List.of(BASE + "assay"), s.parents(BASE + "mhcAssay"));
+      assertEquals(List.of(BASE + "assay"), s.parents(BASE + "fancyAssay"));
+      // The restriction filler 'input' is not a parent, and the class is a descendant of the genus.
+      assertFalse(s.parents(BASE + "mhcAssay").contains(BASE + "input"));
+      assertTrue(s.descendants(BASE + "assay").contains(BASE + "mhcAssay"));
+      // Named-to-named equivalence is not a subsumption edge.
+      assertTrue(s.parents(BASE + "synonymA").isEmpty());
+      assertTrue(s.parents(BASE + "synonymB").isEmpty());
+    }
+  }
+
+  @Test
   public void capturesDeprecationAndReplacedBy() throws Exception {
     OWLOntologyManager m = OWLManager.createOWLOntologyManager();
     OWLDataFactory df = m.getOWLDataFactory();

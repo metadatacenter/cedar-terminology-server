@@ -77,7 +77,7 @@ public class ObiEquivalenceTest {
             "Ontology for Biomedical Investigations", null, "OWL"));
         String versionId = "obi-2026-05-08";
         catalog.addSnapshot(new CatalogStore.SnapshotInfo(versionId, "OBI", "2026-05-08", "2026-05-08",
-            "2026-05-08T00:00:00Z", "OWL", "subsumption", 5218, 6180, fixture.toString(), versionId, "public"));
+            "2026-05-08T00:00:00Z", "OWL", "subsumption", 5218, 6386, fixture.toString(), versionId, "public"));
         catalog.setTag("OBI", CatalogStore.TAG_LATEST, versionId);
       }
       System.setProperty("terminologyStore.catalogPath", catalogPath.toString());
@@ -135,30 +135,19 @@ public class ObiEquivalenceTest {
   }
 
   /**
-   * Direct children are NOT identical to BioPortal's, and that is a known, characterized divergence:
-   * the snapshot extractor performs transitive reduction (it keeps only most-specific parents), so a
-   * class that OBI also asserts directly under {@code assay} — a redundant edge, because its other
-   * parent is itself under assay — sits one level deeper locally. BioPortal preserves those redundant
-   * asserted edges (here, 121 of them on this branch). The closure is identical (see the descendants
-   * test); only the direct-children listing differs. Two invariants must still hold:
-   * <ul>
-   *   <li>no spurious local edges — every local direct child is also a BioPortal direct child;</li>
-   *   <li>closure preserved — every BioPortal direct child is reachable locally (a descendant).</li>
-   * </ul>
-   * Whether to make the extractor preserve asserted edges (BioPortal-identical tree browsing) or keep
-   * the reduced hierarchy (cleaner, closure-equivalent) is a separate modelling decision.
+   * Direct children match BioPortal exactly. This holds only because the extractor reads the named
+   * genus of a definition: many OBI classes state their parent as the genus conjunct of an
+   * {@code owl:equivalentClass} intersection (e.g. {@code assay measuring … ≡ assay and (…)}) rather
+   * than a plain {@code rdfs:subClassOf}. Reading only {@code rdfs:subClassOf} left 121 of assay's
+   * 240 children one level too deep; extracting the genus restores them as direct children.
    */
   @Test
-  public void childrenOfAssay_areClosureConsistentWithBioPortal() throws Exception {
+  public void childrenOfAssay_matchBioPortalSet() throws Exception {
     Response r = get(baseBp + "/ontologies/OBI/classes/" + enc(OBI_ASSAY) + "/children?page=1&pageSize=500");
     Assert.assertEquals(200, r.getStatus());
     PagedResults<OntologyClass> pr = r.readEntity(new GenericType<PagedResults<OntologyClass>>() {});
     r.close();
-    Set<String> local = shortIds(pr.getCollection());
-    Set<String> bpChildren = loadGoldenIds("assay_children_ids");
-    Set<String> bpDescendants = loadGoldenIds("assay_descendants_ids");
-    Assert.assertTrue("local direct children must be a subset of BioPortal's", bpChildren.containsAll(local));
-    Assert.assertTrue("every BioPortal direct child must be reachable locally", bpDescendants.containsAll(bpChildren));
+    Assert.assertEquals(loadGoldenIds("assay_children_ids"), shortIds(pr.getCollection()));
   }
 
   @Test

@@ -10,7 +10,9 @@ import org.semanticweb.owlapi.model.OWLAnnotationValue;
 import org.semanticweb.owlapi.model.OWLClass;
 import org.semanticweb.owlapi.model.OWLClassExpression;
 import org.semanticweb.owlapi.model.OWLDataFactory;
+import org.semanticweb.owlapi.model.OWLEquivalentClassesAxiom;
 import org.semanticweb.owlapi.model.OWLLiteral;
+import org.semanticweb.owlapi.model.OWLObjectIntersectionOf;
 import org.semanticweb.owlapi.model.OWLOntology;
 import org.semanticweb.owlapi.model.OWLOntologyCreationException;
 import org.semanticweb.owlapi.model.OWLOntologyManager;
@@ -21,19 +23,29 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Extracts a subsumption hierarchy from an OWL (or OBO-in-OWL) ontology into a {@link SnapshotStore}.
  *
- * The extraction rule is deliberately narrow, matching how a terminology server renders an OWL
- * tree: a hierarchy edge is an {@code rdfs:subClassOf} axiom between two <em>named</em> classes.
- * Anonymous superclasses (restrictions such as OBO {@code part_of some X}, intersections, unions)
- * are skipped, so compositional relations do not pollute the {@code is_a} tree. {@code owl:Thing}
- * and {@code owl:Nothing} are not materialized, so classes with no named superclass become roots.
+ * A hierarchy edge is drawn to each <em>named</em> superclass, matching how BioPortal renders an
+ * OWL tree. Two asserted forms contribute:
+ * <ul>
+ *   <li>a plain {@code rdfs:subClassOf} to a named class;</li>
+ *   <li>the named <em>genus</em> of a definition — a named class appearing as a conjunct of an
+ *       {@code owl:intersectionOf}, whether that intersection is the superclass of a
+ *       {@code subClassOf} axiom or the definiens of an {@code owl:equivalentClass} axiom. This is
+ *       the ubiquitous OBO genus-differentia pattern (e.g. {@code assay measuring X ≡ assay and
+ *       (has_specified_input some X)}); the genus {@code assay} is the parent.</li>
+ * </ul>
+ * Restriction fillers (the {@code X} in {@code part_of some X}) are not edges, so compositional
+ * relations do not pollute the {@code is_a} tree. {@code owl:Thing} and {@code owl:Nothing} are not
+ * materialized, so classes with no named superclass become roots.
  *
- * Only asserted subsumption is used; no reasoner is invoked. Concept labels come from
- * {@code rdfs:label}. Obsolete flags and richer annotations (definitions, synonyms) are not yet
- * captured; see the hierarchy-extractor design note.
+ * Only asserted axioms are read; no reasoner is invoked (the genus is taken structurally from the
+ * intersection, not inferred). Concept labels come from {@code rdfs:label}. See the
+ * hierarchy-extractor design note.
  */
 public class OwlHierarchyExtractor implements HierarchyExtractor {
 
@@ -64,23 +76,42 @@ public class OwlHierarchyExtractor implements HierarchyExtractor {
     }
 
     int edgeCount = 0;
+    // Asserted rdfs:subClassOf. A named superclass is a parent; a named genus inside an
+    // intersection superclass is too.
     for (OWLSubClassOfAxiom ax : ont.getAxioms(AxiomType.SUBCLASS_OF)) {
       OWLClassExpression sub = ax.getSubClass();
-      OWLClassExpression sup = ax.getSuperClass();
-      if (sub.isAnonymous() || sup.isAnonymous()) {
-        continue; // named-superclass edges only
-      }
-      OWLClass child = sub.asOWLClass();
-      OWLClass parent = sup.asOWLClass();
-      if (child.isOWLThing() || child.isOWLNothing() || parent.isOWLThing() || parent.isOWLNothing()) {
+      if (sub.isAnonymous()) {
         continue;
       }
-      store.addEdge(child.getIRI().toString(), parent.getIRI().toString(), "rdfs:subClassOf");
-      edgeCount++;
+      OWLClass child = sub.asOWLClass();
+      if (child.isOWLThing() || child.isOWLNothing()) {
+        continue;
+      }
+      edgeCount += addParents(store, child, namedParents(ax.getSuperClass()), "rdfs:subClassOf");
+    }
+    // Defined classes: the named genus of an equivalentClass intersection (genus-differentia).
+    for (OWLEquivalentClassesAxiom ax : ont.getAxioms(AxiomType.EQUIVALENT_CLASSES)) {
+      List<OWLClassExpression> exprs = new ArrayList<>(ax.getClassExpressions());
+      for (OWLClassExpression e : exprs) {
+        if (e.isAnonymous()) {
+          continue;
+        }
+        OWLClass child = e.asOWLClass();
+        if (child.isOWLThing() || child.isOWLNothing()) {
+          continue;
+        }
+        for (OWLClassExpression definiens : exprs) {
+          // Only take the genus from an anonymous definition (an intersection); a named class on
+          // the other side is an equivalence, not a subsumption, and is not an edge.
+          if (definiens != e && definiens.isAnonymous()) {
+            edgeCount += addParents(store, child, namedParents(definiens), "equivalentClass:genus");
+          }
+        }
+      }
     }
 
     store.materialize();
-    log.info("Extracted {} classes and {} subClassOf edges", classCount, edgeCount);
+    log.info("Extracted {} classes and {} hierarchy edges", classCount, edgeCount);
     return new Result(classCount, edgeCount);
   }
 
@@ -91,6 +122,44 @@ public class OwlHierarchyExtractor implements HierarchyExtractor {
     OWLOntologyManager manager = OWLManager.createOWLOntologyManager();
     OWLOntology ont = manager.loadOntologyFromOntologyDocument(file);
     return extract(ont, store);
+  }
+
+  /**
+   * The named superclasses contributed by an expression: the class itself if it is named, or the
+   * named conjuncts (the genus) if it is an {@code owl:intersectionOf}. Anything else (a bare
+   * restriction, a union) contributes nothing. {@code owl:Thing}/{@code owl:Nothing} are excluded.
+   */
+  private static List<OWLClass> namedParents(OWLClassExpression expr) {
+    List<OWLClass> parents = new ArrayList<>();
+    if (!expr.isAnonymous()) {
+      addNamed(parents, expr);
+    } else if (expr instanceof OWLObjectIntersectionOf intersection) {
+      for (OWLClassExpression operand : intersection.getOperands()) {
+        if (!operand.isAnonymous()) {
+          addNamed(parents, operand);
+        }
+      }
+    }
+    return parents;
+  }
+
+  private static void addNamed(List<OWLClass> parents, OWLClassExpression named) {
+    OWLClass c = named.asOWLClass();
+    if (!c.isOWLThing() && !c.isOWLNothing()) {
+      parents.add(c);
+    }
+  }
+
+  private static int addParents(SnapshotStore store, OWLClass child, List<OWLClass> parents, String sourcePred)
+      throws SQLException {
+    int added = 0;
+    for (OWLClass parent : parents) {
+      if (!parent.equals(child)) {
+        store.addEdge(child.getIRI().toString(), parent.getIRI().toString(), sourcePred);
+        added++;
+      }
+    }
+    return added;
   }
 
   private static String label(OWLClass cls, OWLOntology ont, OWLAnnotationProperty rdfsLabel) {
