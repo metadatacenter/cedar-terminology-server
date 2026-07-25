@@ -212,7 +212,15 @@ public class RoutingTerminologyService implements ITerminologyService {
 
   @Override
   public List<Ontology> findAllOntologies(boolean includeDetails, String apiKey) throws IOException {
-    // Aggregates across all sources; served remotely until the local catalog is authoritative.
+    // The server reports the ontologies it versions locally (from the catalog), not BioPortal's full
+    // ~1300-ontology registry. Falls back to remote only when no local backend is configured or its
+    // catalog is empty, so a misconfigured deployment does not present an empty ontology list.
+    if (local != null) {
+      List<Ontology> served = local.findAllOntologies(includeDetails, apiKey);
+      if (!served.isEmpty()) {
+        return served;
+      }
+    }
     return remote.findAllOntologies(includeDetails, apiKey);
   }
 

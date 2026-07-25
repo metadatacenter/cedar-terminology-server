@@ -3,6 +3,7 @@ package org.metadatacenter.terms;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.metadatacenter.terms.domainObjects.Ontology;
 import org.metadatacenter.terms.store.CatalogStore;
 import org.metadatacenter.terms.store.SnapshotStore;
 
@@ -10,6 +11,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -113,5 +115,25 @@ public class CatalogSnapshotProviderTest {
     var children = service.getClassChildren(BASE + "mammal", "EX", 1, 50, null);
     assertEquals(java.util.List.of("cat", "dog"),
         children.getCollection().stream().map(c -> c.getId()).collect(Collectors.toList()));
+  }
+
+  @Test
+  public void listsAllowlistedCatalogOntologiesAsMetadata() {
+    // Only EX is both allowlisted and in the catalog; OTHER is allowlisted but never ingested.
+    List<Ontology> onts = provider.ontologies();
+    assertEquals(1, onts.size());
+    Ontology ex = onts.get(0);
+    assertEquals("EX", ex.getId());
+    assertEquals("Example", ex.getName());
+    assertFalse("a hierarchical snapshot is not flat", ex.getIsFlat());
+    assertEquals("https://data.bioontology.org/ontologies/EX", ex.getLdId());
+  }
+
+  @Test
+  public void findAllOntologiesReportsTheCatalogNotBioPortal() throws Exception {
+    SqliteTerminologyService service = new SqliteTerminologyService(provider);
+    assertEquals(List.of("EX"),
+        service.findAllOntologies(true, null).stream().map(Ontology::getId).collect(Collectors.toList()));
+    assertEquals("EX", service.findOntology("EX", false, null).getId());
   }
 }

@@ -43,6 +43,15 @@ public class SqliteTerminologyService implements ITerminologyService {
   @FunctionalInterface
   public interface SnapshotProvider {
     Optional<SnapshotStore> forOntology(String ontology);
+
+    /**
+     * Metadata for the ontologies this provider serves locally — the catalog's own registry, used to
+     * answer the ontology-list endpoint without crawling BioPortal. Empty by default (a bare provider
+     * that only resolves snapshot stores).
+     */
+    default List<Ontology> ontologies() {
+      return List.of();
+    }
   }
 
   private final SnapshotProvider provider;
@@ -196,12 +205,18 @@ public class SqliteTerminologyService implements ITerminologyService {
 
   @Override
   public Ontology findOntology(String id, boolean includeDetails, String apiKey) {
-    throw unsupported("findOntology");
+    // The ontology's own metadata, from the catalog. A non-served ontology throws so the router can
+    // fall back to the remote backend (e.g. for its BioPortal isFlat flag).
+    return provider.ontologies().stream()
+        .filter(o -> id != null && id.equals(o.getId()))
+        .findFirst()
+        .orElseThrow(() -> unsupported("findOntology: " + id));
   }
 
   @Override
   public List<Ontology> findAllOntologies(boolean includeDetails, String apiKey) {
-    throw unsupported("findAllOntologies");
+    // The ontologies this server versions — reported from the catalog, not by crawling BioPortal.
+    return provider.ontologies();
   }
 
   @Override

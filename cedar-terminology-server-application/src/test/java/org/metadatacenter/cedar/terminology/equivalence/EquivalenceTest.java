@@ -21,6 +21,7 @@ import org.metadatacenter.config.CedarConfig;
 import org.metadatacenter.config.environment.CedarEnvironmentVariableProvider;
 import org.metadatacenter.model.SystemComponent;
 import org.metadatacenter.terms.customObjects.PagedResults;
+import org.metadatacenter.terms.domainObjects.Ontology;
 import org.metadatacenter.terms.domainObjects.OntologyClass;
 import org.metadatacenter.terms.domainObjects.SearchResult;
 import org.metadatacenter.terms.store.CatalogStore;
@@ -249,6 +250,22 @@ public class EquivalenceTest {
   public void cl_rootsIncludeAllBioPortalRoots() throws Exception {
     Assert.assertTrue("every BioPortal CL root must also be a local root",
         rootIds("CL").containsAll(loadGoldenIds("cl_roots_ids")));
+  }
+
+  /* ---- the ontology list: catalog-backed, no BioPortal crawl ---- */
+
+  @Test
+  public void ontologyList_reportsOnlyTheVersionedOntologies() throws Exception {
+    // GET /bioportal/ontologies is answered from the local catalog, so it lists exactly the
+    // ontologies this server versions (OBI, UBERON, CL) rather than crawling BioPortal's ~1300.
+    Response r = get(baseBp + "/ontologies");
+    Assert.assertEquals(200, r.getStatus());
+    List<Ontology> ontologies = r.readEntity(new GenericType<List<Ontology>>() {});
+    r.close();
+    Assert.assertEquals(Set.of("OBI", "UBERON", "CL"),
+        ontologies.stream().map(Ontology::getId).collect(Collectors.toSet()));
+    // Served hierarchically (not flat), so tree/roots endpoints render as a hierarchy.
+    Assert.assertTrue("versioned ontologies are hierarchical", ontologies.stream().noneMatch(Ontology::getIsFlat));
   }
 
   /* ---- the CEE's enumerated-classes path (deterministic) ---- */

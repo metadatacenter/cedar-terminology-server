@@ -1,11 +1,14 @@
 package org.metadatacenter.terms;
 
+import org.metadatacenter.terms.domainObjects.Ontology;
 import org.metadatacenter.terms.store.CatalogStore;
 import org.metadatacenter.terms.store.SnapshotStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -54,6 +57,30 @@ public class CatalogSnapshotProvider implements SqliteTerminologyService.Snapsho
       return Optional.empty();
     }
   }
+
+  /**
+   * The catalog's ontologies that are also allowlisted — the ones this server actually serves
+   * locally. Reported as {@link Ontology} metadata (hierarchical, so {@code isFlat = false}) for the
+   * ontology-list endpoint, so it needs no BioPortal call. The {@code @id} uses BioPortal's ontology
+   * URL form for compatibility with clients that key on it.
+   */
+  @Override
+  public List<Ontology> ontologies() {
+    try {
+      List<Ontology> out = new ArrayList<>();
+      for (CatalogStore.OntologyInfo o : catalog.listOntologies()) {
+        if (allowed.contains(o.acronym())) {
+          out.add(new Ontology(o.acronym(), BP_ONTOLOGY_BASE + o.acronym(), o.name(), false, null));
+        }
+      }
+      return out;
+    } catch (SQLException e) {
+      log.warn("Catalog ontology listing failed; serving no local ontology list", e);
+      return List.of();
+    }
+  }
+
+  private static final String BP_ONTOLOGY_BASE = "https://data.bioontology.org/ontologies/";
 
   private SnapshotStore open(String path) {
     try {
