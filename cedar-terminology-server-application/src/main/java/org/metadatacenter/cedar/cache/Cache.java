@@ -41,14 +41,17 @@ public class Cache {
   }
 
   /**
-   * Every ontology, keyed by id, fetched live from the terminology service. Wraps any
+   * Every ontology, keyed by id, fetched live from the terminology service. Uses
+   * {@code includeDetails=false}: the list only needs id/name/isFlat (for the picker), so this is a
+   * single call — the remote path no longer makes a per-ontology detail call for all ~1300
+   * (the {@code loaded (n/1317)} crawl); the catalog-backed local path ignores the flag. Wraps any
    * {@link IOException} in {@link ExecutionException} to preserve the exception contract the call
    * sites expect (they used to read through a Guava cache, whose {@code get} threw ExecutionException).
    */
   public static LinkedHashMap<String, Ontology> getOntologies() throws ExecutionException {
     try {
       LinkedHashMap<String, Ontology> map = new LinkedHashMap<>();
-      for (Ontology o : AbstractTerminologyServerResource.terminologyService.findAllOntologies(true, BP_PUBLIC_API_KEY)) {
+      for (Ontology o : AbstractTerminologyServerResource.terminologyService.findAllOntologies(false, BP_PUBLIC_API_KEY)) {
         map.put(o.getId(), o);
       }
       return map;
