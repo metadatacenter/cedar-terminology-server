@@ -1,7 +1,6 @@
 package org.metadatacenter.cedar.terminology.resources.bioportal.swaggermodel;
 
-import io.swagger.annotations.ApiModel;
-import io.swagger.annotations.ApiModelProperty;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.util.List;
 
@@ -13,18 +12,18 @@ import java.util.List;
  * {@code parameterObject} (which itself wraps the CEDAR value constraints and the user-supplied
  * input text) plus optional pagination fields.</p>
  */
-@ApiModel(value = "IntegratedSearchRequestBody", description = "Object that encapsulates the information needed to " +
+@Schema(name = "IntegratedSearchRequestBody", description = "Object that encapsulates the information needed to " +
     "run the integrated-search query.")
 public class IntegratedSearchRequestBody {
 
-  @ApiModelProperty(value = "Object that encapsulates the value constraints and the input text used to run the " +
-      "search query.", required = true)
+  @Schema(description = "Object that encapsulates the value constraints and the input text used to run the " +
+      "search query.", requiredMode = Schema.RequiredMode.REQUIRED)
   private ParameterObject parameterObject;
 
-  @ApiModelProperty(value = "Page to be returned. Example: 7.")
+  @Schema(description = "Page to be returned. Example: 7.")
   private Integer page;
 
-  @ApiModelProperty(value = "Number of results per page. Example: 10.")
+  @Schema(description = "Number of results per page. Example: 10.")
   private Integer pageSize;
 
   public ParameterObject getParameterObject() {
@@ -51,15 +50,14 @@ public class IntegratedSearchRequestBody {
     this.pageSize = pageSize;
   }
 
-  @ApiModel(value = "IntegratedSearchParameterObject")
+  @Schema(name = "IntegratedSearchParameterObject")
   public static class ParameterObject {
 
-    @ApiModelProperty(value = "The value constraints field specification. Based on CEDAR's '_valueConstraints' " +
-        "field.", required = true)
+    @Schema(description = "The value constraints field specification. Based on CEDAR's '_valueConstraints' " +
+        "field.", requiredMode = Schema.RequiredMode.REQUIRED)
     private ValueConstraints valueConstraints;
 
-    @ApiModelProperty(value = "The user-supplied initial characters used to filter the conforming values.",
-        required = true)
+    @Schema(description = "The user-supplied initial characters used to filter the conforming values.", requiredMode = Schema.RequiredMode.REQUIRED)
     private String inputText;
 
     public ValueConstraints getValueConstraints() {
@@ -79,22 +77,22 @@ public class IntegratedSearchRequestBody {
     }
   }
 
-  @ApiModel(value = "IntegratedSearchValueConstraints")
+  @Schema(name = "IntegratedSearchValueConstraints")
   public static class ValueConstraints {
 
-    @ApiModelProperty(value = "List of ontology classes used to constrain the values.", required = true)
+    @Schema(description = "List of ontology classes used to constrain the values.", requiredMode = Schema.RequiredMode.REQUIRED)
     private List<ConstraintClass> classes;
 
-    @ApiModelProperty(value = "List of ontologies used to constrain the values.", required = true)
+    @Schema(description = "List of ontologies used to constrain the values.", requiredMode = Schema.RequiredMode.REQUIRED)
     private List<ConstraintOntology> ontologies;
 
-    @ApiModelProperty(value = "List of ontology branches used to constrain the values.", required = true)
+    @Schema(description = "List of ontology branches used to constrain the values.", requiredMode = Schema.RequiredMode.REQUIRED)
     private List<ConstraintBranch> branches;
 
-    @ApiModelProperty(value = "List of value sets used to constrain the values.", required = true)
+    @Schema(description = "List of value sets used to constrain the values.", requiredMode = Schema.RequiredMode.REQUIRED)
     private List<ConstraintValueSet> valueSets;
 
-    @ApiModelProperty(value = "List of actions applied to the value constraints.")
+    @Schema(description = "List of actions applied to the value constraints.")
     private List<ConstraintAction> actions;
 
     public List<ConstraintClass> getClasses() {
@@ -138,19 +136,19 @@ public class IntegratedSearchRequestBody {
     }
   }
 
-  @ApiModel(value = "IntegratedSearchConstraintClass")
+  @Schema(name = "IntegratedSearchConstraintClass")
   public static class ConstraintClass {
 
-    @ApiModelProperty(value = "Class URI.", required = true)
+    @Schema(description = "Class URI.", requiredMode = Schema.RequiredMode.REQUIRED)
     private String uri;
 
-    @ApiModelProperty(value = "Preferred label of the class.", required = true)
+    @Schema(description = "Preferred label of the class.", requiredMode = Schema.RequiredMode.REQUIRED)
     private String prefLabel;
 
-    @ApiModelProperty(value = "Type of the class.", required = true)
+    @Schema(description = "Type of the class.", requiredMode = Schema.RequiredMode.REQUIRED)
     private String type;
 
-    @ApiModelProperty(value = "Source of the class.", required = true)
+    @Schema(description = "Source of the class.", requiredMode = Schema.RequiredMode.REQUIRED)
     private String source;
 
     public String getUri() {
@@ -186,10 +184,10 @@ public class IntegratedSearchRequestBody {
     }
   }
 
-  @ApiModel(value = "IntegratedSearchConstraintOntology")
+  @Schema(name = "IntegratedSearchConstraintOntology")
   public static class ConstraintOntology {
 
-    @ApiModelProperty(value = "Ontology acronym.", required = true)
+    @Schema(description = "Ontology acronym.", requiredMode = Schema.RequiredMode.REQUIRED)
     private String acronym;
 
     public String getAcronym() {
@@ -201,13 +199,13 @@ public class IntegratedSearchRequestBody {
     }
   }
 
-  @ApiModel(value = "IntegratedSearchConstraintBranch")
+  @Schema(name = "IntegratedSearchConstraintBranch")
   public static class ConstraintBranch {
 
-    @ApiModelProperty(value = "Branch URI.", required = true)
+    @Schema(description = "Branch URI.", requiredMode = Schema.RequiredMode.REQUIRED)
     private String uri;
 
-    @ApiModelProperty(value = "Ontology acronym.", required = true)
+    @Schema(description = "Ontology acronym.", requiredMode = Schema.RequiredMode.REQUIRED)
     private String acronym;
 
     public String getUri() {
@@ -227,13 +225,13 @@ public class IntegratedSearchRequestBody {
     }
   }
 
-  @ApiModel(value = "IntegratedSearchConstraintValueSet")
+  @Schema(name = "IntegratedSearchConstraintValueSet")
   public static class ConstraintValueSet {
 
-    @ApiModelProperty(value = "Value set URI.", required = true)
+    @Schema(description = "Value set URI.", requiredMode = Schema.RequiredMode.REQUIRED)
     private String uri;
 
-    @ApiModelProperty(value = "Value set collection.", required = true)
+    @Schema(description = "Value set collection.", requiredMode = Schema.RequiredMode.REQUIRED)
     private String vsCollection;
 
     public String getUri() {
@@ -253,19 +251,19 @@ public class IntegratedSearchRequestBody {
     }
   }
 
-  @ApiModel(value = "IntegratedSearchConstraintAction")
+  @Schema(name = "IntegratedSearchConstraintAction")
   public static class ConstraintAction {
 
-    @ApiModelProperty(value = "Action to be applied.", required = true)
+    @Schema(description = "Action to be applied.", requiredMode = Schema.RequiredMode.REQUIRED)
     private String action;
 
-    @ApiModelProperty(value = "Term URI the action applies to.", required = true)
+    @Schema(description = "Term URI the action applies to.", requiredMode = Schema.RequiredMode.REQUIRED)
     private String termUri;
 
-    @ApiModelProperty(value = "Type of the term.", required = true)
+    @Schema(description = "Type of the term.", requiredMode = Schema.RequiredMode.REQUIRED)
     private String type;
 
-    @ApiModelProperty(value = "Source of the term.", required = true)
+    @Schema(description = "Source of the term.", requiredMode = Schema.RequiredMode.REQUIRED)
     private String source;
 
     public String getAction() {

@@ -124,10 +124,10 @@
       <scope>test</scope>
     </dependency>
 
-    <!-- Swagger 1.5.x annotations used to generate the OpenAPI 2.0 spec at build time -->
+    <!-- Swagger v3 annotations used to generate the OpenAPI 3.0 spec at build time -->
     <dependency>
-      <groupId>io.swagger</groupId>
-      <artifactId>swagger-annotations</artifactId>
+      <groupId>io.swagger.core.v3</groupId>
+      <artifactId>swagger-annotations-jakarta</artifactId>
     </dependency>
 
   </dependencies>
@@ -152,69 +152,63 @@
       </plugin>
 
       <!--
-        Generates the OpenAPI/Swagger 2.0 spec from the JAX-RS resource annotations into
-        src/main/resources/assets/swagger-api/ (committed; Maven copies it onto the classpath
-        that the Dropwizard AssetsBundle serves). Version is stamped from the POM on every build.
-        kongchen's "include-project-dependencies" configurator puts the project classpath on the
-        plugin classloader so resource classes that extend cedar-* base classes can be introspected.
-        Spec is OpenAPI/Swagger 2.0 (swagger-core 1.5.x); use the 1.x line of this plugin only.
+        Filters the base OpenAPI document (src/main/swagger/openapi-base.yaml) so ${project.version}
+        is stamped into info.version, then writes it to target/ for the swagger-maven-plugin to read.
       -->
       <plugin>
-        <groupId>com.github.kongchen</groupId>
-        <artifactId>swagger-maven-plugin</artifactId>
-        <version>3.1.8</version>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-resources-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>filter-openapi-base</id>
+            <phase>process-resources</phase>
+            <goals>
+              <goal>copy-resources</goal>
+            </goals>
+            <configuration>
+              <outputDirectory>${project.build.directory}/generated-swagger</outputDirectory>
+              <resources>
+                <resource>
+                  <directory>${project.basedir}/src/main/swagger</directory>
+                  <includes>
+                    <include>openapi-base.yaml</include>
+                  </includes>
+                  <filtering>true</filtering>
+                </resource>
+              </resources>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+
+      <!--
+        Generates the OpenAPI 3.0 spec from the JAX-RS (jakarta.ws.rs) resource annotations into
+        src/main/resources/assets/swagger-api/ as swagger.json + swagger.yaml (committed; Maven
+        copies it onto the classpath that the Dropwizard AssetsBundle serves). The official
+        io.swagger.core.v3 plugin (jakarta line) resolves with the project classpath so resource
+        classes that extend cedar-* base classes are introspected. sortOutput keeps the spec
+        byte-stable. Info and the api_key security scheme come from the filtered openapi-base.yaml.
+      -->
+      <plugin>
+        <groupId>io.swagger.core.v3</groupId>
+        <artifactId>swagger-maven-plugin-jakarta</artifactId>
+        <version>${swagger.version}</version>
         <configuration>
-          <!--
-            swagger-core 1.5.x (via kongchen 3.1.8) only understands the javax.ws.rs annotations.
-            After the jakarta migration it scans the jakarta.ws.rs resources, finds no paths, and
-            would overwrite the committed spec with an empty document. Generation is disabled so the
-            committed swagger.json/yaml (last generated under javax; the API paths are unchanged by
-            the namespace flip) is preserved. Regenerating requires migrating to swagger-core v3
-            (jakarta / OpenAPI 3), a separate follow-up.
-          -->
-          <skipSwaggerGeneration>true</skipSwaggerGeneration>
-          <apiSources>
-            <apiSource>
-              <springmvc>false</springmvc>
-              <locations>
-                <location>org.metadatacenter.cedar.terminology.resources.bioportal</location>
-              </locations>
-              <schemes>
-                <scheme>https</scheme>
-              </schemes>
-              <info>
-                <title>CEDAR Terminology Server API</title>
-                <description>CEDAR Terminology Server API</description>
-                <version>${project.version}</version>
-              </info>
-              <securityDefinitions>
-                <securityDefinition>
-                  <jsonPath>${project.basedir}/src/main/swagger/security-definitions.json</jsonPath>
-                </securityDefinition>
-              </securityDefinitions>
-              <swaggerDirectory>${project.basedir}/src/main/resources/assets/swagger-api</swaggerDirectory>
-              <swaggerFileName>swagger</swaggerFileName>
-              <outputFormats>json,yaml</outputFormats>
-            </apiSource>
-          </apiSources>
-          <!-- Sort all maps by key so the committed spec is byte-stable across builds. -->
-          <enabledObjectMapperFeatures>
-            <feature>com.fasterxml.jackson.databind.SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS</feature>
-          </enabledObjectMapperFeatures>
+          <outputPath>${project.basedir}/src/main/resources/assets/swagger-api</outputPath>
+          <outputFileName>swagger</outputFileName>
+          <outputFormat>JSONANDYAML</outputFormat>
+          <prettyPrint>true</prettyPrint>
+          <sortOutput>true</sortOutput>
+          <resourcePackages>
+            <package>org.metadatacenter.cedar.terminology.resources.bioportal</package>
+          </resourcePackages>
+          <openapiFilePath>${project.build.directory}/generated-swagger/openapi-base.yaml</openapiFilePath>
         </configuration>
-        <dependencies>
-          <!-- Override the ancient transitive javassist (3.21.0-GA) which can't parse Java 17 bytecode. -->
-          <dependency>
-            <groupId>org.javassist</groupId>
-            <artifactId>javassist</artifactId>
-            <version>3.29.2-GA</version>
-          </dependency>
-        </dependencies>
         <executions>
           <execution>
             <phase>prepare-package</phase>
             <goals>
-              <goal>generate</goal>
+              <goal>resolve</goal>
             </goals>
           </execution>
         </executions>

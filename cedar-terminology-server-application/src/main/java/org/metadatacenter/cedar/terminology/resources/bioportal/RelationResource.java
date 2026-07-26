@@ -1,11 +1,11 @@
 package org.metadatacenter.cedar.terminology.resources.bioportal;
 
-import io.swagger.annotations.Api;
-import io.swagger.annotations.ApiOperation;
-import io.swagger.annotations.ApiParam;
-import io.swagger.annotations.ApiResponse;
-import io.swagger.annotations.ApiResponses;
-import io.swagger.annotations.Authorization;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.metadatacenter.cedar.terminology.resources.AbstractTerminologyServerResource;
 import org.metadatacenter.config.CedarConfig;
 import org.metadatacenter.exception.CedarException;
@@ -26,7 +26,8 @@ import static org.metadatacenter.rest.assertion.GenericAssertions.LoggedIn;
 
 @Path("/bioportal")
 @Produces(MediaType.APPLICATION_JSON)
-@Api(value = "/bioportal", tags = "Relations", authorizations = {@Authorization("api_key")})
+@Tag(name = "Relations")
+@SecurityRequirement(name = "api_key")
 public class RelationResource extends AbstractTerminologyServerResource {
 
   public RelationResource(CedarConfig cedarConfig) {
@@ -35,14 +36,14 @@ public class RelationResource extends AbstractTerminologyServerResource {
 
   @POST
   @Path("relations")
-  @ApiOperation(value = "Create a provisional relation", notes = "Create a provisional relation.")
+  @Operation(summary = "Create a provisional relation", description = "Create a provisional relation.")
   @ApiResponses({
-      @ApiResponse(code = 204, message = "Successful operation (no content)"),
-      @ApiResponse(code = 400, message = "Bad request"),
-      @ApiResponse(code = 401, message = "Unauthorized"),
-      @ApiResponse(code = 403, message = "Forbidden"),
-      @ApiResponse(code = 404, message = "Not found"),
-      @ApiResponse(code = 500, message = "Internal server error")
+      @ApiResponse(responseCode = "204", description = "Successful operation (no content)"),
+      @ApiResponse(responseCode = "400", description = "Bad request"),
+      @ApiResponse(responseCode = "401", description = "Unauthorized"),
+      @ApiResponse(responseCode = "403", description = "Forbidden"),
+      @ApiResponse(responseCode = "404", description = "Not found"),
+      @ApiResponse(responseCode = "500", description = "Internal server error")
   })
   public Response createRelation() throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
@@ -61,18 +62,17 @@ public class RelationResource extends AbstractTerminologyServerResource {
 
   @GET
   @Path("relations/{id}")
-  @ApiOperation(value = "Find provisional relation by id", notes = "Find provisional relation by id.")
+  @Operation(summary = "Find provisional relation by id", description = "Find provisional relation by id.")
   @ApiResponses({
-      @ApiResponse(code = 200, message = "Successful operation"),
-      @ApiResponse(code = 400, message = "Bad request"),
-      @ApiResponse(code = 401, message = "Unauthorized"),
-      @ApiResponse(code = 403, message = "Forbidden"),
-      @ApiResponse(code = 404, message = "Not found"),
-      @ApiResponse(code = 500, message = "Internal server error")
+      @ApiResponse(responseCode = "200", description = "Successful operation"),
+      @ApiResponse(responseCode = "400", description = "Bad request"),
+      @ApiResponse(responseCode = "401", description = "Unauthorized"),
+      @ApiResponse(responseCode = "403", description = "Forbidden"),
+      @ApiResponse(responseCode = "404", description = "Not found"),
+      @ApiResponse(responseCode = "500", description = "Internal server error")
   })
   public Response findRelation(
-      @ApiParam(value = "Provisional relation short identifier. Examples: 720f50f0-ae6f-0133-848f-005056010073.",
-          required = true)
+      @Parameter(description = "Provisional relation short identifier. Examples: 720f50f0-ae6f-0133-848f-005056010073.", required = true)
       @PathParam("id") String id) throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
@@ -124,18 +124,17 @@ public class RelationResource extends AbstractTerminologyServerResource {
 
   @DELETE
   @Path("relations/{id}")
-  @ApiOperation(value = "Delete provisional relation", notes = "Delete provisional relation by id.")
+  @Operation(summary = "Delete provisional relation", description = "Delete provisional relation by id.")
   @ApiResponses({
-      @ApiResponse(code = 200, message = "Successful operation"),
-      @ApiResponse(code = 400, message = "Bad request"),
-      @ApiResponse(code = 401, message = "Unauthorized"),
-      @ApiResponse(code = 403, message = "Forbidden"),
-      @ApiResponse(code = 404, message = "Not found"),
-      @ApiResponse(code = 500, message = "Internal server error")
+      @ApiResponse(responseCode = "200", description = "Successful operation"),
+      @ApiResponse(responseCode = "400", description = "Bad request"),
+      @ApiResponse(responseCode = "401", description = "Unauthorized"),
+      @ApiResponse(responseCode = "403", description = "Forbidden"),
+      @ApiResponse(responseCode = "404", description = "Not found"),
+      @ApiResponse(responseCode = "500", description = "Internal server error")
   })
   public Response deleteRelation(
-      @ApiParam(value = "Provisional relation short identifier. Examples: 720f50f0-ae6f-0133-848f-005056010073.",
-          required = true)
+      @Parameter(description = "Provisional relation short identifier. Examples: 720f50f0-ae6f-0133-848f-005056010073.", required = true)
       @PathParam("id") String id) throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);

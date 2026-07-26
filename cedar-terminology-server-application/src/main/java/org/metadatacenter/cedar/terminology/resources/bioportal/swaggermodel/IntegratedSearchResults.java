@@ -1,7 +1,6 @@
 package org.metadatacenter.cedar.terminology.resources.bioportal.swaggermodel;
 
-import io.swagger.annotations.ApiModel;
-import io.swagger.annotations.ApiModelProperty;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.util.List;
 
@@ -13,28 +12,28 @@ import java.util.List;
  * this class mirrors a single paginated-result entry, used together with
  * {@code responseContainer = "List"} on the operation.</p>
  */
-@ApiModel(value = "IntegratedSearchResults", description = "A paginated list of integrated-search results.")
+@Schema(name = "IntegratedSearchResults", description = "A paginated list of integrated-search results.")
 public class IntegratedSearchResults {
 
-  @ApiModelProperty(value = "Current page.", required = true)
+  @Schema(description = "Current page.", requiredMode = Schema.RequiredMode.REQUIRED)
   private Integer page;
 
-  @ApiModelProperty(value = "Total number of pages.", required = true)
+  @Schema(description = "Total number of pages.", requiredMode = Schema.RequiredMode.REQUIRED)
   private Integer pageCount;
 
-  @ApiModelProperty(value = "Number of results per page.", required = true)
+  @Schema(description = "Number of results per page.", requiredMode = Schema.RequiredMode.REQUIRED)
   private Integer pageSize;
 
-  @ApiModelProperty(value = "Total number of results.", required = true)
+  @Schema(description = "Total number of results.", requiredMode = Schema.RequiredMode.REQUIRED)
   private Integer totalCount;
 
-  @ApiModelProperty(value = "Previous page.", required = true)
+  @Schema(description = "Previous page.", requiredMode = Schema.RequiredMode.REQUIRED)
   private Integer prevPage;
 
-  @ApiModelProperty(value = "Next page.", required = true)
+  @Schema(description = "Next page.", requiredMode = Schema.RequiredMode.REQUIRED)
   private Integer nextPage;
 
-  @ApiModelProperty(value = "The results contained in this page.", required = true)
+  @Schema(description = "The results contained in this page.", requiredMode = Schema.RequiredMode.REQUIRED)
   private List<Result> collection;
 
   public Integer getPage() {
@@ -93,28 +92,28 @@ public class IntegratedSearchResults {
     this.collection = collection;
   }
 
-  @ApiModel(value = "IntegratedSearchResult")
+  @Schema(name = "IntegratedSearchResult")
   public static class Result {
 
-    @ApiModelProperty(value = "Result identifier.", required = true)
+    @Schema(description = "Result identifier.", requiredMode = Schema.RequiredMode.REQUIRED)
     private String id;
 
-    @ApiModelProperty(name = "@id", value = "Unique URL identifier of the result.", required = true)
+    @Schema(name = "@id", description = "Unique URL identifier of the result.", requiredMode = Schema.RequiredMode.REQUIRED)
     private String atId;
 
-    @ApiModelProperty(name = "@type", value = "Type of the result.", required = true)
+    @Schema(name = "@type", description = "Type of the result.", requiredMode = Schema.RequiredMode.REQUIRED)
     private String atType;
 
-    @ApiModelProperty(value = "Type of the result.", required = true)
+    @Schema(description = "Type of the result.", requiredMode = Schema.RequiredMode.REQUIRED)
     private String type;
 
-    @ApiModelProperty(value = "Preferred label of the result.", required = true)
+    @Schema(description = "Preferred label of the result.", requiredMode = Schema.RequiredMode.REQUIRED)
     private String prefLabel;
 
-    @ApiModelProperty(value = "Notation of the result.", required = true)
+    @Schema(description = "Notation of the result.", requiredMode = Schema.RequiredMode.REQUIRED)
     private String notation;
 
-    @ApiModelProperty(value = "Definition of the result.", required = true)
+    @Schema(description = "Definition of the result.", requiredMode = Schema.RequiredMode.REQUIRED)
     private String definition;
 
     public String getId() {
