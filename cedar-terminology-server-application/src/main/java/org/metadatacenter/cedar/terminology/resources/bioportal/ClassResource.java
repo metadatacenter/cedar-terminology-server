@@ -21,9 +21,9 @@ import org.metadatacenter.terms.domainObjects.OntologyClass;
 import org.metadatacenter.terms.domainObjects.TreeNode;
 import org.metadatacenter.util.json.JsonMapper;
 
-import javax.ws.rs.*;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
+import jakarta.ws.rs.*;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
 import javax.xml.ws.http.HTTPException;
 import java.io.IOException;
 import java.net.URI;

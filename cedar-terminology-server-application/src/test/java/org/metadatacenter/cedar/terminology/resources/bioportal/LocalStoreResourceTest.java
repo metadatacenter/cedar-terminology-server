@@ -6,7 +6,6 @@ import jakarta.ws.rs.client.ClientBuilder;
 import jakarta.ws.rs.core.GenericType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.Status;
-import org.jboss.resteasy.client.jaxrs.ResteasyClientBuilder;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
@@ -113,7 +112,7 @@ public class LocalStoreResourceTest {
     TestAuthUtil.installInMemoryUserService(cedarConfig);
     authHeader = TestAuthUtil.getTestUser1AuthHeader(cedarConfig);
 
-    clientBuilder = ResteasyClientBuilder.newBuilder();
+    clientBuilder = ClientBuilder.newBuilder();
     childrenUrlBase = "http://localhost:" + RULE.getLocalPort() + "/" + BP_ENDPOINT + "/" + BP_ONTOLOGIES;
   }
 

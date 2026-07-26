@@ -10,7 +10,6 @@ import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.glassfish.jersey.client.ClientProperties;
-import org.jboss.resteasy.client.jaxrs.ResteasyClientBuilder;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
@@ -119,7 +118,7 @@ public abstract class AbstractTerminologyServerResourceTest {
     baseUrlBpOntologies = baseUrlBp + "/" + BP_ONTOLOGIES;
     baseUrlBpVSCollections = baseUrlBp + "/" + BP_VALUE_SET_COLLECTIONS;
 
-    clientBuilder = ResteasyClientBuilder.newBuilder();
+    clientBuilder = ClientBuilder.newBuilder();
     clientBuilder.property(ClientProperties.CONNECT_TIMEOUT, cedarConfig.getTerminologyConfig().getBioPortal()
         .getConnectTimeout());
     clientBuilder.property(ClientProperties.READ_TIMEOUT,

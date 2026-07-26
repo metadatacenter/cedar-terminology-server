@@ -10,7 +10,6 @@ import jakarta.ws.rs.client.ClientBuilder;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.GenericType;
 import jakarta.ws.rs.core.Response;
-import org.jboss.resteasy.client.jaxrs.ResteasyClientBuilder;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
@@ -113,7 +112,7 @@ public class EquivalenceTest {
     CedarConfig cedarConfig = CedarConfig.getInstance(environment);
     TestAuthUtil.installInMemoryUserService(cedarConfig);
     authHeader = TestAuthUtil.getTestUser1AuthHeader(cedarConfig);
-    clientBuilder = ResteasyClientBuilder.newBuilder();
+    clientBuilder = ClientBuilder.newBuilder();
     baseBp = "http://localhost:" + RULE.getLocalPort() + "/bioportal";
   }
 

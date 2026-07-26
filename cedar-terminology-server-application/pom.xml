@@ -164,6 +164,15 @@
         <artifactId>swagger-maven-plugin</artifactId>
         <version>3.1.8</version>
         <configuration>
+          <!--
+            swagger-core 1.5.x (via kongchen 3.1.8) only understands the javax.ws.rs annotations.
+            After the jakarta migration it scans the jakarta.ws.rs resources, finds no paths, and
+            would overwrite the committed spec with an empty document. Generation is disabled so the
+            committed swagger.json/yaml (last generated under javax; the API paths are unchanged by
+            the namespace flip) is preserved. Regenerating requires migrating to swagger-core v3
+            (jakarta / OpenAPI 3), a separate follow-up.
+          -->
+          <skipSwaggerGeneration>true</skipSwaggerGeneration>
           <apiSources>
             <apiSource>
               <springmvc>false</springmvc>
