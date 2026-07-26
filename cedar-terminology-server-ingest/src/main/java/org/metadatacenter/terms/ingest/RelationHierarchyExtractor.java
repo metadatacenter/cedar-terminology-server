@@ -2,7 +2,10 @@ package org.metadatacenter.terms.ingest;
 
 import org.metadatacenter.terms.store.SnapshotStore;
 import org.semanticweb.owlapi.apibinding.OWLManager;
+import org.semanticweb.owlapi.io.FileDocumentSource;
 import org.semanticweb.owlapi.model.AxiomType;
+import org.semanticweb.owlapi.model.MissingImportHandlingStrategy;
+import org.semanticweb.owlapi.model.OWLOntologyLoaderConfiguration;
 import org.semanticweb.owlapi.model.IRI;
 import org.semanticweb.owlapi.model.OWLAnnotationAssertionAxiom;
 import org.semanticweb.owlapi.model.OWLAnnotationValue;
@@ -159,7 +162,11 @@ public class RelationHierarchyExtractor implements HierarchyExtractor {
   @Override
   public Result extractFromFile(File file, SnapshotStore store) throws Exception {
     OWLOntologyManager manager = OWLManager.createOWLOntologyManager();
-    OWLOntology ont = manager.loadOntologyFromOntologyDocument(file);
+    // Ignore unresolvable owl:imports (see OwlHierarchyExtractor) — we extract only
+    // this ontology's own relation-based hierarchy.
+    OWLOntologyLoaderConfiguration config = new OWLOntologyLoaderConfiguration()
+        .setMissingImportHandlingStrategy(MissingImportHandlingStrategy.SILENT);
+    OWLOntology ont = manager.loadOntologyFromOntologyDocument(new FileDocumentSource(file), config);
     return extract(ont, store);
   }
 
