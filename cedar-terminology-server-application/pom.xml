@@ -137,6 +137,21 @@
     <plugins>
 
       <!--
+        The resource tests tagged "bioportal" call the live BioPortal API and fail without a
+        configured key or network access. They are excluded from the default build; run them with
+        -DexcludedGroups= to clear the exclusion when BioPortal is reachable. The local-snapshot
+        tests (LocalStoreResourceTest, EquivalenceTest) and the boot smoke test are untagged and
+        always run.
+      -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <configuration>
+          <excludedGroups>bioportal</excludedGroups>
+        </configuration>
+      </plugin>
+
+      <!--
         Generates the OpenAPI/Swagger 2.0 spec from the JAX-RS resource annotations into
         src/main/resources/assets/swagger-api/ (committed; Maven copies it onto the classpath
         that the Dropwizard AssetsBundle serves). Version is stamped from the POM on every build.

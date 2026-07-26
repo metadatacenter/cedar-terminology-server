@@ -11,6 +11,7 @@ import jakarta.ws.rs.core.Response.Status;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
@@ -33,6 +34,9 @@ import static org.metadatacenter.model.ModelNodeNames.*;
 /**
  * Integration tests. They are done by starting a test server that makes it possible to test the real HTTP stack.
  */
+// Exercises live BioPortal; excluded from the default build (surefire excludedGroups).
+// Run with -DexcludedGroups= (or a bioportal profile) when a BioPortal API key is configured.
+@Tag("bioportal")
 public class IntegratedSearchResourceTest extends AbstractTerminologyServerResourceTest {
 
 
