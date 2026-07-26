@@ -7,7 +7,6 @@ import org.apache.hc.core5.http.ClassicHttpResponse;
 import org.apache.hc.core5.http.ContentType;
 import org.apache.hc.core5.http.HttpResponse;
 import org.apache.hc.core5.util.Timeout;
-import org.apache.http.util.EntityUtils;
 import org.metadatacenter.cedar.terminology.util.Constants;
 import org.metadatacenter.terms.bioportal.customObjects.BpPagedResults;
 import org.metadatacenter.terms.bioportal.domainObjects.BpProvisionalClass;
