@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.sql.SQLException;
@@ -17,6 +18,9 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 /**
  * Ingests ontology submissions into version-pinned SQLite snapshots and registers them in the
@@ -113,14 +117,15 @@ public class IngestJob {
 
     Path ontoDir = snapshotDir.resolve(acronym);
     Path raw = source.download(acronym, sub.submissionId(), ontoDir.resolve("raw"));
-    String versionId = sha256(raw);
+    String versionId = sha256(raw);      // version id hashes the archival download as-is
+    Path loadable = decompress(raw);     // .zip/.gz submissions must be expanded before parsing
 
     Path snapshotFile = ontoDir.resolve(versionId + ".sqlite");
     Files.deleteIfExists(snapshotFile);
     HierarchyExtractor.Result extracted;
     try (SnapshotStore store = SnapshotStore.openFile(snapshotFile.toString())) {
       store.initSchema();
-      extracted = extractorFor(acronym, sub.format()).extractFromFile(raw.toFile(), store);
+      extracted = extractorFor(acronym, sub.format()).extractFromFile(loadable.toFile(), store);
     } catch (Exception e) {
       throw new IOException("Extraction failed for " + acronym + " submission " + sub.submissionId(), e);
     }
@@ -146,6 +151,50 @@ public class IngestJob {
     } catch (SQLException e) {
       throw new RuntimeException("Failed to set latest tag for " + acronym, e);
     }
+  }
+
+  /**
+   * BioPortal sometimes serves a submission as a {@code .gz} or {@code .zip} archive. OWLAPI does
+   * not expand those (it feeds the archive bytes to the XML parser and fails with "Content is not
+   * allowed in prolog"). Detect the archive by its magic bytes and expand the ontology to a sibling
+   * file, which is what the extractor parses. For a multi-entry zip the largest entry is taken (the
+   * ontology, not a catalog/readme). Returns the input unchanged when it is not compressed.
+   */
+  static Path decompress(Path raw) throws IOException {
+    byte[] magic = new byte[4];
+    try (InputStream in = Files.newInputStream(raw)) { in.read(magic); }
+    boolean gz = (magic[0] & 0xff) == 0x1f && (magic[1] & 0xff) == 0x8b;
+    boolean zip = magic[0] == 'P' && magic[1] == 'K' && magic[2] == 3 && magic[3] == 4;
+    if (!gz && !zip) return raw;
+    Path out = raw.resolveSibling(raw.getFileName() + ".expanded");
+    if (gz) {
+      try (InputStream in = new GZIPInputStream(Files.newInputStream(raw))) {
+        Files.copy(in, out, StandardCopyOption.REPLACE_EXISTING);
+      }
+      return out;
+    }
+    Path largest = null;
+    long largestSize = -1;
+    try (ZipInputStream zin = new ZipInputStream(Files.newInputStream(raw))) {
+      ZipEntry e;
+      int i = 0;
+      while ((e = zin.getNextEntry()) != null) {
+        if (e.isDirectory()) continue;
+        Path cand = raw.resolveSibling(raw.getFileName() + ".entry" + (i++));
+        Files.copy(zin, cand, StandardCopyOption.REPLACE_EXISTING);
+        long sz = Files.size(cand);
+        if (sz > largestSize) {
+          largestSize = sz;
+          if (largest != null) Files.deleteIfExists(largest);
+          largest = cand;
+        } else {
+          Files.deleteIfExists(cand);
+        }
+      }
+    }
+    if (largest == null) throw new IOException("empty zip archive: " + raw);
+    Files.move(largest, out, StandardCopyOption.REPLACE_EXISTING);
+    return out;
   }
 
   static String sha256(Path file) throws IOException {

@@ -2,6 +2,9 @@ package org.metadatacenter.terms.ingest;
 
 import org.metadatacenter.terms.store.SnapshotStore;
 import org.semanticweb.owlapi.apibinding.OWLManager;
+import org.semanticweb.owlapi.io.FileDocumentSource;
+import org.semanticweb.owlapi.model.MissingImportHandlingStrategy;
+import org.semanticweb.owlapi.model.OWLOntologyLoaderConfiguration;
 import org.semanticweb.owlapi.model.AxiomType;
 import org.semanticweb.owlapi.model.IRI;
 import org.semanticweb.owlapi.model.OWLAnnotation;
@@ -127,7 +130,12 @@ public class OwlHierarchyExtractor implements HierarchyExtractor {
   public Result extractFromFile(File file, SnapshotStore store)
       throws OWLOntologyCreationException, SQLException {
     OWLOntologyManager manager = OWLManager.createOWLOntologyManager();
-    OWLOntology ont = manager.loadOntologyFromOntologyDocument(file);
+    // Ignore owl:imports we can't resolve: we extract each ontology's OWN asserted
+    // hierarchy, and many BioPortal ontologies import external IRIs that are
+    // unreachable offline — otherwise OWLAPI throws UnloadableImportException.
+    OWLOntologyLoaderConfiguration config = new OWLOntologyLoaderConfiguration()
+        .setMissingImportHandlingStrategy(MissingImportHandlingStrategy.SILENT);
+    OWLOntology ont = manager.loadOntologyFromOntologyDocument(new FileDocumentSource(file), config);
     return extract(ont, store);
   }
 

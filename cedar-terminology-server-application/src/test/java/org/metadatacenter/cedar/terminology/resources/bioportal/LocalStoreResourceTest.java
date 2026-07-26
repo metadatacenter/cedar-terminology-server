@@ -48,6 +48,17 @@ import static org.metadatacenter.constant.HttpConstants.HTTP_HEADER_AUTHORIZATIO
  */
 public class LocalStoreResourceTest {
 
+  static {
+    // Must run before the test support boots the server, which reads the port env vars.
+    // Alternate server ports, so the test instance never collides with a running dev server.
+    java.util.Map<String, String> environment =
+        new java.util.HashMap<>(org.metadatacenter.config.environment.CedarEnvironmentSource.getAll());
+    environment.put("CEDAR_TERMINOLOGY_HTTP_PORT", "19004");
+    environment.put("CEDAR_TERMINOLOGY_ADMIN_PORT", "19104");
+    environment.put("CEDAR_TERMINOLOGY_STOP_PORT", "19204");
+    org.metadatacenter.config.environment.CedarEnvironmentSource.setOverride(environment);
+  }
+
   private static final String ONT = "LOCALTEST";
   private static final String BASE = "http://localtest/";
 
