@@ -3,14 +3,17 @@ package org.metadatacenter.terms.store;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import org.metadatacenter.terms.store.CatalogStore.OntologyInfo;
 import org.metadatacenter.terms.store.CatalogStore.SnapshotInfo;
 
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class CatalogStoreTest {
@@ -108,5 +111,50 @@ public class CatalogStoreTest {
   public void unknownResolutionsAreEmpty() throws Exception {
     assertTrue(catalog.resolveLatest("NCIT").isEmpty());
     assertTrue(catalog.getSnapshot("nope").isEmpty());
+  }
+
+  @Test
+  public void inMemoryCatalogHasNoBaseDir() {
+    // The shared in-memory catalog has no file, so no base directory to resolve against.
+    assertTrue(catalog.baseDir().isEmpty());
+  }
+
+  @Test
+  public void fileCatalogResolvesRelativePathsAgainstItsOwnDirectory(@TempDir Path dir) throws Exception {
+    // A snapshot path stored relative to the catalog file resolves to an absolute path under the
+    // catalog's own directory. This is what makes the store relocatable: copy catalog + snapshots
+    // anywhere and reads still find the files, with no stored absolute paths to rewrite.
+    Path catalogFile = dir.resolve("catalog.sqlite");
+    try (CatalogStore fileCatalog = CatalogStore.openFile(catalogFile.toString())) {
+      fileCatalog.initSchema();
+      assertEquals(dir, fileCatalog.baseDir().orElseThrow());
+      fileCatalog.upsertOntology(new OntologyInfo("DOID", "Human Disease Ontology", null, "OWL"));
+      fileCatalog.addSnapshot(new SnapshotInfo("relV", "DOID", "release/x", "2025-01-01",
+          "2026-01-01T00:00:00Z", "OWL", "subsumption", 1, 1,
+          "snapshots/DOID/relV.sqlite", "relV", "open")); // relative path
+      fileCatalog.setTag("DOID", CatalogStore.TAG_LATEST, "relV");
+
+      String resolved = fileCatalog.resolveLatest("DOID").orElseThrow().filePath();
+      assertEquals(dir.resolve("snapshots/DOID/relV.sqlite").toString(), resolved);
+      assertTrue(Path.of(resolved).isAbsolute());
+    }
+  }
+
+  @Test
+  public void fileCatalogLeavesAbsolutePathsUnchanged(@TempDir Path dir) throws Exception {
+    // Backward compatibility: a catalog written before relative paths stores absolute paths, which
+    // must be served verbatim rather than re-rooted under the catalog directory.
+    Path catalogFile = dir.resolve("catalog.sqlite");
+    String absolute = dir.resolve("elsewhere/DOID/absV.sqlite").toString();
+    try (CatalogStore fileCatalog = CatalogStore.openFile(catalogFile.toString())) {
+      fileCatalog.initSchema();
+      fileCatalog.upsertOntology(new OntologyInfo("DOID", "Human Disease Ontology", null, "OWL"));
+      fileCatalog.addSnapshot(new SnapshotInfo("absV", "DOID", "release/x", "2025-01-01",
+          "2026-01-01T00:00:00Z", "OWL", "subsumption", 1, 1, absolute, "absV", "open"));
+      fileCatalog.setTag("DOID", CatalogStore.TAG_LATEST, "absV");
+
+      assertEquals(absolute, fileCatalog.resolveLatest("DOID").orElseThrow().filePath());
+      assertFalse(absolute.startsWith(dir.resolve("snapshots").toString()));
+    }
   }
 }

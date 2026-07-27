@@ -1,5 +1,7 @@
 package org.metadatacenter.terms.store;
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -47,17 +49,51 @@ public class CatalogStore implements AutoCloseable {
   public static final String TAG_LATEST = "latest";
 
   private final Connection connection;
+  /**
+   * Directory the catalog file lives in, used to resolve snapshot {@code file_path}s stored relative
+   * to it. Null for an in-memory catalog, in which case relative paths are left as-is (resolved
+   * against the process working directory by the opener).
+   */
+  private final Path baseDir;
 
-  private CatalogStore(Connection connection) {
+  private CatalogStore(Connection connection, Path baseDir) {
     this.connection = connection;
+    this.baseDir = baseDir;
   }
 
   public static CatalogStore openFile(String path) throws SQLException {
-    return new CatalogStore(DriverManager.getConnection("jdbc:sqlite:" + path));
+    Path parent = Paths.get(path).toAbsolutePath().getParent();
+    return new CatalogStore(DriverManager.getConnection("jdbc:sqlite:" + path), parent);
   }
 
   public static CatalogStore openInMemory() throws SQLException {
-    return new CatalogStore(DriverManager.getConnection("jdbc:sqlite::memory:"));
+    return new CatalogStore(DriverManager.getConnection("jdbc:sqlite::memory:"), null);
+  }
+
+  /**
+   * The directory the catalog file lives in, or empty for an in-memory catalog. Snapshot
+   * {@code file_path}s are stored relative to this so the whole store (catalog + snapshots) can be
+   * copied to any location and served without rewriting paths. Ingestion uses it to relativize the
+   * paths it records.
+   */
+  public Optional<Path> baseDir() {
+    return Optional.ofNullable(baseDir);
+  }
+
+  /**
+   * Resolves a stored snapshot path to an absolute filesystem path. An absolute stored path is
+   * returned unchanged (backward compatibility with catalogs written before relative paths); a
+   * relative one is resolved against {@link #baseDir}, or left as-is when there is no base dir.
+   */
+  private String resolvePath(String stored) {
+    if (stored == null) {
+      return null;
+    }
+    Path p = Paths.get(stored);
+    if (p.isAbsolute() || baseDir == null) {
+      return stored;
+    }
+    return baseDir.resolve(p).normalize().toString();
   }
 
   public void initSchema() throws SQLException {
@@ -218,13 +254,13 @@ public class CatalogStore implements AutoCloseable {
    * Helpers
    * ------------------------------------------------------------------------------------------ */
 
-  private static Optional<SnapshotInfo> firstSnapshot(PreparedStatement ps) throws SQLException {
+  private Optional<SnapshotInfo> firstSnapshot(PreparedStatement ps) throws SQLException {
     try (ResultSet rs = ps.executeQuery()) {
       return rs.next() ? Optional.of(readSnapshot(rs)) : Optional.empty();
     }
   }
 
-  private static SnapshotInfo readSnapshot(ResultSet rs) throws SQLException {
+  private SnapshotInfo readSnapshot(ResultSet rs) throws SQLException {
     return new SnapshotInfo(
         rs.getString("version_id"),
         rs.getString("acronym"),
@@ -235,7 +271,7 @@ public class CatalogStore implements AutoCloseable {
         rs.getString("hierarchy_status"),
         getNullableInt(rs, "class_count"),
         getNullableInt(rs, "edge_count"),
-        rs.getString("file_path"),
+        resolvePath(rs.getString("file_path")),
         rs.getString("file_hash"),
         rs.getString("license_tier"));
   }

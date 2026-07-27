@@ -135,7 +135,7 @@ public class IngestJob {
     catalog.addSnapshot(new CatalogStore.SnapshotInfo(
         versionId, acronym, sub.version(), sub.released(), Instant.now().toString(),
         sub.format(), "subsumption", extracted.classCount(), extracted.edgeCount(),
-        snapshotFile.toString(), versionId,
+        catalogRelativePath(catalog, snapshotFile), versionId,
         access.viewingRestriction() == null ? "public" : access.viewingRestriction()));
     if (setAsLatest) {
       catalog.setTag(acronym, CatalogStore.TAG_LATEST, versionId);
@@ -144,6 +144,20 @@ public class IngestJob {
     log.info("Ingested {} submission {} -> {} ({} classes, {} edges)",
         acronym, sub.submissionId(), versionId, extracted.classCount(), extracted.edgeCount());
     return new IngestResult(sub.submissionId(), versionId, snapshotFile, extracted.classCount(), extracted.edgeCount());
+  }
+
+  /**
+   * The path to record for a snapshot: relative to the catalog's directory when possible, so the
+   * store (catalog + snapshots) can be copied anywhere and served without rewriting paths. Uses
+   * forward slashes so the stored value is portable across operating systems. Falls back to the
+   * absolute path for an in-memory catalog (no base directory to relativize against).
+   */
+  private static String catalogRelativePath(CatalogStore catalog, Path snapshotFile) {
+    Path abs = snapshotFile.toAbsolutePath().normalize();
+    return catalog.baseDir()
+        .map(base -> base.toAbsolutePath().normalize().relativize(abs).toString()
+            .replace(java.io.File.separatorChar, '/'))
+        .orElse(abs.toString());
   }
 
   private static void setLatestQuietly(CatalogStore catalog, String acronym, String versionId) {

@@ -120,6 +120,39 @@ public class IngestJobTest {
   }
 
   @Test
+  public void fileCatalogRecordsSnapshotPathRelativeToTheCatalogDirectory() throws Exception {
+    // A file-based catalog records each snapshot path relative to its own directory, so the whole
+    // store (catalog + snapshots) can be copied to a server without rewriting any paths. The
+    // snapshot file is still written to its real absolute location; only the recorded path is
+    // relative. Reads resolve it back to an absolute path under the catalog directory.
+    Path catalogFile = tempDir.resolve("catalog.sqlite");
+    try (CatalogStore fileCatalog = CatalogStore.openFile(catalogFile.toString())) {
+      fileCatalog.initSchema();
+      IngestJob job = new IngestJob(fakeSource());
+      IngestJob.IngestResult r = job.ingestLatest(fileCatalog, "EX", tempDir.resolve("snapshots"));
+
+      String stored = rawStoredPath(catalogFile, r.versionId());
+      assertEquals("snapshots/EX/" + r.versionId() + ".sqlite", stored);
+
+      // The resolved path (via the API) is absolute, points under the catalog dir, and opens.
+      String resolved = fileCatalog.resolveLatest("EX").orElseThrow().filePath();
+      assertEquals(tempDir.resolve("snapshots/EX/" + r.versionId() + ".sqlite").toString(), resolved);
+      assertTrue(Files.exists(Path.of(resolved)));
+    }
+  }
+
+  /** Reads the file_path column exactly as stored, bypassing the store's resolution. */
+  private static String rawStoredPath(Path catalogFile, String versionId) throws Exception {
+    try (var conn = java.sql.DriverManager.getConnection("jdbc:sqlite:" + catalogFile);
+         var ps = conn.prepareStatement("SELECT file_path FROM snapshot WHERE version_id = ?")) {
+      ps.setString(1, versionId);
+      try (var rs = ps.executeQuery()) {
+        return rs.next() ? rs.getString(1) : null;
+      }
+    }
+  }
+
+  @Test
   public void versionIdIsContentHashOfRawFile() throws Exception {
     String expected = IngestJob.sha256(sourceOwl);
     IngestJob job = new IngestJob(fakeSource());
