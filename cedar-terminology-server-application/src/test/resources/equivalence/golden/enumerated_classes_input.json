@@ -1,0 +1,20 @@
+[
+  {
+    "uri": "http://purl.obolibrary.org/obo/OBI_0000070",
+    "prefLabel": "assay",
+    "type": "OntologyClass",
+    "source": "OBI"
+  },
+  {
+    "uri": "http://purl.obolibrary.org/obo/OBI_0000117",
+    "prefLabel": "Bernoulli trial",
+    "type": "OntologyClass",
+    "source": "OBI"
+  },
+  {
+    "uri": "http://purl.obolibrary.org/obo/OBI_0000185",
+    "prefLabel": "imaging assay",
+    "type": "OntologyClass",
+    "source": "OBI"
+  }
+]

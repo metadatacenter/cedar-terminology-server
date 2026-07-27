@@ -3,7 +3,7 @@ package org.metadatacenter.cedar.terminology.validation.integratedsearch;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import org.hibernate.validator.constraints.NotEmpty;
 
-import javax.validation.constraints.Pattern;
+import jakarta.validation.constraints.Pattern;
 
 import static org.metadatacenter.cedar.terminology.util.Constants.CEDAR_VALUE_ARRANGEMENTS_ACTIONS_REGEX;
 

@@ -1,0 +1,133 @@
+package org.metadatacenter.terms.ingest;
+
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.metadatacenter.terms.store.SnapshotStore;
+import org.semanticweb.owlapi.apibinding.OWLManager;
+import org.semanticweb.owlapi.model.IRI;
+import org.semanticweb.owlapi.model.OWLAnnotationProperty;
+import org.semanticweb.owlapi.model.OWLClass;
+import org.semanticweb.owlapi.model.OWLDataFactory;
+import org.semanticweb.owlapi.model.OWLObjectProperty;
+import org.semanticweb.owlapi.model.OWLOntology;
+import org.semanticweb.owlapi.model.OWLOntologyManager;
+
+import java.util.List;
+import java.util.Set;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+public class SnapshotValidatorTest {
+
+  private static final String BASE = "http://ex/";
+
+  private OWLOntology ont;
+  private SnapshotStore store;
+
+  private static IRI iri(String s) {
+    return IRI.create(BASE + s);
+  }
+
+  @BeforeEach
+  public void setUp() throws Exception {
+    OWLOntologyManager m = OWLManager.createOWLOntologyManager();
+    OWLDataFactory df = m.getOWLDataFactory();
+    ont = m.createOntology(IRI.create(BASE + "test"));
+
+    OWLClass animal = df.getOWLClass(iri("animal"));
+    OWLClass mammal = df.getOWLClass(iri("mammal"));
+    OWLClass cat = df.getOWLClass(iri("cat"));
+    OWLClass dog = df.getOWLClass(iri("dog"));
+    OWLClass pet = df.getOWLClass(iri("pet"));
+    OWLObjectProperty partOf = df.getOWLObjectProperty(iri("part_of"));
+
+    m.addAxiom(ont, df.getOWLSubClassOfAxiom(mammal, animal));
+    m.addAxiom(ont, df.getOWLSubClassOfAxiom(cat, mammal));
+    m.addAxiom(ont, df.getOWLSubClassOfAxiom(dog, mammal));
+    m.addAxiom(ont, df.getOWLSubClassOfAxiom(dog, pet));
+    m.addAxiom(ont, df.getOWLSubClassOfAxiom(dog, df.getOWLObjectSomeValuesFrom(partOf, animal)));
+
+    store = SnapshotStore.openInMemory();
+    store.initSchema();
+    new OwlHierarchyExtractor().extract(ont, store);
+  }
+
+  @AfterEach
+  public void tearDown() throws Exception {
+    store.close();
+  }
+
+  @Test
+  public void correctlyExtractedSnapshotIsValid() throws Exception {
+    SnapshotValidator.Report r = new SnapshotValidator().validate(ont, store);
+    assertTrue(r.isValid(), r.summary());
+    assertEquals(r.recomputedClosurePairs(), r.storeClosurePairs());
+    assertTrue(r.cycles().isEmpty());
+  }
+
+  @Test
+  public void validatesCustomHierarchyPredicateSnapshot() throws Exception {
+    // A vocabulary whose hierarchy is a custom "isa" predicate (as RxNorm uses), not skos:broader.
+    String ex = "http://ex/rel/";
+    IRI isa = IRI.create(ex + "isa");
+    IRI prefLabel = IRI.create("http://www.w3.org/2004/02/skos/core#prefLabel");
+    HierarchyConfig cfg = new HierarchyConfig(Set.of(isa), Set.of(), prefLabel, "subsumption", false);
+
+    OWLOntologyManager m = OWLManager.createOWLOntologyManager();
+    OWLDataFactory df = m.getOWLDataFactory();
+    OWLOntology o = m.createOntology(IRI.create(ex + "scheme"));
+    OWLAnnotationProperty isaProp = df.getOWLAnnotationProperty(isa);
+    OWLAnnotationProperty labelProp = df.getOWLAnnotationProperty(prefLabel);
+    m.addAxiom(o, df.getOWLAnnotationAssertionAxiom(isaProp, IRI.create(ex + "child"), IRI.create(ex + "parent")));
+    m.addAxiom(o, df.getOWLAnnotationAssertionAxiom(labelProp, IRI.create(ex + "child"), df.getOWLLiteral("Child", "en")));
+
+    try (SnapshotStore s = SnapshotStore.openInMemory()) {
+      s.initSchema();
+      new RelationHierarchyExtractor(cfg).extract(o, s);
+      assertEquals(List.of(ex + "child"), s.children(ex + "parent"));
+      SnapshotValidator.Report r = new SnapshotValidator().validate(o, s, cfg);
+      assertTrue(r.isValid(), r.summary());
+    }
+  }
+
+  @Test
+  public void validatesSkosSnapshot() throws Exception {
+    String skos = "http://www.w3.org/2004/02/skos/core#";
+    String base = "http://ex/skos/";
+    OWLOntologyManager m = OWLManager.createOWLOntologyManager();
+    OWLDataFactory df = m.getOWLDataFactory();
+    OWLOntology o = m.createOntology(IRI.create(base + "scheme"));
+    OWLAnnotationProperty broader = df.getOWLAnnotationProperty(IRI.create(skos + "broader"));
+    OWLAnnotationProperty narrower = df.getOWLAnnotationProperty(IRI.create(skos + "narrower"));
+    OWLAnnotationProperty prefLabel = df.getOWLAnnotationProperty(IRI.create(skos + "prefLabel"));
+    m.addAxiom(o, df.getOWLAnnotationAssertionAxiom(broader, IRI.create(base + "A"), IRI.create(base + "B")));
+    m.addAxiom(o, df.getOWLAnnotationAssertionAxiom(broader, IRI.create(base + "B"), IRI.create(base + "root")));
+    m.addAxiom(o, df.getOWLAnnotationAssertionAxiom(narrower, IRI.create(base + "B"), IRI.create(base + "D")));
+    m.addAxiom(o, df.getOWLAnnotationAssertionAxiom(prefLabel, IRI.create(base + "A"), df.getOWLLiteral("A", "en")));
+
+    try (SnapshotStore s = SnapshotStore.openInMemory()) {
+      s.initSchema();
+      new SkosHierarchyExtractor().extract(o, s);
+      SnapshotValidator.Report r = new SnapshotValidator().validateSkos(o, s);
+      assertTrue(r.isValid(), r.summary());
+      assertEquals(r.recomputedClosurePairs(), r.storeClosurePairs());
+      assertTrue(r.cycles().isEmpty());
+    }
+  }
+
+  @Test
+  public void detectsEdgeAndClosureDrift() throws Exception {
+    // Add an edge the OWL does not have, and do NOT re-materialize the closure.
+    store.addEdge(BASE + "cat", BASE + "pet", "rdfs:subClassOf");
+
+    SnapshotValidator.Report r = new SnapshotValidator().validate(ont, store);
+    assertFalse(r.isValid());
+    // The extra edge is flagged against the ontology...
+    assertTrue(r.edgesExtraInStore().contains(BASE + "cat" + "\t" + BASE + "pet"));
+    // ...and its transitive consequence is missing from the stale stored closure.
+    assertTrue(r.closureMissingFromStore().contains(BASE + "pet" + "\t" + BASE + "cat"));
+  }
+}

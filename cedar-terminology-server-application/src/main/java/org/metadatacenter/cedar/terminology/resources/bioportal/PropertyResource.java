@@ -1,11 +1,11 @@
 package org.metadatacenter.cedar.terminology.resources.bioportal;
 
-import io.swagger.annotations.Api;
-import io.swagger.annotations.ApiOperation;
-import io.swagger.annotations.ApiParam;
-import io.swagger.annotations.ApiResponse;
-import io.swagger.annotations.ApiResponses;
-import io.swagger.annotations.Authorization;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.metadatacenter.cedar.terminology.resources.AbstractTerminologyServerResource;
 import org.metadatacenter.config.CedarConfig;
 import org.metadatacenter.exception.CedarException;
@@ -15,9 +15,9 @@ import org.metadatacenter.terms.domainObjects.OntologyProperty;
 import org.metadatacenter.terms.domainObjects.TreeNode;
 import org.metadatacenter.util.json.JsonMapper;
 
-import javax.ws.rs.*;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
+import jakarta.ws.rs.*;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
 import javax.xml.ws.http.HTTPException;
 import java.io.IOException;
 import java.util.List;
@@ -26,7 +26,8 @@ import static org.metadatacenter.rest.assertion.GenericAssertions.LoggedIn;
 
 @Path("/bioportal")
 @Produces(MediaType.APPLICATION_JSON)
-@Api(value = "/bioportal", tags = "Properties", authorizations = {@Authorization("api_key")})
+@Tag(name = "Properties")
+@SecurityRequirement(name = "api_key")
 public class PropertyResource extends AbstractTerminologyServerResource {
 
   public PropertyResource(CedarConfig cedarConfig) {
@@ -35,19 +36,19 @@ public class PropertyResource extends AbstractTerminologyServerResource {
 
   @GET
   @Path("ontologies/{ontology}/properties/{id}")
-  @ApiOperation(value = "Find property", notes = "Find property by id.")
+  @Operation(summary = "Find property", description = "Find property by id.")
   @ApiResponses({
-      @ApiResponse(code = 200, message = "Successful operation"),
-      @ApiResponse(code = 400, message = "Bad request"),
-      @ApiResponse(code = 401, message = "Unauthorized"),
-      @ApiResponse(code = 403, message = "Forbidden"),
-      @ApiResponse(code = 404, message = "Not found"),
-      @ApiResponse(code = 500, message = "Internal server error")
+      @ApiResponse(responseCode = "200", description = "Successful operation"),
+      @ApiResponse(responseCode = "400", description = "Bad request"),
+      @ApiResponse(responseCode = "401", description = "Unauthorized"),
+      @ApiResponse(responseCode = "403", description = "Forbidden"),
+      @ApiResponse(responseCode = "404", description = "Not found"),
+      @ApiResponse(responseCode = "500", description = "Internal server error")
   })
   public Response findProperty(
-      @ApiParam(value = "Property identifier. Examples: http://id.loc.gov/ontologies/bibframe/place.", required = true)
+      @Parameter(description = "Property identifier. Examples: http://id.loc.gov/ontologies/bibframe/place.", required = true)
       @PathParam("id") @Encoded String id,
-      @ApiParam(value = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
+      @Parameter(description = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
       @PathParam("ontology") String ontology)
       throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
@@ -64,18 +65,18 @@ public class PropertyResource extends AbstractTerminologyServerResource {
 
   @GET
   @Path("ontologies/{ontology}/properties")
-  @ApiOperation(value = "Get properties", notes = "Get all properties from a specific ontology.")
+  @Operation(summary = "Get properties", description = "Get all properties from a specific ontology.")
   @ApiResponses({
-      @ApiResponse(code = 200, message = "Successful operation"),
-      @ApiResponse(code = 400, message = "Bad request"),
-      @ApiResponse(code = 401, message = "Unauthorized"),
-      @ApiResponse(code = 403, message = "Forbidden"),
-      @ApiResponse(code = 404, message = "Not found"),
-      @ApiResponse(code = 500, message = "Internal server error")
+      @ApiResponse(responseCode = "200", description = "Successful operation"),
+      @ApiResponse(responseCode = "400", description = "Bad request"),
+      @ApiResponse(responseCode = "401", description = "Unauthorized"),
+      @ApiResponse(responseCode = "403", description = "Forbidden"),
+      @ApiResponse(responseCode = "404", description = "Not found"),
+      @ApiResponse(responseCode = "500", description = "Internal server error")
   })
   // Note that this endpoint is not paged
   public Response findAllPropertiesForOntology(
-      @ApiParam(value = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
+      @Parameter(description = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
       @PathParam("ontology") String ontology) throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
@@ -91,19 +92,19 @@ public class PropertyResource extends AbstractTerminologyServerResource {
 
   @GET
   @Path("ontologies/{ontology}/properties/{id}/tree")
-  @ApiOperation(value = "Get property tree", notes = "Get property tree.")
+  @Operation(summary = "Get property tree", description = "Get property tree.")
   @ApiResponses({
-      @ApiResponse(code = 200, message = "Successful operation"),
-      @ApiResponse(code = 400, message = "Bad request"),
-      @ApiResponse(code = 401, message = "Unauthorized"),
-      @ApiResponse(code = 403, message = "Forbidden"),
-      @ApiResponse(code = 404, message = "Not found"),
-      @ApiResponse(code = 500, message = "Internal server error")
+      @ApiResponse(responseCode = "200", description = "Successful operation"),
+      @ApiResponse(responseCode = "400", description = "Bad request"),
+      @ApiResponse(responseCode = "401", description = "Unauthorized"),
+      @ApiResponse(responseCode = "403", description = "Forbidden"),
+      @ApiResponse(responseCode = "404", description = "Not found"),
+      @ApiResponse(responseCode = "500", description = "Internal server error")
   })
   public Response findPropertyTree(
-      @ApiParam(value = "Property identifier. Examples: http://id.loc.gov/ontologies/bibframe/place.", required = true)
+      @Parameter(description = "Property identifier. Examples: http://id.loc.gov/ontologies/bibframe/place.", required = true)
       @PathParam("id") @Encoded String id,
-      @ApiParam(value = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
+      @Parameter(description = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
       @PathParam("ontology") String ontology) throws
       CedarException {
     CedarRequestContext ctx = buildRequestContext();
@@ -120,19 +121,19 @@ public class PropertyResource extends AbstractTerminologyServerResource {
 
   @GET
   @Path("ontologies/{ontology}/properties/{id}/children")
-  @ApiOperation(value = "Get property children", notes = "Get property children (only for regular classes).")
+  @Operation(summary = "Get property children", description = "Get property children (only for regular classes).")
   @ApiResponses({
-      @ApiResponse(code = 200, message = "Successful operation"),
-      @ApiResponse(code = 400, message = "Bad request"),
-      @ApiResponse(code = 401, message = "Unauthorized"),
-      @ApiResponse(code = 403, message = "Forbidden"),
-      @ApiResponse(code = 404, message = "Not found"),
-      @ApiResponse(code = 500, message = "Internal server error")
+      @ApiResponse(responseCode = "200", description = "Successful operation"),
+      @ApiResponse(responseCode = "400", description = "Bad request"),
+      @ApiResponse(responseCode = "401", description = "Unauthorized"),
+      @ApiResponse(responseCode = "403", description = "Forbidden"),
+      @ApiResponse(responseCode = "404", description = "Not found"),
+      @ApiResponse(responseCode = "500", description = "Internal server error")
   })
   public Response findPropertyChildren(
-      @ApiParam(value = "Property identifier. Examples: http://id.loc.gov/ontologies/bibframe/place.", required = true)
+      @Parameter(description = "Property identifier. Examples: http://id.loc.gov/ontologies/bibframe/place.", required = true)
       @PathParam("id") @Encoded String id,
-      @ApiParam(value = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
+      @Parameter(description = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
       @PathParam("ontology") String ontology)
       throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
@@ -149,19 +150,19 @@ public class PropertyResource extends AbstractTerminologyServerResource {
 
   @GET
   @Path("ontologies/{ontology}/properties/{id}/descendants")
-  @ApiOperation(value = "Get property descendants", notes = "Get property descendants.")
+  @Operation(summary = "Get property descendants", description = "Get property descendants.")
   @ApiResponses({
-      @ApiResponse(code = 200, message = "Successful operation"),
-      @ApiResponse(code = 400, message = "Bad request"),
-      @ApiResponse(code = 401, message = "Unauthorized"),
-      @ApiResponse(code = 403, message = "Forbidden"),
-      @ApiResponse(code = 404, message = "Not found"),
-      @ApiResponse(code = 500, message = "Internal server error")
+      @ApiResponse(responseCode = "200", description = "Successful operation"),
+      @ApiResponse(responseCode = "400", description = "Bad request"),
+      @ApiResponse(responseCode = "401", description = "Unauthorized"),
+      @ApiResponse(responseCode = "403", description = "Forbidden"),
+      @ApiResponse(responseCode = "404", description = "Not found"),
+      @ApiResponse(responseCode = "500", description = "Internal server error")
   })
   public Response findPropertyDescendants(
-      @ApiParam(value = "Property identifier. Examples: http://id.loc.gov/ontologies/bibframe/place.", required = true)
+      @Parameter(description = "Property identifier. Examples: http://id.loc.gov/ontologies/bibframe/place.", required = true)
       @PathParam("id") @Encoded String id,
-      @ApiParam(value = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
+      @Parameter(description = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
       @PathParam("ontology") String ontology)
       throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
@@ -178,19 +179,19 @@ public class PropertyResource extends AbstractTerminologyServerResource {
 
   @GET
   @Path("ontologies/{ontology}/properties/{id}/parents")
-  @ApiOperation(value = "Get property parents", notes = "Get property parents.")
+  @Operation(summary = "Get property parents", description = "Get property parents.")
   @ApiResponses({
-      @ApiResponse(code = 200, message = "Successful operation"),
-      @ApiResponse(code = 400, message = "Bad request"),
-      @ApiResponse(code = 401, message = "Unauthorized"),
-      @ApiResponse(code = 403, message = "Forbidden"),
-      @ApiResponse(code = 404, message = "Not found"),
-      @ApiResponse(code = 500, message = "Internal server error")
+      @ApiResponse(responseCode = "200", description = "Successful operation"),
+      @ApiResponse(responseCode = "400", description = "Bad request"),
+      @ApiResponse(responseCode = "401", description = "Unauthorized"),
+      @ApiResponse(responseCode = "403", description = "Forbidden"),
+      @ApiResponse(responseCode = "404", description = "Not found"),
+      @ApiResponse(responseCode = "500", description = "Internal server error")
   })
   public Response findPropertyParents(
-      @ApiParam(value = "Property identifier. Examples: http://id.loc.gov/ontologies/bibframe/place.", required = true)
+      @Parameter(description = "Property identifier. Examples: http://id.loc.gov/ontologies/bibframe/place.", required = true)
       @PathParam("id") @Encoded String id,
-      @ApiParam(value = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
+      @Parameter(description = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
       @PathParam("ontology") String ontology)
       throws CedarException {
     CedarRequestContext ctx = buildRequestContext();

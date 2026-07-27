@@ -5,7 +5,13 @@ import jakarta.ws.rs.core.GenericType;
 import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import org.junit.*;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 import org.metadatacenter.http.CedarResponseStatus;
 import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.terms.domainObjects.Value;
@@ -30,7 +36,7 @@ public class ValueResourceTest extends AbstractTerminologyServerResourceTest {
    * One-time initialization code.
    * (Called once before any of the test methods in the class).
    */
-  @BeforeClass
+  @BeforeAll
   public static void oneTimeSetUp() {
   }
 
@@ -38,7 +44,7 @@ public class ValueResourceTest extends AbstractTerminologyServerResourceTest {
    * Sets up the test fixture.
    * (Called before every test case method.)
    */
-  @Before
+  @BeforeEach
   public void setUp() {
   }
 
@@ -46,11 +52,11 @@ public class ValueResourceTest extends AbstractTerminologyServerResourceTest {
    * Tears down the test fixture.
    * (Called after every test case method.)
    */
-  @After
+  @AfterEach
   public void tearDown() {
   }
 
-  @Ignore
+  @Disabled
   @Test
   public void createValueTest() {
     // Create value set and value
@@ -67,30 +73,30 @@ public class ValueResourceTest extends AbstractTerminologyServerResourceTest {
     Response response =
         clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(value1));
     // Check HTTP response
-    Assert.assertEquals(CedarResponseStatus.CREATED.getStatusCode(), response.getStatus());
+    Assertions.assertEquals(CedarResponseStatus.CREATED.getStatusCode(), response.getStatus());
     // Check Content-Type
-    Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
+    Assertions.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Store value to delete it after the test
     Value created = response.readEntity(Value.class);
     response.close();
     createdValues.add(created);
     // Check fields
     Value expected = value1;
-    Assert.assertNotNull(created.getId());
-    Assert.assertNotNull(created.getLdId());
-    Assert.assertNotNull(created.getCreated());
-    Assert.assertEquals(expected.getPrefLabel(), created.getPrefLabel());
-    Assert.assertEquals(expected.getCreator(), created.getCreator());
-    Assert.assertEquals(expected.getVsId(), created.getVsId());
-    Assert.assertEquals(expected.getVsCollection(), created.getVsCollection());
-    Assert.assertEquals(new HashSet<>(expected.getDefinitions()), new HashSet<>(created.getDefinitions()));
-    Assert.assertEquals(new HashSet<>(expected.getSynonyms()), new HashSet<>(created.getSynonyms()));
-    Assert.assertEquals(new HashSet<>(expected.getRelations()), new HashSet<>(created.getRelations()));
-    Assert.assertEquals(expected.isProvisional(), created.isProvisional());
+    Assertions.assertNotNull(created.getId());
+    Assertions.assertNotNull(created.getLdId());
+    Assertions.assertNotNull(created.getCreated());
+    Assertions.assertEquals(expected.getPrefLabel(), created.getPrefLabel());
+    Assertions.assertEquals(expected.getCreator(), created.getCreator());
+    Assertions.assertEquals(expected.getVsId(), created.getVsId());
+    Assertions.assertEquals(expected.getVsCollection(), created.getVsCollection());
+    Assertions.assertEquals(new HashSet<>(expected.getDefinitions()), new HashSet<>(created.getDefinitions()));
+    Assertions.assertEquals(new HashSet<>(expected.getSynonyms()), new HashSet<>(created.getSynonyms()));
+    Assertions.assertEquals(new HashSet<>(expected.getRelations()), new HashSet<>(created.getRelations()));
+    Assertions.assertEquals(expected.isProvisional(), created.isProvisional());
   }
 
   // TODO: test it for non-provisional values and value sets
-  @Ignore
+  @Disabled
   @Test
   public void findValueTest() {
     // Create a provisional value
@@ -103,28 +109,28 @@ public class ValueResourceTest extends AbstractTerminologyServerResourceTest {
     Response findResponse = clientBuilder.build().target(findUrl).request().header(HTTP_HEADER_AUTHORIZATION,
         authHeader).get();
     // Check HTTP response
-    Assert.assertEquals(CedarResponseStatus.OK.getStatusCode(), findResponse.getStatus());
+    Assertions.assertEquals(CedarResponseStatus.OK.getStatusCode(), findResponse.getStatus());
     // Check Content-Type
-    Assert.assertEquals(MediaType.APPLICATION_JSON, findResponse.getHeaderString(HttpHeaders.CONTENT_TYPE));
+    Assertions.assertEquals(MediaType.APPLICATION_JSON, findResponse.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check the element retrieved
     Value found = findResponse.readEntity(Value.class);
     findResponse.close();
     // Check fields
-    Assert.assertEquals(created.getId(), found.getId());
-    Assert.assertEquals(created.getLdId(), found.getLdId());
-    Assert.assertEquals(created.getPrefLabel(), found.getPrefLabel());
-    Assert.assertEquals(created.getCreator(), found.getCreator());
-    Assert.assertEquals(created.getVsId(), found.getVsId());
-    Assert.assertEquals(created.getVsCollection(), found.getVsCollection());
-    Assert.assertEquals(new HashSet<>(created.getDefinitions()), new HashSet<>(found.getDefinitions()));
-    Assert.assertEquals(new HashSet<>(created.getSynonyms()), new HashSet<>(found.getSynonyms()));
-    Assert.assertEquals(new HashSet<>(created.getRelations()), new HashSet<>(found.getRelations()));
-    Assert.assertEquals(created.isProvisional(), found.isProvisional());
-    Assert.assertEquals(created.getCreated(), found.getCreated());
+    Assertions.assertEquals(created.getId(), found.getId());
+    Assertions.assertEquals(created.getLdId(), found.getLdId());
+    Assertions.assertEquals(created.getPrefLabel(), found.getPrefLabel());
+    Assertions.assertEquals(created.getCreator(), found.getCreator());
+    Assertions.assertEquals(created.getVsId(), found.getVsId());
+    Assertions.assertEquals(created.getVsCollection(), found.getVsCollection());
+    Assertions.assertEquals(new HashSet<>(created.getDefinitions()), new HashSet<>(found.getDefinitions()));
+    Assertions.assertEquals(new HashSet<>(created.getSynonyms()), new HashSet<>(found.getSynonyms()));
+    Assertions.assertEquals(new HashSet<>(created.getRelations()), new HashSet<>(found.getRelations()));
+    Assertions.assertEquals(created.isProvisional(), found.isProvisional());
+    Assertions.assertEquals(created.getCreated(), found.getCreated());
   }
 
   // TODO: test it for non-provisional values and value sets
-  @Ignore
+  @Disabled
   @Test
   public void findAllValuesInValueSetByValueTest() {
     ValueSet createdVs = createValueSet(vs1);
@@ -139,14 +145,14 @@ public class ValueResourceTest extends AbstractTerminologyServerResourceTest {
     // Service invocation
     Response response = clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check HTTP response
-    Assert.assertEquals(CedarResponseStatus.OK.getStatusCode(), response.getStatus());
+    Assertions.assertEquals(CedarResponseStatus.OK.getStatusCode(), response.getStatus());
     // Check Content-Type
-    Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
+    Assertions.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check that there are some results
     PagedResults<Value> values = response.readEntity(new GenericType<PagedResults<Value>>() {
     });
     response.close();
-    Assert.assertTrue("No values found", values.getCollection().size() == 2);
+    Assertions.assertTrue( values.getCollection().size() == 2,"No values found");
     boolean v1Found = false;
     boolean v2Found = false;
     for (Value v : values.getCollection()) {
@@ -156,10 +162,10 @@ public class ValueResourceTest extends AbstractTerminologyServerResourceTest {
         v2Found = true;
       }
     }
-    Assert.assertTrue("Expected values not found", v1Found && v2Found);
+    Assertions.assertTrue( v1Found && v2Found,"Expected values not found");
   }
 
-  @Ignore
+  @Disabled
   @Test
   public void updateValueTest() {
     // Create a provisional value
@@ -175,7 +181,7 @@ public class ValueResourceTest extends AbstractTerminologyServerResourceTest {
     Response updateResponse = clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION,
         authHeader).put(Entity.json(updatedValue));
     // Check HTTP response
-    Assert.assertEquals(CedarResponseStatus.NO_CONTENT.getStatusCode(), updateResponse.getStatus());
+    Assertions.assertEquals(CedarResponseStatus.NO_CONTENT.getStatusCode(), updateResponse.getStatus());
     // Retrieve the value
     String findUrl = baseUrlBpVSCollections + "/" + Util.getShortIdentifier(createdValue.getVsCollection()) + "/" +
         BP_VALUES + "/" + createdValue.getId();
@@ -185,20 +191,20 @@ public class ValueResourceTest extends AbstractTerminologyServerResourceTest {
     findResponse.close();
     // Check that the modifications have been done correctly
     Value expected = updatedValue;
-    Assert.assertEquals(expected.getId(), found.getId());
-    Assert.assertEquals(expected.getLdId(), found.getLdId());
-    Assert.assertEquals(expected.getPrefLabel(), found.getPrefLabel());
-    Assert.assertEquals(expected.getCreator(), found.getCreator());
-    Assert.assertEquals(expected.getVsId(), found.getVsId());
-    Assert.assertEquals(expected.getVsCollection(), found.getVsCollection());
-    Assert.assertEquals(new HashSet<>(expected.getDefinitions()), new HashSet<>(found.getDefinitions()));
-    Assert.assertEquals(new HashSet<>(expected.getSynonyms()), new HashSet<>(found.getSynonyms()));
-    Assert.assertEquals(new HashSet<>(expected.getRelations()), new HashSet<>(found.getRelations()));
-    Assert.assertEquals(expected.isProvisional(), found.isProvisional());
-    Assert.assertEquals(expected.getCreated(), found.getCreated());
+    Assertions.assertEquals(expected.getId(), found.getId());
+    Assertions.assertEquals(expected.getLdId(), found.getLdId());
+    Assertions.assertEquals(expected.getPrefLabel(), found.getPrefLabel());
+    Assertions.assertEquals(expected.getCreator(), found.getCreator());
+    Assertions.assertEquals(expected.getVsId(), found.getVsId());
+    Assertions.assertEquals(expected.getVsCollection(), found.getVsCollection());
+    Assertions.assertEquals(new HashSet<>(expected.getDefinitions()), new HashSet<>(found.getDefinitions()));
+    Assertions.assertEquals(new HashSet<>(expected.getSynonyms()), new HashSet<>(found.getSynonyms()));
+    Assertions.assertEquals(new HashSet<>(expected.getRelations()), new HashSet<>(found.getRelations()));
+    Assertions.assertEquals(expected.isProvisional(), found.isProvisional());
+    Assertions.assertEquals(expected.getCreated(), found.getCreated());
   }
 
-  @Ignore
+  @Disabled
   @Test
   public void deleteValueTest() {
     // Create a provisional value
@@ -209,7 +215,7 @@ public class ValueResourceTest extends AbstractTerminologyServerResourceTest {
     Response deleteResponse = clientBuilder.build().target(classUrl).request().header(HTTP_HEADER_AUTHORIZATION,
         authHeader).delete();
     // Check HTTP response
-    Assert.assertEquals(CedarResponseStatus.NO_CONTENT.getStatusCode(), deleteResponse.getStatus());
+    Assertions.assertEquals(CedarResponseStatus.NO_CONTENT.getStatusCode(), deleteResponse.getStatus());
     // Remove value from the list of created values. It has already been deleted
     createdValues.remove(created);
     // Try to retrieve the value to check that it has been deleted correctly
@@ -218,7 +224,7 @@ public class ValueResourceTest extends AbstractTerminologyServerResourceTest {
     Response findResponse = clientBuilder.build().target(findUrl).request().header(HTTP_HEADER_AUTHORIZATION,
         authHeader).get();
     // Check not found
-    Assert.assertEquals(CedarResponseStatus.NOT_FOUND.getStatusCode(), findResponse.getStatus());
+    Assertions.assertEquals(CedarResponseStatus.NOT_FOUND.getStatusCode(), findResponse.getStatus());
   }
 
 }

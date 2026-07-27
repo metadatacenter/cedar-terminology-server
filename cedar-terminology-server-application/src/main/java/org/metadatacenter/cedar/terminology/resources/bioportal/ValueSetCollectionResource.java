@@ -1,11 +1,11 @@
 package org.metadatacenter.cedar.terminology.resources.bioportal;
 
-import io.swagger.annotations.Api;
-import io.swagger.annotations.ApiOperation;
-import io.swagger.annotations.ApiParam;
-import io.swagger.annotations.ApiResponse;
-import io.swagger.annotations.ApiResponses;
-import io.swagger.annotations.Authorization;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.metadatacenter.cedar.terminology.resources.AbstractTerminologyServerResource;
 import org.metadatacenter.config.CedarConfig;
 import org.metadatacenter.exception.CedarException;
@@ -14,9 +14,9 @@ import org.metadatacenter.rest.exception.CedarAssertionException;
 import org.metadatacenter.terms.domainObjects.ValueSetCollection;
 import org.metadatacenter.util.json.JsonMapper;
 
-import javax.ws.rs.*;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
+import jakarta.ws.rs.*;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
 import javax.xml.ws.http.HTTPException;
 import java.io.IOException;
 import java.util.List;
@@ -25,7 +25,8 @@ import static org.metadatacenter.rest.assertion.GenericAssertions.LoggedIn;
 
 @Path("/bioportal")
 @Produces(MediaType.APPLICATION_JSON)
-@Api(value = "/bioportal", tags = "Value set collections", authorizations = {@Authorization("api_key")})
+@Tag(name = "Value set collections")
+@SecurityRequirement(name = "api_key")
 public class ValueSetCollectionResource extends AbstractTerminologyServerResource {
 
   public ValueSetCollectionResource(CedarConfig cedarConfig) {
@@ -34,17 +35,17 @@ public class ValueSetCollectionResource extends AbstractTerminologyServerResourc
 
   @GET
   @Path("vs-collections")
-  @ApiOperation(value = "Find all value set collections", notes = "Find all value set collections.")
+  @Operation(summary = "Find all value set collections", description = "Find all value set collections.")
   @ApiResponses({
-      @ApiResponse(code = 200, message = "Successful operation"),
-      @ApiResponse(code = 400, message = "Bad request"),
-      @ApiResponse(code = 401, message = "Unauthorized"),
-      @ApiResponse(code = 403, message = "Forbidden"),
-      @ApiResponse(code = 404, message = "Not found"),
-      @ApiResponse(code = 500, message = "Internal server error")
+      @ApiResponse(responseCode = "200", description = "Successful operation"),
+      @ApiResponse(responseCode = "400", description = "Bad request"),
+      @ApiResponse(responseCode = "401", description = "Unauthorized"),
+      @ApiResponse(responseCode = "403", description = "Forbidden"),
+      @ApiResponse(responseCode = "404", description = "Not found"),
+      @ApiResponse(responseCode = "500", description = "Internal server error")
   })
   public Response findAllVSCollections(
-      @ApiParam(value = "If true, additional details about each value set collection will be included in the " +
+      @Parameter(description = "If true, additional details about each value set collection will be included in the " +
           "response. Default: false.")
       @QueryParam("include_details") @DefaultValue("false") boolean includeDetails)
       throws CedarException {

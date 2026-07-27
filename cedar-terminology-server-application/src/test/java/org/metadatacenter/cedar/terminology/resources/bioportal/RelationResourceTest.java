@@ -5,7 +5,14 @@ import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.Status;
-import org.junit.*;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 import org.metadatacenter.terms.domainObjects.OntologyClass;
 import org.metadatacenter.terms.domainObjects.Relation;
 
@@ -16,13 +23,16 @@ import static org.metadatacenter.constant.HttpConstants.HTTP_HEADER_AUTHORIZATIO
  * Integration tests. They are done by starting a test server that makes it possible to test the real HTTP stack.
  */
 
+// Exercises live BioPortal; excluded from the default build (surefire excludedGroups).
+// Run with -DexcludedGroups= (or a bioportal profile) when a BioPortal API key is configured.
+@Tag("bioportal")
 public class RelationResourceTest extends AbstractTerminologyServerResourceTest {
 
   /**
    * One-time initialization code.
    * (Called once before any of the test methods in the class).
    */
-  @BeforeClass
+  @BeforeAll
   public static void oneTimeSetUp() {
   }
 
@@ -30,7 +40,7 @@ public class RelationResourceTest extends AbstractTerminologyServerResourceTest 
    * Sets up the test fixture.
    * (Called before every test case method.)
    */
-  @Before
+  @BeforeEach
   public void setUp() {
   }
 
@@ -38,7 +48,7 @@ public class RelationResourceTest extends AbstractTerminologyServerResourceTest 
    * Tears down the test fixture.
    * (Called after every test case method.)
    */
-  @After
+  @AfterEach
   public void tearDown() {
   }
 
@@ -53,9 +63,9 @@ public class RelationResourceTest extends AbstractTerminologyServerResourceTest 
     Response response =
         clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(relation1));
     // Check HTTP response
-    Assert.assertEquals(Status.CREATED.getStatusCode(), response.getStatus());
+    Assertions.assertEquals(Status.CREATED.getStatusCode(), response.getStatus());
     // Check Content-Type
-    Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
+    Assertions.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Store class to delete the class after the test
     Relation created = response.readEntity(Relation.class);
     response.close();
@@ -64,13 +74,13 @@ public class RelationResourceTest extends AbstractTerminologyServerResourceTest 
     createdRelations.add(created);
     // Check fields
     Relation expected = relation1;
-    Assert.assertNotNull(created.getId());
-    Assert.assertNotNull(created.getLdId());
-    Assert.assertNotNull(created.getCreated());
-    Assert.assertEquals(expected.getSourceClassId(), created.getSourceClassId());
-    Assert.assertEquals(expected.getRelationType(), created.getRelationType());
-    Assert.assertEquals(expected.getTargetClassId(), created.getTargetClassId());
-    Assert.assertEquals(expected.getTargetClassOntology(), created.getTargetClassOntology());
+    Assertions.assertNotNull(created.getId());
+    Assertions.assertNotNull(created.getLdId());
+    Assertions.assertNotNull(created.getCreated());
+    Assertions.assertEquals(expected.getSourceClassId(), created.getSourceClassId());
+    Assertions.assertEquals(expected.getRelationType(), created.getRelationType());
+    Assertions.assertEquals(expected.getTargetClassId(), created.getTargetClassId());
+    Assertions.assertEquals(expected.getTargetClassOntology(), created.getTargetClassOntology());
   }
 
   @Test
@@ -83,20 +93,20 @@ public class RelationResourceTest extends AbstractTerminologyServerResourceTest 
     Response findResponse =
         clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check HTTP response
-    Assert.assertEquals(Status.OK.getStatusCode(), findResponse.getStatus());
+    Assertions.assertEquals(Status.OK.getStatusCode(), findResponse.getStatus());
     // Check Content-Type
-    Assert.assertEquals(MediaType.APPLICATION_JSON, findResponse.getHeaderString(HttpHeaders.CONTENT_TYPE));
+    Assertions.assertEquals(MediaType.APPLICATION_JSON, findResponse.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check the element retrieved
     Relation found = findResponse.readEntity(Relation.class);
     findResponse.close();
     // Check fields
-    Assert.assertEquals(created.getId(), found.getId());
-    Assert.assertEquals(created.getLdId(), found.getLdId());
-    Assert.assertEquals(created.getSourceClassId(), found.getSourceClassId());
-    Assert.assertEquals(created.getRelationType(), found.getRelationType());
-    Assert.assertEquals(created.getTargetClassId(), found.getTargetClassId());
-    Assert.assertEquals(created.getTargetClassOntology(), found.getTargetClassOntology());
-    Assert.assertEquals(created.getCreated(), found.getCreated());
+    Assertions.assertEquals(created.getId(), found.getId());
+    Assertions.assertEquals(created.getLdId(), found.getLdId());
+    Assertions.assertEquals(created.getSourceClassId(), found.getSourceClassId());
+    Assertions.assertEquals(created.getRelationType(), found.getRelationType());
+    Assertions.assertEquals(created.getTargetClassId(), found.getTargetClassId());
+    Assertions.assertEquals(created.getTargetClassOntology(), found.getTargetClassOntology());
+    Assertions.assertEquals(created.getCreated(), found.getCreated());
   }
 
   @Test
@@ -108,7 +118,7 @@ public class RelationResourceTest extends AbstractTerminologyServerResourceTest 
     Response deleteResponse = clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION,
         authHeader).delete();
     // Check HTTP response
-    Assert.assertEquals(Status.NO_CONTENT.getStatusCode(), deleteResponse.getStatus());
+    Assertions.assertEquals(Status.NO_CONTENT.getStatusCode(), deleteResponse.getStatus());
     // Remove relation from the list of created relations. It has been already deleted
     createdRelations.remove(created);
     // Try to retrieve the relation to check that it has been deleted correctly
@@ -116,7 +126,7 @@ public class RelationResourceTest extends AbstractTerminologyServerResourceTest 
     Response findResponse = clientBuilder.build().target(findUrl).request().header(HTTP_HEADER_AUTHORIZATION,
         authHeader).get();
     // Check not found
-    Assert.assertEquals(Status.NOT_FOUND.getStatusCode(), findResponse.getStatus());
+    Assertions.assertEquals(Status.NOT_FOUND.getStatusCode(), findResponse.getStatus());
   }
 
 }

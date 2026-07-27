@@ -8,7 +8,14 @@ import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.Status;
-import org.junit.*;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 import org.metadatacenter.cedar.terminology.validation.integratedsearch.ClassValueConstraint;
 import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.terms.domainObjects.SearchResult;
@@ -27,6 +34,9 @@ import static org.metadatacenter.model.ModelNodeNames.*;
 /**
  * Integration tests. They are done by starting a test server that makes it possible to test the real HTTP stack.
  */
+// Exercises live BioPortal; excluded from the default build (surefire excludedGroups).
+// Run with -DexcludedGroups= (or a bioportal profile) when a BioPortal API key is configured.
+@Tag("bioportal")
 public class IntegratedSearchResourceTest extends AbstractTerminologyServerResourceTest {
 
 
@@ -68,7 +78,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
    * One-time initialization code.
    * (Called once before any of the test methods in the class).
    */
-  @BeforeClass
+  @BeforeAll
   public static void oneTimeSetUp() {
     enumeratedClass1 = mapper.createObjectNode();
     enumeratedClass1.put(VALUE_CONSTRAINTS_URI, enumeratedClass1Uri);
@@ -107,7 +117,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
    * Sets up the test fixture.
    * (Called before every test case method.)
    */
-  @Before
+  @BeforeEach
   public void setUp() {
   }
 
@@ -115,7 +125,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
    * Tears down the test fixture.
    * (Called after every test case method.)
    */
-  @After
+  @AfterEach
   public void tearDown() {
   }
 
@@ -132,7 +142,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     Response response = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
         .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(emptyBody));
     // Check HTTP response
-    Assert.assertEquals(STATUS_CODE_UNPROCESSABLE_ENTITY, response.getStatus());
+    Assertions.assertEquals(STATUS_CODE_UNPROCESSABLE_ENTITY, response.getStatus());
   }
 
   @Test
@@ -142,7 +152,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     Response response = clientBuilder.build().target(baseUrlBpIntegratedRetrieve).request()
       .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(emptyBody));
     // Check HTTP response
-    Assert.assertEquals(STATUS_CODE_UNPROCESSABLE_ENTITY, response.getStatus());
+    Assertions.assertEquals(STATUS_CODE_UNPROCESSABLE_ENTITY, response.getStatus());
   }
 
   @Test
@@ -153,7 +163,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     Response response = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
         .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
     // Check HTTP response
-    Assert.assertEquals(STATUS_CODE_UNPROCESSABLE_ENTITY, response.getStatus());
+    Assertions.assertEquals(STATUS_CODE_UNPROCESSABLE_ENTITY, response.getStatus());
   }
 
   @Test
@@ -166,7 +176,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     Response response = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
         .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
     // Check HTTP response
-    Assert.assertEquals(STATUS_CODE_UNPROCESSABLE_ENTITY, response.getStatus());
+    Assertions.assertEquals(STATUS_CODE_UNPROCESSABLE_ENTITY, response.getStatus());
   }
 
   @Test
@@ -177,7 +187,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     Response response = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
         .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
     // Check HTTP response
-    Assert.assertEquals(BAD_REQUEST, response.getStatus());
+    Assertions.assertEquals(BAD_REQUEST, response.getStatus());
   }
 
   /**
@@ -195,21 +205,21 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     Response response = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
         .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
     // Check HTTP response
-    Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
+    Assertions.assertEquals(Status.OK.getStatusCode(), response.getStatus());
     // Check Content-Type
-    Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
+    Assertions.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check the number of results retrieved
     PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
     });
     response.close();
-    Assert.assertTrue("Wrong number of results", results.getCollection().size() == pageSize);
+    Assertions.assertTrue( results.getCollection().size() == pageSize,"Wrong number of results");
     // Check pagination information
-    Assert.assertTrue("Wrong page", results.getPage() == 1);
-    Assert.assertTrue("Wrong pageCount", results.getPageCount() == 1);
-    Assert.assertTrue("Wrong pageSize", results.getPageSize() == pageSize);
-    Assert.assertTrue("Wrong totalCount", results.getTotalCount() >= ontology1Size);
-    Assert.assertTrue("Wrong prevPage", results.getPrevPage() == null);
-    Assert.assertTrue("Wrong prevPage", results.getNextPage() == null);
+    Assertions.assertTrue( results.getPage() == 1,"Wrong page");
+    Assertions.assertTrue( results.getPageCount() == 1,"Wrong pageCount");
+    Assertions.assertTrue( results.getPageSize() == pageSize,"Wrong pageSize");
+    Assertions.assertTrue( results.getTotalCount() >= ontology1Size,"Wrong totalCount");
+    Assertions.assertTrue( results.getPrevPage() == null,"Wrong prevPage");
+    Assertions.assertTrue( results.getNextPage() == null,"Wrong prevPage");
   }
 
   @Test
@@ -223,21 +233,21 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     Response response = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
         .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
     // Check HTTP response
-    Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
+    Assertions.assertEquals(Status.OK.getStatusCode(), response.getStatus());
     // Check Content-Type
-    Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
+    Assertions.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check the number of results retrieved
     PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
     });
     response.close();
-    Assert.assertTrue("Wrong number of results", results.getCollection().size() == pageSize);
+    Assertions.assertTrue( results.getCollection().size() == pageSize,"Wrong number of results");
     // Check pagination information
-    Assert.assertTrue("Wrong page", results.getPage() == 1);
-    Assert.assertTrue("Wrong pageCount", results.getPageCount() == 1);
-    Assert.assertTrue("Wrong pageSize", results.getPageSize() == pageSize);
-    Assert.assertTrue("Wrong totalCount", results.getTotalCount() >= ontology1Size);
-    Assert.assertTrue("Wrong prevPage", results.getPrevPage() == null);
-    Assert.assertTrue("Wrong prevPage", results.getNextPage() == null);
+    Assertions.assertTrue( results.getPage() == 1,"Wrong page");
+    Assertions.assertTrue( results.getPageCount() == 1,"Wrong pageCount");
+    Assertions.assertTrue( results.getPageSize() == pageSize,"Wrong pageSize");
+    Assertions.assertTrue( results.getTotalCount() >= ontology1Size,"Wrong totalCount");
+    Assertions.assertTrue( results.getPrevPage() == null,"Wrong prevPage");
+    Assertions.assertTrue( results.getNextPage() == null,"Wrong prevPage");
   }
 
   @Test
@@ -254,21 +264,21 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     Response response = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
         .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
     // Check HTTP response
-    Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
+    Assertions.assertEquals(Status.OK.getStatusCode(), response.getStatus());
     // Check Content-Type
-    Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
+    Assertions.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check the number of results retrieved
     PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
     });
     response.close();
-    Assert.assertTrue("Wrong number of results", results.getCollection().size() == expectedNumberOfResults);
+    Assertions.assertTrue( results.getCollection().size() == expectedNumberOfResults,"Wrong number of results");
     // Check pagination information
-    Assert.assertTrue("Wrong page", results.getPage() == 1);
-    Assert.assertTrue("Wrong pageCount", results.getPageCount() == 0);
-    Assert.assertTrue("Wrong pageSize", results.getPageSize() == 0);
-    Assert.assertTrue("Wrong totalCount", results.getTotalCount() == 0);
-    Assert.assertTrue("Wrong prevPage", results.getPrevPage() == null);
-    Assert.assertTrue("Wrong prevPage", results.getNextPage() == null);
+    Assertions.assertTrue( results.getPage() == 1,"Wrong page");
+    Assertions.assertTrue( results.getPageCount() == 0,"Wrong pageCount");
+    Assertions.assertTrue( results.getPageSize() == 0,"Wrong pageSize");
+    Assertions.assertTrue( results.getTotalCount() == 0,"Wrong totalCount");
+    Assertions.assertTrue( results.getPrevPage() == null,"Wrong prevPage");
+    Assertions.assertTrue( results.getNextPage() == null,"Wrong prevPage");
   }
 
   @Test
@@ -286,31 +296,31 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     Response response = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
         .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
     // Check HTTP response
-    Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
+    Assertions.assertEquals(Status.OK.getStatusCode(), response.getStatus());
     // Check Content-Type
-    Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
+    Assertions.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check the number of results retrieved
     PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
     });
     response.close();
-    Assert.assertTrue("Wrong number of results", results.getCollection().size() == pageSize);
+    Assertions.assertTrue( results.getCollection().size() == pageSize,"Wrong number of results");
     // Check that the first result is right
-    Assert.assertTrue("Unexpected result: ",
-        results.getCollection().get(0).getPrefLabel().toLowerCase().contains(inputText.toLowerCase()));
+    Assertions.assertTrue(
+        results.getCollection().get(0).getPrefLabel().toLowerCase().contains(inputText.toLowerCase()),"Unexpected result: ");
     // Check that the retrieved classes are from the right source. We limit this check to the first page or results
     // to speed up the tests
     for (SearchResult r : results.getCollection()) {
       String resultSourceAcronym = r.getSource().substring(r.getSource().lastIndexOf("/") + 1);
-      Assert.assertTrue("Class source does not match the expected source",
-          resultSourceAcronym.equals(ontology1.get(VALUE_CONSTRAINTS_ACRONYM).asText()));
+      Assertions.assertTrue(
+          resultSourceAcronym.equals(ontology1.get(VALUE_CONSTRAINTS_ACRONYM).asText()),"Class source does not match the expected source");
     }
     // Check pagination information
-    Assert.assertTrue("Wrong page", results.getPage() == 1);
-    Assert.assertTrue("Wrong pageCount", results.getPageCount() >= expectedPageCountLowerLimit);
-    Assert.assertTrue("Wrong pageSize", results.getPageSize() == pageSize);
-    Assert.assertTrue("Wrong totalCount", results.getTotalCount() >= expectedTotalCountLowerLimit);
-    Assert.assertTrue("Wrong prevPage", results.getPrevPage() == null);
-    Assert.assertTrue("Wrong prevPage", results.getNextPage() == 2);
+    Assertions.assertTrue( results.getPage() == 1,"Wrong page");
+    Assertions.assertTrue( results.getPageCount() >= expectedPageCountLowerLimit,"Wrong pageCount");
+    Assertions.assertTrue( results.getPageSize() == pageSize,"Wrong pageSize");
+    Assertions.assertTrue( results.getTotalCount() >= expectedTotalCountLowerLimit,"Wrong totalCount");
+    Assertions.assertTrue( results.getPrevPage() == null,"Wrong prevPage");
+    Assertions.assertTrue( results.getNextPage() == 2,"Wrong prevPage");
   }
 
   /**
@@ -330,21 +340,21 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     Response response = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
         .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
     // Check HTTP response
-    Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
+    Assertions.assertEquals(Status.OK.getStatusCode(), response.getStatus());
     // Check Content-Type
-    Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
+    Assertions.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check the number of results retrieved
     PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
     });
     response.close();
-    Assert.assertTrue("Wrong number of results", results.getCollection().size() == pageSize);
+    Assertions.assertTrue( results.getCollection().size() == pageSize,"Wrong number of results");
     // Check pagination information
-    Assert.assertTrue("Wrong page", results.getPage() == 1);
-    Assert.assertTrue("Wrong pageCount", results.getPageCount() == 1);
-    Assert.assertTrue("Wrong pageSize", results.getPageSize() == pageSize);
-    Assert.assertTrue("Wrong totalCount", results.getTotalCount() >= branch1Size);
-    Assert.assertTrue("Wrong prevPage", results.getPrevPage() == null);
-    Assert.assertTrue("Wrong prevPage", results.getNextPage() == null);
+    Assertions.assertTrue( results.getPage() == 1,"Wrong page");
+    Assertions.assertTrue( results.getPageCount() == 1,"Wrong pageCount");
+    Assertions.assertTrue( results.getPageSize() == pageSize,"Wrong pageSize");
+    Assertions.assertTrue( results.getTotalCount() >= branch1Size,"Wrong totalCount");
+    Assertions.assertTrue( results.getPrevPage() == null,"Wrong prevPage");
+    Assertions.assertTrue( results.getNextPage() == null,"Wrong prevPage");
   }
 
   @Test
@@ -358,21 +368,21 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     Response response = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
         .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
     // Check HTTP response
-    Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
+    Assertions.assertEquals(Status.OK.getStatusCode(), response.getStatus());
     // Check Content-Type
-    Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
+    Assertions.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check the number of results retrieved
     PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
     });
     response.close();
-    Assert.assertTrue("Wrong number of results", results.getCollection().size() == pageSize);
+    Assertions.assertTrue( results.getCollection().size() == pageSize,"Wrong number of results");
     // Check pagination information
-    Assert.assertTrue("Wrong page", results.getPage() == 1);
-    Assert.assertTrue("Wrong pageCount", results.getPageCount() == 1);
-    Assert.assertTrue("Wrong pageSize", results.getPageSize() == pageSize);
-    Assert.assertTrue("Wrong totalCount", results.getTotalCount() >= branch1Size);
-    Assert.assertTrue("Wrong prevPage", results.getPrevPage() == null);
-    Assert.assertTrue("Wrong prevPage", results.getNextPage() == null);
+    Assertions.assertTrue( results.getPage() == 1,"Wrong page");
+    Assertions.assertTrue( results.getPageCount() == 1,"Wrong pageCount");
+    Assertions.assertTrue( results.getPageSize() == pageSize,"Wrong pageSize");
+    Assertions.assertTrue( results.getTotalCount() >= branch1Size,"Wrong totalCount");
+    Assertions.assertTrue( results.getPrevPage() == null,"Wrong prevPage");
+    Assertions.assertTrue( results.getNextPage() == null,"Wrong prevPage");
   }
 
   @Test
@@ -390,34 +400,34 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     Response response = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
         .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
     // Check HTTP response
-    Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
+    Assertions.assertEquals(Status.OK.getStatusCode(), response.getStatus());
     // Check Content-Type
-    Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
+    Assertions.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check the number of results retrieved
     PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
     });
     response.close();
-    Assert.assertTrue("Wrong number of results", results.getCollection().size() >= expectedNumberOfResultsLowerLimit);
-    Assert.assertTrue("Wrong number of results", results.getCollection().size() <= expectedNumberOfResultsUpperLimit);
+    Assertions.assertTrue( results.getCollection().size() >= expectedNumberOfResultsLowerLimit,"Wrong number of results");
+    Assertions.assertTrue( results.getCollection().size() <= expectedNumberOfResultsUpperLimit,"Wrong number of results");
     // Check that the first result is right
-    Assert.assertTrue("Unexpected result: ",
-        results.getCollection().get(0).getPrefLabel().toLowerCase().contains(inputText.toLowerCase()));
+    Assertions.assertTrue(
+        results.getCollection().get(0).getPrefLabel().toLowerCase().contains(inputText.toLowerCase()),"Unexpected result: ");
     // Check that the retrieved classes are from the right source. We limit this check to the first page or results
     // to speed up the tests
     for (SearchResult r : results.getCollection()) {
       String resultSourceAcronym = r.getSource().substring(r.getSource().lastIndexOf("/") + 1);
-      Assert.assertTrue("Class source does not match the expected source",
-          resultSourceAcronym.equals(ontology1.get(VALUE_CONSTRAINTS_ACRONYM).asText()));
+      Assertions.assertTrue(
+          resultSourceAcronym.equals(ontology1.get(VALUE_CONSTRAINTS_ACRONYM).asText()),"Class source does not match the expected source");
     }
     // Check pagination information
-    Assert.assertTrue("Wrong page", results.getPage() == 1);
-    Assert.assertTrue("Wrong pageCount", results.getPageCount() > 0);
-    Assert.assertTrue("Wrong pageSize", results.getPageSize() >= expectedNumberOfResultsLowerLimit);
-    Assert.assertTrue("Wrong pageSize", results.getPageSize() <= pageSize);
-    Assert.assertTrue("Wrong totalCount", results.getTotalCount() >= expectedNumberOfResultsLowerLimit);
-    Assert.assertTrue("Wrong totalCount", results.getTotalCount() <= expectedNumberOfResultsUpperLimit);
-    Assert.assertTrue("Wrong prevPage", results.getPrevPage() == null);
-    Assert.assertTrue("Wrong prevPage", results.getNextPage() == null);
+    Assertions.assertTrue( results.getPage() == 1,"Wrong page");
+    Assertions.assertTrue( results.getPageCount() > 0,"Wrong pageCount");
+    Assertions.assertTrue( results.getPageSize() >= expectedNumberOfResultsLowerLimit,"Wrong pageSize");
+    Assertions.assertTrue( results.getPageSize() <= pageSize,"Wrong pageSize");
+    Assertions.assertTrue( results.getTotalCount() >= expectedNumberOfResultsLowerLimit,"Wrong totalCount");
+    Assertions.assertTrue( results.getTotalCount() <= expectedNumberOfResultsUpperLimit,"Wrong totalCount");
+    Assertions.assertTrue( results.getPrevPage() == null,"Wrong prevPage");
+    Assertions.assertTrue( results.getNextPage() == null,"Wrong prevPage");
   }
 
   @Test
@@ -434,21 +444,21 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     Response response = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
         .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
     // Check HTTP response
-    Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
+    Assertions.assertEquals(Status.OK.getStatusCode(), response.getStatus());
     // Check Content-Type
-    Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
+    Assertions.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check the number of results retrieved
     PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
     });
     response.close();
-    Assert.assertTrue("Wrong number of results", results.getCollection().size() == expectedNumberOfResults);
+    Assertions.assertTrue( results.getCollection().size() == expectedNumberOfResults,"Wrong number of results");
     // Check pagination information
-    Assert.assertTrue("Wrong page", results.getPage() == 1);
-    Assert.assertTrue("Wrong pageCount", results.getPageCount() == 0);
-    Assert.assertTrue("Wrong totalCount", results.getTotalCount() == 0);
-    Assert.assertTrue("Wrong pageSize", results.getPageSize() == 0);
-    Assert.assertTrue("Wrong prevPage", results.getPrevPage() == null);
-    Assert.assertTrue("Wrong prevPage", results.getNextPage() == null);
+    Assertions.assertTrue( results.getPage() == 1,"Wrong page");
+    Assertions.assertTrue( results.getPageCount() == 0,"Wrong pageCount");
+    Assertions.assertTrue( results.getTotalCount() == 0,"Wrong totalCount");
+    Assertions.assertTrue( results.getPageSize() == 0,"Wrong pageSize");
+    Assertions.assertTrue( results.getPrevPage() == null,"Wrong prevPage");
+    Assertions.assertTrue( results.getNextPage() == null,"Wrong prevPage");
   }
 
   /**
@@ -467,21 +477,21 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     Response response = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
         .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
     // Check HTTP response
-    Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
+    Assertions.assertEquals(Status.OK.getStatusCode(), response.getStatus());
     // Check Content-Type
-    Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
+    Assertions.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check the number of results retrieved
     PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
     });
     response.close();
-    Assert.assertTrue("Wrong number of results", results.getCollection().size() == valueSet1Size);
+    Assertions.assertTrue( results.getCollection().size() == valueSet1Size,"Wrong number of results");
     // Check pagination information
-    Assert.assertTrue("Wrong page", results.getPage() == 1);
-    Assert.assertTrue("Wrong pageCount", results.getPageCount() == 1);
-    Assert.assertTrue("Wrong totalCount", results.getTotalCount() == valueSet1Size);
-    Assert.assertTrue("Wrong pageSize", results.getPageSize() == valueSet1Size);
-    Assert.assertTrue("Wrong prevPage", results.getPrevPage() == null);
-    Assert.assertTrue("Wrong prevPage", results.getNextPage() == null);
+    Assertions.assertTrue( results.getPage() == 1,"Wrong page");
+    Assertions.assertTrue( results.getPageCount() == 1,"Wrong pageCount");
+    Assertions.assertTrue( results.getTotalCount() == valueSet1Size,"Wrong totalCount");
+    Assertions.assertTrue( results.getPageSize() == valueSet1Size,"Wrong pageSize");
+    Assertions.assertTrue( results.getPrevPage() == null,"Wrong prevPage");
+    Assertions.assertTrue( results.getNextPage() == null,"Wrong prevPage");
   }
 
   @Test
@@ -496,21 +506,21 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     Response response = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
         .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
     // Check HTTP response
-    Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
+    Assertions.assertEquals(Status.OK.getStatusCode(), response.getStatus());
     // Check Content-Type
-    Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
+    Assertions.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check the number of results retrieved
     PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
     });
     response.close();
-    Assert.assertTrue("Wrong number of results", results.getCollection().size() == expectedResultsCount);
+    Assertions.assertTrue( results.getCollection().size() == expectedResultsCount,"Wrong number of results");
     // Check pagination information
-    Assert.assertTrue("Wrong page", results.getPage() == 1);
-    Assert.assertTrue("Wrong pageCount", results.getPageCount() == 1);
-    Assert.assertTrue("Wrong totalCount", results.getTotalCount() == expectedResultsCount);
-    Assert.assertTrue("Wrong pageSize", results.getPageSize() == expectedResultsCount);
-    Assert.assertTrue("Wrong prevPage", results.getPrevPage() == null);
-    Assert.assertTrue("Wrong prevPage", results.getNextPage() == null);
+    Assertions.assertTrue( results.getPage() == 1,"Wrong page");
+    Assertions.assertTrue( results.getPageCount() == 1,"Wrong pageCount");
+    Assertions.assertTrue( results.getTotalCount() == expectedResultsCount,"Wrong totalCount");
+    Assertions.assertTrue( results.getPageSize() == expectedResultsCount,"Wrong pageSize");
+    Assertions.assertTrue( results.getPrevPage() == null,"Wrong prevPage");
+    Assertions.assertTrue( results.getNextPage() == null,"Wrong prevPage");
   }
 
   @Test
@@ -538,26 +548,26 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     Response response = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
         .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
     // Check HTTP response
-    Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
+    Assertions.assertEquals(Status.OK.getStatusCode(), response.getStatus());
     // Check Content-Type
-    Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
+    Assertions.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check the number of results retrieved
     PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
     });
     response.close();
-    Assert.assertTrue("Wrong number of results", results.getCollection().size() == createdVsSize);
+    Assertions.assertTrue( results.getCollection().size() == createdVsSize,"Wrong number of results");
     // Check that the results are right
     for (SearchResult r : results.getCollection()) {
-      Assert.assertTrue("Unexpected value", r.getLdId().equals(createdValue1.getLdId()) ||
-          r.getLdId().equals(createdValue2.getLdId()));
+      Assertions.assertTrue( r.getLdId().equals(createdValue1.getLdId()) ||
+          r.getLdId().equals(createdValue2.getLdId()),"Unexpected value");
     }
     // Check pagination information
-    Assert.assertTrue("Wrong page", results.getPage() == 1);
-    Assert.assertTrue("Wrong pageCount", results.getPageCount() == 1);
-    Assert.assertTrue("Wrong totalCount", results.getTotalCount() == createdVsSize);
-    Assert.assertTrue("Wrong pageSize", results.getPageSize() == createdVsSize);
-    Assert.assertTrue("Wrong prevPage", results.getPrevPage() == null);
-    Assert.assertTrue("Wrong prevPage", results.getNextPage() == null);
+    Assertions.assertTrue( results.getPage() == 1,"Wrong page");
+    Assertions.assertTrue( results.getPageCount() == 1,"Wrong pageCount");
+    Assertions.assertTrue( results.getTotalCount() == createdVsSize,"Wrong totalCount");
+    Assertions.assertTrue( results.getPageSize() == createdVsSize,"Wrong pageSize");
+    Assertions.assertTrue( results.getPrevPage() == null,"Wrong prevPage");
+    Assertions.assertTrue( results.getNextPage() == null,"Wrong prevPage");
   }
 
   @Test
@@ -584,25 +594,25 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     Response response = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
         .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
     // Check HTTP response
-    Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
+    Assertions.assertEquals(Status.OK.getStatusCode(), response.getStatus());
     // Check Content-Type
-    Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
+    Assertions.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check the number of results retrieved
     int expectedNumberOfResults = 1;
     PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
     });
     response.close();
-    Assert.assertTrue("Wrong number of results", results.getCollection().size() == expectedNumberOfResults);
+    Assertions.assertTrue( results.getCollection().size() == expectedNumberOfResults,"Wrong number of results");
     // Check that the result found matches the expected result
-    Assert.assertTrue("Unexpected value",
-        results.getCollection().get(0).getLdId().equals(createdValue2.getLdId()));
+    Assertions.assertTrue(
+        results.getCollection().get(0).getLdId().equals(createdValue2.getLdId()),"Unexpected value");
     // Check pagination information
-    Assert.assertTrue("Wrong page", results.getPage() == 1);
-    Assert.assertTrue("Wrong pageCount", results.getPageCount() == 1);
-    Assert.assertTrue("Wrong totalCount", results.getTotalCount() == 1);
-    Assert.assertTrue("Wrong pageSize", results.getPageSize() == 1);
-    Assert.assertTrue("Wrong prevPage", results.getPrevPage() == null);
-    Assert.assertTrue("Wrong prevPage", results.getNextPage() == null);
+    Assertions.assertTrue( results.getPage() == 1,"Wrong page");
+    Assertions.assertTrue( results.getPageCount() == 1,"Wrong pageCount");
+    Assertions.assertTrue( results.getTotalCount() == 1,"Wrong totalCount");
+    Assertions.assertTrue( results.getPageSize() == 1,"Wrong pageSize");
+    Assertions.assertTrue( results.getPrevPage() == null,"Wrong prevPage");
+    Assertions.assertTrue( results.getNextPage() == null,"Wrong prevPage");
   }
 
   /**
@@ -625,14 +635,14 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     Response response = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
         .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
     // Check HTTP response
-    Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
+    Assertions.assertEquals(Status.OK.getStatusCode(), response.getStatus());
     // Check Content-Type
-    Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
+    Assertions.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check the number of results retrieved
     PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
     });
     response.close();
-    Assert.assertTrue("Wrong number of results", results.getCollection().size() == enumeratedClasses.size());
+    Assertions.assertTrue( results.getCollection().size() == enumeratedClasses.size(),"Wrong number of results");
     // Check that the results are right
     // Sort the enumerated classes by prefLabel so that we can compare them in order with the returned results
     List<ClassValueConstraint> classes = Arrays.asList(mapper.readValue(enumeratedClasses.toString(),
@@ -646,21 +656,21 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
       String ldType = BP_TYPE_BASE + type;
       String prefLabel = classes.get(i).getPrefLabel();
       String source = BP_API_BASE + BP_ONTOLOGIES + classes.get(i).getSource();
-      Assert.assertTrue("Wrong ldId", results.getCollection().get(i).getLdId().equals(ldId));
-      Assert.assertTrue("Wrong id", results.getCollection().get(i).getId().equals(id));
-      Assert.assertTrue("Wrong type", results.getCollection().get(i).getType().equals(type));
-      Assert.assertTrue("Wrong ldType", results.getCollection().get(i).getLdType().equals(ldType));
-      Assert.assertTrue("Wrong prefLabel", results.getCollection().get(i).getPrefLabel().equals(prefLabel));
-      Assert.assertTrue("Wrong source", results.getCollection().get(i).getSource().equals(source));
-      Assert.assertTrue("Wrong definition", results.getCollection().get(i).getDefinition() == null);
+      Assertions.assertTrue( results.getCollection().get(i).getLdId().equals(ldId),"Wrong ldId");
+      Assertions.assertTrue( results.getCollection().get(i).getId().equals(id),"Wrong id");
+      Assertions.assertTrue( results.getCollection().get(i).getType().equals(type),"Wrong type");
+      Assertions.assertTrue( results.getCollection().get(i).getLdType().equals(ldType),"Wrong ldType");
+      Assertions.assertTrue( results.getCollection().get(i).getPrefLabel().equals(prefLabel),"Wrong prefLabel");
+      Assertions.assertTrue( results.getCollection().get(i).getSource().equals(source),"Wrong source");
+      Assertions.assertTrue( results.getCollection().get(i).getDefinition() == null,"Wrong definition");
     }
     // Check pagination information
-    Assert.assertTrue("Wrong page", results.getPage() == 1);
-    Assert.assertTrue("Wrong pageCount", results.getPageCount() == 1);
-    Assert.assertTrue("Wrong pageSize", results.getPageSize() == 3);
-    Assert.assertTrue("Wrong totalCount", results.getTotalCount() == 3);
-    Assert.assertTrue("Wrong prevPage", results.getPrevPage() == null);
-    Assert.assertTrue("Wrong prevPage", results.getNextPage() == null);
+    Assertions.assertTrue( results.getPage() == 1,"Wrong page");
+    Assertions.assertTrue( results.getPageCount() == 1,"Wrong pageCount");
+    Assertions.assertTrue( results.getPageSize() == 3,"Wrong pageSize");
+    Assertions.assertTrue( results.getTotalCount() == 3,"Wrong totalCount");
+    Assertions.assertTrue( results.getPrevPage() == null,"Wrong prevPage");
+    Assertions.assertTrue( results.getNextPage() == null,"Wrong prevPage");
   }
 
   @Test
@@ -684,11 +694,11 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     Response responsePage2 = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
         .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBodyPage2));
     // Check HTTP response
-    Assert.assertEquals(Status.OK.getStatusCode(), responsePage1.getStatus());
-    Assert.assertEquals(Status.OK.getStatusCode(), responsePage2.getStatus());
+    Assertions.assertEquals(Status.OK.getStatusCode(), responsePage1.getStatus());
+    Assertions.assertEquals(Status.OK.getStatusCode(), responsePage2.getStatus());
     // Check Content-Type
-    Assert.assertEquals(MediaType.APPLICATION_JSON, responsePage1.getHeaderString(HttpHeaders.CONTENT_TYPE));
-    Assert.assertEquals(MediaType.APPLICATION_JSON, responsePage2.getHeaderString(HttpHeaders.CONTENT_TYPE));
+    Assertions.assertEquals(MediaType.APPLICATION_JSON, responsePage1.getHeaderString(HttpHeaders.CONTENT_TYPE));
+    Assertions.assertEquals(MediaType.APPLICATION_JSON, responsePage2.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check the number of results retrieved
     PagedResults<SearchResult> resultsPage1 = responsePage1.readEntity(new GenericType<PagedResults<SearchResult>>() {
     });
@@ -696,8 +706,8 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     PagedResults<SearchResult> resultsPage2 = responsePage2.readEntity(new GenericType<PagedResults<SearchResult>>() {
     });
     responsePage2.close();
-    Assert.assertTrue("Wrong number of results", resultsPage1.getCollection().size() == 2);
-    Assert.assertTrue("Wrong number of results", resultsPage2.getCollection().size() == 1);
+    Assertions.assertTrue( resultsPage1.getCollection().size() == 2,"Wrong number of results");
+    Assertions.assertTrue( resultsPage2.getCollection().size() == 1,"Wrong number of results");
 
     List<SearchResult> results = new ArrayList<>();
     results.add(resultsPage1.getCollection().get(0));
@@ -717,29 +727,29 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
       String prefLabel = classes.get(i).getPrefLabel();
       String source = BP_API_BASE + BP_ONTOLOGIES + classes.get(i).getSource();
 
-      Assert.assertTrue("Wrong ldId", results.get(i).getLdId().equals(ldId));
-      Assert.assertTrue("Wrong id", results.get(i).getId().equals(id));
-      Assert.assertTrue("Wrong type", results.get(i).getType().equals(type));
-      Assert.assertTrue("Wrong ldType", results.get(i).getLdType().equals(ldType));
-      Assert.assertTrue("Wrong prefLabel", results.get(i).getPrefLabel().equals(prefLabel));
-      Assert.assertTrue("Wrong source", results.get(i).getSource().equals(source));
-      Assert.assertTrue("Wrong definition", results.get(i).getDefinition() == null);
+      Assertions.assertTrue( results.get(i).getLdId().equals(ldId),"Wrong ldId");
+      Assertions.assertTrue( results.get(i).getId().equals(id),"Wrong id");
+      Assertions.assertTrue( results.get(i).getType().equals(type),"Wrong type");
+      Assertions.assertTrue( results.get(i).getLdType().equals(ldType),"Wrong ldType");
+      Assertions.assertTrue( results.get(i).getPrefLabel().equals(prefLabel),"Wrong prefLabel");
+      Assertions.assertTrue( results.get(i).getSource().equals(source),"Wrong source");
+      Assertions.assertTrue( results.get(i).getDefinition() == null,"Wrong definition");
     }
     // Check pagination information (page 1)
-    Assert.assertTrue("Wrong page", resultsPage1.getPage() == 1);
-    Assert.assertTrue("Wrong pageCount", resultsPage1.getPageCount() == 2);
-    Assert.assertTrue("Wrong pageSize", resultsPage1.getPageSize() == 2);
-    Assert.assertTrue("Wrong totalCount", resultsPage1.getTotalCount() == 3);
-    Assert.assertTrue("Wrong prevPage", resultsPage1.getPrevPage() == null);
-    Assert.assertTrue("Wrong prevPage", resultsPage1.getNextPage() == 2);
+    Assertions.assertTrue( resultsPage1.getPage() == 1,"Wrong page");
+    Assertions.assertTrue( resultsPage1.getPageCount() == 2,"Wrong pageCount");
+    Assertions.assertTrue( resultsPage1.getPageSize() == 2,"Wrong pageSize");
+    Assertions.assertTrue( resultsPage1.getTotalCount() == 3,"Wrong totalCount");
+    Assertions.assertTrue( resultsPage1.getPrevPage() == null,"Wrong prevPage");
+    Assertions.assertTrue( resultsPage1.getNextPage() == 2,"Wrong prevPage");
 
     // Check pagination information (page 2)
-    Assert.assertTrue("Wrong page", resultsPage2.getPage() == 2);
-    Assert.assertTrue("Wrong pageCount", resultsPage2.getPageCount() == 2);
-    Assert.assertTrue("Wrong pageSize", resultsPage2.getPageSize() == 1);
-    Assert.assertTrue("Wrong totalCount", resultsPage2.getTotalCount() == 3);
-    Assert.assertTrue("Wrong prevPage", resultsPage2.getPrevPage() == 1);
-    Assert.assertTrue("Wrong prevPage", resultsPage2.getNextPage() == null);
+    Assertions.assertTrue( resultsPage2.getPage() == 2,"Wrong page");
+    Assertions.assertTrue( resultsPage2.getPageCount() == 2,"Wrong pageCount");
+    Assertions.assertTrue( resultsPage2.getPageSize() == 1,"Wrong pageSize");
+    Assertions.assertTrue( resultsPage2.getTotalCount() == 3,"Wrong totalCount");
+    Assertions.assertTrue( resultsPage2.getPrevPage() == 1,"Wrong prevPage");
+    Assertions.assertTrue( resultsPage2.getNextPage() == null,"Wrong prevPage");
   }
 
   @Test
@@ -759,14 +769,14 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     Response response = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
         .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
     // Check HTTP response
-    Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
+    Assertions.assertEquals(Status.OK.getStatusCode(), response.getStatus());
     // Check Content-Type
-    Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
+    Assertions.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check the number of results retrieved
     PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
     });
     response.close();
-    Assert.assertTrue("Wrong number of results", results.getCollection().size() == 1);
+    Assertions.assertTrue( results.getCollection().size() == 1,"Wrong number of results");
     // Check that the result is right
     String ldId = enumeratedClass1.get(VALUE_CONSTRAINTS_URI).asText();
     String id = Util.getShortIdentifier(ldId);
@@ -775,21 +785,21 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     String prefLabel = enumeratedClass1.get(VALUE_CONSTRAINTS_PREFLABEL).asText();
     String source = BP_API_BASE + BP_ONTOLOGIES + enumeratedClass1.get(VALUE_CONSTRAINTS_SOURCE).asText();
 
-    Assert.assertTrue("Wrong ldId", results.getCollection().get(0).getLdId().equals(ldId));
-    Assert.assertTrue("Wrong id", results.getCollection().get(0).getId().equals(id));
-    Assert.assertTrue("Wrong type", results.getCollection().get(0).getType().equals(type));
-    Assert.assertTrue("Wrong ldType", results.getCollection().get(0).getLdType().equals(ldType));
-    Assert.assertTrue("Wrong prefLabel", results.getCollection().get(0).getPrefLabel().equals(prefLabel));
-    Assert.assertTrue("Wrong source", results.getCollection().get(0).getSource().equals(source));
-    Assert.assertTrue("Wrong definition", results.getCollection().get(0).getDefinition() == null);
+    Assertions.assertTrue( results.getCollection().get(0).getLdId().equals(ldId),"Wrong ldId");
+    Assertions.assertTrue( results.getCollection().get(0).getId().equals(id),"Wrong id");
+    Assertions.assertTrue( results.getCollection().get(0).getType().equals(type),"Wrong type");
+    Assertions.assertTrue( results.getCollection().get(0).getLdType().equals(ldType),"Wrong ldType");
+    Assertions.assertTrue( results.getCollection().get(0).getPrefLabel().equals(prefLabel),"Wrong prefLabel");
+    Assertions.assertTrue( results.getCollection().get(0).getSource().equals(source),"Wrong source");
+    Assertions.assertTrue( results.getCollection().get(0).getDefinition() == null,"Wrong definition");
 
     // Check pagination information
-    Assert.assertTrue("Wrong page", results.getPage() == 1);
-    Assert.assertTrue("Wrong pageCount", results.getPageCount() == 1);
-    Assert.assertTrue("Wrong totalCount", results.getTotalCount() == 1);
-    Assert.assertTrue("Wrong pageSize", results.getPageSize() == 1);
-    Assert.assertTrue("Wrong prevPage", results.getPrevPage() == null);
-    Assert.assertTrue("Wrong prevPage", results.getNextPage() == null);
+    Assertions.assertTrue( results.getPage() == 1,"Wrong page");
+    Assertions.assertTrue( results.getPageCount() == 1,"Wrong pageCount");
+    Assertions.assertTrue( results.getTotalCount() == 1,"Wrong totalCount");
+    Assertions.assertTrue( results.getPageSize() == 1,"Wrong pageSize");
+    Assertions.assertTrue( results.getPrevPage() == null,"Wrong prevPage");
+    Assertions.assertTrue( results.getNextPage() == null,"Wrong prevPage");
   }
 
   /**
@@ -832,15 +842,15 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     Response response = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
         .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
     // Check HTTP response
-    Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
+    Assertions.assertEquals(Status.OK.getStatusCode(), response.getStatus());
     // Check Content-Type
-    Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
+    Assertions.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check the number of results retrieved
     PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
     });
     response.close();
-    Assert.assertTrue("Wrong page size", pageSize == results.getPageSize());
-    Assert.assertTrue("Wrong page size", pageSize == results.getCollection().size());
+    Assertions.assertTrue( pageSize == results.getPageSize(),"Wrong page size");
+    Assertions.assertTrue( pageSize == results.getCollection().size(),"Wrong page size");
 
     // Check that the class with label "000" is returned at the top
     String ldId = enumeratedClass1.get(VALUE_CONSTRAINTS_URI).asText();
@@ -850,13 +860,13 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     String prefLabel = enumeratedClass1.get(VALUE_CONSTRAINTS_PREFLABEL).asText();
     String source = BP_API_BASE + BP_ONTOLOGIES + enumeratedClass1.get(VALUE_CONSTRAINTS_SOURCE).asText();
 
-    Assert.assertTrue("Wrong ldId", results.getCollection().get(0).getLdId().equals(ldId));
-    Assert.assertTrue("Wrong id", results.getCollection().get(0).getId().equals(id));
-    Assert.assertTrue("Wrong type", results.getCollection().get(0).getType().equals(type));
-    Assert.assertTrue("Wrong ldType", results.getCollection().get(0).getLdType().equals(ldType));
-    Assert.assertTrue("Wrong prefLabel", results.getCollection().get(0).getPrefLabel().equals(prefLabel));
-    Assert.assertTrue("Wrong source", results.getCollection().get(0).getSource().equals(source));
-    Assert.assertTrue("Wrong definition", results.getCollection().get(0).getDefinition() == null);
+    Assertions.assertTrue( results.getCollection().get(0).getLdId().equals(ldId),"Wrong ldId");
+    Assertions.assertTrue( results.getCollection().get(0).getId().equals(id),"Wrong id");
+    Assertions.assertTrue( results.getCollection().get(0).getType().equals(type),"Wrong type");
+    Assertions.assertTrue( results.getCollection().get(0).getLdType().equals(ldType),"Wrong ldType");
+    Assertions.assertTrue( results.getCollection().get(0).getPrefLabel().equals(prefLabel),"Wrong prefLabel");
+    Assertions.assertTrue( results.getCollection().get(0).getSource().equals(source),"Wrong source");
+    Assertions.assertTrue( results.getCollection().get(0).getDefinition() == null,"Wrong definition");
 
     // Check that the rest of the results are right. We start with i=1 because we've already checked the first result
     int ontologyClassesIndex = 0;
@@ -870,24 +880,24 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
       source = ontology1Classes.get(ontologyClassesIndex).getSource();
       ontologyClassesIndex++;
 
-      Assert.assertTrue("Wrong ldId", results.getCollection().get(i).getLdId().equals(ldId));
-      Assert.assertTrue("Wrong id", results.getCollection().get(i).getId().equals(id));
-      Assert.assertTrue("Wrong type", results.getCollection().get(i).getType().equals(type));
-      Assert.assertTrue("Wrong ldType", results.getCollection().get(i).getLdType().equals(ldType));
-      Assert.assertTrue("Wrong prefLabel", results.getCollection().get(i).getPrefLabel().equals(prefLabel));
-      Assert.assertTrue("Wrong source", results.getCollection().get(i).getSource().equals(source));
+      Assertions.assertTrue( results.getCollection().get(i).getLdId().equals(ldId),"Wrong ldId");
+      Assertions.assertTrue( results.getCollection().get(i).getId().equals(id),"Wrong id");
+      Assertions.assertTrue( results.getCollection().get(i).getType().equals(type),"Wrong type");
+      Assertions.assertTrue( results.getCollection().get(i).getLdType().equals(ldType),"Wrong ldType");
+      Assertions.assertTrue( results.getCollection().get(i).getPrefLabel().equals(prefLabel),"Wrong prefLabel");
+      Assertions.assertTrue( results.getCollection().get(i).getSource().equals(source),"Wrong source");
       if (definition != null) {
-        Assert.assertTrue("Wrong definition", results.getCollection().get(i).getDefinition().equals(definition));
+        Assertions.assertTrue( results.getCollection().get(i).getDefinition().equals(definition),"Wrong definition");
       }
     }
     // Check pagination information. Note that when doing search on multiple sources we set totalCount, pageCount,
     // and nextPage to null to maximize performance.
-    Assert.assertTrue("Wrong page", results.getPage() == 1);
-    Assert.assertTrue("Wrong pageCount", results.getPageCount() == null);
-    Assert.assertTrue("Wrong totalCount", results.getTotalCount() == ontology1CurrentSize + 2);
-    Assert.assertTrue("Wrong pageSize", results.getPageSize() == pageSize);
-    Assert.assertTrue("Wrong prevPage", results.getPrevPage() == null);
-    Assert.assertTrue("Wrong prevPage", results.getNextPage() == null);
+    Assertions.assertTrue( results.getPage() == 1,"Wrong page");
+    Assertions.assertTrue( results.getPageCount() == null,"Wrong pageCount");
+    Assertions.assertTrue( results.getTotalCount() == ontology1CurrentSize + 2,"Wrong totalCount");
+    Assertions.assertTrue( results.getPageSize() == pageSize,"Wrong pageSize");
+    Assertions.assertTrue( results.getPrevPage() == null,"Wrong prevPage");
+    Assertions.assertTrue( results.getNextPage() == null,"Wrong prevPage");
   }
 
   /**

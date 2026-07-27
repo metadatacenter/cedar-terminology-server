@@ -13,7 +13,7 @@ The project contains two subdirectories:
 
 ## Versions
 
-* Java: 1.8
+* Java: 17
 
 ## Getting started
 

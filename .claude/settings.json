@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__bioportal-term__find_value_set",
+      "mcp__bioportal-term__find_ontology",
+      "mcp__bioportal-term__get_class",
+      "mcp__bioportal-term__ping",
+      "mcp__cedar-artifact-rest__get_template",
+      "mcp__cedar-artifact-rest__ping",
+      "mcp__cedar-artifact__ping",
+      "mcp__cedar-cee__ping",
+      "mcp__cedar-cee__show_instance",
+      "mcp__Claude_Browser__read_page",
+      "mcp__Claude_Browser__get_page_text",
+      "mcp__Claude_Browser__find",
+      "mcp__claude-in-chrome__read_page",
+      "mcp__claude-in-chrome__find",
+      "mcp__claude-in-chrome__tabs_context_mcp",
+      "mcp__Control_Chrome__list_tabs"
+    ]
+  }
+}

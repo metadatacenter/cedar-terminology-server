@@ -16,6 +16,8 @@ public class BpOntology {
   private String name;
   @JsonProperty("flat")
   private boolean isFlat;
+  // BioPortal marks metadata-only ontologies (no parsed submission, not browsable) as summaryOnly=true.
+  private boolean summaryOnly;
 
   public BpOntology() {}
 
@@ -74,5 +76,13 @@ public class BpOntology {
 
   public void setIsFlat(boolean isFlat) {
     this.isFlat = isFlat;
+  }
+
+  public boolean getSummaryOnly() {
+    return summaryOnly;
+  }
+
+  public void setSummaryOnly(boolean summaryOnly) {
+    this.summaryOnly = summaryOnly;
   }
 }

@@ -5,7 +5,13 @@ import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.Status;
-import org.junit.*;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 import org.metadatacenter.terms.domainObjects.ValueSetCollection;
 
 import java.util.List;
@@ -15,14 +21,14 @@ import static org.metadatacenter.constant.HttpConstants.HTTP_HEADER_AUTHORIZATIO
 /**
  * Integration tests. They are done by starting a test server that makes it possible to test the real HTTP stack.
  */
-@Ignore
+@Disabled
 public class ValueSetCollectionResourceTest extends AbstractTerminologyServerResourceTest {
 
   /**
    * One-time initialization code.
    * (Called once before any of the test methods in the class).
    */
-  @BeforeClass
+  @BeforeAll
   public static void oneTimeSetUp() {
   }
 
@@ -30,7 +36,7 @@ public class ValueSetCollectionResourceTest extends AbstractTerminologyServerRes
    * Sets up the test fixture.
    * (Called before every test case method.)
    */
-  @Before
+  @BeforeEach
   public void setUp() {
   }
 
@@ -38,25 +44,25 @@ public class ValueSetCollectionResourceTest extends AbstractTerminologyServerRes
    * Tears down the test fixture.
    * (Called after every test case method.)
    */
-  @After
+  @AfterEach
   public void tearDown() {
   }
 
-  @Ignore
+  @Disabled
   @Test
   public void findAllVSCollectionsTest() {
     String url = baseUrlBpVSCollections;
     // Service invocation
     Response response = clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     response.close();
-    Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
+    Assertions.assertEquals(Status.OK.getStatusCode(), response.getStatus());
     // Check Content-Type
-    Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
+    Assertions.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check the results returned
     List<ValueSetCollection> vsc = response.readEntity(new GenericType<List<ValueSetCollection>>() {
     });
     response.close();
-    Assert.assertTrue("No ontologies returned", vsc.size() > 0);
+    Assertions.assertTrue( vsc.size() > 0,"No ontologies returned");
     // Check that the CEDARVS collection is included into the results
     String sampleVsc = "CEDARVS";
     boolean found = false;
@@ -66,7 +72,7 @@ public class ValueSetCollectionResourceTest extends AbstractTerminologyServerRes
         break;
       }
     }
-    Assert.assertTrue("Expected value set collection not found in the results (" + sampleVsc + ")", found);
+    Assertions.assertTrue( found,"Expected value set collection not found in the results (" + sampleVsc + ")");
   }
 
 }

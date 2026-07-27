@@ -1,125 +1,105 @@
----
-swagger: "2.0"
+openapi: 3.0.1
 info:
-  description: "CEDAR Terminology Server API"
-  version: "2.8.4"
-  title: "CEDAR Terminology Server API"
-tags:
-- name: "Classes"
-- name: "Ontologies"
-- name: "Properties"
-- name: "Relations"
-- name: "Value set collections"
-- name: "Value sets"
-- name: "Values"
-schemes:
-- "https"
+  description: CEDAR Terminology Server API
+  title: CEDAR Terminology Server API
+  version: 2.9.0
 paths:
   /bioportal/classes/provisional:
     get:
-      tags:
-      - "Classes"
-      summary: "Get provisional classes"
-      description: "Get provisional classes (including provisional value sets and\
-        \ provisional values)."
-      operationId: "findAllProvisionalClasses"
-      produces:
-      - "application/json"
+      description: Get provisional classes (including provisional value sets and provisional
+        values).
+      operationId: findAllProvisionalClasses
       parameters:
-      - name: "page"
-        in: "query"
-        description: "Page to be returned. Example: 7."
-        required: false
-        type: "integer"
-        default: 1
-        format: "int32"
-      - name: "pageSize"
-        in: "query"
-        description: "Number of results per page. Example: 10."
-        required: false
-        type: "integer"
-        format: "int32"
+      - description: "Page to be returned. Example: 7."
+        in: query
+        name: page
+        schema:
+          type: integer
+          format: int32
+          default: 1
+      - description: "Number of results per page. Example: 10."
+        in: query
+        name: pageSize
+        schema:
+          type: integer
+          format: int32
       responses:
-        200:
-          description: "Successful operation"
-        400:
-          description: "Bad request"
-        401:
-          description: "Unauthorized"
-        403:
-          description: "Forbidden"
-        404:
-          description: "Not found"
-        500:
-          description: "Internal server error"
+        "200":
+          description: Successful operation
+        "400":
+          description: Bad request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not found
+        "500":
+          description: Internal server error
       security:
       - api_key: []
+      summary: Get provisional classes
+      tags:
+      - Classes
   /bioportal/classes/{id}:
-    put:
-      tags:
-      - "Classes"
-      summary: "Update a provisional class"
-      description: "Update a provisional class."
-      operationId: "updateClass"
-      produces:
-      - "application/json"
-      parameters:
-      - name: "id"
-        in: "path"
-        description: "Provisional class identifier. Example: http://data.bioontology.org/provisional_classes/4f82a7f0-bbba-0133-b23e-005056010074."
-        required: true
-        type: "string"
-      responses:
-        204:
-          description: "Successful operation (no content)"
-        400:
-          description: "Bad request"
-        401:
-          description: "Unauthorized"
-        403:
-          description: "Forbidden"
-        404:
-          description: "Not found"
-        500:
-          description: "Internal server error"
-      security:
-      - api_key: []
     delete:
-      tags:
-      - "Classes"
-      summary: "Delete a provisional class"
-      description: "Update a provisional class."
-      operationId: "deleteClass"
-      produces:
-      - "application/json"
+      description: Update a provisional class.
+      operationId: deleteClass
       parameters:
-      - name: "id"
-        in: "path"
-        description: "Provisional class identifier. Example: http://data.bioontology.org/provisional_classes/4f82a7f0-bbba-0133-b23e-005056010074."
+      - description: "Provisional class identifier. Example: http://data.bioontology.org/provisional_classes/4f82a7f0-bbba-0133-b23e-005056010074."
+        in: path
+        name: id
         required: true
-        type: "string"
+        schema:
+          type: string
       responses:
-        204:
-          description: "Successful operation (no content)"
-        400:
-          description: "Bad request"
-        401:
-          description: "Unauthorized"
-        403:
-          description: "Forbidden"
-        404:
-          description: "Not found"
-        500:
-          description: "Internal server error"
+        "204":
+          description: Successful operation (no content)
+        "400":
+          description: Bad request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not found
+        "500":
+          description: Internal server error
       security:
       - api_key: []
+      summary: Delete a provisional class
+      tags:
+      - Classes
+    put:
+      description: Update a provisional class.
+      operationId: updateClass
+      parameters:
+      - description: "Provisional class identifier. Example: http://data.bioontology.org/provisional_classes/4f82a7f0-bbba-0133-b23e-005056010074."
+        in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      responses:
+        "204":
+          description: Successful operation (no content)
+        "400":
+          description: Bad request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not found
+        "500":
+          description: Internal server error
+      security:
+      - api_key: []
+      summary: Update a provisional class
+      tags:
+      - Classes
   /bioportal/integrated-retrieve:
     post:
-      tags:
-      - "Classes"
-      - "Value sets"
-      - "Values"
-      summary: "Retrieve classes and values based on CEDAR value constraints"
       description: "Retrieve ontology classes, value sets, and values based on CEDAR\
         \ value constraints. This endpoint takes a controlled term field specification\
         \ and any user-supplied initial characters and returns conforming values.\
@@ -131,47 +111,43 @@ paths:
         \ fields returned as part of the results (e.g., pageCount, nextPage, etc.)\
         \ cannot be computed consistently, and the server will assign a 'null' value\
         \ to those fields."
-      operationId: "cedarIntegratedRetrieve"
-      consumes:
-      - "application/json"
-      produces:
-      - "application/json"
-      parameters:
-      - in: "body"
-        name: "request body"
-        description: "Object that encapsulates the information needed to run the search\
-          \ query. The \"valueConstraints\" field specification is based on CEDAR's\
-          \ \"_valueConstraints\" field. See https://more.metadatacenter.org/tools-training/outreach/cedar-template-model\
-          \ for more details."
+      operationId: cedarIntegratedRetrieve
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IntegratedRetrieveRequestBody"
+        description: Object that encapsulates the information needed to run the search
+          query. The "valueConstraints" field specification is based on CEDAR's "_valueConstraints"
+          field. See https://more.metadatacenter.org/tools-training/outreach/cedar-template-model
+          for more details.
         required: true
-        schema:
-          $ref: "#/definitions/IntegratedRetrieveRequestBody"
       responses:
-        200:
-          description: "A paginated list of search results"
-          schema:
-            type: "array"
-            items:
-              $ref: "#/definitions/IntegratedRetrieveResults"
-        400:
-          description: "Bad request"
-        401:
-          description: "Unauthorized"
-        403:
-          description: "Forbidden"
-        404:
-          description: "Not found"
-        500:
-          description: "Internal server error"
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IntegratedRetrieveResults"
+          description: A paginated list of search results
+        "400":
+          description: Bad request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not found
+        "500":
+          description: Internal server error
       security:
       - api_key: []
+      summary: Retrieve classes and values based on CEDAR value constraints
+      tags:
+      - Classes
+      - Value sets
+      - Values
   /bioportal/integrated-search:
     post:
-      tags:
-      - "Classes"
-      - "Value sets"
-      - "Values"
-      summary: "Search for classes and values based on CEDAR value constraints"
       description: "Search for ontology classes, value sets, and values based on CEDAR\
         \ value constraints. This endpoint takes a controlled term field specification\
         \ and any user-supplied initial characters and returns conforming values.\
@@ -183,1885 +159,2032 @@ paths:
         \ fields returned as part of the results (e.g., pageCount, nextPage, etc.)\
         \ cannot be computed consistently, and the server will assign a 'null' value\
         \ to those fields."
-      operationId: "cedarIntegratedSearch"
-      consumes:
-      - "application/json"
-      produces:
-      - "application/json"
-      parameters:
-      - in: "body"
-        name: "request body"
-        description: "Object that encapsulates the information needed to run the search\
-          \ query. The \"valueConstraints\" field specification is based on CEDAR's\
-          \ \"_valueConstraints\" field. See https://more.metadatacenter.org/tools-training/outreach/cedar-template-model\
-          \ for more details."
+      operationId: cedarIntegratedSearch
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IntegratedSearchRequestBody"
+        description: Object that encapsulates the information needed to run the search
+          query. The "valueConstraints" field specification is based on CEDAR's "_valueConstraints"
+          field. See https://more.metadatacenter.org/tools-training/outreach/cedar-template-model
+          for more details.
         required: true
-        schema:
-          $ref: "#/definitions/IntegratedSearchRequestBody"
       responses:
-        200:
-          description: "A paginated list of search results"
-          schema:
-            type: "array"
-            items:
-              $ref: "#/definitions/IntegratedSearchResults"
-        400:
-          description: "Bad request"
-        401:
-          description: "Unauthorized"
-        403:
-          description: "Forbidden"
-        404:
-          description: "Not found"
-        500:
-          description: "Internal server error"
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IntegratedSearchResults"
+          description: A paginated list of search results
+        "400":
+          description: Bad request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not found
+        "500":
+          description: Internal server error
       security:
       - api_key: []
+      summary: Search for classes and values based on CEDAR value constraints
+      tags:
+      - Classes
+      - Value sets
+      - Values
   /bioportal/ontologies:
     get:
-      tags:
-      - "Ontologies"
-      summary: "Find all ontologies"
-      description: "Find all ontologies."
-      operationId: "findAllOntologies"
-      produces:
-      - "application/json"
-      parameters: []
+      description: Find all ontologies.
+      operationId: findAllOntologies
       responses:
-        200:
-          description: "Successful operation"
-        400:
-          description: "Bad request"
-        401:
-          description: "Unauthorized"
-        403:
-          description: "Forbidden"
-        404:
-          description: "Not found"
-        500:
-          description: "Internal server error"
+        "200":
+          description: Successful operation
+        "400":
+          description: Bad request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not found
+        "500":
+          description: Internal server error
       security:
       - api_key: []
+      summary: Find all ontologies
+      tags:
+      - Ontologies
   /bioportal/ontologies/{id}:
     get:
-      tags:
-      - "Ontologies"
-      summary: "Find ontology by id"
-      description: "Find ontology by id."
-      operationId: "findOntology"
-      produces:
-      - "application/json"
+      description: Find ontology by id.
+      operationId: findOntology
       parameters:
-      - name: "id"
-        in: "path"
-        description: "BioPortal ontology identifier. Examples: NCIT, FMA, OBI."
+      - description: "BioPortal ontology identifier. Examples: NCIT, FMA, OBI."
+        in: path
+        name: id
         required: true
-        type: "string"
+        schema:
+          type: string
       responses:
-        200:
-          description: "Successful operation"
-        400:
-          description: "Bad request"
-        401:
-          description: "Unauthorized"
-        403:
-          description: "Forbidden"
-        404:
-          description: "Not found"
-        500:
-          description: "Internal server error"
+        "200":
+          description: Successful operation
+        "400":
+          description: Bad request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not found
+        "500":
+          description: Internal server error
       security:
       - api_key: []
+      summary: Find ontology by id
+      tags:
+      - Ontologies
   /bioportal/ontologies/{ontology}/classes:
     get:
-      tags:
-      - "Classes"
-      summary: "Get classes"
-      description: "Get all classes from a specific ontology (including both regular\
-        \ and provisional classes)."
-      operationId: "findAllClassesForOntology"
-      produces:
-      - "application/json"
+      description: Get all classes from a specific ontology (including both regular
+        and provisional classes).
+      operationId: findAllClassesForOntology
       parameters:
-      - name: "ontology"
-        in: "path"
-        description: "BioPortal ontology identifier. Examples: NCIT, FMA, OBI."
+      - description: "BioPortal ontology identifier. Examples: NCIT, FMA, OBI."
+        in: path
+        name: ontology
         required: true
-        type: "string"
-      - name: "page"
-        in: "query"
-        description: "Page to be returned. Example: 7."
-        required: false
-        type: "integer"
-        default: 1
-        format: "int32"
-      - name: "pageSize"
-        in: "query"
-        description: "Number of results per page. Example: 10."
-        required: false
-        type: "integer"
-        format: "int32"
+        schema:
+          type: string
+      - description: "Page to be returned. Example: 7."
+        in: query
+        name: page
+        schema:
+          type: integer
+          format: int32
+          default: 1
+      - description: "Number of results per page. Example: 10."
+        in: query
+        name: pageSize
+        schema:
+          type: integer
+          format: int32
       responses:
-        200:
-          description: "Successful operation"
-        400:
-          description: "Bad request"
-        401:
-          description: "Unauthorized"
-        403:
-          description: "Forbidden"
-        404:
-          description: "Not found"
-        500:
-          description: "Internal server error"
+        "200":
+          description: Successful operation
+        "400":
+          description: Bad request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not found
+        "500":
+          description: Internal server error
       security:
       - api_key: []
+      summary: Get classes
+      tags:
+      - Classes
     post:
-      tags:
-      - "Classes"
-      summary: "Create class"
-      description: "Create a provisional class."
-      operationId: "createClass"
-      produces:
-      - "application/json"
+      description: Create a provisional class.
+      operationId: createClass
       parameters:
-      - name: "ontology"
-        in: "path"
-        description: "BioPortal ontology identifier. Examples: NCIT, FMA, OBI."
+      - description: "BioPortal ontology identifier. Examples: NCIT, FMA, OBI."
+        in: path
+        name: ontology
         required: true
-        type: "string"
+        schema:
+          type: string
       responses:
-        204:
-          description: "Successful operation (no content)"
-        400:
-          description: "Bad request"
-        401:
-          description: "Unauthorized"
-        403:
-          description: "Forbidden"
-        404:
-          description: "Not found"
-        500:
-          description: "Internal server error"
+        "204":
+          description: Successful operation (no content)
+        "400":
+          description: Bad request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not found
+        "500":
+          description: Internal server error
       security:
       - api_key: []
+      summary: Create class
+      tags:
+      - Classes
   /bioportal/ontologies/{ontology}/classes/provisional:
     get:
-      tags:
-      - "Classes"
-      summary: "Get all provisional classes in a particular ontology"
-      description: "Get all provisional classes in a particular ontology (including\
-        \ provisional value sets and provisional values)"
-      operationId: "findAllProvisionalClassesForOntology"
-      produces:
-      - "application/json"
+      description: Get all provisional classes in a particular ontology (including
+        provisional value sets and provisional values)
+      operationId: findAllProvisionalClassesForOntology
       parameters:
-      - name: "ontology"
-        in: "path"
-        description: "BioPortal ontology identifier. Examples: NCIT, FMA, OBI."
+      - description: "BioPortal ontology identifier. Examples: NCIT, FMA, OBI."
+        in: path
+        name: ontology
         required: true
-        type: "string"
-      - name: "page"
-        in: "query"
-        description: "Page to be returned. Example: 7."
-        required: false
-        type: "integer"
-        default: 1
-        format: "int32"
-      - name: "pageSize"
-        in: "query"
-        description: "Number of results per page. Example: 10."
-        required: false
-        type: "integer"
-        format: "int32"
+        schema:
+          type: string
+      - description: "Page to be returned. Example: 7."
+        in: query
+        name: page
+        schema:
+          type: integer
+          format: int32
+          default: 1
+      - description: "Number of results per page. Example: 10."
+        in: query
+        name: pageSize
+        schema:
+          type: integer
+          format: int32
       responses:
-        200:
-          description: "Successful operation"
-        400:
-          description: "Bad request"
-        401:
-          description: "Unauthorized"
-        403:
-          description: "Forbidden"
-        404:
-          description: "Not found"
-        500:
-          description: "Internal server error"
+        "200":
+          description: Successful operation
+        "400":
+          description: Bad request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not found
+        "500":
+          description: Internal server error
       security:
       - api_key: []
+      summary: Get all provisional classes in a particular ontology
+      tags:
+      - Classes
   /bioportal/ontologies/{ontology}/classes/roots:
     get:
-      tags:
-      - "Classes"
-      - "Ontologies"
-      summary: "Get root classes"
       description: "Get root classes in a particular ontology. For the CEDARPC ontology,\
         \ all provisional classes in it will be returned."
-      operationId: "findRootClasses"
-      produces:
-      - "application/json"
+      operationId: findRootClasses
       parameters:
-      - name: "ontology"
-        in: "path"
-        description: "BioPortal ontology identifier. Examples: NCIT, FMA, OBI."
+      - description: "BioPortal ontology identifier. Examples: NCIT, FMA, OBI."
+        in: path
+        name: ontology
         required: true
-        type: "string"
+        schema:
+          type: string
       responses:
-        200:
-          description: "Successful operation"
-        400:
-          description: "Bad request"
-        401:
-          description: "Unauthorized"
-        403:
-          description: "Forbidden"
-        404:
-          description: "Not found"
-        500:
-          description: "Internal server error"
+        "200":
+          description: Successful operation
+        "400":
+          description: Bad request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not found
+        "500":
+          description: Internal server error
       security:
       - api_key: []
+      summary: Get root classes
+      tags:
+      - Classes
+      - Ontologies
   /bioportal/ontologies/{ontology}/classes/{id}:
     get:
-      tags:
-      - "Classes"
-      summary: "Find class"
-      description: "Find class (either regular or provisional) by ontology and class\
-        \ id."
-      operationId: "findClass"
-      produces:
-      - "application/json"
+      description: Find class (either regular or provisional) by ontology and class
+        id.
+      operationId: findClass
       parameters:
-      - name: "id"
-        in: "path"
-        description: "Class identifier. Examples: http://data.bioontology.org/provisional_classes/4f82a7f0-bbba-0133-b23e-005056010074\
+      - description: "Class identifier. Examples: http://data.bioontology.org/provisional_classes/4f82a7f0-bbba-0133-b23e-005056010074\
           \ (provisional class). http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C3224\
           \ (regular class)."
+        in: path
+        name: id
         required: true
-        type: "string"
-      - name: "ontology"
-        in: "path"
-        description: "BioPortal ontology identifier. Examples: NCIT, FMA, OBI."
+        schema:
+          type: string
+      - description: "BioPortal ontology identifier. Examples: NCIT, FMA, OBI."
+        in: path
+        name: ontology
         required: true
-        type: "string"
+        schema:
+          type: string
       responses:
-        200:
-          description: "Successful operation"
-        400:
-          description: "Bad request"
-        401:
-          description: "Unauthorized"
-        403:
-          description: "Forbidden"
-        404:
-          description: "Not found"
-        500:
-          description: "Internal server error"
+        "200":
+          description: Successful operation
+        "400":
+          description: Bad request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not found
+        "500":
+          description: Internal server error
       security:
       - api_key: []
+      summary: Find class
+      tags:
+      - Classes
   /bioportal/ontologies/{ontology}/classes/{id}/children:
     get:
-      tags:
-      - "Classes"
-      summary: "Get class children"
-      description: "Get class children (only for regular classes)."
-      operationId: "findClassChildren"
-      produces:
-      - "application/json"
+      description: Get class children (only for regular classes).
+      operationId: findClassChildren
       parameters:
-      - name: "id"
-        in: "path"
-        description: "Class identifier. Example: http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C3224."
+      - description: "Class identifier. Example: http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C3224."
+        in: path
+        name: id
         required: true
-        type: "string"
-      - name: "ontology"
-        in: "path"
-        description: "BioPortal ontology identifier. Examples: NCIT, FMA, OBI."
+        schema:
+          type: string
+      - description: "BioPortal ontology identifier. Examples: NCIT, FMA, OBI."
+        in: path
+        name: ontology
         required: true
-        type: "string"
-      - name: "page"
-        in: "query"
-        description: "Page to be returned. Example: 7."
-        required: false
-        type: "integer"
-        default: 1
-        format: "int32"
-      - name: "pageSize"
-        in: "query"
-        description: "Number of results per page. Example: 10."
-        required: false
-        type: "integer"
-        format: "int32"
+        schema:
+          type: string
+      - description: "Page to be returned. Example: 7."
+        in: query
+        name: page
+        schema:
+          type: integer
+          format: int32
+          default: 1
+      - description: "Number of results per page. Example: 10."
+        in: query
+        name: pageSize
+        schema:
+          type: integer
+          format: int32
       responses:
-        200:
-          description: "Successful operation"
-        400:
-          description: "Bad request"
-        401:
-          description: "Unauthorized"
-        403:
-          description: "Forbidden"
-        404:
-          description: "Not found"
-        500:
-          description: "Internal server error"
+        "200":
+          description: Successful operation
+        "400":
+          description: Bad request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not found
+        "500":
+          description: Internal server error
       security:
       - api_key: []
+      summary: Get class children
+      tags:
+      - Classes
   /bioportal/ontologies/{ontology}/classes/{id}/descendants:
     get:
-      tags:
-      - "Classes"
-      summary: "Get class descendants"
-      description: "Get class descendants."
-      operationId: "findClassDescendants"
-      produces:
-      - "application/json"
+      description: Get class descendants.
+      operationId: findClassDescendants
       parameters:
-      - name: "id"
-        in: "path"
-        description: "Class identifier. Examples: http://data.bioontology.org/provisional_classes/4f82a7f0-bbba-0133-b23e-005056010074\
+      - description: "Class identifier. Examples: http://data.bioontology.org/provisional_classes/4f82a7f0-bbba-0133-b23e-005056010074\
           \ (provisional class). http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C3224\
           \ (regular class)."
+        in: path
+        name: id
         required: true
-        type: "string"
-      - name: "ontology"
-        in: "path"
-        description: "BioPortal ontology identifier. Examples: NCIT, FMA, OBI."
+        schema:
+          type: string
+      - description: "BioPortal ontology identifier. Examples: NCIT, FMA, OBI."
+        in: path
+        name: ontology
         required: true
-        type: "string"
-      - name: "page"
-        in: "query"
-        description: "Page to be returned. Example: 7."
-        required: false
-        type: "integer"
-        default: 1
-        format: "int32"
-      - name: "pageSize"
-        in: "query"
-        description: "Number of results per page. Example: 10."
-        required: false
-        type: "integer"
-        format: "int32"
+        schema:
+          type: string
+      - description: "Page to be returned. Example: 7."
+        in: query
+        name: page
+        schema:
+          type: integer
+          format: int32
+          default: 1
+      - description: "Number of results per page. Example: 10."
+        in: query
+        name: pageSize
+        schema:
+          type: integer
+          format: int32
       responses:
-        200:
-          description: "Successful operation"
-        400:
-          description: "Bad request"
-        401:
-          description: "Unauthorized"
-        403:
-          description: "Forbidden"
-        404:
-          description: "Not found"
-        500:
-          description: "Internal server error"
+        "200":
+          description: Successful operation
+        "400":
+          description: Bad request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not found
+        "500":
+          description: Internal server error
       security:
       - api_key: []
+      summary: Get class descendants
+      tags:
+      - Classes
   /bioportal/ontologies/{ontology}/classes/{id}/parents:
     get:
-      tags:
-      - "Classes"
-      summary: "Get class parents"
-      description: "Get class parents."
-      operationId: "findClassParents"
-      produces:
-      - "application/json"
+      description: Get class parents.
+      operationId: findClassParents
       parameters:
-      - name: "id"
-        in: "path"
-        description: "Class identifier. Example: http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C3224."
+      - description: "Class identifier. Example: http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C3224."
+        in: path
+        name: id
         required: true
-        type: "string"
-      - name: "ontology"
-        in: "path"
-        description: "BioPortal ontology identifier. Examples: NCIT, FMA, OBI."
+        schema:
+          type: string
+      - description: "BioPortal ontology identifier. Examples: NCIT, FMA, OBI."
+        in: path
+        name: ontology
         required: true
-        type: "string"
+        schema:
+          type: string
       responses:
-        200:
-          description: "Successful operation"
-        400:
-          description: "Bad request"
-        401:
-          description: "Unauthorized"
-        403:
-          description: "Forbidden"
-        404:
-          description: "Not found"
-        500:
-          description: "Internal server error"
+        "200":
+          description: Successful operation
+        "400":
+          description: Bad request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not found
+        "500":
+          description: Internal server error
       security:
       - api_key: []
+      summary: Get class parents
+      tags:
+      - Classes
   /bioportal/ontologies/{ontology}/classes/{id}/tree:
     get:
-      tags:
-      - "Classes"
-      summary: "Get class tree"
-      description: "Get class tree (only for regular classes)."
-      operationId: "findClassTree"
-      produces:
-      - "application/json"
+      description: Get class tree (only for regular classes).
+      operationId: findClassTree
       parameters:
-      - name: "id"
-        in: "path"
-        description: "Class identifier. Example: http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C3224."
+      - description: "Class identifier. Example: http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C3224."
+        in: path
+        name: id
         required: true
-        type: "string"
-      - name: "ontology"
-        in: "path"
-        description: "BioPortal ontology identifier. Examples: NCIT, FMA, OBI."
+        schema:
+          type: string
+      - description: "BioPortal ontology identifier. Examples: NCIT, FMA, OBI."
+        in: path
+        name: ontology
         required: true
-        type: "string"
+        schema:
+          type: string
       responses:
-        200:
-          description: "Successful operation"
-        400:
-          description: "Bad request"
-        401:
-          description: "Unauthorized"
-        403:
-          description: "Forbidden"
-        404:
-          description: "Not found"
-        500:
-          description: "Internal server error"
+        "200":
+          description: Successful operation
+        "400":
+          description: Bad request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not found
+        "500":
+          description: Internal server error
       security:
       - api_key: []
+      summary: Get class tree
+      tags:
+      - Classes
   /bioportal/ontologies/{ontology}/properties:
     get:
-      tags:
-      - "Properties"
-      summary: "Get properties"
-      description: "Get all properties from a specific ontology."
-      operationId: "findAllPropertiesForOntology"
-      produces:
-      - "application/json"
+      description: Get all properties from a specific ontology.
+      operationId: findAllPropertiesForOntology
       parameters:
-      - name: "ontology"
-        in: "path"
-        description: "BioPortal ontology identifier. Examples: NCIT, FMA, OBI."
+      - description: "BioPortal ontology identifier. Examples: NCIT, FMA, OBI."
+        in: path
+        name: ontology
         required: true
-        type: "string"
+        schema:
+          type: string
       responses:
-        200:
-          description: "Successful operation"
-        400:
-          description: "Bad request"
-        401:
-          description: "Unauthorized"
-        403:
-          description: "Forbidden"
-        404:
-          description: "Not found"
-        500:
-          description: "Internal server error"
+        "200":
+          description: Successful operation
+        "400":
+          description: Bad request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not found
+        "500":
+          description: Internal server error
       security:
       - api_key: []
+      summary: Get properties
+      tags:
+      - Properties
   /bioportal/ontologies/{ontology}/properties/roots:
     get:
-      tags:
-      - "Properties"
-      - "Ontologies"
-      summary: "Get root properties"
-      description: "Get root properties in a particular ontology."
-      operationId: "findRootProperties"
-      produces:
-      - "application/json"
+      description: Get root properties in a particular ontology.
+      operationId: findRootProperties
       parameters:
-      - name: "ontology"
-        in: "path"
-        description: "BioPortal ontology identifier. Examples: NCIT, FMA, OBI."
+      - description: "BioPortal ontology identifier. Examples: NCIT, FMA, OBI."
+        in: path
+        name: ontology
         required: true
-        type: "string"
+        schema:
+          type: string
       responses:
-        200:
-          description: "Successful operation"
-        400:
-          description: "Bad request"
-        401:
-          description: "Unauthorized"
-        403:
-          description: "Forbidden"
-        404:
-          description: "Not found"
-        500:
-          description: "Internal server error"
+        "200":
+          description: Successful operation
+        "400":
+          description: Bad request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not found
+        "500":
+          description: Internal server error
       security:
       - api_key: []
+      summary: Get root properties
+      tags:
+      - Properties
+      - Ontologies
   /bioportal/ontologies/{ontology}/properties/{id}:
     get:
-      tags:
-      - "Properties"
-      summary: "Find property"
-      description: "Find property by id."
-      operationId: "findProperty"
-      produces:
-      - "application/json"
+      description: Find property by id.
+      operationId: findProperty
       parameters:
-      - name: "id"
-        in: "path"
-        description: "Property identifier. Examples: http://id.loc.gov/ontologies/bibframe/place."
+      - description: "Property identifier. Examples: http://id.loc.gov/ontologies/bibframe/place."
+        in: path
+        name: id
         required: true
-        type: "string"
-      - name: "ontology"
-        in: "path"
-        description: "BioPortal ontology identifier. Examples: NCIT, FMA, OBI."
+        schema:
+          type: string
+      - description: "BioPortal ontology identifier. Examples: NCIT, FMA, OBI."
+        in: path
+        name: ontology
         required: true
-        type: "string"
+        schema:
+          type: string
       responses:
-        200:
-          description: "Successful operation"
-        400:
-          description: "Bad request"
-        401:
-          description: "Unauthorized"
-        403:
-          description: "Forbidden"
-        404:
-          description: "Not found"
-        500:
-          description: "Internal server error"
+        "200":
+          description: Successful operation
+        "400":
+          description: Bad request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not found
+        "500":
+          description: Internal server error
       security:
       - api_key: []
+      summary: Find property
+      tags:
+      - Properties
   /bioportal/ontologies/{ontology}/properties/{id}/children:
     get:
-      tags:
-      - "Properties"
-      summary: "Get property children"
-      description: "Get property children (only for regular classes)."
-      operationId: "findPropertyChildren"
-      produces:
-      - "application/json"
+      description: Get property children (only for regular classes).
+      operationId: findPropertyChildren
       parameters:
-      - name: "id"
-        in: "path"
-        description: "Property identifier. Examples: http://id.loc.gov/ontologies/bibframe/place."
+      - description: "Property identifier. Examples: http://id.loc.gov/ontologies/bibframe/place."
+        in: path
+        name: id
         required: true
-        type: "string"
-      - name: "ontology"
-        in: "path"
-        description: "BioPortal ontology identifier. Examples: NCIT, FMA, OBI."
+        schema:
+          type: string
+      - description: "BioPortal ontology identifier. Examples: NCIT, FMA, OBI."
+        in: path
+        name: ontology
         required: true
-        type: "string"
+        schema:
+          type: string
       responses:
-        200:
-          description: "Successful operation"
-        400:
-          description: "Bad request"
-        401:
-          description: "Unauthorized"
-        403:
-          description: "Forbidden"
-        404:
-          description: "Not found"
-        500:
-          description: "Internal server error"
+        "200":
+          description: Successful operation
+        "400":
+          description: Bad request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not found
+        "500":
+          description: Internal server error
       security:
       - api_key: []
+      summary: Get property children
+      tags:
+      - Properties
   /bioportal/ontologies/{ontology}/properties/{id}/descendants:
     get:
-      tags:
-      - "Properties"
-      summary: "Get property descendants"
-      description: "Get property descendants."
-      operationId: "findPropertyDescendants"
-      produces:
-      - "application/json"
+      description: Get property descendants.
+      operationId: findPropertyDescendants
       parameters:
-      - name: "id"
-        in: "path"
-        description: "Property identifier. Examples: http://id.loc.gov/ontologies/bibframe/place."
+      - description: "Property identifier. Examples: http://id.loc.gov/ontologies/bibframe/place."
+        in: path
+        name: id
         required: true
-        type: "string"
-      - name: "ontology"
-        in: "path"
-        description: "BioPortal ontology identifier. Examples: NCIT, FMA, OBI."
+        schema:
+          type: string
+      - description: "BioPortal ontology identifier. Examples: NCIT, FMA, OBI."
+        in: path
+        name: ontology
         required: true
-        type: "string"
+        schema:
+          type: string
       responses:
-        200:
-          description: "Successful operation"
-        400:
-          description: "Bad request"
-        401:
-          description: "Unauthorized"
-        403:
-          description: "Forbidden"
-        404:
-          description: "Not found"
-        500:
-          description: "Internal server error"
+        "200":
+          description: Successful operation
+        "400":
+          description: Bad request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not found
+        "500":
+          description: Internal server error
       security:
       - api_key: []
+      summary: Get property descendants
+      tags:
+      - Properties
   /bioportal/ontologies/{ontology}/properties/{id}/parents:
     get:
-      tags:
-      - "Properties"
-      summary: "Get property parents"
-      description: "Get property parents."
-      operationId: "findPropertyParents"
-      produces:
-      - "application/json"
+      description: Get property parents.
+      operationId: findPropertyParents
       parameters:
-      - name: "id"
-        in: "path"
-        description: "Property identifier. Examples: http://id.loc.gov/ontologies/bibframe/place."
+      - description: "Property identifier. Examples: http://id.loc.gov/ontologies/bibframe/place."
+        in: path
+        name: id
         required: true
-        type: "string"
-      - name: "ontology"
-        in: "path"
-        description: "BioPortal ontology identifier. Examples: NCIT, FMA, OBI."
+        schema:
+          type: string
+      - description: "BioPortal ontology identifier. Examples: NCIT, FMA, OBI."
+        in: path
+        name: ontology
         required: true
-        type: "string"
+        schema:
+          type: string
       responses:
-        200:
-          description: "Successful operation"
-        400:
-          description: "Bad request"
-        401:
-          description: "Unauthorized"
-        403:
-          description: "Forbidden"
-        404:
-          description: "Not found"
-        500:
-          description: "Internal server error"
+        "200":
+          description: Successful operation
+        "400":
+          description: Bad request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not found
+        "500":
+          description: Internal server error
       security:
       - api_key: []
+      summary: Get property parents
+      tags:
+      - Properties
   /bioportal/ontologies/{ontology}/properties/{id}/tree:
     get:
-      tags:
-      - "Properties"
-      summary: "Get property tree"
-      description: "Get property tree."
-      operationId: "findPropertyTree"
-      produces:
-      - "application/json"
+      description: Get property tree.
+      operationId: findPropertyTree
       parameters:
-      - name: "id"
-        in: "path"
-        description: "Property identifier. Examples: http://id.loc.gov/ontologies/bibframe/place."
+      - description: "Property identifier. Examples: http://id.loc.gov/ontologies/bibframe/place."
+        in: path
+        name: id
         required: true
-        type: "string"
-      - name: "ontology"
-        in: "path"
-        description: "BioPortal ontology identifier. Examples: NCIT, FMA, OBI."
+        schema:
+          type: string
+      - description: "BioPortal ontology identifier. Examples: NCIT, FMA, OBI."
+        in: path
+        name: ontology
         required: true
-        type: "string"
+        schema:
+          type: string
       responses:
-        200:
-          description: "Successful operation"
-        400:
-          description: "Bad request"
-        401:
-          description: "Unauthorized"
-        403:
-          description: "Forbidden"
-        404:
-          description: "Not found"
-        500:
-          description: "Internal server error"
+        "200":
+          description: Successful operation
+        "400":
+          description: Bad request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not found
+        "500":
+          description: Internal server error
       security:
       - api_key: []
+      summary: Get property tree
+      tags:
+      - Properties
   /bioportal/property_search:
     get:
-      tags:
-      - "Properties"
-      summary: "Property search"
-      description: "Search for properties."
-      operationId: "propertySearch"
-      produces:
-      - "application/json"
+      description: Search for properties.
+      operationId: propertySearch
       parameters:
-      - name: "q"
-        in: "query"
-        description: "Search query. Example: title."
+      - description: "Search query. Example: title."
+        in: query
+        name: q
         required: true
-        type: "string"
-      - name: "sources"
-        in: "query"
-        description: "Comma-separated list of target ontologies. Example: 'ontologies=BIBFRAME'.\
+        schema:
+          type: string
+          maxLength: 2147483647
+          minLength: 1
+      - description: "Comma-separated list of target ontologies. Example: 'ontologies=BIBFRAME'.\
           \ By default, all BioPortal ontologies and value sets are considered."
-        required: false
-        type: "string"
-      - name: "exact_match"
-        in: "query"
-        description: "Restricts results only to the exact matches of the query in\
+        in: query
+        name: sources
+        schema:
+          type: string
+      - description: "Restricts results only to the exact matches of the query in\
           \ the property id, label, or the generated label (a label, auto-generated\
           \ from the id). Default: false."
-        required: false
-        type: "boolean"
-      - name: "require_definitions"
-        in: "query"
-        description: "Filter results only to those that include definitions."
-        required: false
-        type: "boolean"
-      - name: "page"
-        in: "query"
-        description: "Page to be returned. Example: 7."
-        required: false
-        type: "integer"
-        default: 1
-        format: "int32"
-      - name: "page_size"
-        in: "query"
-        description: "Number of results per page. Example: 10."
-        required: false
-        type: "integer"
-        format: "int32"
+        in: query
+        name: exact_match
+        schema:
+          type: boolean
+      - description: Filter results only to those that include definitions.
+        in: query
+        name: require_definitions
+        schema:
+          type: boolean
+      - description: "Page to be returned. Example: 7."
+        in: query
+        name: page
+        schema:
+          type: integer
+          format: int32
+          default: 1
+      - description: "Number of results per page. Example: 10."
+        in: query
+        name: page_size
+        schema:
+          type: integer
+          format: int32
       responses:
-        200:
-          description: "Successful operation"
-        400:
-          description: "Bad request"
-        401:
-          description: "Unauthorized"
-        403:
-          description: "Forbidden"
-        404:
-          description: "Not found"
-        500:
-          description: "Internal server error"
+        "200":
+          description: Successful operation
+        "400":
+          description: Bad request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not found
+        "500":
+          description: Internal server error
       security:
       - api_key: []
+      summary: Property search
+      tags:
+      - Properties
+      - Classes
   /bioportal/relations:
     post:
-      tags:
-      - "Relations"
-      summary: "Create a provisional relation"
-      description: "Create a provisional relation."
-      operationId: "createRelation"
-      produces:
-      - "application/json"
-      parameters: []
+      description: Create a provisional relation.
+      operationId: createRelation
       responses:
-        204:
-          description: "Successful operation (no content)"
-        400:
-          description: "Bad request"
-        401:
-          description: "Unauthorized"
-        403:
-          description: "Forbidden"
-        404:
-          description: "Not found"
-        500:
-          description: "Internal server error"
+        "204":
+          description: Successful operation (no content)
+        "400":
+          description: Bad request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not found
+        "500":
+          description: Internal server error
       security:
       - api_key: []
+      summary: Create a provisional relation
+      tags:
+      - Relations
   /bioportal/relations/{id}:
-    get:
-      tags:
-      - "Relations"
-      summary: "Find provisional relation by id"
-      description: "Find provisional relation by id."
-      operationId: "findRelation"
-      produces:
-      - "application/json"
-      parameters:
-      - name: "id"
-        in: "path"
-        description: "Provisional relation short identifier. Examples: 720f50f0-ae6f-0133-848f-005056010073."
-        required: true
-        type: "string"
-      responses:
-        200:
-          description: "Successful operation"
-        400:
-          description: "Bad request"
-        401:
-          description: "Unauthorized"
-        403:
-          description: "Forbidden"
-        404:
-          description: "Not found"
-        500:
-          description: "Internal server error"
-      security:
-      - api_key: []
     delete:
-      tags:
-      - "Relations"
-      summary: "Delete provisional relation"
-      description: "Delete provisional relation by id."
-      operationId: "deleteRelation"
-      produces:
-      - "application/json"
+      description: Delete provisional relation by id.
+      operationId: deleteRelation
       parameters:
-      - name: "id"
-        in: "path"
-        description: "Provisional relation short identifier. Examples: 720f50f0-ae6f-0133-848f-005056010073."
+      - description: "Provisional relation short identifier. Examples: 720f50f0-ae6f-0133-848f-005056010073."
+        in: path
+        name: id
         required: true
-        type: "string"
+        schema:
+          type: string
       responses:
-        200:
-          description: "Successful operation"
-        400:
-          description: "Bad request"
-        401:
-          description: "Unauthorized"
-        403:
-          description: "Forbidden"
-        404:
-          description: "Not found"
-        500:
-          description: "Internal server error"
+        "200":
+          description: Successful operation
+        "400":
+          description: Bad request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not found
+        "500":
+          description: Internal server error
       security:
       - api_key: []
+      summary: Delete provisional relation
+      tags:
+      - Relations
+    get:
+      description: Find provisional relation by id.
+      operationId: findRelation
+      parameters:
+      - description: "Provisional relation short identifier. Examples: 720f50f0-ae6f-0133-848f-005056010073."
+        in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: Successful operation
+        "400":
+          description: Bad request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not found
+        "500":
+          description: Internal server error
+      security:
+      - api_key: []
+      summary: Find provisional relation by id
+      tags:
+      - Relations
   /bioportal/search:
     get:
-      tags:
-      - "Classes"
-      - "Value sets"
-      - "Values"
-      summary: "Search"
       description: "Search for ontology classes, value sets, and values."
-      operationId: "search"
-      produces:
-      - "application/json"
+      operationId: search
       parameters:
-      - name: "q"
-        in: "query"
-        description: "Search query. Example: melanoma."
+      - description: "Search query. Example: melanoma."
+        in: query
+        name: q
         required: true
-        type: "string"
-      - name: "scope"
-        in: "query"
-        description: "Comma-separated list of search scopes. Accepted values={all,\
+        schema:
+          type: string
+          maxLength: 2147483647
+          minLength: 1
+      - description: "Comma-separated list of search scopes. Accepted values={all,\
           \ classes, value_sets, values}. Default: all."
-        required: false
-        type: "string"
-        default: "all"
-      - name: "sources"
-        in: "query"
-        description: "Comma-separated list of target ontologies and/or value sets.\
+        in: query
+        name: scope
+        schema:
+          type: string
+          default: all
+      - description: "Comma-separated list of target ontologies and/or value sets.\
           \ Example: 'ontologies=CEDARVS,NCIT'. By default, all BioPortal ontologies\
           \ and value sets are considered. The value of 'scope' overrides the list\
           \ of sources specified using this parameter."
-        required: false
-        type: "string"
-      - name: "suggest"
-        in: "query"
-        description: "Will perform a search specifically geared towards type-ahead\
+        in: query
+        name: sources
+        schema:
+          type: string
+      - description: "Will perform a search specifically geared towards type-ahead\
           \ suggestions. Default: false."
-        required: false
-        type: "boolean"
-      - name: "source"
-        in: "query"
-        description: "Ontology for which the subtree search will be performed. Example:\
+        in: query
+        name: suggest
+        schema:
+          type: boolean
+      - description: "Ontology for which the subtree search will be performed. Example:\
           \ NCIT."
-        required: false
-        type: "string"
-      - name: "subtree_root_id"
-        in: "query"
-        description: "Class identifier that limits the search to the branch rooted\
+        in: query
+        name: source
+        schema:
+          type: string
+      - description: "Class identifier that limits the search to the branch rooted\
           \ on that class. It must be URL encoded. Example: http%3A%2F%2Fncicb.nci.nih.gov%2Fxml%2Fowl%2FEVS%2FThesaurus.owl%23C3224."
-        required: false
-        type: "string"
-      - name: "max_depth"
-        in: "query"
-        description: "Subtree depth."
-        required: false
-        type: "integer"
-        default: 1
-        format: "int32"
-      - name: "page"
-        in: "query"
-        description: "Page to be returned. Example: 7."
-        required: false
-        type: "integer"
-        default: 1
-        format: "int32"
-      - name: "page_size"
-        in: "query"
-        description: "Number of results per page. Example: 10."
-        required: false
-        type: "integer"
-        format: "int32"
+        in: query
+        name: subtree_root_id
+        schema:
+          type: string
+      - description: Subtree depth.
+        in: query
+        name: max_depth
+        schema:
+          type: integer
+          format: int32
+          default: 1
+      - description: "Page to be returned. Example: 7."
+        in: query
+        name: page
+        schema:
+          type: integer
+          format: int32
+          default: 1
+      - description: "Number of results per page. Example: 10."
+        in: query
+        name: page_size
+        schema:
+          type: integer
+          format: int32
       responses:
-        200:
-          description: "Successful operation"
-        400:
-          description: "Bad request"
-        401:
-          description: "Unauthorized"
-        403:
-          description: "Forbidden"
-        404:
-          description: "Not found"
-        500:
-          description: "Internal server error"
+        "200":
+          description: Successful operation
+        "400":
+          description: Bad request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not found
+        "500":
+          description: Internal server error
       security:
       - api_key: []
+      summary: Search
+      tags:
+      - Classes
+      - Value sets
+      - Values
   /bioportal/value-sets:
     get:
-      tags:
-      - "Value sets"
-      summary: "Find all value sets"
-      description: "Find all value sets."
-      operationId: "findAllValueSets"
-      produces:
-      - "application/json"
-      parameters: []
+      description: Find all value sets.
+      operationId: findAllValueSets
       responses:
-        200:
-          description: "Successful operation"
-        400:
-          description: "Bad request"
-        401:
-          description: "Unauthorized"
-        403:
-          description: "Forbidden"
-        404:
-          description: "Not found"
-        500:
-          description: "Internal server error"
+        "200":
+          description: Successful operation
+        "400":
+          description: Bad request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not found
+        "500":
+          description: Internal server error
       security:
       - api_key: []
+      summary: Find all value sets
+      tags:
+      - Value sets
   /bioportal/value-sets/{id}:
-    put:
-      tags:
-      - "Value sets"
-      summary: "Update a provisional value set"
-      description: "Update a provisional value set."
-      operationId: "updateValueSet"
-      produces:
-      - "application/json"
-      parameters:
-      - name: "id"
-        in: "path"
-        description: "Provisional value set short identifier. Example: af033050-b04b-0133-981f-005056010074"
-        required: true
-        type: "string"
-      responses:
-        204:
-          description: "Successful operation (no content)"
-        400:
-          description: "Bad request"
-        401:
-          description: "Unauthorized"
-        403:
-          description: "Forbidden"
-        404:
-          description: "Not found"
-        500:
-          description: "Internal server error"
-      security:
-      - api_key: []
     delete:
-      tags:
-      - "Value sets"
-      summary: "Delete a provisional value set"
-      description: "Update a provisional value set."
-      operationId: "deleteValueSet"
-      produces:
-      - "application/json"
+      description: Update a provisional value set.
+      operationId: deleteValueSet
       parameters:
-      - name: "id"
-        in: "path"
-        description: "Provisional value set short identifier. Example: af033050-b04b-0133-981f-005056010074"
+      - description: "Provisional value set short identifier. Example: af033050-b04b-0133-981f-005056010074"
+        in: path
+        name: id
         required: true
-        type: "string"
+        schema:
+          type: string
       responses:
-        204:
-          description: "Successful operation (no content)"
-        400:
-          description: "Bad request"
-        401:
-          description: "Unauthorized"
-        403:
-          description: "Forbidden"
-        404:
-          description: "Not found"
-        500:
-          description: "Internal server error"
+        "204":
+          description: Successful operation (no content)
+        "400":
+          description: Bad request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not found
+        "500":
+          description: Internal server error
       security:
       - api_key: []
+      summary: Delete a provisional value set
+      tags:
+      - Value sets
+    put:
+      description: Update a provisional value set.
+      operationId: updateValueSet
+      parameters:
+      - description: "Provisional value set short identifier. Example: af033050-b04b-0133-981f-005056010074"
+        in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      responses:
+        "204":
+          description: Successful operation (no content)
+        "400":
+          description: Bad request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not found
+        "500":
+          description: Internal server error
+      security:
+      - api_key: []
+      summary: Update a provisional value set
+      tags:
+      - Value sets
   /bioportal/values/{id}:
-    put:
-      tags:
-      - "Values"
-      summary: "Update a provisional value"
-      description: "Update a provisional value."
-      operationId: "updateValue"
-      produces:
-      - "application/json"
-      parameters:
-      - name: "id"
-        in: "path"
-        description: "Value identifier. Example: 42f22880-b04b-0133-848f-005056010073"
-        required: true
-        type: "string"
-      responses:
-        204:
-          description: "Successful operation (no content)"
-        400:
-          description: "Bad request"
-        401:
-          description: "Unauthorized"
-        403:
-          description: "Forbidden"
-        404:
-          description: "Not found"
-        500:
-          description: "Internal server error"
-      security:
-      - api_key: []
     delete:
-      tags:
-      - "Values"
-      summary: "Delete a provisional value"
-      description: "Delete a provisional value."
-      operationId: "deleteValue"
-      produces:
-      - "application/json"
+      description: Delete a provisional value.
+      operationId: deleteValue
       parameters:
-      - name: "id"
-        in: "path"
-        description: "Value identifier. Example: 42f22880-b04b-0133-848f-005056010073"
+      - description: "Value identifier. Example: 42f22880-b04b-0133-848f-005056010073"
+        in: path
+        name: id
         required: true
-        type: "string"
+        schema:
+          type: string
       responses:
-        204:
-          description: "Successful operation (no content)"
-        400:
-          description: "Bad request"
-        401:
-          description: "Unauthorized"
-        403:
-          description: "Forbidden"
-        404:
-          description: "Not found"
-        500:
-          description: "Internal server error"
+        "204":
+          description: Successful operation (no content)
+        "400":
+          description: Bad request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not found
+        "500":
+          description: Internal server error
       security:
       - api_key: []
+      summary: Delete a provisional value
+      tags:
+      - Values
+    put:
+      description: Update a provisional value.
+      operationId: updateValue
+      parameters:
+      - description: "Value identifier. Example: 42f22880-b04b-0133-848f-005056010073"
+        in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      responses:
+        "204":
+          description: Successful operation (no content)
+        "400":
+          description: Bad request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not found
+        "500":
+          description: Internal server error
+      security:
+      - api_key: []
+      summary: Update a provisional value
+      tags:
+      - Values
   /bioportal/vs-collections:
     get:
-      tags:
-      - "Value set collections"
-      summary: "Find all value set collections"
-      description: "Find all value set collections."
-      operationId: "findAllVSCollections"
-      produces:
-      - "application/json"
+      description: Find all value set collections.
+      operationId: findAllVSCollections
       parameters:
-      - name: "include_details"
-        in: "query"
-        description: "If true, additional details about each value set collection\
+      - description: "If true, additional details about each value set collection\
           \ will be included in the response. Default: false."
-        required: false
-        type: "boolean"
-        default: false
+        in: query
+        name: include_details
+        schema:
+          type: boolean
+          default: false
       responses:
-        200:
-          description: "Successful operation"
-        400:
-          description: "Bad request"
-        401:
-          description: "Unauthorized"
-        403:
-          description: "Forbidden"
-        404:
-          description: "Not found"
-        500:
-          description: "Internal server error"
+        "200":
+          description: Successful operation
+        "400":
+          description: Bad request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not found
+        "500":
+          description: Internal server error
       security:
       - api_key: []
+      summary: Find all value set collections
+      tags:
+      - Value set collections
   /bioportal/vs-collections/{vs_collection}/value-sets:
     get:
-      tags:
-      - "Value sets"
-      summary: "Get all value sets in a value set collection"
-      description: "Get all value sets in a value set collection."
-      operationId: "findValueSetsByVsCollection"
-      produces:
-      - "application/json"
+      description: Get all value sets in a value set collection.
+      operationId: findValueSetsByVsCollection
       parameters:
-      - name: "vs_collection"
-        in: "path"
-        description: "Value set collection. Example: CEDARVS."
+      - description: "Value set collection. Example: CEDARVS."
+        in: path
+        name: vs_collection
         required: true
-        type: "string"
-      - name: "page"
-        in: "query"
-        description: "Page to be returned. Example: 7."
-        required: false
-        type: "integer"
-        default: 1
-        format: "int32"
-      - name: "pageSize"
-        in: "query"
-        description: "Number of results per page. Example: 10."
-        required: false
-        type: "integer"
-        format: "int32"
+        schema:
+          type: string
+      - description: "Page to be returned. Example: 7."
+        in: query
+        name: page
+        schema:
+          type: integer
+          format: int32
+          default: 1
+      - description: "Number of results per page. Example: 10."
+        in: query
+        name: pageSize
+        schema:
+          type: integer
+          format: int32
       responses:
-        200:
-          description: "Successful operation"
-        400:
-          description: "Bad request"
-        401:
-          description: "Unauthorized"
-        403:
-          description: "Forbidden"
-        404:
-          description: "Not found"
-        500:
-          description: "Internal server error"
+        "200":
+          description: Successful operation
+        "400":
+          description: Bad request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not found
+        "500":
+          description: Internal server error
       security:
       - api_key: []
+      summary: Get all value sets in a value set collection
+      tags:
+      - Value sets
     post:
-      tags:
-      - "Value sets"
-      summary: "Create a provisional value set"
-      description: "Create a provisional value set in a particular value set collection."
-      operationId: "createValueSet"
-      produces:
-      - "application/json"
+      description: Create a provisional value set in a particular value set collection.
+      operationId: createValueSet
       parameters:
-      - name: "vs_collection"
-        in: "path"
-        description: "Value set collection. Example: CEDARVS."
+      - description: "Value set collection. Example: CEDARVS."
+        in: path
+        name: vs_collection
         required: true
-        type: "string"
+        schema:
+          type: string
       responses:
-        204:
-          description: "Successful operation (no content)"
-        400:
-          description: "Bad request"
-        401:
-          description: "Unauthorized"
-        403:
-          description: "Forbidden"
-        404:
-          description: "Not found"
-        500:
-          description: "Internal server error"
+        "204":
+          description: Successful operation (no content)
+        "400":
+          description: Bad request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not found
+        "500":
+          description: Internal server error
       security:
       - api_key: []
+      summary: Create a provisional value set
+      tags:
+      - Value sets
   /bioportal/vs-collections/{vs_collection}/value-sets/{id}:
     get:
-      tags:
-      - "Value sets"
-      summary: "Find value set by id"
-      description: "Find provisional value set by id (either provisional or regular)."
-      operationId: "findValueSet"
-      produces:
-      - "application/json"
+      description: Find provisional value set by id (either provisional or regular).
+      operationId: findValueSet
       parameters:
-      - name: "id"
-        in: "path"
-        description: "Provisional value set short identifier. Example: af033050-b04b-0133-981f-005056010074"
+      - description: "Provisional value set short identifier. Example: af033050-b04b-0133-981f-005056010074"
+        in: path
+        name: id
         required: true
-        type: "string"
-      - name: "vs_collection"
-        in: "path"
-        description: "Value set collection. Example: CEDARVS."
+        schema:
+          type: string
+      - description: "Value set collection. Example: CEDARVS."
+        in: path
+        name: vs_collection
         required: true
-        type: "string"
+        schema:
+          type: string
       responses:
-        200:
-          description: "Successful operation"
-        400:
-          description: "Bad request"
-        401:
-          description: "Unauthorized"
-        403:
-          description: "Forbidden"
-        404:
-          description: "Not found"
-        500:
-          description: "Internal server error"
+        "200":
+          description: Successful operation
+        "400":
+          description: Bad request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not found
+        "500":
+          description: Internal server error
       security:
       - api_key: []
+      summary: Find value set by id
+      tags:
+      - Value sets
   /bioportal/vs-collections/{vs_collection}/value-sets/{id}/tree:
     get:
-      tags:
-      - "Value sets"
-      summary: "Get value set tree"
-      description: "Get value set tree (only for regular value sets)."
-      operationId: "findValueSetTree"
-      produces:
-      - "application/json"
+      description: Get value set tree (only for regular value sets).
+      operationId: findValueSetTree
       parameters:
-      - name: "id"
-        in: "path"
-        description: "Provisional value set short identifier. Example: af033050-b04b-0133-981f-005056010074"
+      - description: "Provisional value set short identifier. Example: af033050-b04b-0133-981f-005056010074"
+        in: path
+        name: id
         required: true
-        type: "string"
-      - name: "vs_collection"
-        in: "path"
-        description: "Value set collection. Example: CEDARVS."
+        schema:
+          type: string
+      - description: "Value set collection. Example: CEDARVS."
+        in: path
+        name: vs_collection
         required: true
-        type: "string"
+        schema:
+          type: string
       responses:
-        200:
-          description: "Successful operation"
-        400:
-          description: "Bad request"
-        401:
-          description: "Unauthorized"
-        403:
-          description: "Forbidden"
-        404:
-          description: "Not found"
-        500:
-          description: "Internal server error"
+        "200":
+          description: Successful operation
+        "400":
+          description: Bad request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not found
+        "500":
+          description: Internal server error
       security:
       - api_key: []
+      summary: Get value set tree
+      tags:
+      - Value sets
   /bioportal/vs-collections/{vs_collection}/value-sets/{vs}/values:
     get:
-      tags:
-      - "Values"
-      summary: "Find all values in a value set"
-      description: "Find all values in a value set (either regular or provisional)."
-      operationId: "findValuesByValueSet"
-      produces:
-      - "application/json"
+      description: Find all values in a value set (either regular or provisional).
+      operationId: findValuesByValueSet
       parameters:
-      - name: "vs_collection"
-        in: "path"
-        description: "Value set collection. Example: CEDARVS."
+      - description: "Value set collection. Example: CEDARVS."
+        in: path
+        name: vs_collection
         required: true
-        type: "string"
-      - name: "vs"
-        in: "path"
-        description: "Value set identifier. Example: http://www.semanticweb.org/jgraybeal/ontologies/2015/7/cedarvaluesets#Study_File_Type"
+        schema:
+          type: string
+      - description: "Value set identifier. Example: http://www.semanticweb.org/jgraybeal/ontologies/2015/7/cedarvaluesets#Study_File_Type"
+        in: path
+        name: vs
         required: true
-        type: "string"
-      - name: "page"
-        in: "query"
-        description: "Page to be returned. Example: 7."
-        required: false
-        type: "integer"
-        default: 1
-        format: "int32"
-      - name: "pageSize"
-        in: "query"
-        description: "Number of results per page. Example: 10."
-        required: false
-        type: "integer"
-        format: "int32"
+        schema:
+          type: string
+      - description: "Page to be returned. Example: 7."
+        in: query
+        name: page
+        schema:
+          type: integer
+          format: int32
+          default: 1
+      - description: "Number of results per page. Example: 10."
+        in: query
+        name: pageSize
+        schema:
+          type: integer
+          format: int32
       responses:
-        200:
-          description: "Successful operation"
-        400:
-          description: "Bad request"
-        401:
-          description: "Unauthorized"
-        403:
-          description: "Forbidden"
-        404:
-          description: "Not found"
-        500:
-          description: "Internal server error"
+        "200":
+          description: Successful operation
+        "400":
+          description: Bad request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not found
+        "500":
+          description: Internal server error
       security:
       - api_key: []
+      summary: Find all values in a value set
+      tags:
+      - Values
     post:
-      tags:
-      - "Values"
-      summary: "Create a provisional value"
-      description: "Create a provisional value in a given value set."
-      operationId: "createValue"
-      produces:
-      - "application/json"
+      description: Create a provisional value in a given value set.
+      operationId: createValue
       parameters:
-      - name: "vs_collection"
-        in: "path"
-        description: "Value set collection. Example: CEDARVS."
+      - description: "Value set collection. Example: CEDARVS."
+        in: path
+        name: vs_collection
         required: true
-        type: "string"
-      - name: "vs"
-        in: "path"
-        description: "Value set identifier. Example: http://www.semanticweb.org/jgraybeal/ontologies/2015/7/cedarvaluesets#Study_File_Type"
+        schema:
+          type: string
+      - description: "Value set identifier. Example: http://www.semanticweb.org/jgraybeal/ontologies/2015/7/cedarvaluesets#Study_File_Type"
+        in: path
+        name: vs
         required: true
-        type: "string"
+        schema:
+          type: string
       responses:
-        204:
-          description: "Successful operation (no content)"
-        400:
-          description: "Bad request"
-        401:
-          description: "Unauthorized"
-        403:
-          description: "Forbidden"
-        404:
-          description: "Not found"
-        500:
-          description: "Internal server error"
+        "204":
+          description: Successful operation (no content)
+        "400":
+          description: Bad request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not found
+        "500":
+          description: Internal server error
       security:
       - api_key: []
+      summary: Create a provisional value
+      tags:
+      - Values
   /bioportal/vs-collections/{vs_collection}/values/{id}:
     get:
-      tags:
-      - "Values"
-      summary: "Find value by id"
-      description: "Find value by id."
-      operationId: "findValue"
-      produces:
-      - "application/json"
+      description: Find value by id.
+      operationId: findValue
       parameters:
-      - name: "id"
-        in: "path"
-        description: "Value identifier. Example: 42f22880-b04b-0133-848f-005056010073"
+      - description: "Value identifier. Example: 42f22880-b04b-0133-848f-005056010073"
+        in: path
+        name: id
         required: true
-        type: "string"
-      - name: "vs_collection"
-        in: "path"
-        description: "Value set collection. Example: CEDARVS."
+        schema:
+          type: string
+      - description: "Value set collection. Example: CEDARVS."
+        in: path
+        name: vs_collection
         required: true
-        type: "string"
+        schema:
+          type: string
       responses:
-        200:
-          description: "Successful operation"
-        400:
-          description: "Bad request"
-        401:
-          description: "Unauthorized"
-        403:
-          description: "Forbidden"
-        404:
-          description: "Not found"
-        500:
-          description: "Internal server error"
+        "200":
+          description: Successful operation
+        "400":
+          description: Bad request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not found
+        "500":
+          description: Internal server error
       security:
       - api_key: []
+      summary: Find value by id
+      tags:
+      - Values
   /bioportal/vs-collections/{vs_collection}/values/{id}/all-values:
     get:
-      tags:
-      - "Values"
-      summary: "Find all values in the value set that the given value belongs to"
-      description: "Find all values in the value set that the given value belongs\
-        \ to."
-      operationId: "findAllValuesInValueSetByValue"
-      produces:
-      - "application/json"
+      description: Find all values in the value set that the given value belongs to.
+      operationId: findAllValuesInValueSetByValue
       parameters:
-      - name: "id"
-        in: "path"
-        description: "Value identifier. Example: 42f22880-b04b-0133-848f-005056010073"
+      - description: "Value identifier. Example: 42f22880-b04b-0133-848f-005056010073"
+        in: path
+        name: id
         required: true
-        type: "string"
-      - name: "vs_collection"
-        in: "path"
-        description: "Value set collection. Example: CEDARVS."
+        schema:
+          type: string
+      - description: "Value set collection. Example: CEDARVS."
+        in: path
+        name: vs_collection
         required: true
-        type: "string"
-      - name: "page"
-        in: "query"
-        description: "Page to be returned. Example: 7."
-        required: false
-        type: "integer"
-        default: 1
-        format: "int32"
-      - name: "pageSize"
-        in: "query"
-        description: "Number of results per page. Example: 10."
-        required: false
-        type: "integer"
-        format: "int32"
+        schema:
+          type: string
+      - description: "Page to be returned. Example: 7."
+        in: query
+        name: page
+        schema:
+          type: integer
+          format: int32
+          default: 1
+      - description: "Number of results per page. Example: 10."
+        in: query
+        name: pageSize
+        schema:
+          type: integer
+          format: int32
       responses:
-        200:
-          description: "Successful operation"
-        400:
-          description: "Bad request"
-        401:
-          description: "Unauthorized"
-        403:
-          description: "Forbidden"
-        404:
-          description: "Not found"
-        500:
-          description: "Internal server error"
+        "200":
+          description: Successful operation
+        "400":
+          description: Bad request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not found
+        "500":
+          description: Internal server error
       security:
       - api_key: []
+      summary: Find all values in the value set that the given value belongs to
+      tags:
+      - Values
   /bioportal/vs-collections/{vs_collection}/values/{id}/tree:
     get:
-      tags:
-      - "Values"
-      summary: "Get value tree"
-      description: "Get value tree (only for regular values)."
-      operationId: "findValueTree"
-      produces:
-      - "application/json"
+      description: Get value tree (only for regular values).
+      operationId: findValueTree
       parameters:
-      - name: "id"
-        in: "path"
-        description: "Value identifier. Example: 42f22880-b04b-0133-848f-005056010073"
+      - description: "Value identifier. Example: 42f22880-b04b-0133-848f-005056010073"
+        in: path
+        name: id
         required: true
-        type: "string"
-      - name: "vs_collection"
-        in: "path"
-        description: "Value set collection. Example: CEDARVS."
+        schema:
+          type: string
+      - description: "Value set collection. Example: CEDARVS."
+        in: path
+        name: vs_collection
         required: true
-        type: "string"
+        schema:
+          type: string
       responses:
-        200:
-          description: "Successful operation"
-        400:
-          description: "Bad request"
-        401:
-          description: "Unauthorized"
-        403:
-          description: "Forbidden"
-        404:
-          description: "Not found"
-        500:
-          description: "Internal server error"
+        "200":
+          description: Successful operation
+        "400":
+          description: Bad request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not found
+        "500":
+          description: Internal server error
       security:
       - api_key: []
+      summary: Get value tree
+      tags:
+      - Values
   /bioportal/vs-collections/{vs_collection}/values/{id}/value-set:
     get:
-      tags:
-      - "Value sets"
-      summary: "Find the value set that contains a particular value"
-      description: "Find the value set that contains a particular value."
-      operationId: "findValueSetByValue"
-      produces:
-      - "application/json"
+      description: Find the value set that contains a particular value.
+      operationId: findValueSetByValue
       parameters:
-      - name: "id"
-        in: "path"
-        description: "Value identifier. Example: 42f22880-b04b-0133-848f-005056010073"
+      - description: "Value identifier. Example: 42f22880-b04b-0133-848f-005056010073"
+        in: path
+        name: id
         required: true
-        type: "string"
-      - name: "vs_collection"
-        in: "path"
-        description: "Value set collection. Example: CEDARVS."
+        schema:
+          type: string
+      - description: "Value set collection. Example: CEDARVS."
+        in: path
+        name: vs_collection
         required: true
-        type: "string"
+        schema:
+          type: string
       responses:
-        200:
-          description: "Successful operation"
-        400:
-          description: "Bad request"
-        401:
-          description: "Unauthorized"
-        403:
-          description: "Forbidden"
-        404:
-          description: "Not found"
-        500:
-          description: "Internal server error"
+        "200":
+          description: Successful operation
+        "400":
+          description: Bad request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not found
+        "500":
+          description: Internal server error
       security:
       - api_key: []
-securityDefinitions:
-  api_key:
-    description: "Your CEDAR API key, using the format 'apiKey <yourApiKey>'"
-    type: "apiKey"
-    name: "Authorization"
-    in: "header"
-definitions:
-  IntegratedRetrieveConstraintAction:
-    type: "object"
-    required:
-    - "action"
-    - "source"
-    - "termUri"
-    - "type"
-    properties:
-      action:
-        type: "string"
-        description: "Action to be applied."
-      termUri:
-        type: "string"
-        description: "Term URI the action applies to."
-      type:
-        type: "string"
-        description: "Type of the term."
-      source:
-        type: "string"
-        description: "Source of the term."
-  IntegratedRetrieveConstraintBranch:
-    type: "object"
-    required:
-    - "acronym"
-    - "uri"
-    properties:
-      uri:
-        type: "string"
-        description: "Branch URI."
-      acronym:
-        type: "string"
-        description: "Ontology acronym."
-  IntegratedRetrieveConstraintClass:
-    type: "object"
-    required:
-    - "prefLabel"
-    - "source"
-    - "type"
-    - "uri"
-    properties:
-      uri:
-        type: "string"
-        description: "Class URI."
-      prefLabel:
-        type: "string"
-        description: "Preferred label of the class."
-      type:
-        type: "string"
-        description: "Type of the class."
-      source:
-        type: "string"
-        description: "Source of the class."
-  IntegratedRetrieveConstraintOntology:
-    type: "object"
-    required:
-    - "acronym"
-    properties:
-      acronym:
-        type: "string"
-        description: "Ontology acronym."
-  IntegratedRetrieveConstraintValueSet:
-    type: "object"
-    required:
-    - "uri"
-    - "vsCollection"
-    properties:
-      uri:
-        type: "string"
-        description: "Value set URI."
-      vsCollection:
-        type: "string"
-        description: "Value set collection."
-  IntegratedRetrieveRequestBody:
-    type: "object"
-    required:
-    - "valueConstraints"
-    properties:
-      valueConstraints:
-        description: "The value constraints field specification. Based on CEDAR's\
-          \ '_valueConstraints' field."
-        $ref: "#/definitions/IntegratedRetrieveValueConstraints"
-      inputText:
-        type: "string"
-        description: "The user-supplied initial characters used to filter the conforming\
-          \ values."
-      page:
-        type: "integer"
-        format: "int32"
-        description: "Page to be returned. Example: 7."
-      pageSize:
-        type: "integer"
-        format: "int32"
-        description: "Number of results per page. Example: 10."
-    description: "Object that encapsulates the information needed to run the integrated-retrieve\
-      \ query."
-  IntegratedRetrieveResult:
-    type: "object"
-    required:
-    - "@id"
-    - "@type"
-    - "definition"
-    - "id"
-    - "notation"
-    - "prefLabel"
-    - "type"
-    properties:
-      id:
-        type: "string"
-        description: "Result identifier."
-      '@id':
-        type: "string"
-        description: "Unique URL identifier of the result."
-      '@type':
-        type: "string"
-        description: "Type of the result."
-      type:
-        type: "string"
-        description: "Type of the result."
-      prefLabel:
-        type: "string"
-        description: "Preferred label of the result."
-      notation:
-        type: "string"
-        description: "Notation of the result."
-      definition:
-        type: "string"
-        description: "Definition of the result."
-  IntegratedRetrieveResults:
-    type: "object"
-    required:
-    - "collection"
-    - "nextPage"
-    - "page"
-    - "pageCount"
-    - "pageSize"
-    - "prevPage"
-    - "totalCount"
-    properties:
-      page:
-        type: "integer"
-        format: "int32"
-        description: "Current page."
-      pageCount:
-        type: "integer"
-        format: "int32"
-        description: "Total number of pages."
-      pageSize:
-        type: "integer"
-        format: "int32"
-        description: "Number of results per page."
-      totalCount:
-        type: "integer"
-        format: "int32"
-        description: "Total number of results."
-      prevPage:
-        type: "integer"
-        format: "int32"
-        description: "Previous page."
-      nextPage:
-        type: "integer"
-        format: "int32"
-        description: "Next page."
-      collection:
-        type: "array"
-        description: "The results contained in this page."
-        items:
-          $ref: "#/definitions/IntegratedRetrieveResult"
-    description: "A paginated list of integrated-retrieve results."
-  IntegratedRetrieveValueConstraints:
-    type: "object"
-    required:
-    - "branches"
-    - "classes"
-    - "ontologies"
-    - "valueSets"
-    properties:
-      classes:
-        type: "array"
-        description: "List of ontology classes used to constrain the values."
-        items:
-          $ref: "#/definitions/IntegratedRetrieveConstraintClass"
-      ontologies:
-        type: "array"
-        description: "List of ontologies used to constrain the values."
-        items:
-          $ref: "#/definitions/IntegratedRetrieveConstraintOntology"
-      branches:
-        type: "array"
-        description: "List of ontology branches used to constrain the values."
-        items:
-          $ref: "#/definitions/IntegratedRetrieveConstraintBranch"
-      valueSets:
-        type: "array"
-        description: "List of value sets used to constrain the values."
-        items:
-          $ref: "#/definitions/IntegratedRetrieveConstraintValueSet"
-      actions:
-        type: "array"
-        description: "List of actions applied to the value constraints."
-        items:
-          $ref: "#/definitions/IntegratedRetrieveConstraintAction"
-  IntegratedSearchConstraintAction:
-    type: "object"
-    required:
-    - "action"
-    - "source"
-    - "termUri"
-    - "type"
-    properties:
-      action:
-        type: "string"
-        description: "Action to be applied."
-      termUri:
-        type: "string"
-        description: "Term URI the action applies to."
-      type:
-        type: "string"
-        description: "Type of the term."
-      source:
-        type: "string"
-        description: "Source of the term."
-  IntegratedSearchConstraintBranch:
-    type: "object"
-    required:
-    - "acronym"
-    - "uri"
-    properties:
-      uri:
-        type: "string"
-        description: "Branch URI."
-      acronym:
-        type: "string"
-        description: "Ontology acronym."
-  IntegratedSearchConstraintClass:
-    type: "object"
-    required:
-    - "prefLabel"
-    - "source"
-    - "type"
-    - "uri"
-    properties:
-      uri:
-        type: "string"
-        description: "Class URI."
-      prefLabel:
-        type: "string"
-        description: "Preferred label of the class."
-      type:
-        type: "string"
-        description: "Type of the class."
-      source:
-        type: "string"
-        description: "Source of the class."
-  IntegratedSearchConstraintOntology:
-    type: "object"
-    required:
-    - "acronym"
-    properties:
-      acronym:
-        type: "string"
-        description: "Ontology acronym."
-  IntegratedSearchConstraintValueSet:
-    type: "object"
-    required:
-    - "uri"
-    - "vsCollection"
-    properties:
-      uri:
-        type: "string"
-        description: "Value set URI."
-      vsCollection:
-        type: "string"
-        description: "Value set collection."
-  IntegratedSearchParameterObject:
-    type: "object"
-    required:
-    - "inputText"
-    - "valueConstraints"
-    properties:
-      valueConstraints:
-        description: "The value constraints field specification. Based on CEDAR's\
-          \ '_valueConstraints' field."
-        $ref: "#/definitions/IntegratedSearchValueConstraints"
-      inputText:
-        type: "string"
-        description: "The user-supplied initial characters used to filter the conforming\
-          \ values."
-  IntegratedSearchRequestBody:
-    type: "object"
-    required:
-    - "parameterObject"
-    properties:
-      parameterObject:
-        description: "Object that encapsulates the value constraints and the input\
-          \ text used to run the search query."
-        $ref: "#/definitions/IntegratedSearchParameterObject"
-      page:
-        type: "integer"
-        format: "int32"
-        description: "Page to be returned. Example: 7."
-      pageSize:
-        type: "integer"
-        format: "int32"
-        description: "Number of results per page. Example: 10."
-    description: "Object that encapsulates the information needed to run the integrated-search\
-      \ query."
-  IntegratedSearchResult:
-    type: "object"
-    required:
-    - "@id"
-    - "@type"
-    - "definition"
-    - "id"
-    - "notation"
-    - "prefLabel"
-    - "type"
-    properties:
-      id:
-        type: "string"
-        description: "Result identifier."
-      '@id':
-        type: "string"
-        description: "Unique URL identifier of the result."
-      '@type':
-        type: "string"
-        description: "Type of the result."
-      type:
-        type: "string"
-        description: "Type of the result."
-      prefLabel:
-        type: "string"
-        description: "Preferred label of the result."
-      notation:
-        type: "string"
-        description: "Notation of the result."
-      definition:
-        type: "string"
-        description: "Definition of the result."
-  IntegratedSearchResults:
-    type: "object"
-    required:
-    - "collection"
-    - "nextPage"
-    - "page"
-    - "pageCount"
-    - "pageSize"
-    - "prevPage"
-    - "totalCount"
-    properties:
-      page:
-        type: "integer"
-        format: "int32"
-        description: "Current page."
-      pageCount:
-        type: "integer"
-        format: "int32"
-        description: "Total number of pages."
-      pageSize:
-        type: "integer"
-        format: "int32"
-        description: "Number of results per page."
-      totalCount:
-        type: "integer"
-        format: "int32"
-        description: "Total number of results."
-      prevPage:
-        type: "integer"
-        format: "int32"
-        description: "Previous page."
-      nextPage:
-        type: "integer"
-        format: "int32"
-        description: "Next page."
-      collection:
-        type: "array"
-        description: "The results contained in this page."
-        items:
-          $ref: "#/definitions/IntegratedSearchResult"
-    description: "A paginated list of integrated-search results."
-  IntegratedSearchValueConstraints:
-    type: "object"
-    required:
-    - "branches"
-    - "classes"
-    - "ontologies"
-    - "valueSets"
-    properties:
-      classes:
-        type: "array"
-        description: "List of ontology classes used to constrain the values."
-        items:
-          $ref: "#/definitions/IntegratedSearchConstraintClass"
-      ontologies:
-        type: "array"
-        description: "List of ontologies used to constrain the values."
-        items:
-          $ref: "#/definitions/IntegratedSearchConstraintOntology"
-      branches:
-        type: "array"
-        description: "List of ontology branches used to constrain the values."
-        items:
-          $ref: "#/definitions/IntegratedSearchConstraintBranch"
-      valueSets:
-        type: "array"
-        description: "List of value sets used to constrain the values."
-        items:
-          $ref: "#/definitions/IntegratedSearchConstraintValueSet"
-      actions:
-        type: "array"
-        description: "List of actions applied to the value constraints."
-        items:
-          $ref: "#/definitions/IntegratedSearchConstraintAction"
+      summary: Find the value set that contains a particular value
+      tags:
+      - Value sets
+components:
+  schemas:
+    Action:
+      type: object
+      properties:
+        action:
+          type: string
+          maxLength: 2147483647
+          minLength: 1
+          pattern: move|delete
+        source:
+          type: string
+          maxLength: 2147483647
+          minLength: 1
+        sourceUri:
+          type: string
+        termUri:
+          type: string
+          maxLength: 2147483647
+          minLength: 1
+        to:
+          type: integer
+          format: int32
+        type:
+          type: string
+          maxLength: 2147483647
+          minLength: 1
+      required:
+      - action
+      - source
+      - termUri
+      - type
+    BranchValueConstraint:
+      type: object
+      properties:
+        acronym:
+          type: string
+          maxLength: 2147483647
+          minLength: 1
+        uri:
+          type: string
+          maxLength: 2147483647
+          minLength: 1
+      required:
+      - acronym
+      - uri
+    ClassValueConstraint:
+      type: object
+      properties:
+        label:
+          type: string
+        prefLabel:
+          type: string
+          maxLength: 2147483647
+          minLength: 1
+        source:
+          type: string
+          maxLength: 2147483647
+          minLength: 1
+        type:
+          type: string
+          maxLength: 2147483647
+          minLength: 1
+        uri:
+          type: string
+          maxLength: 2147483647
+          minLength: 1
+      required:
+      - prefLabel
+      - source
+      - type
+      - uri
+    IntegratedRetrieveBody:
+      type: object
+      properties:
+        page:
+          type: integer
+          format: int32
+        pageSize:
+          type: integer
+          format: int32
+        valueConstraints:
+          $ref: "#/components/schemas/ValueConstraints"
+      required:
+      - valueConstraints
+    IntegratedRetrieveConstraintAction:
+      type: object
+      description: List of actions applied to the value constraints.
+      properties:
+        action:
+          type: string
+          description: Action to be applied.
+        source:
+          type: string
+          description: Source of the term.
+        termUri:
+          type: string
+          description: Term URI the action applies to.
+        type:
+          type: string
+          description: Type of the term.
+      required:
+      - action
+      - source
+      - termUri
+      - type
+    IntegratedRetrieveConstraintBranch:
+      type: object
+      description: List of ontology branches used to constrain the values.
+      properties:
+        acronym:
+          type: string
+          description: Ontology acronym.
+        uri:
+          type: string
+          description: Branch URI.
+      required:
+      - acronym
+      - uri
+    IntegratedRetrieveConstraintClass:
+      type: object
+      description: List of ontology classes used to constrain the values.
+      properties:
+        prefLabel:
+          type: string
+          description: Preferred label of the class.
+        source:
+          type: string
+          description: Source of the class.
+        type:
+          type: string
+          description: Type of the class.
+        uri:
+          type: string
+          description: Class URI.
+      required:
+      - prefLabel
+      - source
+      - type
+      - uri
+    IntegratedRetrieveConstraintOntology:
+      type: object
+      description: List of ontologies used to constrain the values.
+      properties:
+        acronym:
+          type: string
+          description: Ontology acronym.
+      required:
+      - acronym
+    IntegratedRetrieveConstraintValueSet:
+      type: object
+      description: List of value sets used to constrain the values.
+      properties:
+        uri:
+          type: string
+          description: Value set URI.
+        vsCollection:
+          type: string
+          description: Value set collection.
+      required:
+      - uri
+      - vsCollection
+    IntegratedRetrieveRequestBody:
+      type: object
+      description: Object that encapsulates the information needed to run the integrated-retrieve
+        query.
+      properties:
+        inputText:
+          type: string
+          description: The user-supplied initial characters used to filter the conforming
+            values.
+        page:
+          type: integer
+          format: int32
+          description: "Page to be returned. Example: 7."
+        pageSize:
+          type: integer
+          format: int32
+          description: "Number of results per page. Example: 10."
+        valueConstraints:
+          $ref: "#/components/schemas/IntegratedRetrieveValueConstraints"
+      required:
+      - valueConstraints
+    IntegratedRetrieveResult:
+      type: object
+      description: The results contained in this page.
+      properties:
+        '@id':
+          type: string
+          description: Unique URL identifier of the result.
+        '@type':
+          type: string
+          description: Type of the result.
+        definition:
+          type: string
+          description: Definition of the result.
+        id:
+          type: string
+          description: Result identifier.
+        notation:
+          type: string
+          description: Notation of the result.
+        prefLabel:
+          type: string
+          description: Preferred label of the result.
+        type:
+          type: string
+          description: Type of the result.
+      required:
+      - '@id'
+      - '@type'
+      - definition
+      - id
+      - notation
+      - prefLabel
+      - type
+    IntegratedRetrieveResults:
+      type: object
+      description: A paginated list of integrated-retrieve results.
+      properties:
+        collection:
+          type: array
+          description: The results contained in this page.
+          items:
+            $ref: "#/components/schemas/IntegratedRetrieveResult"
+        nextPage:
+          type: integer
+          format: int32
+          description: Next page.
+        page:
+          type: integer
+          format: int32
+          description: Current page.
+        pageCount:
+          type: integer
+          format: int32
+          description: Total number of pages.
+        pageSize:
+          type: integer
+          format: int32
+          description: Number of results per page.
+        prevPage:
+          type: integer
+          format: int32
+          description: Previous page.
+        totalCount:
+          type: integer
+          format: int32
+          description: Total number of results.
+      required:
+      - collection
+      - nextPage
+      - page
+      - pageCount
+      - pageSize
+      - prevPage
+      - totalCount
+    IntegratedRetrieveValueConstraints:
+      type: object
+      description: The value constraints field specification. Based on CEDAR's '_valueConstraints'
+        field.
+      properties:
+        actions:
+          type: array
+          description: List of actions applied to the value constraints.
+          items:
+            $ref: "#/components/schemas/IntegratedRetrieveConstraintAction"
+        branches:
+          type: array
+          description: List of ontology branches used to constrain the values.
+          items:
+            $ref: "#/components/schemas/IntegratedRetrieveConstraintBranch"
+        classes:
+          type: array
+          description: List of ontology classes used to constrain the values.
+          items:
+            $ref: "#/components/schemas/IntegratedRetrieveConstraintClass"
+        ontologies:
+          type: array
+          description: List of ontologies used to constrain the values.
+          items:
+            $ref: "#/components/schemas/IntegratedRetrieveConstraintOntology"
+        valueSets:
+          type: array
+          description: List of value sets used to constrain the values.
+          items:
+            $ref: "#/components/schemas/IntegratedRetrieveConstraintValueSet"
+      required:
+      - branches
+      - classes
+      - ontologies
+      - valueSets
+    IntegratedSearchBody:
+      type: object
+      properties:
+        page:
+          type: integer
+          format: int32
+        pageSize:
+          type: integer
+          format: int32
+        parameterObject:
+          $ref: "#/components/schemas/ParameterObject"
+      required:
+      - parameterObject
+    IntegratedSearchConstraintAction:
+      type: object
+      description: List of actions applied to the value constraints.
+      properties:
+        action:
+          type: string
+          description: Action to be applied.
+        source:
+          type: string
+          description: Source of the term.
+        termUri:
+          type: string
+          description: Term URI the action applies to.
+        type:
+          type: string
+          description: Type of the term.
+      required:
+      - action
+      - source
+      - termUri
+      - type
+    IntegratedSearchConstraintBranch:
+      type: object
+      description: List of ontology branches used to constrain the values.
+      properties:
+        acronym:
+          type: string
+          description: Ontology acronym.
+        uri:
+          type: string
+          description: Branch URI.
+      required:
+      - acronym
+      - uri
+    IntegratedSearchConstraintClass:
+      type: object
+      description: List of ontology classes used to constrain the values.
+      properties:
+        prefLabel:
+          type: string
+          description: Preferred label of the class.
+        source:
+          type: string
+          description: Source of the class.
+        type:
+          type: string
+          description: Type of the class.
+        uri:
+          type: string
+          description: Class URI.
+      required:
+      - prefLabel
+      - source
+      - type
+      - uri
+    IntegratedSearchConstraintOntology:
+      type: object
+      description: List of ontologies used to constrain the values.
+      properties:
+        acronym:
+          type: string
+          description: Ontology acronym.
+      required:
+      - acronym
+    IntegratedSearchConstraintValueSet:
+      type: object
+      description: List of value sets used to constrain the values.
+      properties:
+        uri:
+          type: string
+          description: Value set URI.
+        vsCollection:
+          type: string
+          description: Value set collection.
+      required:
+      - uri
+      - vsCollection
+    IntegratedSearchParameterObject:
+      type: object
+      description: Object that encapsulates the value constraints and the input text
+        used to run the search query.
+      properties:
+        inputText:
+          type: string
+          description: The user-supplied initial characters used to filter the conforming
+            values.
+        valueConstraints:
+          $ref: "#/components/schemas/IntegratedSearchValueConstraints"
+      required:
+      - inputText
+      - valueConstraints
+    IntegratedSearchRequestBody:
+      type: object
+      description: Object that encapsulates the information needed to run the integrated-search
+        query.
+      properties:
+        page:
+          type: integer
+          format: int32
+          description: "Page to be returned. Example: 7."
+        pageSize:
+          type: integer
+          format: int32
+          description: "Number of results per page. Example: 10."
+        parameterObject:
+          $ref: "#/components/schemas/IntegratedSearchParameterObject"
+      required:
+      - parameterObject
+    IntegratedSearchResult:
+      type: object
+      description: The results contained in this page.
+      properties:
+        '@id':
+          type: string
+          description: Unique URL identifier of the result.
+        '@type':
+          type: string
+          description: Type of the result.
+        definition:
+          type: string
+          description: Definition of the result.
+        id:
+          type: string
+          description: Result identifier.
+        notation:
+          type: string
+          description: Notation of the result.
+        prefLabel:
+          type: string
+          description: Preferred label of the result.
+        type:
+          type: string
+          description: Type of the result.
+      required:
+      - '@id'
+      - '@type'
+      - definition
+      - id
+      - notation
+      - prefLabel
+      - type
+    IntegratedSearchResults:
+      type: object
+      description: A paginated list of integrated-search results.
+      properties:
+        collection:
+          type: array
+          description: The results contained in this page.
+          items:
+            $ref: "#/components/schemas/IntegratedSearchResult"
+        nextPage:
+          type: integer
+          format: int32
+          description: Next page.
+        page:
+          type: integer
+          format: int32
+          description: Current page.
+        pageCount:
+          type: integer
+          format: int32
+          description: Total number of pages.
+        pageSize:
+          type: integer
+          format: int32
+          description: Number of results per page.
+        prevPage:
+          type: integer
+          format: int32
+          description: Previous page.
+        totalCount:
+          type: integer
+          format: int32
+          description: Total number of results.
+      required:
+      - collection
+      - nextPage
+      - page
+      - pageCount
+      - pageSize
+      - prevPage
+      - totalCount
+    IntegratedSearchValueConstraints:
+      type: object
+      description: The value constraints field specification. Based on CEDAR's '_valueConstraints'
+        field.
+      properties:
+        actions:
+          type: array
+          description: List of actions applied to the value constraints.
+          items:
+            $ref: "#/components/schemas/IntegratedSearchConstraintAction"
+        branches:
+          type: array
+          description: List of ontology branches used to constrain the values.
+          items:
+            $ref: "#/components/schemas/IntegratedSearchConstraintBranch"
+        classes:
+          type: array
+          description: List of ontology classes used to constrain the values.
+          items:
+            $ref: "#/components/schemas/IntegratedSearchConstraintClass"
+        ontologies:
+          type: array
+          description: List of ontologies used to constrain the values.
+          items:
+            $ref: "#/components/schemas/IntegratedSearchConstraintOntology"
+        valueSets:
+          type: array
+          description: List of value sets used to constrain the values.
+          items:
+            $ref: "#/components/schemas/IntegratedSearchConstraintValueSet"
+      required:
+      - branches
+      - classes
+      - ontologies
+      - valueSets
+    OntologyValueConstraint:
+      type: object
+      properties:
+        acronym:
+          type: string
+          maxLength: 2147483647
+          minLength: 1
+      required:
+      - acronym
+    ParameterObject:
+      type: object
+      properties:
+        inputText:
+          type: string
+        valueConstraints:
+          $ref: "#/components/schemas/ValueConstraints"
+      required:
+      - valueConstraints
+    ValueConstraints:
+      type: object
+      properties:
+        actions:
+          type: array
+          items:
+            $ref: "#/components/schemas/Action"
+        branches:
+          type: array
+          items:
+            $ref: "#/components/schemas/BranchValueConstraint"
+        classes:
+          type: array
+          items:
+            $ref: "#/components/schemas/ClassValueConstraint"
+        ontologies:
+          type: array
+          items:
+            $ref: "#/components/schemas/OntologyValueConstraint"
+        valueSets:
+          type: array
+          items:
+            $ref: "#/components/schemas/ValueSetValueConstraint"
+      required:
+      - branches
+      - classes
+      - ontologies
+      - valueSets
+    ValueSetValueConstraint:
+      type: object
+      properties:
+        uri:
+          type: string
+          maxLength: 2147483647
+          minLength: 1
+        vsCollection:
+          type: string
+          maxLength: 2147483647
+          minLength: 1
+          pattern: CEDARVS|NLMVS|CADSR-VS
+      required:
+      - uri
+      - vsCollection
+  securitySchemes:
+    api_key:
+      description: "Your CEDAR API key, using the format 'apiKey <yourApiKey>'"
+      in: header
+      name: Authorization
+      type: apiKey

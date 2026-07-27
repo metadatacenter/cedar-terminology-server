@@ -1,0 +1,467 @@
+package org.metadatacenter.terms;
+
+import org.metadatacenter.cedar.terminology.validation.integratedsearch.BranchValueConstraint;
+import org.metadatacenter.cedar.terminology.validation.integratedsearch.ClassValueConstraint;
+import org.metadatacenter.cedar.terminology.validation.integratedsearch.OntologyValueConstraint;
+import org.metadatacenter.cedar.terminology.validation.integratedsearch.ValueConstraints;
+import org.metadatacenter.terms.customObjects.PagedResults;
+import org.metadatacenter.terms.domainObjects.*;
+import org.metadatacenter.terms.util.Util;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+
+/**
+ * An {@link ITerminologyService} that dispatches each call to either a local, version-aware
+ * backend (e.g. a SQLite-backed store) or a remote backend (BioPortal), one ontology at a time.
+ *
+ * This is the seam for the incremental migration away from the BioPortal proxy: an ontology is
+ * served locally once it has been ingested and {@link LocalAvailability#isLocal(String)} reports
+ * it as available. Local backends may be partial — a routed call that the local backend answers
+ * with {@link UnsupportedOperationException} falls through to the remote backend, so local coverage
+ * can grow one operation at a time without breaking any request.
+ *
+ * Only the ontology-scoped hierarchy and lookup operations ("Bucket A") are eligible for local
+ * routing. Search operations ("Bucket B") and provisional write operations ("Bucket C") are always
+ * sent to the remote backend for now; both are migration decisions deferred to later work.
+ */
+public class RoutingTerminologyService implements ITerminologyService {
+
+  /**
+   * Decides whether a given ontology is currently served by the local backend.
+   */
+  @FunctionalInterface
+  public interface LocalAvailability {
+    boolean isLocal(String ontology);
+  }
+
+  @FunctionalInterface
+  private interface Call<T> {
+    T apply(ITerminologyService service) throws IOException;
+  }
+
+  private final ITerminologyService remote;
+  private final ITerminologyService local;
+  private final LocalAvailability availability;
+  private final boolean localOnly;
+
+  /**
+   * Remote-only: every call is delegated to {@code remote}. Behavior is identical to using the
+   * remote backend directly. Use this until a local backend exists.
+   */
+  public RoutingTerminologyService(ITerminologyService remote) {
+    this(remote, null, ontology -> false, false);
+  }
+
+  public RoutingTerminologyService(ITerminologyService remote, ITerminologyService local,
+                                   LocalAvailability availability) {
+    this(remote, local, availability, false);
+  }
+
+  /**
+   * When {@code localOnly} is true, a call for a locally-served ontology is never allowed to fall
+   * back to the remote backend: a local {@link UnsupportedOperationException} propagates instead of
+   * being masked by a remote result. This is the strict mode the equivalence harness runs under, so
+   * a gap in local coverage surfaces as a failure rather than a silent BioPortal answer. Ontologies
+   * not served locally are unaffected and still use the remote backend.
+   */
+  public RoutingTerminologyService(ITerminologyService remote, ITerminologyService local,
+                                   LocalAvailability availability, boolean localOnly) {
+    this.remote = remote;
+    this.local = local;
+    this.availability = availability;
+    this.localOnly = localOnly;
+  }
+
+  /**
+   * Serves an ontology-scoped call from the local backend when it is present and reports the
+   * ontology as available, falling back to the remote backend if the local backend is absent or
+   * does not implement the operation. In {@code localOnly} mode a locally-served ontology does not
+   * fall back — an unimplemented operation propagates.
+   */
+  private <T> T dispatch(String ontology, Call<T> call) throws IOException {
+    if (local != null && ontology != null && availability.isLocal(ontology)) {
+      if (localOnly) {
+        return call.apply(local);
+      }
+      try {
+        return call.apply(local);
+      } catch (UnsupportedOperationException notImplementedLocally) {
+        // Fall through to remote: local coverage is partial by design.
+      }
+    }
+    return call.apply(remote);
+  }
+
+  /* ---------------------------------------------------------------------------------------------
+   * Bucket B — search. Routed to local when the search targets a single locally-served ontology
+   * (a class search scoped to one ontology, or a branch search); anything the local backend cannot
+   * answer (multi-source, non-class scopes, value sets) throws and falls through to remote.
+   * ------------------------------------------------------------------------------------------- */
+
+  @Override
+  public PagedResults<SearchResult> search(String q, List<String> scope, List<String> sources, boolean suggest,
+                                           String source, String subtreeRootId, int maxDepth, int page, int pageSize,
+                                           boolean displayContext, boolean displayLinks, String apiKey,
+                                           List<String> valueSetsIds) throws IOException {
+    String localOntology = singleLocalSearchOntology(sources, source, subtreeRootId);
+    if (local != null && localOntology != null) {
+      if (localOnly) {
+        return local.search(q, scope, sources, suggest, source, subtreeRootId, maxDepth, page, pageSize,
+            displayContext, displayLinks, apiKey, valueSetsIds);
+      }
+      try {
+        return local.search(q, scope, sources, suggest, source, subtreeRootId, maxDepth, page, pageSize,
+            displayContext, displayLinks, apiKey, valueSetsIds);
+      } catch (UnsupportedOperationException notImplementedLocally) {
+        // Fall through to remote.
+      }
+    }
+    return remote.search(q, scope, sources, suggest, source, subtreeRootId, maxDepth, page, pageSize, displayContext,
+        displayLinks, apiKey, valueSetsIds);
+  }
+
+  /**
+   * The single locally-served ontology a search targets, or {@code null} if it is not a candidate
+   * for local routing. A branch search names its ontology in {@code source}; an ontology-scoped
+   * search names exactly one acronym in {@code sources}.
+   */
+  private String singleLocalSearchOntology(List<String> sources, String source, String subtreeRootId) {
+    if (subtreeRootId != null && !subtreeRootId.isEmpty()) {
+      return source != null && availability.isLocal(source) ? source : null;
+    }
+    if (sources != null && sources.size() == 1 && availability.isLocal(sources.get(0))) {
+      return sources.get(0);
+    }
+    return null;
+  }
+
+  @Override
+  public PagedResults<SearchResult> propertySearch(String q, List<String> sources, boolean exactMatch,
+                                                   boolean requireDefinitions, int page, int pageSize,
+                                                   boolean displayContext, boolean displayLinks, String apiKey)
+      throws IOException {
+    return remote.propertySearch(q, sources, exactMatch, requireDefinitions, page, pageSize, displayContext,
+        displayLinks, apiKey);
+  }
+
+  @Override
+  public PagedResults<SearchResult> integratedSearch(Optional<String> q, ValueConstraints valueConstraints, int page,
+                                                     int pageSize, String apiKey) throws IOException {
+    if (local != null && integratedSearchServedLocally(valueConstraints)) {
+      if (localOnly) {
+        return local.integratedSearch(q, valueConstraints, page, pageSize, apiKey);
+      }
+      try {
+        return local.integratedSearch(q, valueConstraints, page, pageSize, apiKey);
+      } catch (UnsupportedOperationException notImplementedLocally) {
+        // Fall through to remote.
+      }
+    }
+    return remote.integratedSearch(q, valueConstraints, page, pageSize, apiKey);
+  }
+
+  /**
+   * Whether an integrated search can be served locally: it names at least one source and every
+   * source it names — the ontology of each ontology/branch constraint and the source ontology of
+   * each enumerated class — is locally served. Value-set constraints are never local. This is
+   * conservative on purpose: a search touching any non-local source goes wholly to BioPortal.
+   */
+  private boolean integratedSearchServedLocally(ValueConstraints vc) {
+    if (vc == null || (vc.getValueSets() != null && !vc.getValueSets().isEmpty())) {
+      return false;
+    }
+    List<String> acronyms = new ArrayList<>();
+    if (vc.getOntologies() != null) {
+      for (OntologyValueConstraint o : vc.getOntologies()) {
+        acronyms.add(o.getAcronym());
+      }
+    }
+    if (vc.getBranches() != null) {
+      for (BranchValueConstraint b : vc.getBranches()) {
+        acronyms.add(b.getAcronym());
+      }
+    }
+    if (vc.getClasses() != null) {
+      for (ClassValueConstraint c : vc.getClasses()) {
+        acronyms.add(c.getSource() == null ? null : Util.getShortIdentifier(c.getSource()));
+      }
+    }
+    if (acronyms.isEmpty()) {
+      return false;
+    }
+    for (String acronym : acronyms) {
+      if (acronym == null || !availability.isLocal(acronym)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  @Override
+  public PagedResults<SearchResult> integratedRetrieve(ValueConstraints valueConstraints, int page, int pageSize,
+                                                       String apiKey) throws IOException {
+    return remote.integratedRetrieve(valueConstraints, page, pageSize, apiKey);
+  }
+
+  /* ---------------------------------------------------------------------------------------------
+   * Bucket A — ontologies, classes, properties. Ontology-scoped reads route to local when ready.
+   * ------------------------------------------------------------------------------------------- */
+
+  @Override
+  public List<Ontology> findAllOntologies(boolean includeDetails, String apiKey) throws IOException {
+    // The server reports the ontologies it versions locally (from the catalog), not BioPortal's full
+    // ~1300-ontology registry. Falls back to remote only when no local backend is configured or its
+    // catalog is empty, so a misconfigured deployment does not present an empty ontology list.
+    if (local != null) {
+      List<Ontology> served = local.findAllOntologies(includeDetails, apiKey);
+      if (!served.isEmpty()) {
+        return served;
+      }
+    }
+    return remote.findAllOntologies(includeDetails, apiKey);
+  }
+
+  @Override
+  public Ontology findOntology(String id, boolean includeDetails, String apiKey) throws IOException {
+    return dispatch(id, s -> s.findOntology(id, includeDetails, apiKey));
+  }
+
+  @Override
+  public List<OntologyClass> getRootClasses(String ontologyId, boolean isFlat, String apiKey) throws IOException {
+    return dispatch(ontologyId, s -> s.getRootClasses(ontologyId, isFlat, apiKey));
+  }
+
+  @Override
+  public List<OntologyProperty> getRootProperties(String ontologyId, String apiKey) throws IOException {
+    return dispatch(ontologyId, s -> s.getRootProperties(ontologyId, apiKey));
+  }
+
+  @Override
+  public OntologyClass findRegularClass(String id, String ontology, String apiKey) throws IOException {
+    return dispatch(ontology, s -> s.findRegularClass(id, ontology, apiKey));
+  }
+
+  @Override
+  public OntologyClass findClass(String id, String ontology, String apiKey) throws IOException {
+    return dispatch(ontology, s -> s.findClass(id, ontology, apiKey));
+  }
+
+  @Override
+  public PagedResults<OntologyClass> findAllClassesInOntology(String ontology, int page, int pageSize, String apiKey)
+      throws IOException {
+    return dispatch(ontology, s -> s.findAllClassesInOntology(ontology, page, pageSize, apiKey));
+  }
+
+  @Override
+  public List<TreeNode> getClassTree(String id, String ontology, boolean isFlat, String apiKey) throws IOException {
+    return dispatch(ontology, s -> s.getClassTree(id, ontology, isFlat, apiKey));
+  }
+
+  @Override
+  public PagedResults<OntologyClass> getClassChildren(String id, String ontology, int page, int pageSize, String apiKey)
+      throws IOException {
+    return dispatch(ontology, s -> s.getClassChildren(id, ontology, page, pageSize, apiKey));
+  }
+
+  @Override
+  public PagedResults<OntologyClass> getClassDescendants(String id, String ontology, int page, int pageSize,
+                                                         String apiKey) throws IOException {
+    return dispatch(ontology, s -> s.getClassDescendants(id, ontology, page, pageSize, apiKey));
+  }
+
+  @Override
+  public List<OntologyClass> getClassParents(String id, String ontology, String apiKey) throws IOException {
+    return dispatch(ontology, s -> s.getClassParents(id, ontology, apiKey));
+  }
+
+  @Override
+  public OntologyProperty findProperty(String id, String ontology, String apiKey) throws IOException {
+    return dispatch(ontology, s -> s.findProperty(id, ontology, apiKey));
+  }
+
+  @Override
+  public List<OntologyProperty> findAllPropertiesInOntology(String ontology, String apiKey) throws IOException {
+    return dispatch(ontology, s -> s.findAllPropertiesInOntology(ontology, apiKey));
+  }
+
+  @Override
+  public List<TreeNode> getPropertyTree(String id, String ontology, String apiKey) throws IOException {
+    return dispatch(ontology, s -> s.getPropertyTree(id, ontology, apiKey));
+  }
+
+  @Override
+  public List<OntologyProperty> getPropertyChildren(String id, String ontology, String apiKey) throws IOException {
+    return dispatch(ontology, s -> s.getPropertyChildren(id, ontology, apiKey));
+  }
+
+  @Override
+  public List<OntologyProperty> getPropertyDescendants(String id, String ontology, String apiKey) throws IOException {
+    return dispatch(ontology, s -> s.getPropertyDescendants(id, ontology, apiKey));
+  }
+
+  @Override
+  public List<OntologyProperty> getPropertyParents(String id, String ontology, String apiKey) throws IOException {
+    return dispatch(ontology, s -> s.getPropertyParents(id, ontology, apiKey));
+  }
+
+  /* ---------------------------------------------------------------------------------------------
+   * Values scoped to an ontology — Bucket A.
+   * ------------------------------------------------------------------------------------------- */
+
+  @Override
+  public Value findRegularValue(String id, String ontology, String apiKey) throws IOException {
+    return dispatch(ontology, s -> s.findRegularValue(id, ontology, apiKey));
+  }
+
+  @Override
+  public Value findValue(String id, String ontology, String apiKey) throws IOException {
+    return dispatch(ontology, s -> s.findValue(id, ontology, apiKey));
+  }
+
+  @Override
+  public PagedResults<Value> findAllValuesInValueSetByValue(String id, String ontology, int page, int pageSize,
+                                                            String apiKey) throws IOException {
+    return dispatch(ontology, s -> s.findAllValuesInValueSetByValue(id, ontology, page, pageSize, apiKey));
+  }
+
+  /* ---------------------------------------------------------------------------------------------
+   * Value sets and value-set collections. Keyed by value-set collection, not ontology; local
+   * routing for these is a later decision, so they are served remotely for now.
+   * ------------------------------------------------------------------------------------------- */
+
+  @Override
+  public ValueSet findRegularValueSet(String id, String vsCollection, String apiKey) throws IOException {
+    return remote.findRegularValueSet(id, vsCollection, apiKey);
+  }
+
+  @Override
+  public ValueSet findValueSet(String id, String vsCollection, String apiKey) throws IOException {
+    return remote.findValueSet(id, vsCollection, apiKey);
+  }
+
+  @Override
+  public ValueSet findValueSetByValue(String id, String vsCollection, String apiKey) throws IOException {
+    return remote.findValueSetByValue(id, vsCollection, apiKey);
+  }
+
+  @Override
+  public PagedResults<ValueSet> findValueSetsByVsCollection(String vsCollection, int page, int pageSize, String apiKey)
+      throws IOException {
+    return remote.findValueSetsByVsCollection(vsCollection, page, pageSize, apiKey);
+  }
+
+  @Override
+  public List<ValueSet> findAllValueSets(String apiKey) throws IOException {
+    return remote.findAllValueSets(apiKey);
+  }
+
+  @Override
+  public PagedResults<Value> findValuesByValueSet(String vsId, String vsCollection, int page, int pageSize,
+                                                  String apiKey) throws IOException {
+    return remote.findValuesByValueSet(vsId, vsCollection, page, pageSize, apiKey);
+  }
+
+  @Override
+  public List<ValueSetCollection> findAllVSCollections(boolean includeDetails, String apiKey) throws IOException {
+    return remote.findAllVSCollections(includeDetails, apiKey);
+  }
+
+  @Override
+  public TreeNode getValueTree(String id, String vsCollection, String apiKey) throws IOException {
+    return remote.getValueTree(id, vsCollection, apiKey);
+  }
+
+  @Override
+  public TreeNode getValueSetTree(String id, String vsCollection, String apiKey) throws IOException {
+    return remote.getValueSetTree(id, vsCollection, apiKey);
+  }
+
+  /* ---------------------------------------------------------------------------------------------
+   * Bucket C — provisional writes and their reads. The local store is read-only, so these are
+   * always served remotely.
+   * ------------------------------------------------------------------------------------------- */
+
+  @Override
+  public OntologyClass createProvisionalClass(OntologyClass c, String apiKey) throws IOException {
+    return remote.createProvisionalClass(c, apiKey);
+  }
+
+  @Override
+  public OntologyClass findProvisionalClass(String id, String apiKey) throws IOException {
+    return remote.findProvisionalClass(id, apiKey);
+  }
+
+  @Override
+  public PagedResults<OntologyClass> findAllProvisionalClasses(String ontology, int page, int pageSize, String apiKey)
+      throws IOException {
+    return remote.findAllProvisionalClasses(ontology, page, pageSize, apiKey);
+  }
+
+  @Override
+  public void updateProvisionalClass(OntologyClass c, String apiKey) throws IOException {
+    remote.updateProvisionalClass(c, apiKey);
+  }
+
+  @Override
+  public void deleteProvisionalClass(String id, String apiKey) throws IOException {
+    remote.deleteProvisionalClass(id, apiKey);
+  }
+
+  @Override
+  public Relation createProvisionalRelation(Relation relation, String apiKey) throws IOException {
+    return remote.createProvisionalRelation(relation, apiKey);
+  }
+
+  @Override
+  public Relation findProvisionalRelation(String id, String apiKey) throws IOException {
+    return remote.findProvisionalRelation(id, apiKey);
+  }
+
+  @Override
+  public void deleteProvisionalRelation(String id, String apiKey) throws IOException {
+    remote.deleteProvisionalRelation(id, apiKey);
+  }
+
+  @Override
+  public ValueSet createProvisionalValueSet(ValueSet vs, String apiKey) throws IOException {
+    return remote.createProvisionalValueSet(vs, apiKey);
+  }
+
+  @Override
+  public ValueSet findProvisionalValueSet(String id, String apiKey) throws IOException {
+    return remote.findProvisionalValueSet(id, apiKey);
+  }
+
+  @Override
+  public void updateProvisionalValueSet(ValueSet vs, String apiKey) throws IOException {
+    remote.updateProvisionalValueSet(vs, apiKey);
+  }
+
+  @Override
+  public void deleteProvisionalValueSet(String id, String apiKey) throws IOException {
+    remote.deleteProvisionalValueSet(id, apiKey);
+  }
+
+  @Override
+  public Value createProvisionalValue(Value v, String apiKey) throws IOException {
+    return remote.createProvisionalValue(v, apiKey);
+  }
+
+  @Override
+  public Value findProvisionalValue(String id, String apiKey) throws IOException {
+    return remote.findProvisionalValue(id, apiKey);
+  }
+
+  @Override
+  public void updateProvisionalValue(Value v, String apiKey) throws IOException {
+    remote.updateProvisionalValue(v, apiKey);
+  }
+
+  @Override
+  public void deleteProvisionalValue(String id, String apiKey) throws IOException {
+    remote.deleteProvisionalValue(id, apiKey);
+  }
+}

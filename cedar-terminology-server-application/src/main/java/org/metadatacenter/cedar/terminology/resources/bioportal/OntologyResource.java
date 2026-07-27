@@ -1,11 +1,11 @@
 package org.metadatacenter.cedar.terminology.resources.bioportal;
 
-import io.swagger.annotations.Api;
-import io.swagger.annotations.ApiOperation;
-import io.swagger.annotations.ApiParam;
-import io.swagger.annotations.ApiResponse;
-import io.swagger.annotations.ApiResponses;
-import io.swagger.annotations.Authorization;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.metadatacenter.cedar.cache.Cache;
 import org.metadatacenter.cedar.terminology.resources.AbstractTerminologyServerResource;
 import org.metadatacenter.config.CedarConfig;
@@ -18,12 +18,12 @@ import org.metadatacenter.terms.domainObjects.OntologyProperty;
 import org.metadatacenter.util.http.CedarResponse;
 import org.metadatacenter.util.json.JsonMapper;
 
-import javax.ws.rs.GET;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
 import javax.xml.ws.http.HTTPException;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -34,7 +34,8 @@ import static org.metadatacenter.rest.assertion.GenericAssertions.LoggedIn;
 
 @Path("/bioportal")
 @Produces(MediaType.APPLICATION_JSON)
-@Api(value = "/bioportal", tags = "Ontologies", authorizations = {@Authorization("api_key")})
+@Tag(name = "Ontologies")
+@SecurityRequirement(name = "api_key")
 public class OntologyResource extends AbstractTerminologyServerResource {
 
   public OntologyResource(CedarConfig cedarConfig) {
@@ -43,20 +44,20 @@ public class OntologyResource extends AbstractTerminologyServerResource {
 
   @GET
   @Path("ontologies")
-  @ApiOperation(value = "Find all ontologies", notes = "Find all ontologies.")
+  @Operation(summary = "Find all ontologies", description = "Find all ontologies.")
   @ApiResponses({
-      @ApiResponse(code = 200, message = "Successful operation"),
-      @ApiResponse(code = 400, message = "Bad request"),
-      @ApiResponse(code = 401, message = "Unauthorized"),
-      @ApiResponse(code = 403, message = "Forbidden"),
-      @ApiResponse(code = 404, message = "Not found"),
-      @ApiResponse(code = 500, message = "Internal server error")
+      @ApiResponse(responseCode = "200", description = "Successful operation"),
+      @ApiResponse(responseCode = "400", description = "Bad request"),
+      @ApiResponse(responseCode = "401", description = "Unauthorized"),
+      @ApiResponse(responseCode = "403", description = "Forbidden"),
+      @ApiResponse(responseCode = "404", description = "Not found"),
+      @ApiResponse(responseCode = "500", description = "Internal server error")
   })
   public Response findAllOntologies() throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
     try {
-      List<Ontology> ontologies = new ArrayList<>(Cache.ontologiesCache.get("ontologies").values());
+      List<Ontology> ontologies = new ArrayList<>(Cache.getOntologies().values());
       return Response.ok().entity(JsonMapper.MAPPER.valueToTree(ontologies)).build();
     } catch (HTTPException e) {
       return Response.status(e.getStatusCode()).build();
@@ -67,23 +68,22 @@ public class OntologyResource extends AbstractTerminologyServerResource {
 
   @GET
   @Path("ontologies/{id}")
-  @ApiOperation(value = "Find ontology by id", notes = "Find ontology by id.")
+  @Operation(summary = "Find ontology by id", description = "Find ontology by id.")
   @ApiResponses({
-      @ApiResponse(code = 200, message = "Successful operation"),
-      @ApiResponse(code = 400, message = "Bad request"),
-      @ApiResponse(code = 401, message = "Unauthorized"),
-      @ApiResponse(code = 403, message = "Forbidden"),
-      @ApiResponse(code = 404, message = "Not found"),
-      @ApiResponse(code = 500, message = "Internal server error")
+      @ApiResponse(responseCode = "200", description = "Successful operation"),
+      @ApiResponse(responseCode = "400", description = "Bad request"),
+      @ApiResponse(responseCode = "401", description = "Unauthorized"),
+      @ApiResponse(responseCode = "403", description = "Forbidden"),
+      @ApiResponse(responseCode = "404", description = "Not found"),
+      @ApiResponse(responseCode = "500", description = "Internal server error")
   })
   public Response findOntology(
-      @ApiParam(value = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
+      @Parameter(description = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
       @PathParam("id") String id) throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
     try {
-      // Retrieve ontology from ontologies cache
-      Ontology ontologies = Cache.ontologiesCache.get("ontologies").get(id);
+      Ontology ontologies = Cache.getOntology(id);
       if (ontologies == null) {
         return CedarResponse.notFound().build();
       }
@@ -97,25 +97,23 @@ public class OntologyResource extends AbstractTerminologyServerResource {
 
   @GET
   @Path("ontologies/{ontology}/classes/roots")
-  @ApiOperation(value = "Get root classes",
-      notes = "Get root classes in a particular ontology. For the CEDARPC ontology, all provisional classes in it " +
-          "will be returned.",
-      tags = {"Classes", "Ontologies"})
+  @Operation(summary = "Get root classes", description = "Get root classes in a particular ontology. For the CEDARPC ontology, all provisional classes in it " +
+          "will be returned.", tags = {"Classes", "Ontologies"})
   @ApiResponses({
-      @ApiResponse(code = 200, message = "Successful operation"),
-      @ApiResponse(code = 400, message = "Bad request"),
-      @ApiResponse(code = 401, message = "Unauthorized"),
-      @ApiResponse(code = 403, message = "Forbidden"),
-      @ApiResponse(code = 404, message = "Not found"),
-      @ApiResponse(code = 500, message = "Internal server error")
+      @ApiResponse(responseCode = "200", description = "Successful operation"),
+      @ApiResponse(responseCode = "400", description = "Bad request"),
+      @ApiResponse(responseCode = "401", description = "Unauthorized"),
+      @ApiResponse(responseCode = "403", description = "Forbidden"),
+      @ApiResponse(responseCode = "404", description = "Not found"),
+      @ApiResponse(responseCode = "500", description = "Internal server error")
   })
   public Response findRootClasses(
-      @ApiParam(value = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
+      @Parameter(description = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
       @PathParam("ontology") String ontology) throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
     try {
-      boolean isFlat = Cache.ontologiesCache.get("ontologies").get(ontology).getIsFlat();
+      boolean isFlat = Cache.isFlat(ontology);
       List<OntologyClass> roots = terminologyService.getRootClasses(ontology, isFlat, apiKey);
       return Response.ok().entity(JsonMapper.MAPPER.valueToTree(roots)).build();
     } catch (HTTPException e) {
@@ -127,18 +125,17 @@ public class OntologyResource extends AbstractTerminologyServerResource {
 
   @GET
   @Path("ontologies/{ontology}/properties/roots")
-  @ApiOperation(value = "Get root properties", notes = "Get root properties in a particular ontology.",
-      tags = {"Properties", "Ontologies"})
+  @Operation(summary = "Get root properties", description = "Get root properties in a particular ontology.", tags = {"Properties", "Ontologies"})
   @ApiResponses({
-      @ApiResponse(code = 200, message = "Successful operation"),
-      @ApiResponse(code = 400, message = "Bad request"),
-      @ApiResponse(code = 401, message = "Unauthorized"),
-      @ApiResponse(code = 403, message = "Forbidden"),
-      @ApiResponse(code = 404, message = "Not found"),
-      @ApiResponse(code = 500, message = "Internal server error")
+      @ApiResponse(responseCode = "200", description = "Successful operation"),
+      @ApiResponse(responseCode = "400", description = "Bad request"),
+      @ApiResponse(responseCode = "401", description = "Unauthorized"),
+      @ApiResponse(responseCode = "403", description = "Forbidden"),
+      @ApiResponse(responseCode = "404", description = "Not found"),
+      @ApiResponse(responseCode = "500", description = "Internal server error")
   })
   public Response findRootProperties(
-      @ApiParam(value = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
+      @Parameter(description = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
       @PathParam("ontology") String ontology) throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);

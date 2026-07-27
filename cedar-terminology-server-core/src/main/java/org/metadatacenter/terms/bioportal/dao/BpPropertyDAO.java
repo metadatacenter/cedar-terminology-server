@@ -6,7 +6,6 @@ import org.apache.hc.core5.http.ClassicHttpResponse;
 import org.apache.hc.core5.http.HttpResponse;
 import org.apache.hc.client5.http.fluent.Request;
 import org.apache.hc.core5.util.Timeout;
-import org.apache.http.util.EntityUtils;
 import org.metadatacenter.terms.bioportal.domainObjects.BpProperty;
 import org.metadatacenter.terms.bioportal.domainObjects.BpTreeNode;
 import org.metadatacenter.terms.util.HttpUtil;
@@ -16,7 +15,7 @@ import org.metadatacenter.util.json.JsonMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.ws.rs.core.Response.Status;
+import jakarta.ws.rs.core.Response.Status;
 import javax.xml.ws.http.HTTPException;
 import java.io.IOException;
 import java.util.List;

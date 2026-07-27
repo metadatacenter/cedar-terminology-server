@@ -5,7 +5,14 @@ import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.Status;
-import org.junit.*;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.terms.domainObjects.OntologyProperty;
 import org.metadatacenter.terms.domainObjects.SearchResult;
@@ -23,13 +30,16 @@ import static org.metadatacenter.constant.HttpConstants.HTTP_HEADER_AUTHORIZATIO
 /**
  * Integration tests. They are done by starting a test server that makes it possible to test the real HTTP stack.
  */
+// Exercises live BioPortal; excluded from the default build (surefire excludedGroups).
+// Run with -DexcludedGroups= (or a bioportal profile) when a BioPortal API key is configured.
+@Tag("bioportal")
 public class PropertyResourceTest extends AbstractTerminologyServerResourceTest {
 
   /**
    * One-time initialization code.
    * (Called once before any of the test methods in the class).
    */
-  @BeforeClass
+  @BeforeAll
   public static void oneTimeSetUp() {
   }
 
@@ -37,7 +47,7 @@ public class PropertyResourceTest extends AbstractTerminologyServerResourceTest 
    * Sets up the test fixture.
    * (Called before every test case method.)
    */
-  @Before
+  @BeforeEach
   public void setUp() {
   }
 
@@ -45,7 +55,7 @@ public class PropertyResourceTest extends AbstractTerminologyServerResourceTest 
    * Tears down the test fixture.
    * (Called after every test case method.)
    */
-  @After
+  @AfterEach
   public void tearDown() {
   }
 
@@ -54,7 +64,7 @@ public class PropertyResourceTest extends AbstractTerminologyServerResourceTest 
     // First we do a search to retrieve some properties and pick the first one. Then we try to retrieve it by id
     String q = "title";
     PagedResults<SearchResult> properties = searchProperties(q);
-    Assert.assertTrue("No properties found to perform the test", properties.getCollection().size() > 0);
+    Assertions.assertTrue( properties.getCollection().size() > 0,"No properties found to perform the test");
     // Pick the first one
     SearchResult p = properties.getCollection().get(0);
     // Find it by id
@@ -70,14 +80,14 @@ public class PropertyResourceTest extends AbstractTerminologyServerResourceTest 
     Response findResponse =
         clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check HTTP response
-    Assert.assertEquals(Status.OK.getStatusCode(), findResponse.getStatus());
+    Assertions.assertEquals(Status.OK.getStatusCode(), findResponse.getStatus());
     // Check Content-Type
-    Assert.assertEquals(MediaType.APPLICATION_JSON, findResponse.getHeaderString(HttpHeaders.CONTENT_TYPE));
+    Assertions.assertEquals(MediaType.APPLICATION_JSON, findResponse.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check the element retrieved
     OntologyProperty found = findResponse.readEntity(OntologyProperty.class);
     findResponse.close();
     // Check id
-    Assert.assertTrue("Wrong property id: " + found.getId(), p.getId().equals(found.getId()));
+    Assertions.assertTrue( p.getId().equals(found.getId()),"Wrong property id: " + found.getId());
   }
 
   @Test
@@ -89,17 +99,17 @@ public class PropertyResourceTest extends AbstractTerminologyServerResourceTest 
     Response findResponse =
         clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check HTTP response
-    Assert.assertEquals(Status.OK.getStatusCode(), findResponse.getStatus());
+    Assertions.assertEquals(Status.OK.getStatusCode(), findResponse.getStatus());
     // Check Content-Type
-    Assert.assertEquals(MediaType.APPLICATION_JSON, findResponse.getHeaderString(HttpHeaders.CONTENT_TYPE));
+    Assertions.assertEquals(MediaType.APPLICATION_JSON, findResponse.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check the number of results retrieved
     List<OntologyProperty> properties = findResponse.readEntity(new GenericType<List<OntologyProperty>>() {
     });
     findResponse.close();
-    Assert.assertTrue("The number of properties found (" + properties.size() + ") is lower than expected (" +
-        approxPropertiesCount + ")", properties.size() >= approxPropertiesCount);
-    Assert.assertTrue("The number of properties found (" + properties.size() + ") is higher than expected (" +
-        approxPropertiesCount + ")", properties.size() < approxPropertiesCount * 2);
+    Assertions.assertTrue( properties.size() >= approxPropertiesCount,"The number of properties found (" + properties.size() + ") is lower than expected (" +
+        approxPropertiesCount + ")");
+    Assertions.assertTrue( properties.size() < approxPropertiesCount * 2,"The number of properties found (" + properties.size() + ") is higher than expected (" +
+        approxPropertiesCount + ")");
   }
 
   @Test
@@ -114,22 +124,22 @@ public class PropertyResourceTest extends AbstractTerminologyServerResourceTest 
     // Service invocation
     Response response = clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check HTTP response
-    Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
+    Assertions.assertEquals(Status.OK.getStatusCode(), response.getStatus());
     // Check Content-Type
-    Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
+    Assertions.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check that the tree is not empty and that it is correctly expanded to the given class
     List<TreeNode> tree = response.readEntity(new GenericType<List<TreeNode>>() {
     });
     response.close();
-    Assert.assertTrue("Empty tree", !tree.isEmpty());
+    Assertions.assertTrue( !tree.isEmpty(),"Empty tree");
     TreeNode foundChild = null;
     for (TreeNode node : tree) {
       // If "Date"
       if (node.getLdId().equals(parentPropertyId)) {
-        Assert.assertTrue("The 'hasChildren' property for this resource should be set to 'true'",
-            node.getHasChildren());
-        Assert.assertTrue("The number of children returned for this resource should be greater than 0",
-            !node.getChildren().isEmpty());
+        Assertions.assertTrue(
+            node.getHasChildren(),"The 'hasChildren' property for this resource should be set to 'true'");
+        Assertions.assertTrue(
+            !node.getChildren().isEmpty(),"The number of children returned for this resource should be greater than 0");
         for (TreeNode childrenNode : node.getChildren()) {
           // If "Copyright date"
           if (childrenNode.getLdId().equals(propertyId)) {
@@ -139,9 +149,9 @@ public class PropertyResourceTest extends AbstractTerminologyServerResourceTest 
         }
       }
     }
-    Assert.assertTrue("Given property not found in the returned tree", foundChild != null);
-    Assert.assertTrue("Preferred label not found for child property",
-        foundChild.getPrefLabel() != null && !foundChild.getPrefLabel().isEmpty());
+    Assertions.assertTrue( foundChild != null,"Given property not found in the returned tree");
+    Assertions.assertTrue(
+        foundChild.getPrefLabel() != null && !foundChild.getPrefLabel().isEmpty(),"Preferred label not found for child property");
   }
 
   @Test
@@ -156,16 +166,16 @@ public class PropertyResourceTest extends AbstractTerminologyServerResourceTest 
     // Service invocation
     Response response = clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check HTTP response
-    Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
+    Assertions.assertEquals(Status.OK.getStatusCode(), response.getStatus());
     // Check Content-Type
-    Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
+    Assertions.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check that the call returns some children and that one of them is "Copyright date".
     // Note that this check is done with a property that has less children than the default page size. Otherwise,
     // we should iterate over all pages.
     List<OntologyProperty> children = response.readEntity(new GenericType<List<OntologyProperty>>() {
     });
     response.close();
-    Assert.assertTrue("No children returned", !children.isEmpty());
+    Assertions.assertTrue( !children.isEmpty(),"No children returned");
     boolean childFound = false;
     for (OntologyProperty property : children) {
       if (property.getLdId().equals(childPropertyId)) {
@@ -173,7 +183,7 @@ public class PropertyResourceTest extends AbstractTerminologyServerResourceTest 
         break;
       }
     }
-    Assert.assertTrue("Child " + childPropertyId + " not found for the given property" + propertyId, childFound);
+    Assertions.assertTrue( childFound,"Child " + childPropertyId + " not found for the given property" + propertyId);
   }
 
   @Test
@@ -191,16 +201,16 @@ public class PropertyResourceTest extends AbstractTerminologyServerResourceTest 
     // Service invocation
     Response response = clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check HTTP response
-    Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
+    Assertions.assertEquals(Status.OK.getStatusCode(), response.getStatus());
     // Check Content-Type
-    Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
+    Assertions.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check that the call returns some children and that those are right.
     // Note that this check is done with a class that has less descendants than the default page size. Otherwise,
     // we should iterate over all pages.
     List<OntologyProperty> descendants = response.readEntity(new GenericType<List<OntologyProperty>>() {
     });
     response.close();
-    Assert.assertTrue("No descendants returned", !descendants.isEmpty());
+    Assertions.assertTrue( !descendants.isEmpty(),"No descendants returned");
     boolean descendant1Found = false;
     boolean descendant2Found = false;
     for (OntologyProperty property : descendants) {
@@ -210,10 +220,10 @@ public class PropertyResourceTest extends AbstractTerminologyServerResourceTest 
         descendant2Found = true;
       }
     }
-    Assert.assertTrue("Descendant " + descendant1PropertyId + " not found for the given property " + propertyId,
-        descendant1Found);
-    Assert.assertTrue("Descendant " + descendant2PropertyId + " not found for the given property " + propertyId,
-        descendant2Found);
+    Assertions.assertTrue(
+        descendant1Found,"Descendant " + descendant1PropertyId + " not found for the given property " + propertyId);
+    Assertions.assertTrue(
+        descendant2Found,"Descendant " + descendant2PropertyId + " not found for the given property " + propertyId);
   }
 
   @Test
@@ -228,14 +238,14 @@ public class PropertyResourceTest extends AbstractTerminologyServerResourceTest 
     // Service invocation
     Response response = clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check HTTP response
-    Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
+    Assertions.assertEquals(Status.OK.getStatusCode(), response.getStatus());
     // Check Content-Type
-    Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
+    Assertions.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check that the call returns the expected parent
     List<OntologyProperty> parents = response.readEntity(new GenericType<List<OntologyProperty>>() {
     });
     response.close();
-    Assert.assertTrue("No parents returned", !parents.isEmpty());
+    Assertions.assertTrue( !parents.isEmpty(),"No parents returned");
     boolean parentFound = false;
     for (OntologyProperty property : parents) {
       if (property.getLdId().equals(parentPropertyId)) {
@@ -243,7 +253,7 @@ public class PropertyResourceTest extends AbstractTerminologyServerResourceTest 
         break;
       }
     }
-    Assert.assertTrue("Parent " + parentPropertyId + " not found for the given property " + propertyId, parentFound);
+    Assertions.assertTrue( parentFound,"Parent " + parentPropertyId + " not found for the given property " + propertyId);
   }
 
 }

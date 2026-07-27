@@ -1,8 +1,8 @@
 package org.metadatacenter.cedar.terminology.resources.bioportal;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.dropwizard.testing.DropwizardTestSupport;
 import io.dropwizard.testing.ResourceHelpers;
-import io.dropwizard.testing.junit.DropwizardAppRule;
 import jakarta.ws.rs.client.ClientBuilder;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.GenericType;
@@ -10,8 +10,13 @@ import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.glassfish.jersey.client.ClientProperties;
-import org.jboss.resteasy.client.jaxrs.ResteasyClientBuilder;
-import org.junit.*;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 import org.metadatacenter.cedar.terminology.TerminologyServerApplicationTest;
 import org.metadatacenter.cedar.terminology.TerminologyServerConfiguration;
 import org.metadatacenter.config.CedarConfig;
@@ -21,7 +26,7 @@ import org.metadatacenter.model.SystemComponent;
 import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.terms.domainObjects.*;
 import org.metadatacenter.terms.util.Util;
-import org.metadatacenter.util.test.TestUserUtil;
+import org.metadatacenter.util.test.TestAuthUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,6 +35,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import static org.metadatacenter.cedar.terminology.util.Constants.BP_PROPERTY_SEARCH;
+import static org.metadatacenter.cedar.terminology.util.Constants.BP_SEARCH;
 import static org.metadatacenter.cedar.terminology.utils.Constants.*;
 import static org.metadatacenter.constant.HttpConstants.HTTP_HEADER_AUTHORIZATION;
 
@@ -37,6 +44,17 @@ import static org.metadatacenter.constant.HttpConstants.HTTP_HEADER_AUTHORIZATIO
  * Integration tests. They are done by starting a test server that makes it possible to test the real HTTP stack.
  */
 public abstract class AbstractTerminologyServerResourceTest {
+
+  static {
+    // Must run before the test support boots the server, which reads the port env vars.
+    // Alternate server ports, so the test instance never collides with a running dev server.
+    java.util.Map<String, String> environment =
+        new java.util.HashMap<>(org.metadatacenter.config.environment.CedarEnvironmentSource.getAll());
+    environment.put("CEDAR_TERMINOLOGY_HTTP_PORT", "19004");
+    environment.put("CEDAR_TERMINOLOGY_ADMIN_PORT", "19104");
+    environment.put("CEDAR_TERMINOLOGY_STOP_PORT", "19204");
+    org.metadatacenter.config.environment.CedarEnvironmentSource.setOverride(environment);
+  }
 
   protected static CedarConfig cedarConfig;
   protected static ClientBuilder clientBuilder;
@@ -73,17 +91,18 @@ public abstract class AbstractTerminologyServerResourceTest {
    */
   protected static final int STATUS_CODE_UNPROCESSABLE_ENTITY = 422;
 
-  @ClassRule
-  public static final DropwizardAppRule<TerminologyServerConfiguration> RULE =
-      new DropwizardAppRule<>(TerminologyServerApplicationTest.class,
+  public static final DropwizardTestSupport<TerminologyServerConfiguration> RULE =
+      new DropwizardTestSupport<>(TerminologyServerApplicationTest.class,
           ResourceHelpers.resourceFilePath("test-config.yml"));
 
   /**
    * One-time initialization code.
    * (Called once before any test class).
    */
-  @BeforeClass
-  public static void oneTimeSetUpAbstract() {
+  @BeforeAll
+  public static void oneTimeSetUpAbstract() throws Exception {
+
+    RULE.before();
 
     SystemComponent systemComponent = SystemComponent.SERVER_TERMINOLOGY;
     Map<String, String> environment = CedarEnvironmentVariableProvider.getFor(systemComponent);
@@ -99,14 +118,17 @@ public abstract class AbstractTerminologyServerResourceTest {
     baseUrlBpOntologies = baseUrlBp + "/" + BP_ONTOLOGIES;
     baseUrlBpVSCollections = baseUrlBp + "/" + BP_VALUE_SET_COLLECTIONS;
 
-    clientBuilder = ResteasyClientBuilder.newBuilder();
+    clientBuilder = ClientBuilder.newBuilder();
     clientBuilder.property(ClientProperties.CONNECT_TIMEOUT, cedarConfig.getTerminologyConfig().getBioPortal()
         .getConnectTimeout());
     clientBuilder.property(ClientProperties.READ_TIMEOUT,
         cedarConfig.getTerminologyConfig().getBioPortal().getSocketTimeout
             () * 20); // enough time to build the ontologies and value sets cache if it has not been created yet
 
-    authHeader = TestUserUtil.getTestUser1AuthHeader(cedarConfig);
+    // Replace the Neo4j-backed user service wired at application startup with an in-memory one,
+    // so API-key authentication needs no live Neo4j (and no Keycloak)
+    TestAuthUtil.installInMemoryUserService(cedarConfig);
+    authHeader = TestAuthUtil.getTestUser1AuthHeader(cedarConfig);
 
     mapper = new ObjectMapper();
 
@@ -119,7 +141,7 @@ public abstract class AbstractTerminologyServerResourceTest {
    * Sets up the test fixture.
    * (Called before every test case method.)
    */
-  @Before
+  @BeforeEach
   public void setUpAbstract() {
 
     // OPTIONAL. This block cleans up all the provisional classes created for testing. Uncomment and run it when needed
@@ -215,7 +237,7 @@ public abstract class AbstractTerminologyServerResourceTest {
    * Tears down the test fixture.
    * (Called after every test case method.)
    */
-  @After
+  @AfterEach
   public void tearDownAbstract() {
     try {
       // Relations should be removed before classes. Otherwise, when removing a class, BioPortal will
@@ -229,8 +251,9 @@ public abstract class AbstractTerminologyServerResourceTest {
     }
   }
 
-  @AfterClass
+  @AfterAll
   public static void oneTearDownAbstract() {
+    RULE.after();
   }
 
   /**
@@ -246,7 +269,7 @@ public abstract class AbstractTerminologyServerResourceTest {
       response =
           clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(c));
       // Check HTTP response
-      Assert.assertEquals(CedarResponseStatus.CREATED.getStatusCode(), response.getStatus());
+      Assertions.assertEquals(CedarResponseStatus.CREATED.getStatusCode(), response.getStatus());
       OntologyClass created = response.readEntity(OntologyClass.class);
       createdClasses.add(created);
       return created;
@@ -301,7 +324,7 @@ public abstract class AbstractTerminologyServerResourceTest {
       response =
           clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(r));
       // Check HTTP response
-      Assert.assertEquals(CedarResponseStatus.CREATED.getStatusCode(), response.getStatus());
+      Assertions.assertEquals(CedarResponseStatus.CREATED.getStatusCode(), response.getStatus());
       Relation created = response.readEntity(Relation.class);
       createdRelations.add(created);
       return created;
@@ -343,7 +366,7 @@ public abstract class AbstractTerminologyServerResourceTest {
       response =
           clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(vs));
       // Check HTTP response
-      Assert.assertEquals(CedarResponseStatus.CREATED.getStatusCode(), response.getStatus());
+      Assertions.assertEquals(CedarResponseStatus.CREATED.getStatusCode(), response.getStatus());
       ValueSet created = response.readEntity(ValueSet.class);
       createdValueSets.add(created);
       return created;
@@ -392,7 +415,7 @@ public abstract class AbstractTerminologyServerResourceTest {
       response =
           clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(v));
       // Check HTTP response
-      Assert.assertEquals(CedarResponseStatus.CREATED.getStatusCode(), response.getStatus());
+      Assertions.assertEquals(CedarResponseStatus.CREATED.getStatusCode(), response.getStatus());
       Value created = response.readEntity(Value.class);
       createdValues.add(created);
       return created;
@@ -431,9 +454,9 @@ public abstract class AbstractTerminologyServerResourceTest {
       response =
           clientBuilder.build().target(baseUrlBpPropertySearch).queryParam("q", q).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
       // Check HTTP response
-      Assert.assertEquals(CedarResponseStatus.OK.getStatusCode(), response.getStatus());
+      Assertions.assertEquals(CedarResponseStatus.OK.getStatusCode(), response.getStatus());
       // Check Content-Type
-      Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
+      Assertions.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
       // Check the number of results
       PagedResults<SearchResult> properties = response.readEntity(new GenericType<>() {
       });

@@ -6,7 +6,14 @@ import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.Status;
-import org.junit.*;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.terms.domainObjects.OntologyClass;
 import org.metadatacenter.terms.domainObjects.TreeNode;
@@ -23,13 +30,16 @@ import static org.metadatacenter.constant.HttpConstants.HTTP_HEADER_AUTHORIZATIO
 /**
  * Integration tests. They are done by starting a test server that makes it possible to test the real HTTP stack.
  */
+// Exercises live BioPortal; excluded from the default build (surefire excludedGroups).
+// Run with -DexcludedGroups= (or a bioportal profile) when a BioPortal API key is configured.
+@Tag("bioportal")
 public class ClassResourceTest extends AbstractTerminologyServerResourceTest {
 
   /**
    * One-time initialization code.
    * (Called once before any of the test methods in the class).
    */
-  @BeforeClass
+  @BeforeAll
   public static void oneTimeSetUp() {
   }
 
@@ -37,7 +47,7 @@ public class ClassResourceTest extends AbstractTerminologyServerResourceTest {
    * Sets up the test fixture.
    * (Called before every test case method.)
    */
-  @Before
+  @BeforeEach
   public void setUp() {
   }
 
@@ -45,7 +55,7 @@ public class ClassResourceTest extends AbstractTerminologyServerResourceTest {
    * Tears down the test fixture.
    * (Called after every test case method.)
    */
-  @After
+  @AfterEach
   public void tearDown() {
   }
 
@@ -56,26 +66,26 @@ public class ClassResourceTest extends AbstractTerminologyServerResourceTest {
     Response response =
         clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(class1));
     // Check HTTP response
-    Assert.assertEquals(Status.CREATED.getStatusCode(), response.getStatus());
+    Assertions.assertEquals(Status.CREATED.getStatusCode(), response.getStatus());
     // Check Content-Type
-    Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
+    Assertions.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Store class to delete the class after the test
     OntologyClass created = response.readEntity(OntologyClass.class);
     response.close();
     createdClasses.add(created);
     // Check fields
     OntologyClass expected = class1;
-    Assert.assertNotNull(created.getId());
-    Assert.assertNotNull(created.getLdId());
-    Assert.assertNotNull(created.getCreated());
-    Assert.assertEquals(expected.getPrefLabel(), created.getPrefLabel());
-    Assert.assertEquals(expected.getCreator(), created.getCreator());
-    Assert.assertEquals(expected.getOntology(), created.getOntology());
-    Assert.assertEquals(expected.getDefinitions(), created.getDefinitions());
-    Assert.assertEquals(expected.getSynonyms(), created.getSynonyms());
-    Assert.assertEquals(expected.getSubclassOf(), created.getSubclassOf());
-    Assert.assertEquals(expected.getRelations(), created.getRelations());
-    Assert.assertEquals(expected.isProvisional(), created.isProvisional());
+    Assertions.assertNotNull(created.getId());
+    Assertions.assertNotNull(created.getLdId());
+    Assertions.assertNotNull(created.getCreated());
+    Assertions.assertEquals(expected.getPrefLabel(), created.getPrefLabel());
+    Assertions.assertEquals(expected.getCreator(), created.getCreator());
+    Assertions.assertEquals(expected.getOntology(), created.getOntology());
+    Assertions.assertEquals(expected.getDefinitions(), created.getDefinitions());
+    Assertions.assertEquals(expected.getSynonyms(), created.getSynonyms());
+    Assertions.assertEquals(expected.getSubclassOf(), created.getSubclassOf());
+    Assertions.assertEquals(expected.getRelations(), created.getRelations());
+    Assertions.assertEquals(expected.isProvisional(), created.isProvisional());
   }
 
   // TODO: test regular classes
@@ -90,25 +100,25 @@ public class ClassResourceTest extends AbstractTerminologyServerResourceTest {
     Response findResponse = clientBuilder.build().target(classUrl).request().header(HTTP_HEADER_AUTHORIZATION,
         authHeader).get();
     // Check HTTP response
-    Assert.assertEquals(Status.OK.getStatusCode(), findResponse.getStatus());
+    Assertions.assertEquals(Status.OK.getStatusCode(), findResponse.getStatus());
     // Check Content-Type
-    Assert.assertEquals(MediaType.APPLICATION_JSON, findResponse.getHeaderString(HttpHeaders.CONTENT_TYPE));
+    Assertions.assertEquals(MediaType.APPLICATION_JSON, findResponse.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check the element retrieved
     OntologyClass found = findResponse.readEntity(OntologyClass.class);
     findResponse.close();
     // Check fields
-    Assert.assertEquals(created.getId(), found.getId());
-    Assert.assertEquals(created.getLdId(), found.getLdId());
-    Assert.assertEquals(created.getPrefLabel(), found.getPrefLabel());
-    Assert.assertEquals(created.getCreator(), found.getCreator());
-    Assert.assertEquals(created.getOntology(), found.getOntology());
+    Assertions.assertEquals(created.getId(), found.getId());
+    Assertions.assertEquals(created.getLdId(), found.getLdId());
+    Assertions.assertEquals(created.getPrefLabel(), found.getPrefLabel());
+    Assertions.assertEquals(created.getCreator(), found.getCreator());
+    Assertions.assertEquals(created.getOntology(), found.getOntology());
     // Convert list to set because order is irrelevant
-    Assert.assertEquals(new HashSet<>(created.getDefinitions()), new HashSet<>(found.getDefinitions()));
-    Assert.assertEquals(new HashSet<>(created.getSynonyms()), new HashSet<>(found.getSynonyms()));
-    Assert.assertEquals(created.getSubclassOf(), found.getSubclassOf());
-    Assert.assertEquals(new HashSet<>(created.getRelations()), new HashSet<>(found.getRelations()));
-    Assert.assertEquals(created.isProvisional(), found.isProvisional());
-    Assert.assertEquals(created.getCreated(), found.getCreated());
+    Assertions.assertEquals(new HashSet<>(created.getDefinitions()), new HashSet<>(found.getDefinitions()));
+    Assertions.assertEquals(new HashSet<>(created.getSynonyms()), new HashSet<>(found.getSynonyms()));
+    Assertions.assertEquals(created.getSubclassOf(), found.getSubclassOf());
+    Assertions.assertEquals(new HashSet<>(created.getRelations()), new HashSet<>(found.getRelations()));
+    Assertions.assertEquals(created.isProvisional(), found.isProvisional());
+    Assertions.assertEquals(created.getCreated(), found.getCreated());
   }
 
   // TODO: check that provisional classes are returned too
@@ -121,15 +131,15 @@ public class ClassResourceTest extends AbstractTerminologyServerResourceTest {
     Response findResponse =
         clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check HTTP response
-    Assert.assertEquals(Status.OK.getStatusCode(), findResponse.getStatus());
+    Assertions.assertEquals(Status.OK.getStatusCode(), findResponse.getStatus());
     // Check Content-Type
-    Assert.assertEquals(MediaType.APPLICATION_JSON, findResponse.getHeaderString(HttpHeaders.CONTENT_TYPE));
+    Assertions.assertEquals(MediaType.APPLICATION_JSON, findResponse.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check the number of results retrieved
     PagedResults<OntologyClass> classes = findResponse.readEntity(new GenericType<>() {
     });
     findResponse.close();
     int numClassesFound = classes.getPageSize() * classes.getPageCount();
-    Assert.assertTrue("The number of classes found (" + numClassesFound + ") is lower than expected (" + ontologySize + ")", numClassesFound >= ontologySize);
+    Assertions.assertTrue( numClassesFound >= ontologySize,"The number of classes found (" + numClassesFound + ") is lower than expected (" + ontologySize + ")");
   }
 
   // TODO: test it for provisional classes too
@@ -145,22 +155,22 @@ public class ClassResourceTest extends AbstractTerminologyServerResourceTest {
     // Service invocation
     Response response = clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check HTTP response
-    Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
+    Assertions.assertEquals(Status.OK.getStatusCode(), response.getStatus());
     // Check Content-Type
-    Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
+    Assertions.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check that the tree is not empty and that it is correctly expanded to the given class
     List<TreeNode> tree = response.readEntity(new GenericType<List<TreeNode>>() {
     });
     response.close();
-    Assert.assertTrue("Empty tree", !tree.isEmpty());
+    Assertions.assertTrue( !tree.isEmpty(),"Empty tree");
     boolean classFound = false;
     for (TreeNode node : tree) {
       // If "Biological Process"
       if (node.getLdId().equals(parentClassId)) {
-        Assert.assertTrue("The 'hasChildren' property for this resource should be set to 'true'",
-            node.getHasChildren());
-        Assert.assertTrue("The number of children returned for this resource shouldn't be 0",
-            !node.getChildren().isEmpty());
+        Assertions.assertTrue(
+            node.getHasChildren(),"The 'hasChildren' property for this resource should be set to 'true'");
+        Assertions.assertTrue(
+            !node.getChildren().isEmpty(),"The number of children returned for this resource shouldn't be 0");
         for (TreeNode childrenNode : node.getChildren()) {
           // If "Cellular Process"
           if (childrenNode.getLdId().equals(classId)) {
@@ -169,11 +179,11 @@ public class ClassResourceTest extends AbstractTerminologyServerResourceTest {
           }
         }
       } else {
-        Assert.assertTrue("The number of children returned for this resource should be 0",
-            node.getChildren().isEmpty());
+        Assertions.assertTrue(
+            node.getChildren().isEmpty(),"The number of children returned for this resource should be 0");
       }
     }
-    Assert.assertTrue("Given class not found in the returned tree", classFound);
+    Assertions.assertTrue( classFound,"Given class not found in the returned tree");
   }
 
   // TODO: test it for provisional classes too
@@ -189,16 +199,16 @@ public class ClassResourceTest extends AbstractTerminologyServerResourceTest {
     // Service invocation
     Response response = clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check HTTP response
-    Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
+    Assertions.assertEquals(Status.OK.getStatusCode(), response.getStatus());
     // Check Content-Type
-    Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
+    Assertions.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check that the call returns some children and that one of them is "Cellular Process".
     // Note that this check is done with a class that has less children than the default page size. Otherwise,
     // we should iterate over all pages.
     PagedResults<OntologyClass> children = response.readEntity(new GenericType<PagedResults<OntologyClass>>() {
     });
     response.close();
-    Assert.assertTrue("No children returned", !children.getCollection().isEmpty());
+    Assertions.assertTrue( !children.getCollection().isEmpty(),"No children returned");
     boolean childFound = false;
     for (OntologyClass c : children.getCollection()) {
       if (c.getLdId().equals(childClassId)) {
@@ -206,7 +216,7 @@ public class ClassResourceTest extends AbstractTerminologyServerResourceTest {
         break;
       }
     }
-    Assert.assertTrue("Child " + childClassId + " not found for the given class" + classId, childFound);
+    Assertions.assertTrue( childFound,"Child " + childClassId + " not found for the given class" + classId);
   }
 
   // TODO: test it for provisional classes too
@@ -225,16 +235,16 @@ public class ClassResourceTest extends AbstractTerminologyServerResourceTest {
     // Service invocation
     Response response = clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check HTTP response
-    Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
+    Assertions.assertEquals(Status.OK.getStatusCode(), response.getStatus());
     // Check Content-Type
-    Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
+    Assertions.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check that the call returns some children and that those children are the expected ones.
     // Note that this check is done with a class that has less descendants than the default page size. Otherwise,
     // we should iterate over all pages.
     PagedResults<OntologyClass> descendants = response.readEntity(new GenericType<PagedResults<OntologyClass>>() {
     });
     response.close();
-    Assert.assertTrue("No descendants returned", descendants.getCollection().size() > 0);
+    Assertions.assertTrue( descendants.getCollection().size() > 0,"No descendants returned");
     boolean descendant1Found = false;
     boolean descendant2Found = false;
     for (OntologyClass c : descendants.getCollection()) {
@@ -244,10 +254,10 @@ public class ClassResourceTest extends AbstractTerminologyServerResourceTest {
         descendant2Found = true;
       }
     }
-    Assert.assertTrue("Descendant " + descendant1ClassId + " not found for the given class " + classId,
-        descendant1Found);
-    Assert.assertTrue("Descendant " + descendant2ClassId + " not found for the given class " + classId,
-        descendant2Found);
+    Assertions.assertTrue(
+        descendant1Found,"Descendant " + descendant1ClassId + " not found for the given class " + classId);
+    Assertions.assertTrue(
+        descendant2Found,"Descendant " + descendant2ClassId + " not found for the given class " + classId);
   }
 
   // TODO: test it for provisional classes too
@@ -263,14 +273,14 @@ public class ClassResourceTest extends AbstractTerminologyServerResourceTest {
     // Service invocation
     Response response = clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check HTTP response
-    Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
+    Assertions.assertEquals(Status.OK.getStatusCode(), response.getStatus());
     // Check Content-Type
-    Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
+    Assertions.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check that the call returns the expected parent
     List<OntologyClass> parents = response.readEntity(new GenericType<List<OntologyClass>>() {
     });
     response.close();
-    Assert.assertTrue("No parents returned", !parents.isEmpty());
+    Assertions.assertTrue( !parents.isEmpty(),"No parents returned");
     boolean parentFound = false;
     for (OntologyClass c : parents) {
       if (c.getLdId().equals(parentClassId)) {
@@ -278,7 +288,7 @@ public class ClassResourceTest extends AbstractTerminologyServerResourceTest {
         break;
       }
     }
-    Assert.assertTrue("Parent " + parentClassId + " not found for the given class " + classId, parentFound);
+    Assertions.assertTrue( parentFound,"Parent " + parentClassId + " not found for the given class " + classId);
   }
 
   @Test
@@ -287,17 +297,17 @@ public class ClassResourceTest extends AbstractTerminologyServerResourceTest {
     // Service invocation
     Response response = clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check HTTP response
-    Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
+    Assertions.assertEquals(Status.OK.getStatusCode(), response.getStatus());
     // Check Content-Type
-    Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
+    Assertions.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check that the array returned is not empty
     PagedResults<OntologyClass> results = response.readEntity(new GenericType<PagedResults<OntologyClass>>() {
     });
     response.close();
-    Assert.assertTrue("Empty array returned", !results.getCollection().isEmpty());
+    Assertions.assertTrue( !results.getCollection().isEmpty(),"Empty array returned");
     // Check that the classes returned are provisional
     for (OntologyClass pc : results.getCollection()) {
-      Assert.assertTrue("Provisional class expected, but non provisional class found", pc.isProvisional());
+      Assertions.assertTrue( pc.isProvisional(),"Provisional class expected, but non provisional class found");
     }
   }
 
@@ -310,17 +320,17 @@ public class ClassResourceTest extends AbstractTerminologyServerResourceTest {
     // Service invocation
     Response response = clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     // Check HTTP response
-    Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
+    Assertions.assertEquals(Status.OK.getStatusCode(), response.getStatus());
     // Check Content-Type
-    Assert.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
+    Assertions.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
     // Check that the array returned is not empty
     PagedResults<OntologyClass> results = response.readEntity(new GenericType<PagedResults<OntologyClass>>() {
     });
     response.close();
-    Assert.assertTrue("Empty array returned", !results.getCollection().isEmpty());
+    Assertions.assertTrue( !results.getCollection().isEmpty(),"Empty array returned");
     // Check that the classes returned are provisional
     for (OntologyClass pc : results.getCollection()) {
-      Assert.assertTrue("Provisional class expected, but non provisional class found", pc.isProvisional());
+      Assertions.assertTrue( pc.isProvisional(),"Provisional class expected, but non provisional class found");
     }
   }
 
@@ -340,7 +350,7 @@ public class ClassResourceTest extends AbstractTerminologyServerResourceTest {
         authHeader).put(Entity.json
         (updatedClass));
     // Check HTTP response
-    Assert.assertEquals(Status.NO_CONTENT.getStatusCode(), updateResponse.getStatus());
+    Assertions.assertEquals(Status.NO_CONTENT.getStatusCode(), updateResponse.getStatus());
     // Retrieve the class
     String findUrl = baseUrlBpOntologies + "/" + Util.getShortIdentifier(createdClass.getOntology())
         + "/" + BP_CLASSES + "/" + createdClass.getId();
@@ -350,18 +360,18 @@ public class ClassResourceTest extends AbstractTerminologyServerResourceTest {
     findResponse.close();
     // Check that the modifications have been done correctly
     OntologyClass expected = updatedClass;
-    Assert.assertEquals(expected.getId(), found.getId());
-    Assert.assertEquals(expected.getLdId(), found.getLdId());
-    Assert.assertEquals(expected.getPrefLabel(), found.getPrefLabel());
-    Assert.assertEquals(expected.getCreator(), found.getCreator());
-    Assert.assertEquals(expected.getOntology(), found.getOntology());
-    Assert.assertTrue(expected.getDefinitions().containsAll(found.getDefinitions()) && found.getDefinitions().containsAll(expected.getDefinitions()));
-    Assert.assertTrue(expected.getSynonyms().containsAll(found.getSynonyms()) && found.getSynonyms().containsAll(expected.getSynonyms()));
-    Assert.assertEquals(expected.getSubclassOf(), found.getSubclassOf());
-    Assert.assertEquals(expected.getRelations(), found.getRelations());
-    Assert.assertEquals(expected.isProvisional(), found.isProvisional());
-    Assert.assertEquals(expected.getCreated(), found.getCreated());
-    Assert.assertEquals(expected.getHasChildren(), found.getHasChildren());
+    Assertions.assertEquals(expected.getId(), found.getId());
+    Assertions.assertEquals(expected.getLdId(), found.getLdId());
+    Assertions.assertEquals(expected.getPrefLabel(), found.getPrefLabel());
+    Assertions.assertEquals(expected.getCreator(), found.getCreator());
+    Assertions.assertEquals(expected.getOntology(), found.getOntology());
+    Assertions.assertTrue(expected.getDefinitions().containsAll(found.getDefinitions()) && found.getDefinitions().containsAll(expected.getDefinitions()));
+    Assertions.assertTrue(expected.getSynonyms().containsAll(found.getSynonyms()) && found.getSynonyms().containsAll(expected.getSynonyms()));
+    Assertions.assertEquals(expected.getSubclassOf(), found.getSubclassOf());
+    Assertions.assertEquals(expected.getRelations(), found.getRelations());
+    Assertions.assertEquals(expected.isProvisional(), found.isProvisional());
+    Assertions.assertEquals(expected.getCreated(), found.getCreated());
+    Assertions.assertEquals(expected.getHasChildren(), found.getHasChildren());
   }
 
   @Test
@@ -373,7 +383,7 @@ public class ClassResourceTest extends AbstractTerminologyServerResourceTest {
     Response deleteResponse = clientBuilder.build().target(classUrl).request().header(HTTP_HEADER_AUTHORIZATION,
         authHeader).delete();
     // Check HTTP response
-    Assert.assertEquals(Status.NO_CONTENT.getStatusCode(), deleteResponse.getStatus());
+    Assertions.assertEquals(Status.NO_CONTENT.getStatusCode(), deleteResponse.getStatus());
     // Remove class from the list of created classes
     createdClasses.remove(createdClass);
     // Try to retrieve the class to check that it has been deleted correctly
@@ -382,7 +392,7 @@ public class ClassResourceTest extends AbstractTerminologyServerResourceTest {
     Response findResponse = clientBuilder.build().target(findUrl).request().header(HTTP_HEADER_AUTHORIZATION,
         authHeader).get();
     // Check not found
-    Assert.assertEquals(Status.NOT_FOUND.getStatusCode(), findResponse.getStatus());
+    Assertions.assertEquals(Status.NOT_FOUND.getStatusCode(), findResponse.getStatus());
   }
 
 }

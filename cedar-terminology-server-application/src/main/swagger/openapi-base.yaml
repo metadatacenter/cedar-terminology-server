@@ -1,0 +1,15 @@
+# Base OpenAPI document merged into the generated spec by io.swagger.core.v3:swagger-maven-plugin.
+# It seeds the info block (version stamped from the POM via resource filtering) and the api_key
+# security scheme that every resource class references with @SecurityRequirement(name = "api_key").
+openapi: 3.0.1
+info:
+  title: CEDAR Terminology Server API
+  description: CEDAR Terminology Server API
+  version: ${project.version}
+components:
+  securitySchemes:
+    api_key:
+      type: apiKey
+      name: Authorization
+      in: header
+      description: "Your CEDAR API key, using the format 'apiKey <yourApiKey>'"

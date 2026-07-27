@@ -2,11 +2,11 @@ package org.metadatacenter.cedar.terminology.resources;
 
 import org.metadatacenter.cedar.util.dw.CedarMicroserviceResource;
 import org.metadatacenter.config.CedarConfig;
-import org.metadatacenter.terms.TerminologyService;
+import org.metadatacenter.terms.ITerminologyService;
 
 public abstract class AbstractTerminologyServerResource extends CedarMicroserviceResource {
 
-  public static TerminologyService terminologyService;
+  public static ITerminologyService terminologyService;
   protected static String apiKey;
   protected static int defaultPageSize;
 
@@ -16,7 +16,7 @@ public abstract class AbstractTerminologyServerResource extends CedarMicroservic
     defaultPageSize = cedarConfig.getTerminologyConfig().getBioPortal().getDefaultPageSize();
   }
 
-  public static void injectTerminologyService(TerminologyService terminologyService) {
+  public static void injectTerminologyService(ITerminologyService terminologyService) {
     AbstractTerminologyServerResource.terminologyService = terminologyService;
   }
 }
