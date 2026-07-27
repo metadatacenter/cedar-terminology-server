@@ -660,6 +660,14 @@ public class TerminologyService implements ITerminologyService {
           } catch (Exception e) {
             log.error("Error retrieving ontology details for: " + ont.getId(), e);
           }
+        } else {
+          // Lightweight details for the ontology picker: derive hasSubmissions from the list payload's
+          // summaryOnly flag (BioPortal sets summaryOnly=true for metadata-only ontologies with no
+          // parsed submission). This is free — it avoids the per-ontology latest_submission crawl that
+          // includeDetails=true performs — and lets the template editor keep browsable ontologies.
+          OntologyDetails details = new OntologyDetails();
+          details.setHasSubmissions(!o.getSummaryOnly());
+          ont.setDetails(details);
         }
         ontologies.add(ont);
         String message = ont.getId() + " loaded (" + i + "/" + total + ")";

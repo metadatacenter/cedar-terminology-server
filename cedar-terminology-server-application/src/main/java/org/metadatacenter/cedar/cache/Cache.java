@@ -2,6 +2,7 @@ package org.metadatacenter.cedar.cache;
 
 import org.metadatacenter.cedar.terminology.resources.AbstractTerminologyServerResource;
 import org.metadatacenter.terms.domainObjects.Ontology;
+import org.metadatacenter.terms.domainObjects.OntologyDetails;
 import org.metadatacenter.terms.domainObjects.ValueSet;
 
 import java.io.IOException;
@@ -52,6 +53,14 @@ public class Cache {
     try {
       LinkedHashMap<String, Ontology> map = new LinkedHashMap<>();
       for (Ontology o : AbstractTerminologyServerResource.terminologyService.findAllOntologies(false, BP_PUBLIC_API_KEY)) {
+        // Backstop for the picker, which drops any ontology whose details are null. The BioPortal list
+        // path already sets details.hasSubmissions from summaryOnly upstream; this covers the
+        // locally-served (catalog) path, whose ontologies are always browsable.
+        if (o.getDetails() == null) {
+          OntologyDetails details = new OntologyDetails();
+          details.setHasSubmissions(true);
+          o.setDetails(details);
+        }
         map.put(o.getId(), o);
       }
       return map;
