@@ -119,6 +119,7 @@ public class IngestJob {
     Path raw = source.download(acronym, sub.submissionId(), ontoDir.resolve("raw"));
     String versionId = sha256(raw);      // version id hashes the archival download as-is
     Path loadable = decompress(raw);     // .zip/.gz submissions must be expanded before parsing
+    loadable = stripOboImports(loadable);// OBO import: declarations must be dropped before parsing
 
     Path snapshotFile = ontoDir.resolve(versionId + ".sqlite");
     Files.deleteIfExists(snapshotFile);
@@ -194,6 +195,41 @@ public class IngestJob {
     }
     if (largest == null) throw new IOException("empty zip archive: " + raw);
     Files.move(largest, out, StandardCopyOption.REPLACE_EXISTING);
+    return out;
+  }
+
+  /**
+   * Removes {@code import:} declarations from an OBO file before it is parsed. OWLAPI's OBO→OWL
+   * converter ({@code OWLAPIObo2Owl}) resolves each {@code import:} over the network with a
+   * hardcoded default loader configuration, so the {@link org.semanticweb.owlapi.model.MissingImportHandlingStrategy#SILENT}
+   * the extractors set on their own load is ignored: an unreachable import (e.g. PECO's
+   * {@code exposure-envo_pattern.owl}, a GitHub 404) aborts the whole load with an
+   * {@code UnloadableImportException}. Stripping the declarations is the OBO equivalent of the
+   * SILENT policy the RDF/XML path already applies — each ontology's own asserted hierarchy is
+   * extracted; imported reference ontologies (ChEBI, ENVO, …) are out of scope and would otherwise
+   * flood the snapshot with foreign classes. IRIs referenced as parents survive as bare, parentless
+   * concept endpoints, exactly as an unresolved import leaves them on the OWL path.
+   *
+   * Only OBO input (identified by a {@code format-version:} header) that actually carries
+   * {@code import:} lines is rewritten, to a sibling {@code .noimports} file; anything else is
+   * returned unchanged.
+   */
+  static Path stripOboImports(Path loadable) throws IOException {
+    List<String> lines = Files.readAllLines(loadable);
+    boolean isObo = false;
+    boolean hasImport = false;
+    for (String line : lines) {
+      if (line.startsWith("format-version:")) isObo = true;
+      else if (line.startsWith("import:")) hasImport = true;
+      if (isObo && hasImport) break;
+    }
+    if (!isObo || !hasImport) return loadable;
+    List<String> kept = new ArrayList<>(lines.size());
+    for (String line : lines) {
+      if (!line.startsWith("import:")) kept.add(line);
+    }
+    Path out = loadable.resolveSibling(loadable.getFileName() + ".noimports");
+    Files.write(out, kept);
     return out;
   }
 
