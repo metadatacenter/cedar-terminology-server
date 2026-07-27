@@ -116,9 +116,10 @@ public class RoutingTerminologyServiceTest {
 
   @Test
   public void branchSearchInLocalOntology_servedByLocal() throws Exception {
+    // The branch is the root's descendants (cat, dog); the root mammal is excluded. "a" matches Cat.
     PagedResults<SearchResult> r = router.search("a", List.of("classes"), null, false, EX, iri("mammal"), 0, 1, 50,
         false, false, null, null);
-    assertEquals(List.of(iri("cat"), iri("mammal")), ldIds(r));
+    assertEquals(List.of(iri("cat")), ldIds(r));
   }
 
   @Test

@@ -202,8 +202,8 @@ public class SnapshotStoreTest {
 
   @Test
   public void searchByLabelUnderRoot_restrictsToTheBranch() throws Exception {
-    // Under mammal (the root itself plus descendants cat, dog); labels containing "a": Mammal, Cat.
-    assertEquals(List.of("cat", "mammal"), iris(store.searchByLabelUnderRoot("mammal", "a", false, 0)));
+    // Under mammal (descendants cat, dog — the root mammal is excluded); labels containing "a": Cat.
+    assertEquals(List.of("cat"), iris(store.searchByLabelUnderRoot("mammal", "a", false, 0)));
     // "pet" is outside the mammal branch.
     assertEquals(List.of(), iris(store.searchByLabelUnderRoot("mammal", "pet", false, 0)));
   }

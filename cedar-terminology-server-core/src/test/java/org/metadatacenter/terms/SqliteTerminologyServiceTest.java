@@ -186,10 +186,11 @@ public class SqliteTerminologyServiceTest {
 
   @Test
   public void search_branchScopedRestrictsToSubtree() throws Exception {
-    // Within the mammal branch (mammal + cat + dog), labels containing "a": Cat, Mammal.
+    // Within the mammal branch (descendants cat + dog; the root mammal is excluded), labels
+    // containing "a": Cat.
     PagedResults<SearchResult> r = service.search("a", List.of("classes"), null, false, EX, iri("mammal"),
         0, 1, 50, false, false, null, null);
-    assertEquals(List.of(iri("cat"), iri("mammal")), ldIds(r.getCollection()));
+    assertEquals(List.of(iri("cat")), ldIds(r.getCollection()));
   }
 
   @Test
@@ -244,9 +245,10 @@ public class SqliteTerminologyServiceTest {
 
   @Test
   public void integratedSearch_singleBranchRestrictsToSubtree() throws Exception {
+    // The branch is the root's descendants (cat, dog); the root mammal is excluded. "a" matches Cat.
     PagedResults<SearchResult> r = integrated(Optional.of("a"),
         "{\"branches\":[{\"acronym\":\"EX\",\"uri\":\"" + iri("mammal") + "\"}]}");
-    assertEquals(List.of(iri("cat"), iri("mammal")), ldIds(r.getCollection()));
+    assertEquals(List.of(iri("cat")), ldIds(r.getCollection()));
   }
 
   @Test

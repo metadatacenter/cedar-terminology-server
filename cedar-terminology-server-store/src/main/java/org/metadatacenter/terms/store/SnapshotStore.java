@@ -440,7 +440,8 @@ public class SnapshotStore implements AutoCloseable {
     return labelSearch(null, query, prefixOnly, limit);
   }
 
-  /** As {@link #searchByLabel}, but restricted to {@code rootIri} together with its descendants. */
+  /** As {@link #searchByLabel}, but restricted to the strict descendants of {@code rootIri}; the
+   * branch root itself is excluded, matching BioPortal's branch semantics. */
   public List<Concept> searchByLabelUnderRoot(String rootIri, String query, boolean prefixOnly, int limit)
       throws SQLException {
     return labelSearch(rootIri, query, prefixOnly, limit);
@@ -454,10 +455,11 @@ public class SnapshotStore implements AutoCloseable {
         "       EXISTS(SELECT 1 FROM edge e2 WHERE e2.parent_id = c.id) AS has_children\n" +
         "FROM concept c\n");
     if (rootIri != null) {
-      // The branch root itself plus everything transitively under it.
-      sql.append("WHERE (c.iri = ? OR c.id IN (\n" +
+      // The branch's descendants only — the root itself is excluded, matching BioPortal's branch
+      // semantics (a branch value constraint offers the subtypes of the class, not the class itself).
+      sql.append("WHERE c.id IN (\n" +
                  "        SELECT cl.descendant_id FROM closure cl\n" +
-                 "        JOIN concept a ON a.id = cl.ancestor_id WHERE a.iri = ?))\n" +
+                 "        JOIN concept a ON a.id = cl.ancestor_id WHERE a.iri = ?)\n" +
                  "  AND c.pref_label LIKE ? ESCAPE '\\'\n");
     } else {
       sql.append("WHERE c.pref_label LIKE ? ESCAPE '\\'\n");
@@ -469,7 +471,6 @@ public class SnapshotStore implements AutoCloseable {
     try (PreparedStatement ps = connection.prepareStatement(sql.toString())) {
       int i = 1;
       if (rootIri != null) {
-        ps.setString(i++, rootIri);
         ps.setString(i++, rootIri);
       }
       ps.setString(i, pattern);
