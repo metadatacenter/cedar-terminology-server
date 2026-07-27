@@ -8,6 +8,7 @@ import org.semanticweb.owlapi.model.OWLOntologyLoaderConfiguration;
 import org.semanticweb.owlapi.model.AxiomType;
 import org.semanticweb.owlapi.model.IRI;
 import org.semanticweb.owlapi.model.OWLAnnotation;
+import org.semanticweb.owlapi.model.OWLAnnotationAssertionAxiom;
 import org.semanticweb.owlapi.model.OWLAnnotationProperty;
 import org.semanticweb.owlapi.model.OWLAnnotationValue;
 import org.semanticweb.owlapi.model.OWLClass;
@@ -64,7 +65,6 @@ public class OwlHierarchyExtractor implements HierarchyExtractor {
   @Override
   public Result extract(OWLOntology ont, SnapshotStore store) throws SQLException {
     OWLDataFactory df = ont.getOWLOntologyManager().getOWLDataFactory();
-    OWLAnnotationProperty rdfsLabel = df.getRDFSLabel();
     OWLAnnotationProperty deprecated = df.getOWLDeprecated();
     OWLAnnotationProperty replacedBy = df.getOWLAnnotationProperty(TERM_REPLACED_BY);
 
@@ -73,7 +73,7 @@ public class OwlHierarchyExtractor implements HierarchyExtractor {
       if (cls.isOWLThing() || cls.isOWLNothing()) {
         continue;
       }
-      store.addConcept(cls.getIRI().toString(), label(cls, ont, rdfsLabel),
+      store.addConcept(cls.getIRI().toString(), label(cls, ont),
           isDeprecated(cls, ont, deprecated), replacedBy(cls, ont, replacedBy));
       classCount++;
     }
@@ -177,9 +177,16 @@ public class OwlHierarchyExtractor implements HierarchyExtractor {
     return added;
   }
 
-  private static String label(OWLClass cls, OWLOntology ont, OWLAnnotationProperty rdfsLabel) {
-    for (OWLAnnotation a : EntitySearcher.getAnnotations(cls, ont, rdfsLabel)) {
-      if (a.getValue() instanceof OWLLiteral literal) {
+  /**
+   * The class's preferred label from its own {@code rdfs:label} assertion. Read from the class's
+   * direct annotation-assertion axioms rather than via {@code EntitySearcher.getAnnotations}, which
+   * also surfaces labels attached as <em>axiom annotations</em> on other assertions — notably an OBO
+   * {@code xref} description (obo2owl exposes {@code xref: X "desc"} as a second {@code rdfs:label}),
+   * which must not be mistaken for the term's name and would otherwise diverge from BioPortal.
+   */
+  private static String label(OWLClass cls, OWLOntology ont) {
+    for (OWLAnnotationAssertionAxiom ax : ont.getAnnotationAssertionAxioms(cls.getIRI())) {
+      if (ax.getProperty().isLabel() && ax.getValue() instanceof OWLLiteral literal) {
         return literal.getLiteral();
       }
     }
