@@ -10,6 +10,7 @@ import org.metadatacenter.terms.util.Util;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Optional;
 
@@ -212,13 +213,29 @@ public class RoutingTerminologyService implements ITerminologyService {
 
   @Override
   public List<Ontology> findAllOntologies(boolean includeDetails, String apiKey) throws IOException {
-    // The server reports the ontologies it versions locally (from the catalog), not BioPortal's full
-    // ~1300-ontology registry. Falls back to remote only when no local backend is configured or its
-    // catalog is empty, so a misconfigured deployment does not present an empty ontology list.
+    // Only under localOnly (a fully offline deployment) does the server report just the ontologies it
+    // versions locally. Otherwise the local store is a partial, incremental cutover and BioPortal is
+    // still the source for everything not migrated, so the list must be the full remote registry, plus
+    // any locally-served ontology BioPortal happens to omit — reporting only the allowlist would drop
+    // every not-yet-migrated ontology from the picker. Local and remote share the same ontology @id
+    // (https://data.bioontology.org/ontologies/ACRONYM), so the merge dedups cleanly. The remote entry
+    // wins for an ontology present in both: its list metadata (full display name, submission details)
+    // is richer than the catalog's, and the picker shows that name — overwriting DOID's
+    // "Human Disease Ontology" with the bare acronym would degrade every migrated ontology's label.
     if (local != null) {
       List<Ontology> served = local.findAllOntologies(includeDetails, apiKey);
-      if (!served.isEmpty()) {
+      if (localOnly) {
         return served;
+      }
+      if (!served.isEmpty()) {
+        LinkedHashMap<String, Ontology> merged = new LinkedHashMap<>();
+        for (Ontology o : remote.findAllOntologies(includeDetails, apiKey)) {
+          merged.put(o.getId(), o);
+        }
+        for (Ontology o : served) {   // add only ontologies BioPortal omits; never clobber its metadata
+          merged.putIfAbsent(o.getId(), o);
+        }
+        return new ArrayList<>(merged.values());
       }
     }
     return remote.findAllOntologies(includeDetails, apiKey);

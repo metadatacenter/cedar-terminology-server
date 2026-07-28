@@ -7,6 +7,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.metadatacenter.cedar.terminology.validation.integratedsearch.ValueConstraints;
 import org.metadatacenter.terms.customObjects.PagedResults;
+import org.metadatacenter.terms.domainObjects.Ontology;
 import org.metadatacenter.terms.domainObjects.OntologyClass;
 import org.metadatacenter.terms.domainObjects.SearchResult;
 import org.metadatacenter.terms.domainObjects.TreeNode;
@@ -193,5 +194,71 @@ public class RoutingTerminologyServiceTest {
   public void localOnly_nonLocalOntologyStillUsesRemote() throws Exception {
     // localOnly only forbids fallback for locally-served ontologies; others are unaffected.
     assertEquals(REMOTE, strictRouter().findClass(iri("dog"), "OTHER", null).getPrefLabel());
+  }
+
+  /* findAllOntologies — the ontology-list endpoint the picker and health check read */
+
+  private static final String BP = "https://data.bioontology.org/ontologies/";
+
+  /** A remote whose findAllOntologies returns a fixed registry; throws for anything else. */
+  private static ITerminologyService remoteListing(List<Ontology> registry) {
+    return (ITerminologyService) Proxy.newProxyInstance(
+        RoutingTerminologyServiceTest.class.getClassLoader(),
+        new Class[]{ITerminologyService.class},
+        (proxy, method, args) -> {
+          if ("findAllOntologies".equals(method.getName())) {
+            return registry;
+          }
+          throw new UnsupportedOperationException(method.getName());
+        });
+  }
+
+  /** A local backend that reports {@code served} as the ontologies it versions. */
+  private static SqliteTerminologyService localListing(List<Ontology> served) {
+    return new SqliteTerminologyService(new SqliteTerminologyService.SnapshotProvider() {
+      @Override
+      public Optional<SnapshotStore> forOntology(String ontology) {
+        return Optional.empty();
+      }
+
+      @Override
+      public List<Ontology> ontologies() {
+        return served;
+      }
+    });
+  }
+
+  @Test
+  public void findAllOntologies_partialCutover_unionsRemoteRegistryWithLocal() throws Exception {
+    // localOnly=false is an incremental cutover: BioPortal is still the source for everything not
+    // migrated, so the list must be the full remote registry, plus any locally-served ontology
+    // BioPortal omits — not just the allowlist. For an ontology present in both, BioPortal's metadata
+    // must win: its display name ("Human Disease Ontology") is what the picker shows; the catalog's
+    // bare-acronym name would degrade the label.
+    Ontology remoteDoid = new Ontology("DOID", BP + "DOID", "Human Disease Ontology", false, null);
+    Ontology remoteGo = new Ontology("GO", BP + "GO", "Gene Ontology", false, null);
+    Ontology localDoid = new Ontology("DOID", BP + "DOID", "DOID", false, null);      // catalog name = acronym
+    Ontology localOnly = new Ontology("LOCAL", BP + "LOCAL", "A Local-only Ontology", false, null);
+    RoutingTerminologyService r = new RoutingTerminologyService(
+        remoteListing(List.of(remoteDoid, remoteGo)), localListing(List.of(localDoid, localOnly)),
+        acr -> "DOID".equals(acr) || "LOCAL".equals(acr), false);
+
+    List<Ontology> all = r.findAllOntologies(false, null);
+    // Full remote registry, plus the local-only ontology appended.
+    assertEquals(List.of("DOID", "GO", "LOCAL"), all.stream().map(Ontology::getId).collect(Collectors.toList()));
+    // BioPortal's richer name wins for the ontology present in both — not the catalog's bare acronym.
+    assertEquals("Human Disease Ontology",
+        all.stream().filter(o -> "DOID".equals(o.getId())).findFirst().orElseThrow().getName());
+  }
+
+  @Test
+  public void findAllOntologies_localOnly_returnsOnlyTheServedSet() throws Exception {
+    // A fully offline deployment reports only what it versions; it must not call BioPortal at all
+    // (the remote stub throws for findAllOntologies, proving it is not consulted).
+    Ontology localDoid = new Ontology("DOID", BP + "DOID", "Human Disease Ontology", false, null);
+    RoutingTerminologyService r = new RoutingTerminologyService(
+        remoteListing(List.of()), localListing(List.of(localDoid)), acr -> true, true);
+    assertEquals(List.of("DOID"), r.findAllOntologies(false, null).stream()
+        .map(Ontology::getId).collect(Collectors.toList()));
   }
 }
