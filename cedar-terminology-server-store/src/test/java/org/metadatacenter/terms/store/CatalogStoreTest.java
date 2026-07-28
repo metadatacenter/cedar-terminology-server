@@ -92,6 +92,33 @@ public class CatalogStoreTest {
   }
 
   @Test
+  public void twoOntologiesSharingAContentHashKeepSeparateSnapshots() throws Exception {
+    // INCENTIVE and INCENTIVE-VARS resolve to the same SKOS file on BioPortal, so both ingest to the
+    // same content hash. Each must keep its own snapshot row (keyed on (version_id, acronym)) and its
+    // tag must resolve to its own row, not the other ontology's.
+    catalog.upsertOntology(new OntologyInfo("INCENTIVE", "INCENTIVE", null, "SKOS"));
+    catalog.upsertOntology(new OntologyInfo("INCENTIVE-VARS", "INCENTIVE-VARS", null, "SKOS"));
+    String shared = "sharedhash";
+    catalog.addSnapshot(new SnapshotInfo(shared, "INCENTIVE", "1.0", "2025-01-01",
+        "2026-01-01T00:00:00Z", "SKOS", "subsumption", 81, 75,
+        "/snapshots/INCENTIVE/" + shared + ".sqlite", shared, "open"));
+    catalog.addSnapshot(new SnapshotInfo(shared, "INCENTIVE-VARS", "1.0", "2025-01-01",
+        "2026-01-01T00:00:00Z", "SKOS", "subsumption", 81, 75,
+        "/snapshots/INCENTIVE-VARS/" + shared + ".sqlite", shared, "open"));
+    catalog.setTag("INCENTIVE", CatalogStore.TAG_LATEST, shared);
+    catalog.setTag("INCENTIVE-VARS", CatalogStore.TAG_LATEST, shared);
+
+    // Adding the second did not overwrite the first: both rows survive.
+    assertEquals(1, catalog.listSnapshots("INCENTIVE").size());
+    assertEquals(1, catalog.listSnapshots("INCENTIVE-VARS").size());
+    // Each tag resolves to that ontology's own snapshot (its own file), despite the shared hash.
+    assertEquals("/snapshots/INCENTIVE/" + shared + ".sqlite",
+        catalog.resolveLatest("INCENTIVE").orElseThrow().filePath());
+    assertEquals("/snapshots/INCENTIVE-VARS/" + shared + ".sqlite",
+        catalog.resolveLatest("INCENTIVE-VARS").orElseThrow().filePath());
+  }
+
+  @Test
   public void snapshotInfoRoundTrips() throws Exception {
     // Every field survives persist -> reload (record equality covers all 12 columns).
     SnapshotInfo info = new SnapshotInfo("rt", "DOID", "release/x", "2025-03-03", "2025-03-04T00:00:00Z",

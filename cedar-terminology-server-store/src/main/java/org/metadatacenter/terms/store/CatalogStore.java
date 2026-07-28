@@ -105,9 +105,14 @@ public class CatalogStore implements AutoCloseable {
             source_iri     TEXT,
             default_format TEXT
           )""");
+      // The key is (version_id, acronym), not version_id alone: version_id is a pure content hash,
+      // and two different ontologies can legitimately publish byte-identical downloads (INCENTIVE and
+      // INCENTIVE-VARS both resolve to the same SKOS file on BioPortal), which then share a hash.
+      // Keying on the pair lets that content live once per ontology; keying on the hash alone would
+      // let one ontology's snapshot silently overwrite the other's.
       s.executeUpdate("""
           CREATE TABLE IF NOT EXISTS snapshot (
-            version_id       TEXT PRIMARY KEY,
+            version_id       TEXT NOT NULL,
             acronym          TEXT NOT NULL REFERENCES ontology(acronym),
             declared_version TEXT,
             released_at      TEXT,
@@ -118,15 +123,18 @@ public class CatalogStore implements AutoCloseable {
             edge_count       INTEGER,
             file_path        TEXT NOT NULL,
             file_hash        TEXT NOT NULL,
-            license_tier     TEXT NOT NULL
+            license_tier     TEXT NOT NULL,
+            PRIMARY KEY (version_id, acronym)
           )""");
       s.executeUpdate("CREATE INDEX IF NOT EXISTS idx_snapshot_acronym ON snapshot(acronym, released_at)");
+      s.executeUpdate("CREATE INDEX IF NOT EXISTS idx_snapshot_version ON snapshot(version_id)");
       s.executeUpdate("""
           CREATE TABLE IF NOT EXISTS version_tag (
             acronym    TEXT NOT NULL REFERENCES ontology(acronym),
             tag        TEXT NOT NULL,
-            version_id TEXT NOT NULL REFERENCES snapshot(version_id),
-            PRIMARY KEY (acronym, tag)
+            version_id TEXT NOT NULL,
+            PRIMARY KEY (acronym, tag),
+            FOREIGN KEY (version_id, acronym) REFERENCES snapshot(version_id, acronym)
           )""");
     }
   }
@@ -150,17 +158,18 @@ public class CatalogStore implements AutoCloseable {
   }
 
   /**
-   * Records an ingested snapshot. Idempotent on {@code version_id}: re-ingesting the same content
-   * (same content-hash id) updates the existing row rather than failing, so a backfill can be
-   * re-run safely.
+   * Records an ingested snapshot. Idempotent on {@code (version_id, acronym)}: re-ingesting the same
+   * content for the same ontology (same content-hash id) updates the existing row rather than
+   * failing, so a backfill can be re-run safely. A different ontology that happens to share the
+   * content hash gets its own row rather than overwriting this one.
    */
   public void addSnapshot(SnapshotInfo s) throws SQLException {
     try (PreparedStatement ps = connection.prepareStatement("""
         INSERT INTO snapshot (version_id, acronym, declared_version, released_at, ingested_at, format,
                               hierarchy_status, class_count, edge_count, file_path, file_hash, license_tier)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ON CONFLICT(version_id) DO UPDATE SET
-          acronym = excluded.acronym, declared_version = excluded.declared_version,
+        ON CONFLICT(version_id, acronym) DO UPDATE SET
+          declared_version = excluded.declared_version,
           released_at = excluded.released_at, ingested_at = excluded.ingested_at,
           format = excluded.format, hierarchy_status = excluded.hierarchy_status,
           class_count = excluded.class_count, edge_count = excluded.edge_count,
@@ -204,7 +213,8 @@ public class CatalogStore implements AutoCloseable {
   /** Resolves the snapshot a tag points to for an ontology. */
   public Optional<SnapshotInfo> resolve(String acronym, String tag) throws SQLException {
     try (PreparedStatement ps = connection.prepareStatement("""
-        SELECT s.* FROM version_tag t JOIN snapshot s ON s.version_id = t.version_id
+        SELECT s.* FROM version_tag t
+        JOIN snapshot s ON s.version_id = t.version_id AND s.acronym = t.acronym
         WHERE t.acronym = ? AND t.tag = ?""")) {
       ps.setString(1, acronym);
       ps.setString(2, tag);
@@ -217,9 +227,14 @@ public class CatalogStore implements AutoCloseable {
     return resolve(acronym, TAG_LATEST);
   }
 
-  /** Looks up a snapshot by its version id. */
+  /**
+   * Looks up a snapshot by its version id. Since a content hash can be shared by more than one
+   * ontology, this returns any one matching row; callers that only need the frozen content (which is
+   * identical across the sharers, by definition of the hash) — such as value-set expansion — do not
+   * care which. Callers that need a specific ontology's row should use {@link #resolve} instead.
+   */
   public Optional<SnapshotInfo> getSnapshot(String versionId) throws SQLException {
-    try (PreparedStatement ps = connection.prepareStatement("SELECT * FROM snapshot WHERE version_id = ?")) {
+    try (PreparedStatement ps = connection.prepareStatement("SELECT * FROM snapshot WHERE version_id = ? LIMIT 1")) {
       ps.setString(1, versionId);
       return firstSnapshot(ps);
     }
