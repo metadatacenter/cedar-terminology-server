@@ -209,6 +209,21 @@ public class SnapshotStoreTest {
   }
 
   @Test
+  public void branchExcludesRootEvenWithACycle() throws Exception {
+    // A broader/narrower cycle (some SKOS vocabularies have them) makes a node reach itself through
+    // the closure; a branch must still never return its own root.
+    try (SnapshotStore s = SnapshotStore.openInMemory()) {
+      s.initSchema();
+      s.addConcept("a", "A");
+      s.addConcept("b", "B");
+      s.addEdge("b", "a", "hierarchy");   // b under a
+      s.addEdge("a", "b", "hierarchy");   // cycle: a under b
+      s.materialize();
+      assertEquals(List.of("b"), iris(s.searchByLabelUnderRoot("a", "", false, 0)));
+    }
+  }
+
+  @Test
   public void browseIncludesUnlabeledDescendants_butSearchDoesNot() throws Exception {
     // Some ontologies carry a correct hierarchy but no labels (e.g. GALEN). An empty-query browse
     // must still enumerate label-less descendants; a real search term must not match them.

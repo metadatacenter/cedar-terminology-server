@@ -463,9 +463,12 @@ public class SnapshotStore implements AutoCloseable {
     if (rootIri != null) {
       // The branch's descendants only — the root itself is excluded, matching BioPortal's branch
       // semantics (a branch value constraint offers the subtypes of the class, not the class itself).
+      // The closure is non-reflexive, but a broader/narrower cycle (which some SKOS vocabularies
+      // contain, e.g. HRAVS) can make a node reach itself; the explicit c.iri <> root guards that.
       sql.append("WHERE c.id IN (\n" +
                  "        SELECT cl.descendant_id FROM closure cl\n" +
                  "        JOIN concept a ON a.id = cl.ancestor_id WHERE a.iri = ?)\n" +
+                 "  AND c.iri <> ?\n" +
                  "  AND COALESCE(c.pref_label, '') LIKE ? ESCAPE '\\'\n");
     } else {
       sql.append("WHERE COALESCE(c.pref_label, '') LIKE ? ESCAPE '\\'\n");
@@ -477,6 +480,7 @@ public class SnapshotStore implements AutoCloseable {
     try (PreparedStatement ps = connection.prepareStatement(sql.toString())) {
       int i = 1;
       if (rootIri != null) {
+        ps.setString(i++, rootIri);
         ps.setString(i++, rootIri);
       }
       ps.setString(i, pattern);
