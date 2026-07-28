@@ -207,18 +207,19 @@ public class SnapshotStore implements AutoCloseable {
           )
           SELECT ancestor_id, descendant_id FROM walk""");
       s.executeUpdate("DELETE FROM root");
-      // Roots follow BioPortal: a root is a non-obsolete class that asserts subClassOf owl:Thing and
-      // has no other named parent. Obsolete classes are never roots, and a class that is merely
-      // parentless because it is a bare imported reference (no subClassOf axiom at all) is excluded.
-      // Fallback: if the ontology declares no owl:Thing subclass at all (a self-contained ontology
-      // that leaves its top classes parentless), roots are the non-obsolete parentless classes.
+      // A root is a non-obsolete class with no named parent. This matches BioPortal's /classes/roots
+      // for hierarchical ontologies: verified against the goldens, the parentless set reproduces
+      // BioPortal's roots exactly for DOID (15), and the top classes are parentless in the source
+      // rather than explicit owl:Thing subclasses (doid.owl asserts no owl:Thing at all). The earlier
+      // rule keyed on an explicit owl:Thing declaration and so dropped every parentless top class that
+      // did not assert it -- the picker's tree then had no entry point (DOID returned evidence and
+      // sequence, not disease). owl:Thing is never materialized, so a class asserting subClassOf
+      // owl:Thing is simply parentless here and is included. Obsolete classes are never roots.
       s.executeUpdate("""
           INSERT INTO root (concept_id)
           SELECT c.id FROM concept c
           WHERE c.obsolete = 0
-            AND NOT EXISTS (SELECT 1 FROM edge e WHERE e.child_id = c.id)
-            AND (c.declares_thing = 1
-                 OR NOT EXISTS (SELECT 1 FROM concept t WHERE t.declares_thing = 1))""");
+            AND NOT EXISTS (SELECT 1 FROM edge e WHERE e.child_id = c.id)""");
     }
   }
 

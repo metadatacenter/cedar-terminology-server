@@ -250,32 +250,34 @@ public class SnapshotStoreTest {
         iris(store.allConceptsDetailed()));
   }
 
-  /* Roots — BioPortal's rule: non-obsolete classes that assert subClassOf owl:Thing. */
+  /* Roots — BioPortal's rule: a non-obsolete class with no named parent. Verified against the roots
+   * goldens: the parentless set reproduces BioPortal's /classes/roots (e.g. DOID's 15). owl:Thing is
+   * never materialized, so a class asserting subClassOf owl:Thing is simply parentless and is a root;
+   * an explicit owl:Thing declaration does not distinguish roots. */
 
   @Test
-  public void roots_followOwlThingDeclarationAndExcludeObsolete() throws Exception {
+  public void roots_areNonObsoleteParentlessClasses() throws Exception {
     try (SnapshotStore s = SnapshotStore.openInMemory()) {
       s.initSchema();
-      s.addConcept("top", "Top");                     // declares owl:Thing -> root
-      s.addConcept("obsTop", "ObsTop", true, null);   // declares owl:Thing but obsolete -> not a root
-      s.addConcept("dangling", "Dangling");           // parentless, no owl:Thing declaration -> not a root
+      s.addConcept("top", "Top");                     // parentless -> root
+      s.addConcept("obsTop", "ObsTop", true, null);   // parentless but obsolete -> not a root
+      s.addConcept("alsoTop", "AlsoTop");             // parentless, no owl:Thing declaration -> still a root
       s.addConcept("child", "Child");
-      s.declareThingSubclass("top");
-      s.declareThingSubclass("obsTop");
+      s.declareThingSubclass("top");                  // declaring owl:Thing does not change the outcome
       s.addEdge("child", "top", "rdfs:subClassOf");
       s.materialize();
-      assertEquals(List.of("top"), s.roots());
+      assertEquals(List.of("alsoTop", "top"), s.roots());   // both parentless non-obsolete; obsTop excluded
       assertTrue(s.descendants("top").contains("child"));
     }
   }
 
   @Test
-  public void roots_fallBackToParentlessWhenNoOwlThingDeclared() throws Exception {
+  public void roots_areParentlessRegardlessOfEdgePredicate() throws Exception {
     try (SnapshotStore s = SnapshotStore.openInMemory()) {
       s.initSchema();
       s.addConcept("a", "A");
       s.addConcept("b", "B");
-      s.addEdge("b", "a", "isa"); // no class declares owl:Thing -> fall back to parentless
+      s.addEdge("b", "a", "isa"); // a is parentless -> root; b has a parent -> not
       s.materialize();
       assertEquals(List.of("a"), s.roots());
     }

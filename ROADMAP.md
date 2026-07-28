@@ -70,9 +70,14 @@ Done:
 
 - **Equivalence bars per operation** — the enumerate bar (set-equality + labels) is fixed; the
   search-recall tolerance is not yet chosen.
-- **Endpoint scope** — the gate currently targets only `POST /bioportal/integrated-search` (what the
-  template editor and CEE mostly exercise, and what the matrix models). Whether to also gate the
-  direct class/children/subtree endpoints is open.
+- **Endpoint scope** — the gate covers `POST /bioportal/integrated-search` (what the matrix models)
+  and, since the first cutover exposed it, `GET .../classes/roots` (the picker's tree entry point;
+  `cedar_termdiff.py --roots`). A root is now a non-obsolete class with no named parent, matching
+  BioPortal for hierarchical ontologies (verified against the roots goldens: DOID 15, picker
+  navigable). Residual roots divergence is overcount, not undercount: referenced-only orphans
+  (CHEBI) and flat/value-set vocabularies where BioPortal returns none (GAZ, RXNORM) still list too
+  many locally — cosmetic for the picker, and those flat vocabularies are search-only, not
+  tree-browse cutover targets. Gating `children`/`subtree` is still open.
 - **Golden refresh cadence** — how often to re-record BioPortal baselines against ontology drift.
 
 ## Where the Pieces Live
