@@ -58,6 +58,11 @@ public class OwlHierarchyExtractor implements HierarchyExtractor {
   /** OBO "term replaced by": links an obsolete term to its successor. */
   private static final IRI TERM_REPLACED_BY = IRI.create("http://purl.obolibrary.org/obo/IAO_0100001");
 
+  /** SKOS preferred label: the label BioPortal serves for UMLS/TTL ontologies (e.g. ICD10CM, MESH,
+   *  LOINC), which carry an OWL {@code rdfs:subClassOf} hierarchy but label concepts with
+   *  {@code skos:prefLabel} rather than {@code rdfs:label}. */
+  private static final IRI SKOS_PREF_LABEL = IRI.create("http://www.w3.org/2004/02/skos/core#prefLabel");
+
   /**
    * Extracts the hierarchy from an already-loaded ontology into the store and materializes the
    * closure. The store should be freshly initialized ({@link SnapshotStore#initSchema()}).
@@ -178,19 +183,30 @@ public class OwlHierarchyExtractor implements HierarchyExtractor {
   }
 
   /**
-   * The class's preferred label from its own {@code rdfs:label} assertion. Read from the class's
-   * direct annotation-assertion axioms rather than via {@code EntitySearcher.getAnnotations}, which
-   * also surfaces labels attached as <em>axiom annotations</em> on other assertions — notably an OBO
-   * {@code xref} description (obo2owl exposes {@code xref: X "desc"} as a second {@code rdfs:label}),
-   * which must not be mistaken for the term's name and would otherwise diverge from BioPortal.
+   * The class's preferred label, taken from its own {@code rdfs:label} assertion, falling back to
+   * {@code skos:prefLabel} (which is where UMLS/TTL ontologies such as ICD10CM, MESH, and LOINC put
+   * the label BioPortal serves — they carry an OWL hierarchy but SKOS labels).
+   *
+   * Read from the class's direct annotation-assertion axioms rather than via
+   * {@code EntitySearcher.getAnnotations}, which also surfaces labels attached as <em>axiom
+   * annotations</em> on other assertions — notably an OBO {@code xref} description (obo2owl exposes
+   * {@code xref: X "desc"} as a second {@code rdfs:label}), which must not be mistaken for the term's
+   * name and would otherwise diverge from BioPortal.
    */
   private static String label(OWLClass cls, OWLOntology ont) {
+    String prefLabel = null;
     for (OWLAnnotationAssertionAxiom ax : ont.getAnnotationAssertionAxioms(cls.getIRI())) {
-      if (ax.getProperty().isLabel() && ax.getValue() instanceof OWLLiteral literal) {
+      if (!(ax.getValue() instanceof OWLLiteral literal)) {
+        continue;
+      }
+      if (ax.getProperty().isLabel()) {
         return literal.getLiteral();
       }
+      if (prefLabel == null && ax.getProperty().getIRI().equals(SKOS_PREF_LABEL)) {
+        prefLabel = literal.getLiteral();
+      }
     }
-    return null;
+    return prefLabel;
   }
 
   private static boolean isDeprecated(OWLClass cls, OWLOntology ont, OWLAnnotationProperty deprecated) {

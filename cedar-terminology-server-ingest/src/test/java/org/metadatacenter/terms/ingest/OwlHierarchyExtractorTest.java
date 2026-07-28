@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.metadatacenter.terms.store.SnapshotStore;
 import org.semanticweb.owlapi.apibinding.OWLManager;
 import org.semanticweb.owlapi.model.IRI;
+import org.semanticweb.owlapi.model.OWLAnnotationProperty;
 import org.semanticweb.owlapi.model.OWLClass;
 import org.semanticweb.owlapi.model.OWLDataFactory;
 import org.semanticweb.owlapi.model.OWLObjectProperty;
@@ -64,6 +65,13 @@ public class OwlHierarchyExtractorTest {
     // Labels:
     m.addAxiom(ont, df.getOWLAnnotationAssertionAxiom(df.getRDFSLabel(), dog.getIRI(), df.getOWLLiteral("Dog")));
     m.addAxiom(ont, df.getOWLAnnotationAssertionAxiom(df.getRDFSLabel(), cat.getIRI(), df.getOWLLiteral("Cat")));
+    // UMLS/TTL style: animal is labeled only with skos:prefLabel (fallback); mammal carries both,
+    // and rdfs:label must win.
+    OWLAnnotationProperty skosPref =
+        df.getOWLAnnotationProperty(IRI.create("http://www.w3.org/2004/02/skos/core#prefLabel"));
+    m.addAxiom(ont, df.getOWLAnnotationAssertionAxiom(skosPref, animal.getIRI(), df.getOWLLiteral("Animal")));
+    m.addAxiom(ont, df.getOWLAnnotationAssertionAxiom(df.getRDFSLabel(), mammal.getIRI(), df.getOWLLiteral("Mammal")));
+    m.addAxiom(ont, df.getOWLAnnotationAssertionAxiom(skosPref, mammal.getIRI(), df.getOWLLiteral("Mammal SKOS")));
 
     store = SnapshotStore.openInMemory();
     store.initSchema();
@@ -105,6 +113,10 @@ public class OwlHierarchyExtractorTest {
     new OwlHierarchyExtractor().extract(ont, store);
     assertEquals("Dog", store.prefLabel(BASE + "dog").orElseThrow());
     assertEquals("Cat", store.prefLabel(BASE + "cat").orElseThrow());
+    // skos:prefLabel is used when there is no rdfs:label (UMLS/TTL ontologies label this way);
+    assertEquals("Animal", store.prefLabel(BASE + "animal").orElseThrow());
+    // but rdfs:label wins when a concept carries both.
+    assertEquals("Mammal", store.prefLabel(BASE + "mammal").orElseThrow());
   }
 
   @Test
