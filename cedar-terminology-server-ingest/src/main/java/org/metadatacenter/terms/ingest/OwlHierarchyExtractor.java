@@ -22,7 +22,7 @@ import org.semanticweb.owlapi.model.OWLOntology;
 import org.semanticweb.owlapi.model.OWLOntologyCreationException;
 import org.semanticweb.owlapi.model.OWLOntologyManager;
 import org.semanticweb.owlapi.model.OWLSubClassOfAxiom;
-import org.semanticweb.owlapi.search.EntitySearcher;
+import org.semanticweb.owlapi.model.parameters.Imports;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -97,7 +97,7 @@ public class OwlHierarchyExtractor implements HierarchyExtractor {
     OWLAnnotationProperty replacedBy = df.getOWLAnnotationProperty(TERM_REPLACED_BY);
 
     int classCount = 0;
-    for (OWLClass cls : ont.getClassesInSignature()) {
+    for (OWLClass cls : ont.getClassesInSignature(Imports.INCLUDED)) {
       if (cls.isOWLThing() || cls.isOWLNothing()) {
         continue;
       }
@@ -108,8 +108,11 @@ public class OwlHierarchyExtractor implements HierarchyExtractor {
 
     int edgeCount = 0;
     // Asserted rdfs:subClassOf. A named superclass is a parent; a named genus inside an
-    // intersection superclass is too.
-    for (OWLSubClassOfAxiom ax : ont.getAxioms(AxiomType.SUBCLASS_OF)) {
+    // intersection superclass is too. Read across the import closure: BioPortal resolves an
+    // ontology's owl:imports and serves the merged graph, so a field constrained to an imported
+    // branch (e.g. BAO's CHEBI/UO slims) browses the imported terms. Imports that don't resolve are
+    // silently skipped at load (MissingImportHandlingStrategy.SILENT), so this stays best-effort.
+    for (OWLSubClassOfAxiom ax : ont.getAxioms(AxiomType.SUBCLASS_OF, Imports.INCLUDED)) {
       OWLClassExpression sub = ax.getSubClass();
       if (sub.isAnonymous()) {
         continue;
@@ -128,7 +131,7 @@ public class OwlHierarchyExtractor implements HierarchyExtractor {
       edgeCount += addParents(store, child, namedParents(sup), "rdfs:subClassOf");
     }
     // Defined classes: the named genus of an equivalentClass intersection (genus-differentia).
-    for (OWLEquivalentClassesAxiom ax : ont.getAxioms(AxiomType.EQUIVALENT_CLASSES)) {
+    for (OWLEquivalentClassesAxiom ax : ont.getAxioms(AxiomType.EQUIVALENT_CLASSES, Imports.INCLUDED)) {
       List<OWLClassExpression> exprs = new ArrayList<>(ax.getClassExpressions());
       for (OWLClassExpression e : exprs) {
         if (e.isAnonymous()) {
@@ -227,37 +230,48 @@ public class OwlHierarchyExtractor implements HierarchyExtractor {
    */
   private static String label(OWLClass cls, OWLOntology ont) {
     String prefLabel = null;
-    for (OWLAnnotationAssertionAxiom ax : ont.getAnnotationAssertionAxioms(cls.getIRI())) {
-      if (!(ax.getValue() instanceof OWLLiteral literal)) {
-        continue;
-      }
-      if (ax.getProperty().isLabel()) {
-        return literal.getLiteral();
-      }
-      if (prefLabel == null && ax.getProperty().getIRI().equals(SKOS_PREF_LABEL)) {
-        prefLabel = literal.getLiteral();
+    // Across the import closure: an imported class carries its label in the imported ontology.
+    for (OWLOntology o : ont.getImportsClosure()) {
+      for (OWLAnnotationAssertionAxiom ax : o.getAnnotationAssertionAxioms(cls.getIRI())) {
+        if (!(ax.getValue() instanceof OWLLiteral literal)) {
+          continue;
+        }
+        if (ax.getProperty().isLabel()) {
+          return literal.getLiteral();
+        }
+        if (prefLabel == null && ax.getProperty().getIRI().equals(SKOS_PREF_LABEL)) {
+          prefLabel = literal.getLiteral();
+        }
       }
     }
     return prefLabel;
   }
 
   private static boolean isDeprecated(OWLClass cls, OWLOntology ont, OWLAnnotationProperty deprecated) {
-    for (OWLAnnotation a : EntitySearcher.getAnnotations(cls, ont, deprecated)) {
-      if (a.getValue() instanceof OWLLiteral literal && literal.isBoolean() && literal.parseBoolean()) {
-        return true;
+    for (OWLOntology o : ont.getImportsClosure()) {
+      for (OWLAnnotationAssertionAxiom ax : o.getAnnotationAssertionAxioms(cls.getIRI())) {
+        if (ax.getProperty().equals(deprecated) && ax.getValue() instanceof OWLLiteral literal
+            && literal.isBoolean() && literal.parseBoolean()) {
+          return true;
+        }
       }
     }
     return false;
   }
 
   private static String replacedBy(OWLClass cls, OWLOntology ont, OWLAnnotationProperty replacedBy) {
-    for (OWLAnnotation a : EntitySearcher.getAnnotations(cls, ont, replacedBy)) {
-      OWLAnnotationValue value = a.getValue();
-      if (value instanceof IRI iri) {
-        return iri.toString();
-      }
-      if (value instanceof OWLLiteral literal) {
-        return literal.getLiteral();
+    for (OWLOntology o : ont.getImportsClosure()) {
+      for (OWLAnnotationAssertionAxiom ax : o.getAnnotationAssertionAxioms(cls.getIRI())) {
+        if (!ax.getProperty().equals(replacedBy)) {
+          continue;
+        }
+        OWLAnnotationValue value = ax.getValue();
+        if (value instanceof IRI iri) {
+          return iri.toString();
+        }
+        if (value instanceof OWLLiteral literal) {
+          return literal.getLiteral();
+        }
       }
     }
     return null;
