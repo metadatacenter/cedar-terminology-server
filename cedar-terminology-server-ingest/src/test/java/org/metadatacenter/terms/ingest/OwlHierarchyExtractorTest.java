@@ -14,6 +14,7 @@ import org.semanticweb.owlapi.model.OWLOntology;
 import org.semanticweb.owlapi.model.OWLOntologyManager;
 
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -117,6 +118,33 @@ public class OwlHierarchyExtractorTest {
     assertEquals("Animal", store.prefLabel(BASE + "animal").orElseThrow());
     // but rdfs:label wins when a concept carries both.
     assertEquals("Mammal", store.prefLabel(BASE + "mammal").orElseThrow());
+  }
+
+  @Test
+  public void configuredRelationRestrictionBecomesHierarchyEdge() throws Exception {
+    OWLOntologyManager m = OWLManager.createOWLOntologyManager();
+    OWLDataFactory df = m.getOWLDataFactory();
+    OWLOntology o = m.createOntology(IRI.create(BASE + "partonomy"));
+    OWLClass finger = df.getOWLClass(iri("finger"));
+    OWLClass hand = df.getOWLClass(iri("hand"));
+    IRI partOf = IRI.create(BASE + "part_of");
+    // finger part_of hand  ->  SubClassOf(finger, part_of some hand)
+    m.addAxiom(o, df.getOWLSubClassOfAxiom(finger,
+        df.getOWLObjectSomeValuesFrom(df.getOWLObjectProperty(partOf), hand)));
+
+    // Default extractor: the relation restriction is NOT a hierarchy edge.
+    try (SnapshotStore plain = SnapshotStore.openInMemory()) {
+      plain.initSchema();
+      new OwlHierarchyExtractor().extract(o, plain);
+      assertEquals(List.of(), plain.children(BASE + "hand"));
+    }
+    // Configured extractor: part_of makes hand a parent of finger.
+    try (SnapshotStore configured = SnapshotStore.openInMemory()) {
+      configured.initSchema();
+      new OwlHierarchyExtractor(Set.of(partOf)).extract(o, configured);
+      assertEquals(List.of(BASE + "finger"), configured.children(BASE + "hand"));
+      assertEquals(List.of(BASE + "hand"), configured.parents(BASE + "finger"));
+    }
   }
 
   @Test

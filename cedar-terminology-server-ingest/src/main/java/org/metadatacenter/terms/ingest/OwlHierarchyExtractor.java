@@ -17,6 +17,7 @@ import org.semanticweb.owlapi.model.OWLDataFactory;
 import org.semanticweb.owlapi.model.OWLEquivalentClassesAxiom;
 import org.semanticweb.owlapi.model.OWLLiteral;
 import org.semanticweb.owlapi.model.OWLObjectIntersectionOf;
+import org.semanticweb.owlapi.model.OWLObjectSomeValuesFrom;
 import org.semanticweb.owlapi.model.OWLOntology;
 import org.semanticweb.owlapi.model.OWLOntologyCreationException;
 import org.semanticweb.owlapi.model.OWLOntologyManager;
@@ -29,6 +30,7 @@ import java.io.File;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Extracts a subsumption hierarchy from an OWL (or OBO-in-OWL) ontology into a {@link SnapshotStore}.
@@ -62,6 +64,27 @@ public class OwlHierarchyExtractor implements HierarchyExtractor {
    *  LOINC), which carry an OWL {@code rdfs:subClassOf} hierarchy but label concepts with
    *  {@code skos:prefLabel} rather than {@code rdfs:label}. */
   private static final IRI SKOS_PREF_LABEL = IRI.create("http://www.w3.org/2004/02/skos/core#prefLabel");
+
+  /**
+   * Object properties whose {@code some Filler} restriction superclasses count as hierarchy edges,
+   * in addition to {@code rdfs:subClassOf}. Empty by default (pure subsumption). A partonomy
+   * ontology whose BioPortal browse tree is built from object properties — e.g. BTO, where the tree
+   * is {@code part_of} + {@code develops_from}, not the near-empty {@code is_a} — supplies them here.
+   */
+  private final Set<IRI> hierarchyProperties;
+
+  /** Default extractor: only {@code rdfs:subClassOf} and named genera form the hierarchy. */
+  public OwlHierarchyExtractor() {
+    this(Set.of());
+  }
+
+  /**
+   * Extractor that also treats {@code SubClassOf(C, p some D)} as a hierarchy edge {@code C -> D}
+   * when {@code p} is in {@code hierarchyProperties} (the named filler {@code D} becomes a parent).
+   */
+  public OwlHierarchyExtractor(Set<IRI> hierarchyProperties) {
+    this.hierarchyProperties = hierarchyProperties;
+  }
 
   /**
    * Extracts the hierarchy from an already-loaded ontology into the store and materializes the
@@ -149,18 +172,27 @@ public class OwlHierarchyExtractor implements HierarchyExtractor {
    * named conjuncts (the genus) if it is an {@code owl:intersectionOf}. Anything else (a bare
    * restriction, a union) contributes nothing. {@code owl:Thing}/{@code owl:Nothing} are excluded.
    */
-  private static List<OWLClass> namedParents(OWLClassExpression expr) {
+  private List<OWLClass> namedParents(OWLClassExpression expr) {
     List<OWLClass> parents = new ArrayList<>();
+    collectParents(expr, parents);
+    return parents;
+  }
+
+  private void collectParents(OWLClassExpression expr, List<OWLClass> parents) {
     if (!expr.isAnonymous()) {
       addNamed(parents, expr);
     } else if (expr instanceof OWLObjectIntersectionOf intersection) {
+      // A named genus contributes; a configured relation restriction inside the intersection does too.
       for (OWLClassExpression operand : intersection.getOperands()) {
-        if (!operand.isAnonymous()) {
-          addNamed(parents, operand);
-        }
+        collectParents(operand, parents);
       }
+    } else if (expr instanceof OWLObjectSomeValuesFrom svf && !hierarchyProperties.isEmpty()
+        && !svf.getProperty().isAnonymous()
+        && hierarchyProperties.contains(svf.getProperty().asOWLObjectProperty().getIRI())
+        && !svf.getFiller().isAnonymous()) {
+      // e.g. BTO: "part_of some hematopoietic system" makes hematopoietic system a parent.
+      addNamed(parents, svf.getFiller());
     }
-    return parents;
   }
 
   private static void addNamed(List<OWLClass> parents, OWLClassExpression named) {

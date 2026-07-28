@@ -2,6 +2,7 @@ package org.metadatacenter.terms.ingest;
 
 import org.metadatacenter.terms.store.CatalogStore;
 import org.metadatacenter.terms.store.SnapshotStore;
+import org.semanticweb.owlapi.model.IRI;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,6 +19,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
@@ -56,6 +58,11 @@ public class IngestJob {
     Optional<HierarchyConfig> override = HierarchyConfigs.forOntology(acronym);
     if (override.isPresent()) {
       return new RelationHierarchyExtractor(override.get());
+    }
+    Optional<Set<IRI>> owlHierarchyProperties = HierarchyConfigs.owlHierarchyProperties(acronym);
+    if (owlHierarchyProperties.isPresent()) {
+      // A partonomy ontology (e.g. BTO): subsumption plus the configured relation restrictions.
+      return new OwlHierarchyExtractor(owlHierarchyProperties.get());
     }
     return "SKOS".equalsIgnoreCase(format) ? skosExtractor : owlExtractor;
   }
