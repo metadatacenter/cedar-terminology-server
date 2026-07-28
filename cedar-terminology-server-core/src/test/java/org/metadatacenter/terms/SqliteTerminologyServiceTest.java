@@ -252,6 +252,15 @@ public class SqliteTerminologyServiceTest {
   }
 
   @Test
+  public void integratedSearch_decodesPercentEncodedBranchUri() throws Exception {
+    // Some ontologies (e.g. GDMT) store the branch root percent-encoded; it must be decoded to match.
+    String encoded = java.net.URLEncoder.encode(iri("mammal"), java.nio.charset.StandardCharsets.UTF_8);
+    PagedResults<SearchResult> r = integrated(Optional.of("a"),
+        "{\"branches\":[{\"acronym\":\"EX\",\"uri\":\"" + encoded + "\"}]}");
+    assertEquals(List.of(iri("cat")), ldIds(r.getCollection()));
+  }
+
+  @Test
   public void integratedSearch_enumeratedClassesFilteredAndSortedByLabel() throws Exception {
     String json = "{\"classes\":["
         + "{\"uri\":\"" + iri("zebra") + "\",\"prefLabel\":\"Zebra\",\"type\":\"OntologyClass\",\"source\":\"EX\"},"

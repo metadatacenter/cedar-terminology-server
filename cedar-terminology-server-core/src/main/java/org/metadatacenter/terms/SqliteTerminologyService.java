@@ -383,8 +383,11 @@ public class SqliteTerminologyService implements ITerminologyService {
     // A single branch (class + descendants).
     if (hasBranches && branches.size() == 1 && !hasOntologies && !hasClasses) {
       BranchValueConstraint branch = branches.get(0);
+      // Decode the branch root IRI: some ontologies (e.g. GDMT) store it percent-encoded in the
+      // value constraint, and BioPortal decodes it before matching. A normal IRI has nothing to
+      // decode, so this is a no-op there.
       return search(q.map(String::trim).orElse(""), List.of("classes"), null, false, branch.getAcronym(),
-          branch.getUri(), 0, page, pageSize, false, false, apiKey, null);
+          decodeIri(branch.getUri()), 0, page, pageSize, false, false, apiKey, null);
     }
     throw unsupported("integratedSearch (multi-source or mixed constraints)");
   }
