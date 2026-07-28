@@ -454,15 +454,21 @@ public class SnapshotStore implements AutoCloseable {
         "SELECT c.iri, c.pref_label, c.obsolete,\n" +
         "       EXISTS(SELECT 1 FROM edge e2 WHERE e2.parent_id = c.id) AS has_children\n" +
         "FROM concept c\n");
+    // COALESCE the label to '' so a concept with no label is not silently dropped: NULL LIKE '%'
+    // is NULL (not true), which would otherwise exclude every unlabeled concept from a browse
+    // (empty query). Some ontologies carry a correct hierarchy but no rdfs:label/skos:prefLabel
+    // (e.g. GALEN, whose labels live only in the IRI). An empty query then matches them ('' LIKE
+    // '%'), while a real search term still cannot match a label-less concept ('' LIKE '%term%' is
+    // false) — so browse enumerates the subtree while prefix search stays label-driven.
     if (rootIri != null) {
       // The branch's descendants only — the root itself is excluded, matching BioPortal's branch
       // semantics (a branch value constraint offers the subtypes of the class, not the class itself).
       sql.append("WHERE c.id IN (\n" +
                  "        SELECT cl.descendant_id FROM closure cl\n" +
                  "        JOIN concept a ON a.id = cl.ancestor_id WHERE a.iri = ?)\n" +
-                 "  AND c.pref_label LIKE ? ESCAPE '\\'\n");
+                 "  AND COALESCE(c.pref_label, '') LIKE ? ESCAPE '\\'\n");
     } else {
-      sql.append("WHERE c.pref_label LIKE ? ESCAPE '\\'\n");
+      sql.append("WHERE COALESCE(c.pref_label, '') LIKE ? ESCAPE '\\'\n");
     }
     sql.append("ORDER BY length(c.pref_label), c.pref_label, c.iri");
     if (limit > 0) {

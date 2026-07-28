@@ -209,6 +209,27 @@ public class SnapshotStoreTest {
   }
 
   @Test
+  public void browseIncludesUnlabeledDescendants_butSearchDoesNot() throws Exception {
+    // Some ontologies carry a correct hierarchy but no labels (e.g. GALEN). An empty-query browse
+    // must still enumerate label-less descendants; a real search term must not match them.
+    try (SnapshotStore s = SnapshotStore.openInMemory()) {
+      s.initSchema();
+      s.addConcept("root", "Root");
+      s.addConcept("labeled", "Labeled child");
+      s.addConcept("unlabeled", null);           // no label
+      s.addEdge("labeled", "root", "rdfs:subClassOf");
+      s.addEdge("unlabeled", "root", "rdfs:subClassOf");
+      s.materialize();
+
+      List<String> browse = iris(s.searchByLabelUnderRoot("root", "", false, 0));
+      assertEquals(2, browse.size());
+      assertTrue(browse.contains("labeled") && browse.contains("unlabeled"));
+      // A real term matches only the labeled child; the label-less one cannot match.
+      assertEquals(List.of("labeled"), iris(s.searchByLabelUnderRoot("root", "Labeled", false, 0)));
+    }
+  }
+
+  @Test
   public void allConceptsDetailed_returnsEveryConceptOrderedByIri() throws Exception {
     assertEquals(List.of("animal", "cat", "dog", "mammal", "pet", "thing"),
         iris(store.allConceptsDetailed()));
