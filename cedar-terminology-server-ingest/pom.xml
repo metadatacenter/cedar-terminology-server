@@ -27,6 +27,36 @@
       <artifactId>owlapi-distribution</artifactId>
     </dependency>
 
+    <!-- OWLAPI 4.5.9 resolves http(s) ontology imports through Apache HttpClient 4.x but does not
+         declare it as a dependency and does not bundle it. Without these, import resolution throws
+         NoClassDefFoundError (org.apache.http.*) and ingesting an import-heavy ontology fails,
+         producing an empty snapshot. httpclient-cache is the caching import layer OWLAPI reaches
+         for; it pulls httpclient (and httpcore/commons-codec/commons-logging) transitively. -->
+    <dependency>
+      <groupId>org.apache.httpcomponents</groupId>
+      <artifactId>httpclient-cache</artifactId>
+      <version>4.5.14</version>
+    </dependency>
+
+    <!-- OWLAPI 4.5.9 uses JAXB (javax.xml.bind — e.g. HexBinaryAdapter), removed from the JDK in 11+.
+         Provide the JAXB 2.3 (javax namespace) API + runtime so ingest parses OWL under Java 17.
+         jaxb-runtime pulls istack/txw2 transitively; javax.activation-api satisfies jaxb-api. -->
+    <dependency>
+      <groupId>javax.xml.bind</groupId>
+      <artifactId>jaxb-api</artifactId>
+      <version>2.3.1</version>
+    </dependency>
+    <dependency>
+      <groupId>org.glassfish.jaxb</groupId>
+      <artifactId>jaxb-runtime</artifactId>
+      <version>2.3.7</version>
+    </dependency>
+    <dependency>
+      <groupId>javax.activation</groupId>
+      <artifactId>javax.activation-api</artifactId>
+      <version>1.2.0</version>
+    </dependency>
+
     <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
       <artifactId>jackson-databind</artifactId>
