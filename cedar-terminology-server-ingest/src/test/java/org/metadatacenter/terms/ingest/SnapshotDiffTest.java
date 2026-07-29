@@ -1,6 +1,7 @@
 package org.metadatacenter.terms.ingest;
 
 import org.junit.jupiter.api.Test;
+import org.metadatacenter.terms.store.SnapshotDiff;
 import org.metadatacenter.terms.store.SnapshotStore;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;

@@ -7,6 +7,7 @@ import org.metadatacenter.cedar.terminology.validation.integratedsearch.ValueCon
 import org.metadatacenter.cedar.terminology.validation.integratedsearch.ValueSetValueConstraint;
 import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.terms.domainObjects.*;
+import org.metadatacenter.terms.store.SnapshotDiff;
 import org.metadatacenter.terms.store.SnapshotStore;
 import org.metadatacenter.terms.util.ObjectConverter;
 import org.metadatacenter.terms.util.Util;
@@ -167,6 +168,28 @@ public class SqliteTerminologyService implements ITerminologyService {
   @Override
   public List<OntologyVersion> getVersions(String ontology) {
     return provider.versions(ontology);
+  }
+
+  @Override
+  public VersionDiff diffVersions(String ontology, String fromVersion, String toVersion) throws IOException {
+    Optional<SnapshotStore> from = provider.forOntology(ontology, fromVersion);
+    Optional<SnapshotStore> to = provider.forOntology(ontology, toVersion);
+    if (from.isEmpty() || to.isEmpty()) {
+      return null; // unknown ontology or version — the resource turns this into a 404
+    }
+    try {
+      SnapshotDiff.Diff d = new SnapshotDiff().diff(from.get(), to.get());
+      int cap = 25;
+      return new VersionDiff(fromVersion, toVersion,
+          d.fromConcepts(), d.toConcepts(), d.addedConcepts().size(), d.removedConcepts().size(),
+          d.fromEdges(), d.toEdges(), d.addedEdges().size(), d.removedEdges().size(),
+          d.newlyObsoleted().size(),
+          d.addedConcepts().stream().limit(cap).toList(),
+          d.removedConcepts().stream().limit(cap).toList(),
+          d.summary());
+    } catch (SQLException e) {
+      throw new IOException(e);
+    }
   }
 
   @Override

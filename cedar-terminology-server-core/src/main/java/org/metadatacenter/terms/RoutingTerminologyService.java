@@ -292,6 +292,11 @@ public class RoutingTerminologyService implements ITerminologyService {
   }
 
   @Override
+  public VersionDiff diffVersions(String ontology, String fromVersion, String toVersion) throws IOException {
+    return dispatch(ontology, s -> s.diffVersions(ontology, fromVersion, toVersion));
+  }
+
+  @Override
   public Ontology findOntology(String id, boolean includeDetails, String apiKey) throws IOException {
     return dispatch(id, s -> s.findOntology(id, includeDetails, apiKey));
   }

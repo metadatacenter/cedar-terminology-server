@@ -122,6 +122,38 @@ public class OntologyResource extends AbstractTerminologyServerResource {
   }
 
   @GET
+  @Path("ontologies/{id}/versions/diff")
+  @Operation(summary = "Diff two local versions of an ontology",
+      description = "The vocabulary diff (concept and subsumption-edge additions/removals, newly "
+          + "obsoleted, capped concept samples) between two versions in the local store, given by "
+          + "version_id or tag. 404 when the ontology or a version is not served locally.",
+      tags = {"Ontologies"})
+  @ApiResponses({
+      @ApiResponse(responseCode = "200", description = "Successful operation"),
+      @ApiResponse(responseCode = "401", description = "Unauthorized"),
+      @ApiResponse(responseCode = "404", description = "Ontology or version not found locally"),
+      @ApiResponse(responseCode = "500", description = "Internal server error")
+  })
+  public Response diffVersions(
+      @Parameter(description = "Ontology acronym.", required = true) @PathParam("id") String id,
+      @Parameter(description = "Base version (version_id or tag).", required = true)
+      @jakarta.ws.rs.QueryParam("from") String from,
+      @Parameter(description = "Target version (version_id or tag, e.g. latest).", required = true)
+      @jakarta.ws.rs.QueryParam("to") String to) throws CedarException {
+    CedarRequestContext ctx = buildRequestContext();
+    ctx.must(ctx.user()).be(LoggedIn);
+    try {
+      var diff = terminologyService.diffVersions(id, from, to);
+      if (diff == null) {
+        return CedarResponse.notFound().build();
+      }
+      return Response.ok().entity(JsonMapper.MAPPER.valueToTree(diff)).build();
+    } catch (IOException e) {
+      throw new CedarAssertionException(e);
+    }
+  }
+
+  @GET
   @Path("ontologies/{ontology}/classes/roots")
   @Operation(summary = "Get root classes", description = "Get root classes in a particular ontology. For the CEDARPC ontology, all provisional classes in it " +
           "will be returned.", tags = {"Classes", "Ontologies"})

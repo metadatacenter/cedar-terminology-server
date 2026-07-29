@@ -45,6 +45,12 @@ public interface ITerminologyService {
    */
   List<OntologyVersion> getVersions(String ontology) throws IOException;
 
+  /**
+   * The vocabulary diff between two locally-stored versions of an ontology (each a version_id or a
+   * tag such as {@code latest}), or null when the ontology or a version is not available locally.
+   */
+  VersionDiff diffVersions(String ontology, String fromVersion, String toVersion) throws IOException;
+
   Ontology findOntology(String id, boolean includeDetails, String apiKey) throws IOException;
 
   List<OntologyClass> getRootClasses(String ontologyId, boolean isFlat, String apiKey) throws IOException;
