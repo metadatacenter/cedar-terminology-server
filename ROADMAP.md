@@ -78,6 +78,13 @@ Done:
   (CHEBI) and flat/value-set vocabularies where BioPortal returns none (GAZ, RXNORM) still list too
   many locally — cosmetic for the picker, and those flat vocabularies are search-only, not
   tree-browse cutover targets. Gating `children`/`subtree` is still open.
+
+  Roots divergence no longer blocks cutover, because routing is now **per-endpoint**: an ontology on
+  `localOntologies` is served locally for search/integrated-search and point lookups, but browses its
+  tree (root classes, class tree) from BioPortal unless it is *also* on `localRootsOntologies` (the
+  subset whose roots are proven equivalent). So cutover eligibility for the high-value search path is
+  integrated-search equivalence alone; an ontology graduates to local roots later, when its roots
+  match. This is what lets the search cutover be far wider than the roots-clean set.
 - **Golden refresh cadence** — how often to re-record BioPortal baselines against ontology drift.
 
 ## Where the Pieces Live

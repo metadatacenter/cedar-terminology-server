@@ -252,6 +252,31 @@ public class RoutingTerminologyServiceTest {
   }
 
   @Test
+  public void perEndpoint_rootsBrowseFromRemoteWhileSearchStaysLocal() throws Exception {
+    // EX is served locally (search/children), but its roots are NOT browse-local: getRootClasses must
+    // come from the remote sentinel, while getClassChildren still comes from the local store. This is
+    // the per-endpoint cutover for an ontology whose integrated-search is equivalent but whose local
+    // roots still diverge.
+    SqliteTerminologyService local = new SqliteTerminologyService(
+        ontology -> EX.equals(ontology) ? Optional.of(store) : Optional.empty());
+    ITerminologyService remote = (ITerminologyService) Proxy.newProxyInstance(
+        getClass().getClassLoader(), new Class[]{ITerminologyService.class},
+        (p, m, a) -> {
+          if ("getRootClasses".equals(m.getName())) {
+            return List.of(new OntologyClass(REMOTE, iri("remote"), REMOTE, null, REMOTE, null, null, null, null,
+                false, null, false));
+          }
+          throw new UnsupportedOperationException(m.getName());
+        });
+    RoutingTerminologyService r = new RoutingTerminologyService(
+        remote, local, local::isAvailable, ontology -> false, false); // nothing is browse-local
+
+    assertEquals(REMOTE, r.getRootClasses(EX, false, null).get(0).getPrefLabel()); // roots -> remote
+    assertEquals(Integer.valueOf(2),
+        r.getClassChildren(iri("mammal"), EX, 1, 50, null).getTotalCount());        // children -> local
+  }
+
+  @Test
   public void findAllOntologies_localOnly_returnsOnlyTheServedSet() throws Exception {
     // A fully offline deployment reports only what it versions; it must not call BioPortal at all
     // (the remote stub throws for findAllOntologies, proving it is not consulted).

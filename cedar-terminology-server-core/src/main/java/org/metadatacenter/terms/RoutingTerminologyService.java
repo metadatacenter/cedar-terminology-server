@@ -46,6 +46,7 @@ public class RoutingTerminologyService implements ITerminologyService {
   private final ITerminologyService remote;
   private final ITerminologyService local;
   private final LocalAvailability availability;
+  private final LocalAvailability browseAvailability;
   private final boolean localOnly;
 
   /**
@@ -53,26 +54,40 @@ public class RoutingTerminologyService implements ITerminologyService {
    * remote backend directly. Use this until a local backend exists.
    */
   public RoutingTerminologyService(ITerminologyService remote) {
-    this(remote, null, ontology -> false, false);
+    this(remote, null, ontology -> false, ontology -> false, false);
   }
 
   public RoutingTerminologyService(ITerminologyService remote, ITerminologyService local,
                                    LocalAvailability availability) {
-    this(remote, local, availability, false);
+    this(remote, local, availability, availability, false);
+  }
+
+  public RoutingTerminologyService(ITerminologyService remote, ITerminologyService local,
+                                   LocalAvailability availability, boolean localOnly) {
+    this(remote, local, availability, availability, localOnly);
   }
 
   /**
+   * Per-endpoint routing. {@code availability} governs the search and point-lookup operations
+   * (integrated-search, class/children/descendants) — the paths the equivalence gate proves against
+   * BioPortal. {@code browseAvailability} governs the tree-browse entry points (root classes and the
+   * class tree): a locally-served ontology is browsed locally only when its roots are also proven
+   * equivalent, otherwise those calls go to BioPortal. This lets an ontology whose integrated-search
+   * is equivalent but whose local roots still diverge (orphan/import overcount) be cut over for the
+   * high-value search path without regressing the picker's tree. Pass the same availability for both
+   * to serve everything locally.
+   *
    * When {@code localOnly} is true, a call for a locally-served ontology is never allowed to fall
    * back to the remote backend: a local {@link UnsupportedOperationException} propagates instead of
-   * being masked by a remote result. This is the strict mode the equivalence harness runs under, so
-   * a gap in local coverage surfaces as a failure rather than a silent BioPortal answer. Ontologies
-   * not served locally are unaffected and still use the remote backend.
+   * being masked by a remote result. This is the strict mode the equivalence harness runs under.
    */
   public RoutingTerminologyService(ITerminologyService remote, ITerminologyService local,
-                                   LocalAvailability availability, boolean localOnly) {
+                                   LocalAvailability availability, LocalAvailability browseAvailability,
+                                   boolean localOnly) {
     this.remote = remote;
     this.local = local;
     this.availability = availability;
+    this.browseAvailability = browseAvailability;
     this.localOnly = localOnly;
   }
 
@@ -83,7 +98,17 @@ public class RoutingTerminologyService implements ITerminologyService {
    * fall back — an unimplemented operation propagates.
    */
   private <T> T dispatch(String ontology, Call<T> call) throws IOException {
-    if (local != null && ontology != null && availability.isLocal(ontology)) {
+    return dispatchWith(availability, ontology, call);
+  }
+
+  /** Like {@link #dispatch}, but gated on {@link #browseAvailability} — for the tree-browse entry
+   *  points (root classes, class tree) that require roots equivalence, not just search equivalence. */
+  private <T> T dispatchBrowse(String ontology, Call<T> call) throws IOException {
+    return dispatchWith(browseAvailability, ontology, call);
+  }
+
+  private <T> T dispatchWith(LocalAvailability avail, String ontology, Call<T> call) throws IOException {
+    if (local != null && ontology != null && avail.isLocal(ontology)) {
       if (localOnly) {
         return call.apply(local);
       }
@@ -248,12 +273,12 @@ public class RoutingTerminologyService implements ITerminologyService {
 
   @Override
   public List<OntologyClass> getRootClasses(String ontologyId, boolean isFlat, String apiKey) throws IOException {
-    return dispatch(ontologyId, s -> s.getRootClasses(ontologyId, isFlat, apiKey));
+    return dispatchBrowse(ontologyId, s -> s.getRootClasses(ontologyId, isFlat, apiKey));
   }
 
   @Override
   public List<OntologyProperty> getRootProperties(String ontologyId, String apiKey) throws IOException {
-    return dispatch(ontologyId, s -> s.getRootProperties(ontologyId, apiKey));
+    return dispatchBrowse(ontologyId, s -> s.getRootProperties(ontologyId, apiKey));
   }
 
   @Override
@@ -274,7 +299,7 @@ public class RoutingTerminologyService implements ITerminologyService {
 
   @Override
   public List<TreeNode> getClassTree(String id, String ontology, boolean isFlat, String apiKey) throws IOException {
-    return dispatch(ontology, s -> s.getClassTree(id, ontology, isFlat, apiKey));
+    return dispatchBrowse(ontology, s -> s.getClassTree(id, ontology, isFlat, apiKey));
   }
 
   @Override
@@ -306,7 +331,7 @@ public class RoutingTerminologyService implements ITerminologyService {
 
   @Override
   public List<TreeNode> getPropertyTree(String id, String ontology, String apiKey) throws IOException {
-    return dispatch(ontology, s -> s.getPropertyTree(id, ontology, apiKey));
+    return dispatchBrowse(ontology, s -> s.getPropertyTree(id, ontology, apiKey));
   }
 
   @Override
