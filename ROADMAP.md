@@ -59,7 +59,14 @@ Done:
    Serving it partially locally means splitting the constraint by backend, querying each, and
    merging — hard, because the two backends rank and page differently. Deferred until single-source
    cutover is solid; it gets its own test tier.
-6. **Version-pinning workflow.** Surface the vocabulary diff between a pinned snapshot and a newer
+6. **Value-set constraints (done for accessible collections).** A value set's values are the
+   children of the value-set class in its vsCollection, which is itself an ordinary ontology snapshot
+   — so a value-set constraint is served locally as `children(vsId)`, no separate storage. NLMVS
+   ingests and enumerates 6/6 set-equal with BioPortal; add a vsCollection to `localOntologies` to
+   serve its value sets locally. CADSR-VS (the largest, 149 used) is 403 for the dev BioPortal key
+   (access-gated), so it needs a key with CADSR-VS access before it can be ingested; until then it
+   stays served from BioPortal.
+7. **Version-pinning workflow.** Surface the vocabulary diff between a pinned snapshot and a newer
    one (`SnapshotDiff` already computes it) and let a template re-pin deliberately.
 7. **Retention policy.** BioPortal keeps thousands of historical (often daily) submissions; the
    measured pace of change is ~0.03%/day and almost purely additive. Decide a retention policy
