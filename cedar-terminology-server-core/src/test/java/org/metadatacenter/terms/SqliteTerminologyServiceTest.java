@@ -283,6 +283,41 @@ public class SqliteTerminologyServiceTest {
   }
 
   @Test
+  public void integratedSearch_ontologyServedAtPinnedVersion() throws Exception {
+    // A provider with two versions of EX: latest has 6 concepts, "v-old" has only mammal. The
+    // constraint's version selects which the enumeration serves — reproducible regardless of latest.
+    SnapshotStore old = SnapshotStore.openInMemory();
+    old.initSchema();
+    old.addConcept(iri("mammal"), "Mammal");
+    old.materialize();
+    try {
+      SqliteTerminologyService.SnapshotProvider versioned = new SqliteTerminologyService.SnapshotProvider() {
+        @Override
+        public Optional<SnapshotStore> forOntology(String o) {
+          return EX.equals(o) ? Optional.of(store) : Optional.empty();
+        }
+
+        @Override
+        public Optional<SnapshotStore> forOntology(String o, String v) {
+          if (!EX.equals(o)) {
+            return Optional.empty();
+          }
+          return "v-old".equals(v) ? Optional.of(old) : Optional.of(store);
+        }
+      };
+      SqliteTerminologyService svc = new SqliteTerminologyService(versioned);
+      assertEquals(Integer.valueOf(6), svc.integratedSearch(Optional.empty(),
+          VC_MAPPER.readValue("{\"ontologies\":[{\"acronym\":\"EX\"}]}", ValueConstraints.class),
+          1, 50, null).getTotalCount());
+      assertEquals(Integer.valueOf(1), svc.integratedSearch(Optional.empty(),
+          VC_MAPPER.readValue("{\"ontologies\":[{\"acronym\":\"EX\",\"version\":\"v-old\"}]}", ValueConstraints.class),
+          1, 50, null).getTotalCount());
+    } finally {
+      old.close();
+    }
+  }
+
+  @Test
   public void integratedSearch_valueSetFromUnavailableCollectionThrows() {
     // A collection not served locally throws, so the router falls back to BioPortal.
     assertThrows(UnsupportedOperationException.class,

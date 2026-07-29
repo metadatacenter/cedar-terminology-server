@@ -1708,6 +1708,8 @@ components:
           type: string
           maxLength: 2147483647
           minLength: 1
+        version:
+          type: string
       required:
       - acronym
       - uri
@@ -2194,6 +2196,8 @@ components:
           type: string
           maxLength: 2147483647
           minLength: 1
+        version:
+          type: string
       required:
       - acronym
     ParameterObject:
@@ -2240,6 +2244,8 @@ components:
           type: string
           maxLength: 2147483647
           minLength: 1
+        version:
+          type: string
         vsCollection:
           type: string
           maxLength: 2147483647

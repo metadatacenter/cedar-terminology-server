@@ -2249,6 +2249,9 @@
             "type" : "string",
             "maxLength" : 2147483647,
             "minLength" : 1
+          },
+          "version" : {
+            "type" : "string"
           }
         },
         "required" : [ "acronym", "uri" ]
@@ -2797,6 +2800,9 @@
             "type" : "string",
             "maxLength" : 2147483647,
             "minLength" : 1
+          },
+          "version" : {
+            "type" : "string"
           }
         },
         "required" : [ "acronym" ]
@@ -2856,6 +2862,9 @@
             "type" : "string",
             "maxLength" : 2147483647,
             "minLength" : 1
+          },
+          "version" : {
+            "type" : "string"
           },
           "vsCollection" : {
             "type" : "string",

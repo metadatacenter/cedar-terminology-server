@@ -89,6 +89,14 @@ public class SqliteTerminologyService implements ITerminologyService {
         .orElseThrow(() -> new UnsupportedOperationException("Ontology not served locally: " + ontology));
   }
 
+  /** The snapshot for an ontology at a pinned version (null/blank/"latest" = current). Throws — so the
+   *  router falls back to BioPortal — when the ontology or that version is not served locally. */
+  private SnapshotStore store(String ontology, String version) {
+    return provider.forOntology(ontology, version)
+        .orElseThrow(() -> new UnsupportedOperationException(
+            "Ontology/version not served locally: " + ontology + "@" + (version == null ? "latest" : version)));
+  }
+
   private OntologyClass toClass(SnapshotStore.Concept c, String ontology) {
     return new OntologyClass(Util.getShortIdentifier(c.iri()), c.iri(), c.prefLabel(), null, ontology,
         null, null, null, null, false, null, c.hasChildren());
@@ -431,7 +439,7 @@ public class SqliteTerminologyService implements ITerminologyService {
       String acronym = vsCollectionAcronym(vs.getVsCollection());
       List<SnapshotStore.Concept> values;
       try {
-        values = new ArrayList<>(store(acronym).childrenDetailed(decodeIri(vs.getUri())));
+        values = new ArrayList<>(store(acronym, vs.getVersion()).childrenDetailed(decodeIri(vs.getUri())));
       } catch (SQLException e) {
         throw new IOException(e);
       }
@@ -451,24 +459,34 @@ public class SqliteTerminologyService implements ITerminologyService {
     if (hasClasses && !hasOntologies && !hasBranches) {
       return integratedSearchEnumeratedClasses(q, classes, page, pageSize);
     }
-    // A single ontology.
+    // A single ontology — enumerate on empty text, else label-search — served at the constraint's
+    // pinned version (null = latest). Resolved here rather than via the public search() so the version
+    // can be honored; the picker's live search() stays latest.
     if (hasOntologies && ontologies.size() == 1 && !hasBranches && !hasClasses) {
-      String acronym = ontologies.get(0).getAcronym();
+      OntologyValueConstraint ont = ontologies.get(0);
       String query = q.map(String::trim).orElse("");
-      if (query.isEmpty()) {
-        return ObjectConverter.classResultsToSearchResults(findAllClassesInOntology(acronym, page, pageSize, apiKey));
+      try {
+        SnapshotStore st = store(ont.getAcronym(), ont.getVersion());
+        List<SnapshotStore.Concept> rows =
+            query.isEmpty() ? st.allConceptsDetailed() : st.searchByLabel(query, false, 0);
+        return pagedSearchResults(rows, ont.getAcronym(), page, pageSize);
+      } catch (SQLException e) {
+        throw new IOException(e);
       }
-      return search(query, List.of("classes"), List.of(acronym), false, null, null, 0, page, pageSize,
-          false, false, apiKey, null);
     }
-    // A single branch (class + descendants).
+    // A single branch (class + descendants) at the constraint's pinned version. The branch root IRI is
+    // decoded first: some ontologies (e.g. GDMT) store it percent-encoded and BioPortal decodes before
+    // matching; a normal IRI has nothing to decode.
     if (hasBranches && branches.size() == 1 && !hasOntologies && !hasClasses) {
       BranchValueConstraint branch = branches.get(0);
-      // Decode the branch root IRI: some ontologies (e.g. GDMT) store it percent-encoded in the
-      // value constraint, and BioPortal decodes it before matching. A normal IRI has nothing to
-      // decode, so this is a no-op there.
-      return search(q.map(String::trim).orElse(""), List.of("classes"), null, false, branch.getAcronym(),
-          decodeIri(branch.getUri()), 0, page, pageSize, false, false, apiKey, null);
+      String query = q.map(String::trim).orElse("");
+      try {
+        List<SnapshotStore.Concept> rows = store(branch.getAcronym(), branch.getVersion())
+            .searchByLabelUnderRoot(decodeIri(branch.getUri()), query, false, 0);
+        return pagedSearchResults(rows, branch.getAcronym(), page, pageSize);
+      } catch (SQLException e) {
+        throw new IOException(e);
+      }
     }
     throw unsupported("integratedSearch (multi-source or mixed constraints)");
   }

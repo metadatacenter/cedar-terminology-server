@@ -16,11 +16,17 @@ public class ValueSetValueConstraint {
   @NotEmpty
   @Pattern(regexp=BP_VS_COLLECTIONS_READ_REGEX) // Checks that the vsCollection is valid
   private String vsCollection;
+  // Optional pinned version (version_id or tag) of the collection; absent means the current version.
+  private String version;
 
   public ValueSetValueConstraint() { }
 
   public String getUri() {
     return uri;
+  }
+
+  public String getVersion() {
+    return version;
   }
 
   public String getVsCollection() {
