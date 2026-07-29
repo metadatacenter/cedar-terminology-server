@@ -208,6 +208,135 @@ public class SnapshotStore implements AutoCloseable {
     }
   }
 
+  private static final java.util.regex.Pattern OBO_ID =
+      java.util.regex.Pattern.compile("^(.*/obo/)([A-Za-z][A-Za-z0-9]*)_");
+  private static final java.util.regex.Pattern OBO_SPACE =
+      java.util.regex.Pattern.compile(".*/obo/([A-Za-z][A-Za-z0-9]*)_$");
+
+  /**
+   * The ID-space of an IRI. OBO IDs collapse to {@code .../obo/<PREFIX>_} so that {@code PO_} and
+   * {@code NCBITaxon_} stay distinct even though both sit under {@code .../obo/}; every other IRI
+   * yields the namespace up to and including its {@code '#'} or its last {@code '/'}.
+   */
+  public static String idspace(String iri) {
+    java.util.regex.Matcher m = OBO_ID.matcher(iri);
+    if (m.lookingAt()) {
+      return m.group(1) + m.group(2) + "_";
+    }
+    int hash = iri.indexOf('#');
+    if (hash >= 0) {
+      return iri.substring(0, hash + 1);
+    }
+    int slash = iri.lastIndexOf('/');
+    return slash >= 0 ? iri.substring(0, slash + 1) : iri;
+  }
+
+  /**
+   * The ontology's own ID-spaces, keyed to its acronym rather than to frequency — an import-heavy
+   * ontology's concepts are mostly imported (CL is 40% GO_, 26% UBERON_, only 19% its own CL_), so
+   * frequency cannot find "own". For OBO the own space is {@code .../obo/<ACRONYM>_}; for others it
+   * is an ID-space whose namespace carries an acronym token. Falls back to the single most common
+   * space only when the acronym matches nothing, so oddly-named ontologies stay servable.
+   */
+  private java.util.Set<String> ownIdspaces(String acronym) throws SQLException {
+    java.util.Set<String> tokens = new java.util.HashSet<>();
+    for (String t : acronym.split("[^A-Za-z0-9]+")) {
+      if (!t.isEmpty()) {
+        tokens.add(t.toUpperCase());
+      }
+    }
+    java.util.Map<String, Integer> freq = new java.util.HashMap<>();
+    try (Statement s = connection.createStatement();
+         ResultSet rs = s.executeQuery("SELECT iri FROM concept")) {
+      while (rs.next()) {
+        freq.merge(idspace(rs.getString(1)), 1, Integer::sum);
+      }
+    }
+    java.util.Set<String> own = new java.util.HashSet<>();
+    for (String sp : freq.keySet()) {
+      java.util.regex.Matcher m = OBO_SPACE.matcher(sp);
+      if (m.matches()) {
+        if (tokens.contains(m.group(1).toUpperCase())) {
+          own.add(sp);
+        }
+      } else {
+        String up = sp.toUpperCase();
+        for (String t : tokens) {
+          if (t.length() >= 3 && up.contains(t)) {
+            own.add(sp);
+            break;
+          }
+        }
+      }
+    }
+    if (own.isEmpty() && !freq.isEmpty()) {
+      own.add(java.util.Collections.max(freq.entrySet(), java.util.Map.Entry.comparingByValue()).getKey());
+    }
+    return own;
+  }
+
+  /**
+   * Removes dead-end import references from the root set. A parentless class is not a real browse
+   * root when it is unlabeled, lives in a foreign ID-space (one the ontology merely references, not
+   * its own), and has no labeled descendant. Such a class is an unresolved-{@code owl:imports}
+   * dangling reference: the ontology names it in an axiom but its defining ontology was not loaded,
+   * so it arrives unlabeled and parentless and only looks like a root. BioPortal resolves the import
+   * and roots it elsewhere; we drop it from the tree's entry points. The labeled-descendant guard
+   * means a root that leads to real content is always kept, so no reachable class is ever hidden.
+   * Leaves the concept and its edges intact (still resolvable by direct lookup); only the {@code
+   * root} table changes. Idempotent. Returns the number of roots pruned.
+   */
+  public int pruneDeadEndImportRoots(String acronym) throws SQLException {
+    java.util.Set<String> own = ownIdspaces(acronym);
+    List<Long> unlabeledForeign = new ArrayList<>();
+    try (Statement s = connection.createStatement();
+         ResultSet rs = s.executeQuery(
+             "SELECT ci.id, ci.iri FROM root r JOIN concept ci ON ci.id = r.concept_id "
+                 + "WHERE ci.pref_label IS NULL OR ci.pref_label = ''")) {
+      while (rs.next()) {
+        if (!own.contains(idspace(rs.getString(2)))) {
+          unlabeledForeign.add(rs.getLong(1));
+        }
+      }
+    }
+    List<Long> victims = new ArrayList<>();
+    try (PreparedStatement leadsToContent = connection.prepareStatement(
+             "SELECT 1 FROM closure cl JOIN concept d ON d.id = cl.descendant_id "
+                 + "WHERE cl.ancestor_id = ? AND d.pref_label IS NOT NULL AND d.pref_label <> '' LIMIT 1")) {
+      for (long id : unlabeledForeign) {
+        leadsToContent.setLong(1, id);
+        try (ResultSet rs = leadsToContent.executeQuery()) {
+          if (!rs.next()) {
+            victims.add(id); // no labeled descendant — a dead-end dangling reference
+          }
+        }
+      }
+    }
+    if (victims.isEmpty()) {
+      return 0;
+    }
+    // Never prune an ontology to zero roots. A label-less but structured ontology (no rdfs:label
+    // anywhere, so every root is unlabeled with no labeled descendant) would otherwise lose its
+    // entire tree entry set and become unbrowsable; an unlabeled tree still beats none.
+    int totalRoots;
+    try (Statement s = connection.createStatement();
+         ResultSet rs = s.executeQuery("SELECT COUNT(*) FROM root")) {
+      rs.next();
+      totalRoots = rs.getInt(1);
+    }
+    if (victims.size() >= totalRoots) {
+      return 0;
+    }
+    try (PreparedStatement del = connection.prepareStatement("DELETE FROM root WHERE concept_id = ?")) {
+      for (long id : victims) {
+        del.setLong(1, id);
+        del.addBatch();
+      }
+      del.executeBatch();
+    }
+    return victims.size();
+  }
+
   /* --------------------------------------------------------------------------------------------
    * Reads — the terminology-server operations, each an indexed lookup, no traversal.
    * ------------------------------------------------------------------------------------------ */
@@ -330,6 +459,15 @@ public class SnapshotStore implements AutoCloseable {
         out.add(rs.getString(1));
       }
       return out;
+    }
+  }
+
+  /** The number of roots, without materializing the list — a cheap emptiness/size check. */
+  public int rootCount() throws SQLException {
+    try (Statement s = connection.createStatement();
+         ResultSet rs = s.executeQuery("SELECT COUNT(*) FROM root")) {
+      rs.next();
+      return rs.getInt(1);
     }
   }
 

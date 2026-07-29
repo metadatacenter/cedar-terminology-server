@@ -104,19 +104,29 @@ public class TerminologyServerApplication extends CedarMicroserviceApplication<T
     }
     try {
       CatalogStore catalog = CatalogStore.openFile(catalogPath);
-      CatalogSnapshotProvider provider = new CatalogSnapshotProvider(catalog, localOntologies);
-      SqliteTerminologyService local = new SqliteTerminologyService(provider);
-      boolean localOnly = Boolean.parseBoolean(System.getProperty(PROP_LOCAL_ONLY, "false"));
       // Roots-browse allowlist: blank means browse everything local (same as search). Otherwise only
       // these ontologies browse locally; the rest are local for search but browse from BioPortal.
       Set<String> rootsOntologies = parseAllowlist(System.getProperty(PROP_LOCAL_ROOTS_ONTOLOGIES));
+      // The provider must resolve any ontology served on EITHER endpoint, so its allowlist is the
+      // union of the search and browse sets. Availability is then gated per endpoint below, keeping
+      // the two independent: an ontology may browse locally without searching locally (it passed the
+      // roots gate but not the search gate) and vice versa. Gating browse on local.isAvailable alone
+      // — which reflects the provider's allowlist — would silently require roots ⊆ search and drop
+      // every browse-only ontology back to BioPortal.
+      Set<String> served = new LinkedHashSet<>(localOntologies);
+      served.addAll(rootsOntologies);
+      CatalogSnapshotProvider provider = new CatalogSnapshotProvider(catalog, served);
+      SqliteTerminologyService local = new SqliteTerminologyService(provider);
+      boolean localOnly = Boolean.parseBoolean(System.getProperty(PROP_LOCAL_ONLY, "false"));
+      RoutingTerminologyService.LocalAvailability search =
+          ontology -> localOntologies.contains(ontology) && local.isAvailable(ontology);
       RoutingTerminologyService.LocalAvailability browse = rootsOntologies.isEmpty()
-          ? local::isAvailable
+          ? search
           : ontology -> rootsOntologies.contains(ontology) && local.isAvailable(ontology);
-      log.info("Local terminology store enabled from {} for ontologies {} (localOnly={}, roots-local={})",
-          catalogPath, localOntologies, localOnly,
-          rootsOntologies.isEmpty() ? "all" : rootsOntologies);
-      return new RoutingTerminologyService(bioPortalService, local, local::isAvailable, browse, localOnly);
+      log.info("Local terminology store enabled from {} for {} search / {} browse ontologies (localOnly={})",
+          catalogPath, localOntologies.size(), rootsOntologies.isEmpty() ? localOntologies.size() : rootsOntologies.size(),
+          localOnly);
+      return new RoutingTerminologyService(bioPortalService, local, search, browse, localOnly);
     } catch (Exception e) {
       log.error("Failed to enable local terminology store from {}; serving via BioPortal only",
           catalogPath, e);

@@ -60,6 +60,55 @@ public class SnapshotStoreTest {
   }
 
   @Test
+  public void pruneDeadEndImportRoots_dropsUnlabeledForeignLeavesButKeepsEntryPoints() throws Exception {
+    try (SnapshotStore s = SnapshotStore.openInMemory()) {
+      s.initSchema();
+      // The ontology's own labeled root (namespace carries the acronym token).
+      s.addConcept("http://ex.org/ONT#Root", "Root");
+      // An unresolved-import dangling reference: unlabeled, foreign ID-space, no children.
+      s.addConcept("http://purl.obolibrary.org/obo/CHEBI_1", null);
+      // An unlabeled foreign class that IS a real entry point — a labeled own class hangs under it.
+      s.addConcept("http://purl.obolibrary.org/obo/BFO_1", null);
+      s.addConcept("http://ex.org/ONT#Sub", "Sub");
+      s.addEdge("http://ex.org/ONT#Sub", "http://purl.obolibrary.org/obo/BFO_1", "rdfs:subClassOf");
+      s.materialize();
+
+      // All three parentless classes are roots before pruning.
+      assertTrue(s.roots().contains("http://purl.obolibrary.org/obo/CHEBI_1"));
+      assertEquals(3, s.roots().size());
+
+      int pruned = s.pruneDeadEndImportRoots("ONT");
+
+      assertEquals(1, pruned, "only the dead-end CHEBI reference is pruned");
+      List<String> roots = s.roots();
+      assertFalse(roots.contains("http://purl.obolibrary.org/obo/CHEBI_1"), "dead-end import ref dropped");
+      assertTrue(roots.contains("http://ex.org/ONT#Root"), "labeled own root kept");
+      assertTrue(roots.contains("http://purl.obolibrary.org/obo/BFO_1"), "entry point that leads to labeled content kept");
+      // The concept itself survives — only the root entry was removed.
+      assertTrue(s.contains("http://purl.obolibrary.org/obo/CHEBI_1"));
+    }
+  }
+
+  @Test
+  public void pruneDeadEndImportRoots_neverEmptiesAnOntology() throws Exception {
+    try (SnapshotStore s = SnapshotStore.openInMemory()) {
+      s.initSchema();
+      // A label-less but structured ontology: every class is unlabeled and foreign, so every root
+      // would otherwise be pruned. The guard must keep them so the tree stays browsable.
+      s.addConcept("http://purl.obolibrary.org/obo/CHEBI_1", null);
+      s.addConcept("http://purl.obolibrary.org/obo/CHEBI_2", null);
+      s.addEdge("http://purl.obolibrary.org/obo/CHEBI_2", "http://purl.obolibrary.org/obo/CHEBI_1", "rdfs:subClassOf");
+      s.materialize();
+      assertEquals(1, s.roots().size()); // CHEBI_1 is the only root
+
+      int pruned = s.pruneDeadEndImportRoots("ONT");
+
+      assertEquals(0, pruned, "guard prevents pruning the ontology to zero roots");
+      assertEquals(1, s.roots().size(), "the sole root is preserved");
+    }
+  }
+
+  @Test
   public void children_areDirectSubclassesOnly() throws Exception {
     assertEquals(List.of("animal", "pet"), store.children("thing"));
     assertEquals(List.of("cat", "dog"), store.children("mammal"));

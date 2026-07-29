@@ -141,6 +141,9 @@ public class IngestJob {
     try (SnapshotStore store = SnapshotStore.openFile(tempFile.toString())) {
       store.initSchema();
       extracted = extractorFor(acronym, sub.format()).extractFromFile(loadable.toFile(), store);
+      // Drop dead-end import references from the roots: unlabeled foreign classes with no labeled
+      // descendant are unresolved-owl:imports dangling references, not real tree entry points.
+      store.pruneDeadEndImportRoots(acronym);
     } catch (Throwable e) {
       Files.deleteIfExists(tempFile);
       throw new IOException("Extraction failed for " + acronym + " submission " + sub.submissionId(), e);
