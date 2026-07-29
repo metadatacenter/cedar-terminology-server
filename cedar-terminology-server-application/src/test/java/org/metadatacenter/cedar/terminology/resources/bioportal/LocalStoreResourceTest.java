@@ -3,6 +3,7 @@ package org.metadatacenter.cedar.terminology.resources.bioportal;
 import io.dropwizard.testing.DropwizardTestSupport;
 import io.dropwizard.testing.ResourceHelpers;
 import jakarta.ws.rs.client.ClientBuilder;
+import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.GenericType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.Status;
@@ -18,6 +19,7 @@ import org.metadatacenter.model.SystemComponent;
 import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.terms.domainObjects.OntologyClass;
 import org.metadatacenter.terms.domainObjects.OntologyVersion;
+import org.metadatacenter.terms.domainObjects.SearchResult;
 import org.metadatacenter.terms.domainObjects.VersionDiff;
 import org.metadatacenter.terms.store.CatalogStore;
 import org.metadatacenter.terms.store.SnapshotStore;
@@ -211,5 +213,35 @@ public class LocalStoreResourceTest {
         .header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     response.close();
     Assertions.assertEquals(Status.NOT_FOUND.getStatusCode(), response.getStatus());
+  }
+
+  /**
+   * Serve-at-version through the real integrated-search HTTP endpoint, JSON body included. The
+   * ontology constraint's optional {@code version} is a plain field with a getter but no setter, so
+   * this is the test that proves Jackson does not silently drop it on the way in — the feature is
+   * only meaningful if a pinned version actually reaches the store. Enumerating LOCALTEST (empty
+   * input text) returns its 3 concepts pinned to v1 and its 4 at latest (v2, which added "infection").
+   * Service-level tests construct the constraint in Java and so cannot catch a deserialization gap.
+   */
+  @Test
+  public void integratedSearchHonoursPinnedVersionOverHttp() {
+    Assertions.assertEquals(3, integratedSearchOntologyConceptCount(",\"version\":\"v1\""));
+    Assertions.assertEquals(4, integratedSearchOntologyConceptCount("")); // no version -> latest (v2)
+  }
+
+  /** POST integrated-search enumerating one ontology constraint (empty input text) and return its
+   *  total result count. {@code versionSuffix} is either {@code ""} or {@code ,"version":"..."}. */
+  private static int integratedSearchOntologyConceptCount(String versionSuffix) {
+    String url = "http://localhost:" + RULE.getLocalPort() + "/" + BP_ENDPOINT + "/integrated-search";
+    String body = "{\"parameterObject\":{\"valueConstraints\":{"
+        + "\"ontologies\":[{\"acronym\":\"" + ONT + "\"" + versionSuffix + "}],"
+        + "\"branches\":[],\"valueSets\":[],\"classes\":[]},\"inputText\":\"\"},"
+        + "\"page\":1,\"pageSize\":50}";
+    Response response = clientBuilder.build().target(url).request().post(Entity.json(body));
+    Assertions.assertEquals(Status.OK.getStatusCode(), response.getStatus());
+    PagedResults<SearchResult> results =
+        response.readEntity(new GenericType<PagedResults<SearchResult>>() {});
+    response.close();
+    return results.getTotalCount();
   }
 }
