@@ -10,6 +10,9 @@ public class BranchValueConstraint {
   private String uri;
   @NotEmpty
   private String acronym;
+  // Optional pinned version (a version_id or tag such as "latest"). Absent means the current version,
+  // so existing constraints are unchanged; when set, the local store serves that version reproducibly.
+  private String version;
 
   public BranchValueConstraint() { }
 
@@ -19,6 +22,10 @@ public class BranchValueConstraint {
 
   public String getAcronym() {
     return acronym;
+  }
+
+  public String getVersion() {
+    return version;
   }
 
 }

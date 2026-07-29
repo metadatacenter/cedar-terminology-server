@@ -7,6 +7,7 @@ import org.metadatacenter.cedar.terminology.validation.integratedsearch.ValueCon
 import org.metadatacenter.cedar.terminology.validation.integratedsearch.ValueSetValueConstraint;
 import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.terms.domainObjects.*;
+import org.metadatacenter.terms.store.SnapshotDiff;
 import org.metadatacenter.terms.store.SnapshotStore;
 import org.metadatacenter.terms.util.ObjectConverter;
 import org.metadatacenter.terms.util.Util;
@@ -42,7 +43,25 @@ public class SqliteTerminologyService implements ITerminologyService {
   /** Resolves the snapshot store that currently serves an ontology, if any. */
   @FunctionalInterface
   public interface SnapshotProvider {
+    /** The snapshot serving an ontology at its current ("latest") version, if any. */
     Optional<SnapshotStore> forOntology(String ontology);
+
+    /**
+     * The snapshot serving an ontology at a specific version (a {@code version_id} or a tag such as
+     * {@code latest}). A null/blank/{@code latest} version means the current one. Default: ignore the
+     * version and serve latest — a bare provider is not version-aware.
+     */
+    default Optional<SnapshotStore> forOntology(String ontology, String version) {
+      return forOntology(ontology);
+    }
+
+    /**
+     * The versions of an ontology the provider knows. Empty by default. Answers a "what versions
+     * exist" query.
+     */
+    default List<OntologyVersion> versions(String ontology) {
+      return List.of();
+    }
 
     /**
      * Metadata for the ontologies this provider serves locally — the catalog's own registry, used to
@@ -68,6 +87,14 @@ public class SqliteTerminologyService implements ITerminologyService {
   private SnapshotStore store(String ontology) {
     return provider.forOntology(ontology)
         .orElseThrow(() -> new UnsupportedOperationException("Ontology not served locally: " + ontology));
+  }
+
+  /** The snapshot for an ontology at a pinned version (null/blank/"latest" = current). Throws — so the
+   *  router falls back to BioPortal — when the ontology or that version is not served locally. */
+  private SnapshotStore store(String ontology, String version) {
+    return provider.forOntology(ontology, version)
+        .orElseThrow(() -> new UnsupportedOperationException(
+            "Ontology/version not served locally: " + ontology + "@" + (version == null ? "latest" : version)));
   }
 
   private OntologyClass toClass(SnapshotStore.Concept c, String ontology) {
@@ -129,9 +156,49 @@ public class SqliteTerminologyService implements ITerminologyService {
     return id == null ? null : URLDecoder.decode(id, StandardCharsets.UTF_8);
   }
 
+  /**
+   * The snapshot acronym for a value-set collection. A vsCollection is usually the bare acronym
+   * ({@code NLMVS}, {@code CADSR-VS}) but is sometimes the full registry URL
+   * ({@code http://data.bioontology.org/ontologies/CEDARVS}); take the last path segment in that case.
+   */
+  private static String vsCollectionAcronym(String vsCollection) {
+    if (vsCollection == null) {
+      return null;
+    }
+    int slash = vsCollection.lastIndexOf('/');
+    return slash >= 0 ? vsCollection.substring(slash + 1) : vsCollection;
+  }
+
   /* --------------------------------------------------------------------------------------------
    * Bucket A — implemented from the snapshot store.
    * ------------------------------------------------------------------------------------------ */
+
+  @Override
+  public List<OntologyVersion> getVersions(String ontology) {
+    return provider.versions(ontology);
+  }
+
+  @Override
+  public VersionDiff diffVersions(String ontology, String fromVersion, String toVersion) throws IOException {
+    Optional<SnapshotStore> from = provider.forOntology(ontology, fromVersion);
+    Optional<SnapshotStore> to = provider.forOntology(ontology, toVersion);
+    if (from.isEmpty() || to.isEmpty()) {
+      return null; // unknown ontology or version — the resource turns this into a 404
+    }
+    try {
+      SnapshotDiff.Diff d = new SnapshotDiff().diff(from.get(), to.get());
+      int cap = 25;
+      return new VersionDiff(fromVersion, toVersion,
+          d.fromConcepts(), d.toConcepts(), d.addedConcepts().size(), d.removedConcepts().size(),
+          d.fromEdges(), d.toEdges(), d.addedEdges().size(), d.removedEdges().size(),
+          d.newlyObsoleted().size(),
+          d.addedConcepts().stream().limit(cap).toList(),
+          d.removedConcepts().stream().limit(cap).toList(),
+          d.summary());
+    } catch (SQLException e) {
+      throw new IOException(e);
+    }
+  }
 
   @Override
   public OntologyClass findClass(String id, String ontology, String apiKey) throws IOException {
@@ -363,28 +430,63 @@ public class SqliteTerminologyService implements ITerminologyService {
     boolean hasValueSets = valueSets != null && !valueSets.isEmpty();
     boolean hasClasses = classes != null && !classes.isEmpty();
 
+    // A single value set: its values are the children of the value-set class in its vsCollection
+    // snapshot — BioPortal serves the same via GET /ontologies/{vsCollection}/classes/{vsId}/children.
+    // Enumerate (empty text) or filter by preferred-label substring, sorted by preferred label as
+    // BioPortal does. The vsCollection is served like any ontology snapshot.
+    if (hasValueSets && valueSets.size() == 1 && !hasOntologies && !hasBranches && !hasClasses) {
+      ValueSetValueConstraint vs = valueSets.get(0);
+      String acronym = vsCollectionAcronym(vs.getVsCollection());
+      List<SnapshotStore.Concept> values;
+      try {
+        values = new ArrayList<>(store(acronym, vs.getVersion()).childrenDetailed(decodeIri(vs.getUri())));
+      } catch (SQLException e) {
+        throw new IOException(e);
+      }
+      String query = q.map(String::trim).orElse("");
+      if (!query.isEmpty()) {
+        String needle = query.toLowerCase();
+        values.removeIf(c -> c.prefLabel() == null || !c.prefLabel().toLowerCase().contains(needle));
+      }
+      values.sort(Comparator.comparing(c -> c.prefLabel() == null ? "" : c.prefLabel(),
+          String.CASE_INSENSITIVE_ORDER));
+      return pagedSearchResults(values, acronym, page, pageSize);
+    }
     if (hasValueSets) {
-      throw unsupported("integratedSearch (value sets)");
+      throw unsupported("integratedSearch (value sets: multi-source or mixed)");
     }
     // Enumerated classes on their own — self-contained, no snapshot needed.
     if (hasClasses && !hasOntologies && !hasBranches) {
       return integratedSearchEnumeratedClasses(q, classes, page, pageSize);
     }
-    // A single ontology.
+    // A single ontology — enumerate on empty text, else label-search — served at the constraint's
+    // pinned version (null = latest). Resolved here rather than via the public search() so the version
+    // can be honored; the picker's live search() stays latest.
     if (hasOntologies && ontologies.size() == 1 && !hasBranches && !hasClasses) {
-      String acronym = ontologies.get(0).getAcronym();
+      OntologyValueConstraint ont = ontologies.get(0);
       String query = q.map(String::trim).orElse("");
-      if (query.isEmpty()) {
-        return ObjectConverter.classResultsToSearchResults(findAllClassesInOntology(acronym, page, pageSize, apiKey));
+      try {
+        SnapshotStore st = store(ont.getAcronym(), ont.getVersion());
+        List<SnapshotStore.Concept> rows =
+            query.isEmpty() ? st.allConceptsDetailed() : st.searchByLabel(query, false, 0);
+        return pagedSearchResults(rows, ont.getAcronym(), page, pageSize);
+      } catch (SQLException e) {
+        throw new IOException(e);
       }
-      return search(query, List.of("classes"), List.of(acronym), false, null, null, 0, page, pageSize,
-          false, false, apiKey, null);
     }
-    // A single branch (class + descendants).
+    // A single branch (class + descendants) at the constraint's pinned version. The branch root IRI is
+    // decoded first: some ontologies (e.g. GDMT) store it percent-encoded and BioPortal decodes before
+    // matching; a normal IRI has nothing to decode.
     if (hasBranches && branches.size() == 1 && !hasOntologies && !hasClasses) {
       BranchValueConstraint branch = branches.get(0);
-      return search(q.map(String::trim).orElse(""), List.of("classes"), null, false, branch.getAcronym(),
-          branch.getUri(), 0, page, pageSize, false, false, apiKey, null);
+      String query = q.map(String::trim).orElse("");
+      try {
+        List<SnapshotStore.Concept> rows = store(branch.getAcronym(), branch.getVersion())
+            .searchByLabelUnderRoot(decodeIri(branch.getUri()), query, false, 0);
+        return pagedSearchResults(rows, branch.getAcronym(), page, pageSize);
+      } catch (SQLException e) {
+        throw new IOException(e);
+      }
     }
     throw unsupported("integratedSearch (multi-source or mixed constraints)");
   }

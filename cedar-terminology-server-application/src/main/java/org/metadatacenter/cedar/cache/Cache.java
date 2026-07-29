@@ -1,6 +1,7 @@
 package org.metadatacenter.cedar.cache;
 
 import org.metadatacenter.cedar.terminology.resources.AbstractTerminologyServerResource;
+import org.metadatacenter.terms.ITerminologyService;
 import org.metadatacenter.terms.domainObjects.Ontology;
 import org.metadatacenter.terms.domainObjects.OntologyDetails;
 import org.metadatacenter.terms.domainObjects.ValueSet;
@@ -21,6 +22,19 @@ import static org.metadatacenter.cedar.terminology.utils.Constants.*;
  * so the existing call sites, which catch it, compile unchanged.
  */
 public class Cache {
+
+  /**
+   * The floor below which an ontology list is treated as a failed load rather than a real one.
+   * BioPortal serves ~1300 ontologies; a cold or rate-limited fetch has been seen to come back with a
+   * tiny fraction (single digits) — the value-set collections only, with names collapsed to the bare
+   * acronym. Serving that silently makes the picker show "DOID (DOID)" instead of "Human Disease
+   * Ontology (DOID)". The floor is well below a full load and well above any such degraded partial, so
+   * a short list becomes a loud failure here and an unhealthy signal in the health check, rather than
+   * plausible-looking wrong data. A genuinely small local-only deployment is exempt: {@link
+   * #getOntologies()} skips this floor when the backend {@link ITerminologyService#isLocalOnly() is
+   * local-only}, because then a short list is the authoritative catalogue, not a degraded fetch.
+   */
+  public static final int MIN_EXPECTED_ONTOLOGIES = 100;
 
   /** No-op: retained so the application startup call site is unchanged. Caching has been removed. */
   public static void init(boolean testMode) {
@@ -62,6 +76,17 @@ public class Cache {
           o.setDetails(details);
         }
         map.put(o.getId(), o);
+      }
+      // Refuse to serve a partial list. A fetch that comes back far short of the full catalogue is a
+      // failed load (cold BioPortal, a rate-limited key), not a real answer; surfacing it as an error
+      // is better than handing the picker a plausible-looking but wrong list. This guards the remote
+      // fetch only: a local-only backend has no BioPortal call to degrade, and its list is
+      // authoritatively small (just the versioned ontologies), so the floor must not apply there.
+      if (!AbstractTerminologyServerResource.terminologyService.isLocalOnly()
+          && map.size() < MIN_EXPECTED_ONTOLOGIES) {
+        throw new ExecutionException(new IllegalStateException(
+            "Ontology list came back with only " + map.size() + " entries (expected at least "
+                + MIN_EXPECTED_ONTOLOGIES + "); treating it as a failed load rather than serving a partial list."));
       }
       return map;
     } catch (IOException e) {

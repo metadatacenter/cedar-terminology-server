@@ -8,6 +8,7 @@ import org.semanticweb.owlapi.model.OWLOntologyLoaderConfiguration;
 import org.semanticweb.owlapi.model.AxiomType;
 import org.semanticweb.owlapi.model.IRI;
 import org.semanticweb.owlapi.model.OWLAnnotation;
+import org.semanticweb.owlapi.model.OWLAnnotationAssertionAxiom;
 import org.semanticweb.owlapi.model.OWLAnnotationProperty;
 import org.semanticweb.owlapi.model.OWLAnnotationValue;
 import org.semanticweb.owlapi.model.OWLClass;
@@ -16,11 +17,12 @@ import org.semanticweb.owlapi.model.OWLDataFactory;
 import org.semanticweb.owlapi.model.OWLEquivalentClassesAxiom;
 import org.semanticweb.owlapi.model.OWLLiteral;
 import org.semanticweb.owlapi.model.OWLObjectIntersectionOf;
+import org.semanticweb.owlapi.model.OWLObjectSomeValuesFrom;
 import org.semanticweb.owlapi.model.OWLOntology;
 import org.semanticweb.owlapi.model.OWLOntologyCreationException;
 import org.semanticweb.owlapi.model.OWLOntologyManager;
 import org.semanticweb.owlapi.model.OWLSubClassOfAxiom;
-import org.semanticweb.owlapi.search.EntitySearcher;
+import org.semanticweb.owlapi.model.parameters.Imports;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,6 +30,7 @@ import java.io.File;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Extracts a subsumption hierarchy from an OWL (or OBO-in-OWL) ontology into a {@link SnapshotStore}.
@@ -57,6 +60,32 @@ public class OwlHierarchyExtractor implements HierarchyExtractor {
   /** OBO "term replaced by": links an obsolete term to its successor. */
   private static final IRI TERM_REPLACED_BY = IRI.create("http://purl.obolibrary.org/obo/IAO_0100001");
 
+  /** SKOS preferred label: the label BioPortal serves for UMLS/TTL ontologies (e.g. ICD10CM, MESH,
+   *  LOINC), which carry an OWL {@code rdfs:subClassOf} hierarchy but label concepts with
+   *  {@code skos:prefLabel} rather than {@code rdfs:label}. */
+  private static final IRI SKOS_PREF_LABEL = IRI.create("http://www.w3.org/2004/02/skos/core#prefLabel");
+
+  /**
+   * Object properties whose {@code some Filler} restriction superclasses count as hierarchy edges,
+   * in addition to {@code rdfs:subClassOf}. Empty by default (pure subsumption). A partonomy
+   * ontology whose BioPortal browse tree is built from object properties — e.g. BTO, where the tree
+   * is {@code part_of} + {@code develops_from}, not the near-empty {@code is_a} — supplies them here.
+   */
+  private final Set<IRI> hierarchyProperties;
+
+  /** Default extractor: only {@code rdfs:subClassOf} and named genera form the hierarchy. */
+  public OwlHierarchyExtractor() {
+    this(Set.of());
+  }
+
+  /**
+   * Extractor that also treats {@code SubClassOf(C, p some D)} as a hierarchy edge {@code C -> D}
+   * when {@code p} is in {@code hierarchyProperties} (the named filler {@code D} becomes a parent).
+   */
+  public OwlHierarchyExtractor(Set<IRI> hierarchyProperties) {
+    this.hierarchyProperties = hierarchyProperties;
+  }
+
   /**
    * Extracts the hierarchy from an already-loaded ontology into the store and materializes the
    * closure. The store should be freshly initialized ({@link SnapshotStore#initSchema()}).
@@ -64,24 +93,26 @@ public class OwlHierarchyExtractor implements HierarchyExtractor {
   @Override
   public Result extract(OWLOntology ont, SnapshotStore store) throws SQLException {
     OWLDataFactory df = ont.getOWLOntologyManager().getOWLDataFactory();
-    OWLAnnotationProperty rdfsLabel = df.getRDFSLabel();
     OWLAnnotationProperty deprecated = df.getOWLDeprecated();
     OWLAnnotationProperty replacedBy = df.getOWLAnnotationProperty(TERM_REPLACED_BY);
 
     int classCount = 0;
-    for (OWLClass cls : ont.getClassesInSignature()) {
+    for (OWLClass cls : ont.getClassesInSignature(Imports.INCLUDED)) {
       if (cls.isOWLThing() || cls.isOWLNothing()) {
         continue;
       }
-      store.addConcept(cls.getIRI().toString(), label(cls, ont, rdfsLabel),
+      store.addConcept(cls.getIRI().toString(), label(cls, ont),
           isDeprecated(cls, ont, deprecated), replacedBy(cls, ont, replacedBy));
       classCount++;
     }
 
     int edgeCount = 0;
     // Asserted rdfs:subClassOf. A named superclass is a parent; a named genus inside an
-    // intersection superclass is too.
-    for (OWLSubClassOfAxiom ax : ont.getAxioms(AxiomType.SUBCLASS_OF)) {
+    // intersection superclass is too. Read across the import closure: BioPortal resolves an
+    // ontology's owl:imports and serves the merged graph, so a field constrained to an imported
+    // branch (e.g. BAO's CHEBI/UO slims) browses the imported terms. Imports that don't resolve are
+    // silently skipped at load (MissingImportHandlingStrategy.SILENT), so this stays best-effort.
+    for (OWLSubClassOfAxiom ax : ont.getAxioms(AxiomType.SUBCLASS_OF, Imports.INCLUDED)) {
       OWLClassExpression sub = ax.getSubClass();
       if (sub.isAnonymous()) {
         continue;
@@ -92,15 +123,14 @@ public class OwlHierarchyExtractor implements HierarchyExtractor {
       }
       OWLClassExpression sup = ax.getSuperClass();
       if (!sup.isAnonymous() && sup.asOWLClass().isOWLThing()) {
-        // An explicit "subClassOf owl:Thing" is a top-level declaration, not a hierarchy edge. Record
-        // it so a declared root is distinguished from a bare, parentless imported reference.
-        store.declareThingSubclass(child.getIRI().toString());
+        // subClassOf owl:Thing is not a hierarchy edge — owl:Thing is never materialized. The class
+        // is left parentless, which is exactly what makes it a root (see SnapshotStore.materialize).
         continue;
       }
       edgeCount += addParents(store, child, namedParents(sup), "rdfs:subClassOf");
     }
     // Defined classes: the named genus of an equivalentClass intersection (genus-differentia).
-    for (OWLEquivalentClassesAxiom ax : ont.getAxioms(AxiomType.EQUIVALENT_CLASSES)) {
+    for (OWLEquivalentClassesAxiom ax : ont.getAxioms(AxiomType.EQUIVALENT_CLASSES, Imports.INCLUDED)) {
       List<OWLClassExpression> exprs = new ArrayList<>(ax.getClassExpressions());
       for (OWLClassExpression e : exprs) {
         if (e.isAnonymous()) {
@@ -144,18 +174,27 @@ public class OwlHierarchyExtractor implements HierarchyExtractor {
    * named conjuncts (the genus) if it is an {@code owl:intersectionOf}. Anything else (a bare
    * restriction, a union) contributes nothing. {@code owl:Thing}/{@code owl:Nothing} are excluded.
    */
-  private static List<OWLClass> namedParents(OWLClassExpression expr) {
+  private List<OWLClass> namedParents(OWLClassExpression expr) {
     List<OWLClass> parents = new ArrayList<>();
+    collectParents(expr, parents);
+    return parents;
+  }
+
+  private void collectParents(OWLClassExpression expr, List<OWLClass> parents) {
     if (!expr.isAnonymous()) {
       addNamed(parents, expr);
     } else if (expr instanceof OWLObjectIntersectionOf intersection) {
+      // A named genus contributes; a configured relation restriction inside the intersection does too.
       for (OWLClassExpression operand : intersection.getOperands()) {
-        if (!operand.isAnonymous()) {
-          addNamed(parents, operand);
-        }
+        collectParents(operand, parents);
       }
+    } else if (expr instanceof OWLObjectSomeValuesFrom svf && !hierarchyProperties.isEmpty()
+        && !svf.getProperty().isAnonymous()
+        && hierarchyProperties.contains(svf.getProperty().asOWLObjectProperty().getIRI())
+        && !svf.getFiller().isAnonymous()) {
+      // e.g. BTO: "part_of some hematopoietic system" makes hematopoietic system a parent.
+      addNamed(parents, svf.getFiller());
     }
-    return parents;
   }
 
   private static void addNamed(List<OWLClass> parents, OWLClassExpression named) {
@@ -177,32 +216,85 @@ public class OwlHierarchyExtractor implements HierarchyExtractor {
     return added;
   }
 
-  private static String label(OWLClass cls, OWLOntology ont, OWLAnnotationProperty rdfsLabel) {
-    for (OWLAnnotation a : EntitySearcher.getAnnotations(cls, ont, rdfsLabel)) {
-      if (a.getValue() instanceof OWLLiteral literal) {
-        return literal.getLiteral();
+  /**
+   * The class's preferred label, taken from its own {@code rdfs:label} assertion, falling back to
+   * {@code skos:prefLabel} (which is where UMLS/TTL ontologies such as ICD10CM, MESH, and LOINC put
+   * the label BioPortal serves — they carry an OWL hierarchy but SKOS labels).
+   *
+   * Read from the class's direct annotation-assertion axioms rather than via
+   * {@code EntitySearcher.getAnnotations}, which also surfaces labels attached as <em>axiom
+   * annotations</em> on other assertions — notably an OBO {@code xref} description (obo2owl exposes
+   * {@code xref: X "desc"} as a second {@code rdfs:label}), which must not be mistaken for the term's
+   * name and would otherwise diverge from BioPortal.
+   */
+  private static String label(OWLClass cls, OWLOntology ont) {
+    // A class can carry the label in several languages; BioPortal serves the English one. Pick the
+    // best-ranked literal (English, then untagged, then any other) rather than the first encountered,
+    // so a multilingual ontology (NANDO's Japanese, ONTOAD's French, ...) does not diverge from
+    // BioPortal on which language it names the term in. rdfs:label wins over skos:prefLabel overall.
+    String rdfsLabel = null;
+    int rdfsRank = -1;
+    String prefLabel = null;
+    int prefRank = -1;
+    // Across the import closure: an imported class carries its label in the imported ontology.
+    for (OWLOntology o : ont.getImportsClosure()) {
+      for (OWLAnnotationAssertionAxiom ax : o.getAnnotationAssertionAxioms(cls.getIRI())) {
+        if (!(ax.getValue() instanceof OWLLiteral literal)) {
+          continue;
+        }
+        int rank = langRank(literal);
+        if (ax.getProperty().isLabel()) {
+          if (rank > rdfsRank) {
+            rdfsRank = rank;
+            rdfsLabel = literal.getLiteral();
+          }
+        } else if (ax.getProperty().getIRI().equals(SKOS_PREF_LABEL) && rank > prefRank) {
+          prefRank = rank;
+          prefLabel = literal.getLiteral();
+        }
       }
     }
-    return null;
+    return rdfsLabel != null ? rdfsLabel : prefLabel;
+  }
+
+  /**
+   * Language preference for choosing among a class's labels: English best, then an untagged literal,
+   * then any other language. Matches BioPortal, which serves the English label when several exist.
+   */
+  private static int langRank(OWLLiteral literal) {
+    String lang = literal.getLang();
+    if (lang == null || lang.isEmpty()) {
+      return 1; // untagged
+    }
+    String lower = lang.toLowerCase();
+    return lower.equals("en") || lower.startsWith("en-") ? 2 : 0;
   }
 
   private static boolean isDeprecated(OWLClass cls, OWLOntology ont, OWLAnnotationProperty deprecated) {
-    for (OWLAnnotation a : EntitySearcher.getAnnotations(cls, ont, deprecated)) {
-      if (a.getValue() instanceof OWLLiteral literal && literal.isBoolean() && literal.parseBoolean()) {
-        return true;
+    for (OWLOntology o : ont.getImportsClosure()) {
+      for (OWLAnnotationAssertionAxiom ax : o.getAnnotationAssertionAxioms(cls.getIRI())) {
+        if (ax.getProperty().equals(deprecated) && ax.getValue() instanceof OWLLiteral literal
+            && literal.isBoolean() && literal.parseBoolean()) {
+          return true;
+        }
       }
     }
     return false;
   }
 
   private static String replacedBy(OWLClass cls, OWLOntology ont, OWLAnnotationProperty replacedBy) {
-    for (OWLAnnotation a : EntitySearcher.getAnnotations(cls, ont, replacedBy)) {
-      OWLAnnotationValue value = a.getValue();
-      if (value instanceof IRI iri) {
-        return iri.toString();
-      }
-      if (value instanceof OWLLiteral literal) {
-        return literal.getLiteral();
+    for (OWLOntology o : ont.getImportsClosure()) {
+      for (OWLAnnotationAssertionAxiom ax : o.getAnnotationAssertionAxioms(cls.getIRI())) {
+        if (!ax.getProperty().equals(replacedBy)) {
+          continue;
+        }
+        OWLAnnotationValue value = ax.getValue();
+        if (value instanceof IRI iri) {
+          return iri.toString();
+        }
+        if (value instanceof OWLLiteral literal) {
+          return literal.getLiteral();
+        }
       }
     }
     return null;

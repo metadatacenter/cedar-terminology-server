@@ -4,6 +4,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.metadatacenter.terms.domainObjects.Ontology;
+import org.metadatacenter.terms.domainObjects.OntologyVersion;
 import org.metadatacenter.terms.store.CatalogStore;
 import org.metadatacenter.terms.store.SnapshotStore;
 
@@ -63,6 +64,25 @@ public class CatalogSnapshotProviderTest {
         "OWL", "subsumption", 6, 6, snapshotFile.toString(), "v1", "open"));
     catalog.setTag("EX", CatalogStore.TAG_LATEST, "v1");
 
+    // A second, non-latest version v2 that adds "wolf" under mammal — for version-resolution tests.
+    Path v2File = tempDir.resolve("EX_v2.sqlite");
+    try (SnapshotStore store = SnapshotStore.openFile(v2File.toString())) {
+      store.initSchema();
+      for (String[] c : new String[][]{
+          {"thing", "Thing"}, {"animal", "Animal"}, {"mammal", "Mammal"},
+          {"cat", "Cat"}, {"dog", "Dog"}, {"pet", "Pet"}, {"wolf", "Wolf"}}) {
+        store.addConcept(BASE + c[0], c[1]);
+      }
+      store.addEdge(BASE + "animal", BASE + "thing", "rdfs:subClassOf");
+      store.addEdge(BASE + "mammal", BASE + "animal", "rdfs:subClassOf");
+      store.addEdge(BASE + "cat", BASE + "mammal", "rdfs:subClassOf");
+      store.addEdge(BASE + "dog", BASE + "mammal", "rdfs:subClassOf");
+      store.addEdge(BASE + "wolf", BASE + "mammal", "rdfs:subClassOf");
+      store.materialize();
+    }
+    catalog.addSnapshot(new CatalogStore.SnapshotInfo("v2", "EX", "2.0", "2025-06-01", "2025-06-02T00:00:00Z",
+        "OWL", "subsumption", 7, 7, v2File.toString(), "v2", "open")); // latest stays v1
+
     // Allowlist EX and OTHER; only EX is actually ingested.
     provider = new CatalogSnapshotProvider(catalog, Set.of("EX", "OTHER"));
   }
@@ -105,6 +125,30 @@ public class CatalogSnapshotProviderTest {
     SnapshotStore first = provider.forOntology("EX").orElseThrow();
     SnapshotStore second = provider.forOntology("EX").orElseThrow();
     assertSame(first, second);
+  }
+
+  @Test
+  public void resolvesAPinnedVersionIndependentOfLatest() throws Exception {
+    // latest is v1 (no wolf). Pinning v2 serves the v2 snapshot (wolf present); pinning v1 or the
+    // "latest" tag serves v1. This is reproducible resolution independent of where latest points.
+    assertTrue(provider.forOntology("EX").orElseThrow().prefLabel(BASE + "wolf").isEmpty());
+    assertTrue(provider.forOntology("EX", "v2").orElseThrow().prefLabel(BASE + "wolf").isPresent());
+    assertTrue(provider.forOntology("EX", "v1").orElseThrow().prefLabel(BASE + "wolf").isEmpty());
+    assertTrue(provider.forOntology("EX", "latest").orElseThrow().prefLabel(BASE + "wolf").isEmpty());
+  }
+
+  @Test
+  public void listsVersionsWithLatestMarked() {
+    List<OntologyVersion> vs = provider.versions("EX");
+    assertEquals(2, vs.size());
+    assertEquals(1, vs.stream().filter(OntologyVersion::latest).count());
+    assertTrue(vs.stream().anyMatch(v -> v.versionId().equals("v1") && v.latest()));
+    assertTrue(vs.stream().anyMatch(v -> v.versionId().equals("v2") && !v.latest()));
+  }
+
+  @Test
+  public void unknownVersionResolvesEmpty() {
+    assertTrue(provider.forOntology("EX", "no-such-version").isEmpty());
   }
 
   @Test

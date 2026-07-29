@@ -1,6 +1,5 @@
-package org.metadatacenter.terms.ingest;
+package org.metadatacenter.terms.store;
 
-import org.metadatacenter.terms.store.SnapshotStore;
 import org.metadatacenter.terms.store.SnapshotStore.ConceptMeta;
 
 import java.sql.SQLException;

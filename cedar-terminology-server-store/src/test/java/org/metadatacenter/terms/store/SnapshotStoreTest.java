@@ -202,10 +202,46 @@ public class SnapshotStoreTest {
 
   @Test
   public void searchByLabelUnderRoot_restrictsToTheBranch() throws Exception {
-    // Under mammal (the root itself plus descendants cat, dog); labels containing "a": Mammal, Cat.
-    assertEquals(List.of("cat", "mammal"), iris(store.searchByLabelUnderRoot("mammal", "a", false, 0)));
+    // Under mammal (descendants cat, dog — the root mammal is excluded); labels containing "a": Cat.
+    assertEquals(List.of("cat"), iris(store.searchByLabelUnderRoot("mammal", "a", false, 0)));
     // "pet" is outside the mammal branch.
     assertEquals(List.of(), iris(store.searchByLabelUnderRoot("mammal", "pet", false, 0)));
+  }
+
+  @Test
+  public void branchExcludesRootEvenWithACycle() throws Exception {
+    // A broader/narrower cycle (some SKOS vocabularies have them) makes a node reach itself through
+    // the closure; a branch must still never return its own root.
+    try (SnapshotStore s = SnapshotStore.openInMemory()) {
+      s.initSchema();
+      s.addConcept("a", "A");
+      s.addConcept("b", "B");
+      s.addEdge("b", "a", "hierarchy");   // b under a
+      s.addEdge("a", "b", "hierarchy");   // cycle: a under b
+      s.materialize();
+      assertEquals(List.of("b"), iris(s.searchByLabelUnderRoot("a", "", false, 0)));
+    }
+  }
+
+  @Test
+  public void browseIncludesUnlabeledDescendants_butSearchDoesNot() throws Exception {
+    // Some ontologies carry a correct hierarchy but no labels (e.g. GALEN). An empty-query browse
+    // must still enumerate label-less descendants; a real search term must not match them.
+    try (SnapshotStore s = SnapshotStore.openInMemory()) {
+      s.initSchema();
+      s.addConcept("root", "Root");
+      s.addConcept("labeled", "Labeled child");
+      s.addConcept("unlabeled", null);           // no label
+      s.addEdge("labeled", "root", "rdfs:subClassOf");
+      s.addEdge("unlabeled", "root", "rdfs:subClassOf");
+      s.materialize();
+
+      List<String> browse = iris(s.searchByLabelUnderRoot("root", "", false, 0));
+      assertEquals(2, browse.size());
+      assertTrue(browse.contains("labeled") && browse.contains("unlabeled"));
+      // A real term matches only the labeled child; the label-less one cannot match.
+      assertEquals(List.of("labeled"), iris(s.searchByLabelUnderRoot("root", "Labeled", false, 0)));
+    }
   }
 
   @Test
@@ -214,32 +250,33 @@ public class SnapshotStoreTest {
         iris(store.allConceptsDetailed()));
   }
 
-  /* Roots — BioPortal's rule: non-obsolete classes that assert subClassOf owl:Thing. */
+  /* Roots — BioPortal's rule: a non-obsolete class with no named parent. Verified against the roots
+   * goldens: the parentless set reproduces BioPortal's /classes/roots (e.g. DOID's 15). owl:Thing is
+   * never materialized, so a class asserting subClassOf owl:Thing is simply parentless and is a root;
+   * an explicit owl:Thing declaration does not distinguish roots. */
 
   @Test
-  public void roots_followOwlThingDeclarationAndExcludeObsolete() throws Exception {
+  public void roots_areNonObsoleteParentlessClasses() throws Exception {
     try (SnapshotStore s = SnapshotStore.openInMemory()) {
       s.initSchema();
-      s.addConcept("top", "Top");                     // declares owl:Thing -> root
-      s.addConcept("obsTop", "ObsTop", true, null);   // declares owl:Thing but obsolete -> not a root
-      s.addConcept("dangling", "Dangling");           // parentless, no owl:Thing declaration -> not a root
+      s.addConcept("top", "Top");                     // parentless -> root
+      s.addConcept("obsTop", "ObsTop", true, null);   // parentless but obsolete -> not a root
+      s.addConcept("alsoTop", "AlsoTop");             // parentless -> also a root
       s.addConcept("child", "Child");
-      s.declareThingSubclass("top");
-      s.declareThingSubclass("obsTop");
       s.addEdge("child", "top", "rdfs:subClassOf");
       s.materialize();
-      assertEquals(List.of("top"), s.roots());
+      assertEquals(List.of("alsoTop", "top"), s.roots());   // both parentless non-obsolete; obsTop excluded
       assertTrue(s.descendants("top").contains("child"));
     }
   }
 
   @Test
-  public void roots_fallBackToParentlessWhenNoOwlThingDeclared() throws Exception {
+  public void roots_areParentlessRegardlessOfEdgePredicate() throws Exception {
     try (SnapshotStore s = SnapshotStore.openInMemory()) {
       s.initSchema();
       s.addConcept("a", "A");
       s.addConcept("b", "B");
-      s.addEdge("b", "a", "isa"); // no class declares owl:Thing -> fall back to parentless
+      s.addEdge("b", "a", "isa"); // a is parentless -> root; b has a parent -> not
       s.materialize();
       assertEquals(List.of("a"), s.roots());
     }

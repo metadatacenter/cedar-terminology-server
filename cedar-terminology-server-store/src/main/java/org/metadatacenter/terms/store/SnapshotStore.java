@@ -61,8 +61,7 @@ public class SnapshotStore implements AutoCloseable {
             iri            TEXT NOT NULL UNIQUE,
             pref_label     TEXT,
             obsolete       INTEGER NOT NULL DEFAULT 0,
-            replaced_by    TEXT,
-            declares_thing INTEGER NOT NULL DEFAULT 0
+            replaced_by    TEXT
           )""");
       s.executeUpdate("""
           CREATE TABLE IF NOT EXISTS edge (
@@ -114,20 +113,6 @@ public class SnapshotStore implements AutoCloseable {
       ps.setString(2, prefLabel);
       ps.setInt(3, obsolete ? 1 : 0);
       ps.setString(4, replacedBy);
-      ps.executeUpdate();
-    }
-  }
-
-  /**
-   * Marks a concept as asserting {@code subClassOf owl:Thing} — an explicit top-level declaration.
-   * {@code owl:Thing} itself is never materialized as a concept or edge; this flag lets
-   * {@link #materialize()} distinguish a declared top from a bare, parentless imported reference. The
-   * concept must already exist; a call for an unknown IRI is a no-op.
-   */
-  public void declareThingSubclass(String iri) throws SQLException {
-    try (PreparedStatement ps = connection.prepareStatement(
-        "UPDATE concept SET declares_thing = 1 WHERE iri = ?")) {
-      ps.setString(1, iri);
       ps.executeUpdate();
     }
   }
@@ -207,18 +192,19 @@ public class SnapshotStore implements AutoCloseable {
           )
           SELECT ancestor_id, descendant_id FROM walk""");
       s.executeUpdate("DELETE FROM root");
-      // Roots follow BioPortal: a root is a non-obsolete class that asserts subClassOf owl:Thing and
-      // has no other named parent. Obsolete classes are never roots, and a class that is merely
-      // parentless because it is a bare imported reference (no subClassOf axiom at all) is excluded.
-      // Fallback: if the ontology declares no owl:Thing subclass at all (a self-contained ontology
-      // that leaves its top classes parentless), roots are the non-obsolete parentless classes.
+      // A root is a non-obsolete class with no named parent. This matches BioPortal's /classes/roots
+      // for hierarchical ontologies: verified against the goldens, the parentless set reproduces
+      // BioPortal's roots exactly for DOID (15), and the top classes are parentless in the source
+      // rather than explicit owl:Thing subclasses (doid.owl asserts no owl:Thing at all). The earlier
+      // rule keyed on an explicit owl:Thing declaration and so dropped every parentless top class that
+      // did not assert it -- the picker's tree then had no entry point (DOID returned evidence and
+      // sequence, not disease). owl:Thing is never materialized, so a class asserting subClassOf
+      // owl:Thing is simply parentless here and is included. Obsolete classes are never roots.
       s.executeUpdate("""
           INSERT INTO root (concept_id)
           SELECT c.id FROM concept c
           WHERE c.obsolete = 0
-            AND NOT EXISTS (SELECT 1 FROM edge e WHERE e.child_id = c.id)
-            AND (c.declares_thing = 1
-                 OR NOT EXISTS (SELECT 1 FROM concept t WHERE t.declares_thing = 1))""");
+            AND NOT EXISTS (SELECT 1 FROM edge e WHERE e.child_id = c.id)""");
     }
   }
 
@@ -440,7 +426,8 @@ public class SnapshotStore implements AutoCloseable {
     return labelSearch(null, query, prefixOnly, limit);
   }
 
-  /** As {@link #searchByLabel}, but restricted to {@code rootIri} together with its descendants. */
+  /** As {@link #searchByLabel}, but restricted to the strict descendants of {@code rootIri}; the
+   * branch root itself is excluded, matching BioPortal's branch semantics. */
   public List<Concept> searchByLabelUnderRoot(String rootIri, String query, boolean prefixOnly, int limit)
       throws SQLException {
     return labelSearch(rootIri, query, prefixOnly, limit);
@@ -453,14 +440,24 @@ public class SnapshotStore implements AutoCloseable {
         "SELECT c.iri, c.pref_label, c.obsolete,\n" +
         "       EXISTS(SELECT 1 FROM edge e2 WHERE e2.parent_id = c.id) AS has_children\n" +
         "FROM concept c\n");
+    // COALESCE the label to '' so a concept with no label is not silently dropped: NULL LIKE '%'
+    // is NULL (not true), which would otherwise exclude every unlabeled concept from a browse
+    // (empty query). Some ontologies carry a correct hierarchy but no rdfs:label/skos:prefLabel
+    // (e.g. GALEN, whose labels live only in the IRI). An empty query then matches them ('' LIKE
+    // '%'), while a real search term still cannot match a label-less concept ('' LIKE '%term%' is
+    // false) — so browse enumerates the subtree while prefix search stays label-driven.
     if (rootIri != null) {
-      // The branch root itself plus everything transitively under it.
-      sql.append("WHERE (c.iri = ? OR c.id IN (\n" +
+      // The branch's descendants only — the root itself is excluded, matching BioPortal's branch
+      // semantics (a branch value constraint offers the subtypes of the class, not the class itself).
+      // The closure is non-reflexive, but a broader/narrower cycle (which some SKOS vocabularies
+      // contain, e.g. HRAVS) can make a node reach itself; the explicit c.iri <> root guards that.
+      sql.append("WHERE c.id IN (\n" +
                  "        SELECT cl.descendant_id FROM closure cl\n" +
-                 "        JOIN concept a ON a.id = cl.ancestor_id WHERE a.iri = ?))\n" +
-                 "  AND c.pref_label LIKE ? ESCAPE '\\'\n");
+                 "        JOIN concept a ON a.id = cl.ancestor_id WHERE a.iri = ?)\n" +
+                 "  AND c.iri <> ?\n" +
+                 "  AND COALESCE(c.pref_label, '') LIKE ? ESCAPE '\\'\n");
     } else {
-      sql.append("WHERE c.pref_label LIKE ? ESCAPE '\\'\n");
+      sql.append("WHERE COALESCE(c.pref_label, '') LIKE ? ESCAPE '\\'\n");
     }
     sql.append("ORDER BY length(c.pref_label), c.pref_label, c.iri");
     if (limit > 0) {

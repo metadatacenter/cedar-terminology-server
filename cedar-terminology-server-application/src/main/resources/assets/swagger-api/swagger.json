@@ -3,7 +3,7 @@
   "info" : {
     "description" : "CEDAR Terminology Server API",
     "title" : "CEDAR Terminology Server API",
-    "version" : "2.9.0"
+    "version" : "2.9.1"
   },
   "paths" : {
     "/bioportal/classes/provisional" : {
@@ -299,6 +299,87 @@
           "api_key" : [ ]
         } ],
         "summary" : "Find ontology by id",
+        "tags" : [ "Ontologies" ]
+      }
+    },
+    "/bioportal/ontologies/{id}/versions" : {
+      "get" : {
+        "description" : "Versions of an ontology available in the local, version-pinned store, each with its content-hash id, self-declared version, release date, and whether it is the current one. Empty when the ontology is served from BioPortal (which has no equivalent).",
+        "operationId" : "getVersions",
+        "parameters" : [ {
+          "description" : "Ontology acronym. Examples: DOID, INCENTIVE.",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Successful operation"
+          },
+          "401" : {
+            "description" : "Unauthorized"
+          },
+          "500" : {
+            "description" : "Internal server error"
+          }
+        },
+        "security" : [ {
+          "api_key" : [ ]
+        } ],
+        "summary" : "List local versions of an ontology",
+        "tags" : [ "Ontologies" ]
+      }
+    },
+    "/bioportal/ontologies/{id}/versions/diff" : {
+      "get" : {
+        "description" : "The vocabulary diff (concept and subsumption-edge additions/removals, newly obsoleted, capped concept samples) between two versions in the local store, given by version_id or tag. 404 when the ontology or a version is not served locally.",
+        "operationId" : "diffVersions",
+        "parameters" : [ {
+          "description" : "Ontology acronym.",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Base version (version_id or tag).",
+          "in" : "query",
+          "name" : "from",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Target version (version_id or tag, e.g. latest).",
+          "in" : "query",
+          "name" : "to",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Successful operation"
+          },
+          "401" : {
+            "description" : "Unauthorized"
+          },
+          "404" : {
+            "description" : "Ontology or version not found locally"
+          },
+          "500" : {
+            "description" : "Internal server error"
+          }
+        },
+        "security" : [ {
+          "api_key" : [ ]
+        } ],
+        "summary" : "Diff two local versions of an ontology",
         "tags" : [ "Ontologies" ]
       }
     },
@@ -2168,6 +2249,9 @@
             "type" : "string",
             "maxLength" : 2147483647,
             "minLength" : 1
+          },
+          "version" : {
+            "type" : "string"
           }
         },
         "required" : [ "acronym", "uri" ]
@@ -2716,6 +2800,9 @@
             "type" : "string",
             "maxLength" : 2147483647,
             "minLength" : 1
+          },
+          "version" : {
+            "type" : "string"
           }
         },
         "required" : [ "acronym" ]
@@ -2775,6 +2862,9 @@
             "type" : "string",
             "maxLength" : 2147483647,
             "minLength" : 1
+          },
+          "version" : {
+            "type" : "string"
           },
           "vsCollection" : {
             "type" : "string",

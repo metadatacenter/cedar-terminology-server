@@ -186,10 +186,11 @@ public class SqliteTerminologyServiceTest {
 
   @Test
   public void search_branchScopedRestrictsToSubtree() throws Exception {
-    // Within the mammal branch (mammal + cat + dog), labels containing "a": Cat, Mammal.
+    // Within the mammal branch (descendants cat + dog; the root mammal is excluded), labels
+    // containing "a": Cat.
     PagedResults<SearchResult> r = service.search("a", List.of("classes"), null, false, EX, iri("mammal"),
         0, 1, 50, false, false, null, null);
-    assertEquals(List.of(iri("cat"), iri("mammal")), ldIds(r.getCollection()));
+    assertEquals(List.of(iri("cat")), ldIds(r.getCollection()));
   }
 
   @Test
@@ -244,9 +245,19 @@ public class SqliteTerminologyServiceTest {
 
   @Test
   public void integratedSearch_singleBranchRestrictsToSubtree() throws Exception {
+    // The branch is the root's descendants (cat, dog); the root mammal is excluded. "a" matches Cat.
     PagedResults<SearchResult> r = integrated(Optional.of("a"),
         "{\"branches\":[{\"acronym\":\"EX\",\"uri\":\"" + iri("mammal") + "\"}]}");
-    assertEquals(List.of(iri("cat"), iri("mammal")), ldIds(r.getCollection()));
+    assertEquals(List.of(iri("cat")), ldIds(r.getCollection()));
+  }
+
+  @Test
+  public void integratedSearch_decodesPercentEncodedBranchUri() throws Exception {
+    // Some ontologies (e.g. GDMT) store the branch root percent-encoded; it must be decoded to match.
+    String encoded = java.net.URLEncoder.encode(iri("mammal"), java.nio.charset.StandardCharsets.UTF_8);
+    PagedResults<SearchResult> r = integrated(Optional.of("a"),
+        "{\"branches\":[{\"acronym\":\"EX\",\"uri\":\"" + encoded + "\"}]}");
+    assertEquals(List.of(iri("cat")), ldIds(r.getCollection()));
   }
 
   @Test
@@ -259,8 +270,58 @@ public class SqliteTerminologyServiceTest {
   }
 
   @Test
-  public void integratedSearch_valueSetsNotServedLocally() {
-    assertThrows(UnsupportedOperationException.class, () -> integrated(Optional.of("x"), "{\"valueSets\":[{}]}"));
+  public void integratedSearch_valueSetEnumeratesChildrenOfTheValueSetClass() throws Exception {
+    // A value set's values are the children of the value-set class in its collection snapshot (EX
+    // stands in as the collection here). mammal's children are cat and dog, sorted by preferred label.
+    PagedResults<SearchResult> r = integrated(Optional.empty(),
+        "{\"valueSets\":[{\"vsCollection\":\"EX\",\"uri\":\"" + iri("mammal") + "\"}]}");
+    assertEquals(List.of(iri("cat"), iri("dog")), ldIds(r.getCollection()));
+    // With a query, values are filtered by preferred-label substring.
+    PagedResults<SearchResult> filtered = integrated(Optional.of("Cat"),
+        "{\"valueSets\":[{\"vsCollection\":\"EX\",\"uri\":\"" + iri("mammal") + "\"}]}");
+    assertEquals(List.of(iri("cat")), ldIds(filtered.getCollection()));
+  }
+
+  @Test
+  public void integratedSearch_ontologyServedAtPinnedVersion() throws Exception {
+    // A provider with two versions of EX: latest has 6 concepts, "v-old" has only mammal. The
+    // constraint's version selects which the enumeration serves — reproducible regardless of latest.
+    SnapshotStore old = SnapshotStore.openInMemory();
+    old.initSchema();
+    old.addConcept(iri("mammal"), "Mammal");
+    old.materialize();
+    try {
+      SqliteTerminologyService.SnapshotProvider versioned = new SqliteTerminologyService.SnapshotProvider() {
+        @Override
+        public Optional<SnapshotStore> forOntology(String o) {
+          return EX.equals(o) ? Optional.of(store) : Optional.empty();
+        }
+
+        @Override
+        public Optional<SnapshotStore> forOntology(String o, String v) {
+          if (!EX.equals(o)) {
+            return Optional.empty();
+          }
+          return "v-old".equals(v) ? Optional.of(old) : Optional.of(store);
+        }
+      };
+      SqliteTerminologyService svc = new SqliteTerminologyService(versioned);
+      assertEquals(Integer.valueOf(6), svc.integratedSearch(Optional.empty(),
+          VC_MAPPER.readValue("{\"ontologies\":[{\"acronym\":\"EX\"}]}", ValueConstraints.class),
+          1, 50, null).getTotalCount());
+      assertEquals(Integer.valueOf(1), svc.integratedSearch(Optional.empty(),
+          VC_MAPPER.readValue("{\"ontologies\":[{\"acronym\":\"EX\",\"version\":\"v-old\"}]}", ValueConstraints.class),
+          1, 50, null).getTotalCount());
+    } finally {
+      old.close();
+    }
+  }
+
+  @Test
+  public void integratedSearch_valueSetFromUnavailableCollectionThrows() {
+    // A collection not served locally throws, so the router falls back to BioPortal.
+    assertThrows(UnsupportedOperationException.class,
+        () -> integrated(Optional.empty(), "{\"valueSets\":[{\"vsCollection\":\"MISSING\",\"uri\":\"x\"}]}"));
   }
 
   @Test

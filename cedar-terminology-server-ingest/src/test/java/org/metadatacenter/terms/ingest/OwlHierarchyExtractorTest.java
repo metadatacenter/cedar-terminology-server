@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.metadatacenter.terms.store.SnapshotStore;
 import org.semanticweb.owlapi.apibinding.OWLManager;
 import org.semanticweb.owlapi.model.IRI;
+import org.semanticweb.owlapi.model.OWLAnnotationProperty;
 import org.semanticweb.owlapi.model.OWLClass;
 import org.semanticweb.owlapi.model.OWLDataFactory;
 import org.semanticweb.owlapi.model.OWLObjectProperty;
@@ -13,6 +14,7 @@ import org.semanticweb.owlapi.model.OWLOntology;
 import org.semanticweb.owlapi.model.OWLOntologyManager;
 
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -64,6 +66,13 @@ public class OwlHierarchyExtractorTest {
     // Labels:
     m.addAxiom(ont, df.getOWLAnnotationAssertionAxiom(df.getRDFSLabel(), dog.getIRI(), df.getOWLLiteral("Dog")));
     m.addAxiom(ont, df.getOWLAnnotationAssertionAxiom(df.getRDFSLabel(), cat.getIRI(), df.getOWLLiteral("Cat")));
+    // UMLS/TTL style: animal is labeled only with skos:prefLabel (fallback); mammal carries both,
+    // and rdfs:label must win.
+    OWLAnnotationProperty skosPref =
+        df.getOWLAnnotationProperty(IRI.create("http://www.w3.org/2004/02/skos/core#prefLabel"));
+    m.addAxiom(ont, df.getOWLAnnotationAssertionAxiom(skosPref, animal.getIRI(), df.getOWLLiteral("Animal")));
+    m.addAxiom(ont, df.getOWLAnnotationAssertionAxiom(df.getRDFSLabel(), mammal.getIRI(), df.getOWLLiteral("Mammal")));
+    m.addAxiom(ont, df.getOWLAnnotationAssertionAxiom(skosPref, mammal.getIRI(), df.getOWLLiteral("Mammal SKOS")));
 
     store = SnapshotStore.openInMemory();
     store.initSchema();
@@ -105,6 +114,57 @@ public class OwlHierarchyExtractorTest {
     new OwlHierarchyExtractor().extract(ont, store);
     assertEquals("Dog", store.prefLabel(BASE + "dog").orElseThrow());
     assertEquals("Cat", store.prefLabel(BASE + "cat").orElseThrow());
+    // skos:prefLabel is used when there is no rdfs:label (UMLS/TTL ontologies label this way);
+    assertEquals("Animal", store.prefLabel(BASE + "animal").orElseThrow());
+    // but rdfs:label wins when a concept carries both.
+    assertEquals("Mammal", store.prefLabel(BASE + "mammal").orElseThrow());
+  }
+
+  @Test
+  public void englishLabelPreferredWhenAClassIsLabelledInSeveralLanguages() throws Exception {
+    OWLOntologyManager m = OWLManager.createOWLOntologyManager();
+    OWLDataFactory df = m.getOWLDataFactory();
+    OWLOntology o = m.createOntology(IRI.create(BASE + "multilang"));
+    OWLClass disease = df.getOWLClass(iri("disease"));
+    m.addAxiom(o, df.getOWLDeclarationAxiom(disease));
+    // Same term labelled Japanese-first then English (as NANDO does). BioPortal serves the English
+    // label; the extractor must too, regardless of assertion order.
+    m.addAxiom(o, df.getOWLAnnotationAssertionAxiom(df.getRDFSLabel(), disease.getIRI(),
+        df.getOWLLiteral("せんてんせいこつずいふぜんしょうこうぐん", "ja")));
+    m.addAxiom(o, df.getOWLAnnotationAssertionAxiom(df.getRDFSLabel(), disease.getIRI(),
+        df.getOWLLiteral("Congenital bone marrow failure syndrome", "en")));
+    try (SnapshotStore s = SnapshotStore.openInMemory()) {
+      s.initSchema();
+      new OwlHierarchyExtractor().extract(o, s);
+      assertEquals("Congenital bone marrow failure syndrome", s.prefLabel(BASE + "disease").orElseThrow());
+    }
+  }
+
+  @Test
+  public void configuredRelationRestrictionBecomesHierarchyEdge() throws Exception {
+    OWLOntologyManager m = OWLManager.createOWLOntologyManager();
+    OWLDataFactory df = m.getOWLDataFactory();
+    OWLOntology o = m.createOntology(IRI.create(BASE + "partonomy"));
+    OWLClass finger = df.getOWLClass(iri("finger"));
+    OWLClass hand = df.getOWLClass(iri("hand"));
+    IRI partOf = IRI.create(BASE + "part_of");
+    // finger part_of hand  ->  SubClassOf(finger, part_of some hand)
+    m.addAxiom(o, df.getOWLSubClassOfAxiom(finger,
+        df.getOWLObjectSomeValuesFrom(df.getOWLObjectProperty(partOf), hand)));
+
+    // Default extractor: the relation restriction is NOT a hierarchy edge.
+    try (SnapshotStore plain = SnapshotStore.openInMemory()) {
+      plain.initSchema();
+      new OwlHierarchyExtractor().extract(o, plain);
+      assertEquals(List.of(), plain.children(BASE + "hand"));
+    }
+    // Configured extractor: part_of makes hand a parent of finger.
+    try (SnapshotStore configured = SnapshotStore.openInMemory()) {
+      configured.initSchema();
+      new OwlHierarchyExtractor(Set.of(partOf)).extract(o, configured);
+      assertEquals(List.of(BASE + "finger"), configured.children(BASE + "hand"));
+      assertEquals(List.of(BASE + "hand"), configured.parents(BASE + "finger"));
+    }
   }
 
   @Test

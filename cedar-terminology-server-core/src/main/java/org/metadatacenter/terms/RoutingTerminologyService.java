@@ -4,12 +4,14 @@ import org.metadatacenter.cedar.terminology.validation.integratedsearch.BranchVa
 import org.metadatacenter.cedar.terminology.validation.integratedsearch.ClassValueConstraint;
 import org.metadatacenter.cedar.terminology.validation.integratedsearch.OntologyValueConstraint;
 import org.metadatacenter.cedar.terminology.validation.integratedsearch.ValueConstraints;
+import org.metadatacenter.cedar.terminology.validation.integratedsearch.ValueSetValueConstraint;
 import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.terms.domainObjects.*;
 import org.metadatacenter.terms.util.Util;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Optional;
 
@@ -45,6 +47,7 @@ public class RoutingTerminologyService implements ITerminologyService {
   private final ITerminologyService remote;
   private final ITerminologyService local;
   private final LocalAvailability availability;
+  private final LocalAvailability browseAvailability;
   private final boolean localOnly;
 
   /**
@@ -52,26 +55,40 @@ public class RoutingTerminologyService implements ITerminologyService {
    * remote backend directly. Use this until a local backend exists.
    */
   public RoutingTerminologyService(ITerminologyService remote) {
-    this(remote, null, ontology -> false, false);
+    this(remote, null, ontology -> false, ontology -> false, false);
   }
 
   public RoutingTerminologyService(ITerminologyService remote, ITerminologyService local,
                                    LocalAvailability availability) {
-    this(remote, local, availability, false);
+    this(remote, local, availability, availability, false);
+  }
+
+  public RoutingTerminologyService(ITerminologyService remote, ITerminologyService local,
+                                   LocalAvailability availability, boolean localOnly) {
+    this(remote, local, availability, availability, localOnly);
   }
 
   /**
+   * Per-endpoint routing. {@code availability} governs the search and point-lookup operations
+   * (integrated-search, class/children/descendants) — the paths the equivalence gate proves against
+   * BioPortal. {@code browseAvailability} governs the tree-browse entry points (root classes and the
+   * class tree): a locally-served ontology is browsed locally only when its roots are also proven
+   * equivalent, otherwise those calls go to BioPortal. This lets an ontology whose integrated-search
+   * is equivalent but whose local roots still diverge (orphan/import overcount) be cut over for the
+   * high-value search path without regressing the picker's tree. Pass the same availability for both
+   * to serve everything locally.
+   *
    * When {@code localOnly} is true, a call for a locally-served ontology is never allowed to fall
    * back to the remote backend: a local {@link UnsupportedOperationException} propagates instead of
-   * being masked by a remote result. This is the strict mode the equivalence harness runs under, so
-   * a gap in local coverage surfaces as a failure rather than a silent BioPortal answer. Ontologies
-   * not served locally are unaffected and still use the remote backend.
+   * being masked by a remote result. This is the strict mode the equivalence harness runs under.
    */
   public RoutingTerminologyService(ITerminologyService remote, ITerminologyService local,
-                                   LocalAvailability availability, boolean localOnly) {
+                                   LocalAvailability availability, LocalAvailability browseAvailability,
+                                   boolean localOnly) {
     this.remote = remote;
     this.local = local;
     this.availability = availability;
+    this.browseAvailability = browseAvailability;
     this.localOnly = localOnly;
   }
 
@@ -82,7 +99,17 @@ public class RoutingTerminologyService implements ITerminologyService {
    * fall back — an unimplemented operation propagates.
    */
   private <T> T dispatch(String ontology, Call<T> call) throws IOException {
-    if (local != null && ontology != null && availability.isLocal(ontology)) {
+    return dispatchWith(availability, ontology, call);
+  }
+
+  /** Like {@link #dispatch}, but gated on {@link #browseAvailability} — for the tree-browse entry
+   *  points (root classes, class tree) that require roots equivalence, not just search equivalence. */
+  private <T> T dispatchBrowse(String ontology, Call<T> call) throws IOException {
+    return dispatchWith(browseAvailability, ontology, call);
+  }
+
+  private <T> T dispatchWith(LocalAvailability avail, String ontology, Call<T> call) throws IOException {
+    if (local != null && ontology != null && avail.isLocal(ontology)) {
       if (localOnly) {
         return call.apply(local);
       }
@@ -170,7 +197,7 @@ public class RoutingTerminologyService implements ITerminologyService {
    * conservative on purpose: a search touching any non-local source goes wholly to BioPortal.
    */
   private boolean integratedSearchServedLocally(ValueConstraints vc) {
-    if (vc == null || (vc.getValueSets() != null && !vc.getValueSets().isEmpty())) {
+    if (vc == null) {
       return false;
     }
     List<String> acronyms = new ArrayList<>();
@@ -189,6 +216,13 @@ public class RoutingTerminologyService implements ITerminologyService {
         acronyms.add(c.getSource() == null ? null : Util.getShortIdentifier(c.getSource()));
       }
     }
+    // A value-set constraint is served locally when its collection is served locally: the collection
+    // is a snapshot and the values are the value-set class's children.
+    if (vc.getValueSets() != null) {
+      for (ValueSetValueConstraint v : vc.getValueSets()) {
+        acronyms.add(vsCollectionAcronym(v.getVsCollection()));
+      }
+    }
     if (acronyms.isEmpty()) {
       return false;
     }
@@ -198,6 +232,16 @@ public class RoutingTerminologyService implements ITerminologyService {
       }
     }
     return true;
+  }
+
+  /** The snapshot acronym for a value-set collection: the bare acronym, or the last path segment
+   *  when it is given as the full registry URL (e.g. .../ontologies/CEDARVS -> CEDARVS). */
+  private static String vsCollectionAcronym(String vsCollection) {
+    if (vsCollection == null) {
+      return null;
+    }
+    int slash = vsCollection.lastIndexOf('/');
+    return slash >= 0 ? vsCollection.substring(slash + 1) : vsCollection;
   }
 
   @Override
@@ -211,17 +255,50 @@ public class RoutingTerminologyService implements ITerminologyService {
    * ------------------------------------------------------------------------------------------- */
 
   @Override
+  public boolean isLocalOnly() {
+    return localOnly;
+  }
+
+  @Override
   public List<Ontology> findAllOntologies(boolean includeDetails, String apiKey) throws IOException {
-    // The server reports the ontologies it versions locally (from the catalog), not BioPortal's full
-    // ~1300-ontology registry. Falls back to remote only when no local backend is configured or its
-    // catalog is empty, so a misconfigured deployment does not present an empty ontology list.
+    // Only under localOnly (a fully offline deployment) does the server report just the ontologies it
+    // versions locally. Otherwise the local store is a partial, incremental cutover and BioPortal is
+    // still the source for everything not migrated, so the list must be the full remote registry, plus
+    // any locally-served ontology BioPortal happens to omit — reporting only the allowlist would drop
+    // every not-yet-migrated ontology from the picker. Local and remote share the same ontology @id
+    // (https://data.bioontology.org/ontologies/ACRONYM), so the merge dedups cleanly. The remote entry
+    // wins for an ontology present in both: its list metadata (full display name, submission details)
+    // is richer than the catalog's, and the picker shows that name — overwriting DOID's
+    // "Human Disease Ontology" with the bare acronym would degrade every migrated ontology's label.
     if (local != null) {
       List<Ontology> served = local.findAllOntologies(includeDetails, apiKey);
-      if (!served.isEmpty()) {
+      if (localOnly) {
         return served;
+      }
+      if (!served.isEmpty()) {
+        LinkedHashMap<String, Ontology> merged = new LinkedHashMap<>();
+        for (Ontology o : remote.findAllOntologies(includeDetails, apiKey)) {
+          merged.put(o.getId(), o);
+        }
+        for (Ontology o : served) {   // add only ontologies BioPortal omits; never clobber its metadata
+          merged.putIfAbsent(o.getId(), o);
+        }
+        return new ArrayList<>(merged.values());
       }
     }
     return remote.findAllOntologies(includeDetails, apiKey);
+  }
+
+  @Override
+  public List<OntologyVersion> getVersions(String ontology) throws IOException {
+    // Versions are a local-store concept; a locally-served ontology reports its versions, everything
+    // else reports none (the remote backend returns an empty list).
+    return dispatch(ontology, s -> s.getVersions(ontology));
+  }
+
+  @Override
+  public VersionDiff diffVersions(String ontology, String fromVersion, String toVersion) throws IOException {
+    return dispatch(ontology, s -> s.diffVersions(ontology, fromVersion, toVersion));
   }
 
   @Override
@@ -231,12 +308,12 @@ public class RoutingTerminologyService implements ITerminologyService {
 
   @Override
   public List<OntologyClass> getRootClasses(String ontologyId, boolean isFlat, String apiKey) throws IOException {
-    return dispatch(ontologyId, s -> s.getRootClasses(ontologyId, isFlat, apiKey));
+    return dispatchBrowse(ontologyId, s -> s.getRootClasses(ontologyId, isFlat, apiKey));
   }
 
   @Override
   public List<OntologyProperty> getRootProperties(String ontologyId, String apiKey) throws IOException {
-    return dispatch(ontologyId, s -> s.getRootProperties(ontologyId, apiKey));
+    return dispatchBrowse(ontologyId, s -> s.getRootProperties(ontologyId, apiKey));
   }
 
   @Override
@@ -257,7 +334,7 @@ public class RoutingTerminologyService implements ITerminologyService {
 
   @Override
   public List<TreeNode> getClassTree(String id, String ontology, boolean isFlat, String apiKey) throws IOException {
-    return dispatch(ontology, s -> s.getClassTree(id, ontology, isFlat, apiKey));
+    return dispatchBrowse(ontology, s -> s.getClassTree(id, ontology, isFlat, apiKey));
   }
 
   @Override
@@ -289,7 +366,7 @@ public class RoutingTerminologyService implements ITerminologyService {
 
   @Override
   public List<TreeNode> getPropertyTree(String id, String ontology, String apiKey) throws IOException {
-    return dispatch(ontology, s -> s.getPropertyTree(id, ontology, apiKey));
+    return dispatchBrowse(ontology, s -> s.getPropertyTree(id, ontology, apiKey));
   }
 
   @Override
