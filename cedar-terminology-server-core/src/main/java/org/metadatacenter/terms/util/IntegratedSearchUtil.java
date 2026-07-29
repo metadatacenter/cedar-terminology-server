@@ -1,5 +1,6 @@
 package org.metadatacenter.terms.util;
 
+import jakarta.ws.rs.BadRequestException;
 import org.metadatacenter.cedar.terminology.validation.integratedsearch.OntologyValueConstraint;
 import org.metadatacenter.cedar.terminology.validation.integratedsearch.ValueConstraints;
 
@@ -43,7 +44,7 @@ public class IntegratedSearchUtil {
     } else if (sourceType.equals(SourceType.VALUE_SETS)) {
       return valueConstraints.getValueSets().size();
     } else {
-      throw new InternalError("Invalid source type: " + sourceType);
+      throw new BadRequestException("Invalid source type: " + sourceType);
     }
   }
 

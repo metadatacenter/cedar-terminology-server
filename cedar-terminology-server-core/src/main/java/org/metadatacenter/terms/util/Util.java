@@ -1,5 +1,6 @@
 package org.metadatacenter.terms.util;
 
+import jakarta.ws.rs.BadRequestException;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.terms.domainObjects.SearchResult;
@@ -203,7 +204,7 @@ public class Util {
     if (ontologyUri != null && ontologyUri.startsWith(prefix)) {
       return ontologyUri.substring(prefix.length());
     } else {
-      throw new InternalError("Malformed ontology URI: " + ontologyUri);
+      throw new BadRequestException("Malformed ontology URI: " + ontologyUri);
     }
   }
 

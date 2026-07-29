@@ -1,5 +1,6 @@
 package org.metadatacenter.terms;
 
+import jakarta.ws.rs.BadRequestException;
 import org.metadatacenter.cedar.terminology.validation.integratedsearch.*;
 import org.metadatacenter.terms.util.IntegratedSearchUtil.SourceType;
 import org.metadatacenter.http.CedarResponseStatus;
@@ -165,7 +166,7 @@ public class TerminologyService implements ITerminologyService {
       } else if (action.getAction().equals(CEDAR_VALUE_ARRANGEMENTS_ACTION_DELETE)) {
         // Do nothing
       } else {
-        throw new InternalError("Invalid action: " + action.getAction());
+        throw new BadRequestException("Invalid action: " + action.getAction());
       }
       actionTermUris.add(action.getTermUri());
     }
@@ -234,7 +235,7 @@ public class TerminologyService implements ITerminologyService {
       Value v = findValue(action.getTermUri(), action.getSource(), apiKey);
       return ObjectConverter.toSearchResult(v);
     } else {
-      throw new InternalError("Invalid type: " + action.getType());
+      throw new BadRequestException("Invalid type: " + action.getType());
     }
   }
 
