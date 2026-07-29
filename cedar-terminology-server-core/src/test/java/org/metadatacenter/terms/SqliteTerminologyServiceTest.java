@@ -270,8 +270,23 @@ public class SqliteTerminologyServiceTest {
   }
 
   @Test
-  public void integratedSearch_valueSetsNotServedLocally() {
-    assertThrows(UnsupportedOperationException.class, () -> integrated(Optional.of("x"), "{\"valueSets\":[{}]}"));
+  public void integratedSearch_valueSetEnumeratesChildrenOfTheValueSetClass() throws Exception {
+    // A value set's values are the children of the value-set class in its collection snapshot (EX
+    // stands in as the collection here). mammal's children are cat and dog, sorted by preferred label.
+    PagedResults<SearchResult> r = integrated(Optional.empty(),
+        "{\"valueSets\":[{\"vsCollection\":\"EX\",\"uri\":\"" + iri("mammal") + "\"}]}");
+    assertEquals(List.of(iri("cat"), iri("dog")), ldIds(r.getCollection()));
+    // With a query, values are filtered by preferred-label substring.
+    PagedResults<SearchResult> filtered = integrated(Optional.of("Cat"),
+        "{\"valueSets\":[{\"vsCollection\":\"EX\",\"uri\":\"" + iri("mammal") + "\"}]}");
+    assertEquals(List.of(iri("cat")), ldIds(filtered.getCollection()));
+  }
+
+  @Test
+  public void integratedSearch_valueSetFromUnavailableCollectionThrows() {
+    // A collection not served locally throws, so the router falls back to BioPortal.
+    assertThrows(UnsupportedOperationException.class,
+        () -> integrated(Optional.empty(), "{\"valueSets\":[{\"vsCollection\":\"MISSING\",\"uri\":\"x\"}]}"));
   }
 
   @Test

@@ -4,6 +4,7 @@ import org.metadatacenter.cedar.terminology.validation.integratedsearch.BranchVa
 import org.metadatacenter.cedar.terminology.validation.integratedsearch.ClassValueConstraint;
 import org.metadatacenter.cedar.terminology.validation.integratedsearch.OntologyValueConstraint;
 import org.metadatacenter.cedar.terminology.validation.integratedsearch.ValueConstraints;
+import org.metadatacenter.cedar.terminology.validation.integratedsearch.ValueSetValueConstraint;
 import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.terms.domainObjects.*;
 import org.metadatacenter.terms.util.Util;
@@ -196,7 +197,7 @@ public class RoutingTerminologyService implements ITerminologyService {
    * conservative on purpose: a search touching any non-local source goes wholly to BioPortal.
    */
   private boolean integratedSearchServedLocally(ValueConstraints vc) {
-    if (vc == null || (vc.getValueSets() != null && !vc.getValueSets().isEmpty())) {
+    if (vc == null) {
       return false;
     }
     List<String> acronyms = new ArrayList<>();
@@ -215,6 +216,13 @@ public class RoutingTerminologyService implements ITerminologyService {
         acronyms.add(c.getSource() == null ? null : Util.getShortIdentifier(c.getSource()));
       }
     }
+    // A value-set constraint is served locally when its collection is served locally: the collection
+    // is a snapshot and the values are the value-set class's children.
+    if (vc.getValueSets() != null) {
+      for (ValueSetValueConstraint v : vc.getValueSets()) {
+        acronyms.add(vsCollectionAcronym(v.getVsCollection()));
+      }
+    }
     if (acronyms.isEmpty()) {
       return false;
     }
@@ -224,6 +232,16 @@ public class RoutingTerminologyService implements ITerminologyService {
       }
     }
     return true;
+  }
+
+  /** The snapshot acronym for a value-set collection: the bare acronym, or the last path segment
+   *  when it is given as the full registry URL (e.g. .../ontologies/CEDARVS -> CEDARVS). */
+  private static String vsCollectionAcronym(String vsCollection) {
+    if (vsCollection == null) {
+      return null;
+    }
+    int slash = vsCollection.lastIndexOf('/');
+    return slash >= 0 ? vsCollection.substring(slash + 1) : vsCollection;
   }
 
   @Override

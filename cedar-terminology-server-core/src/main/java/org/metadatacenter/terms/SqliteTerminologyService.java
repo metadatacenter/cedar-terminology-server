@@ -129,6 +129,19 @@ public class SqliteTerminologyService implements ITerminologyService {
     return id == null ? null : URLDecoder.decode(id, StandardCharsets.UTF_8);
   }
 
+  /**
+   * The snapshot acronym for a value-set collection. A vsCollection is usually the bare acronym
+   * ({@code NLMVS}, {@code CADSR-VS}) but is sometimes the full registry URL
+   * ({@code http://data.bioontology.org/ontologies/CEDARVS}); take the last path segment in that case.
+   */
+  private static String vsCollectionAcronym(String vsCollection) {
+    if (vsCollection == null) {
+      return null;
+    }
+    int slash = vsCollection.lastIndexOf('/');
+    return slash >= 0 ? vsCollection.substring(slash + 1) : vsCollection;
+  }
+
   /* --------------------------------------------------------------------------------------------
    * Bucket A — implemented from the snapshot store.
    * ------------------------------------------------------------------------------------------ */
@@ -363,8 +376,30 @@ public class SqliteTerminologyService implements ITerminologyService {
     boolean hasValueSets = valueSets != null && !valueSets.isEmpty();
     boolean hasClasses = classes != null && !classes.isEmpty();
 
+    // A single value set: its values are the children of the value-set class in its vsCollection
+    // snapshot — BioPortal serves the same via GET /ontologies/{vsCollection}/classes/{vsId}/children.
+    // Enumerate (empty text) or filter by preferred-label substring, sorted by preferred label as
+    // BioPortal does. The vsCollection is served like any ontology snapshot.
+    if (hasValueSets && valueSets.size() == 1 && !hasOntologies && !hasBranches && !hasClasses) {
+      ValueSetValueConstraint vs = valueSets.get(0);
+      String acronym = vsCollectionAcronym(vs.getVsCollection());
+      List<SnapshotStore.Concept> values;
+      try {
+        values = new ArrayList<>(store(acronym).childrenDetailed(decodeIri(vs.getUri())));
+      } catch (SQLException e) {
+        throw new IOException(e);
+      }
+      String query = q.map(String::trim).orElse("");
+      if (!query.isEmpty()) {
+        String needle = query.toLowerCase();
+        values.removeIf(c -> c.prefLabel() == null || !c.prefLabel().toLowerCase().contains(needle));
+      }
+      values.sort(Comparator.comparing(c -> c.prefLabel() == null ? "" : c.prefLabel(),
+          String.CASE_INSENSITIVE_ORDER));
+      return pagedSearchResults(values, acronym, page, pageSize);
+    }
     if (hasValueSets) {
-      throw unsupported("integratedSearch (value sets)");
+      throw unsupported("integratedSearch (value sets: multi-source or mixed)");
     }
     // Enumerated classes on their own — self-contained, no snapshot needed.
     if (hasClasses && !hasOntologies && !hasBranches) {

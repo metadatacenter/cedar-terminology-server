@@ -163,7 +163,17 @@ public class RoutingTerminologyServiceTest {
   }
 
   @Test
-  public void integratedSearchWithValueSets_servedByRemote() throws Exception {
+  public void integratedSearchWithLocalValueSet_servedByLocal() throws Exception {
+    // A value set whose collection (EX) is served locally: its values are the value-set class's
+    // children (mammal -> cat, dog), from the snapshot, not the REMOTE sentinel.
+    PagedResults<SearchResult> r = router.integratedSearch(Optional.empty(),
+        vc("{\"valueSets\":[{\"vsCollection\":\"" + EX + "\",\"uri\":\"" + iri("mammal") + "\"}]}"), 1, 50, null);
+    assertEquals(List.of(iri("cat"), iri("dog")), ldIds(r));
+  }
+
+  @Test
+  public void integratedSearchWithNonLocalValueSet_servedByRemote() throws Exception {
+    // A value set whose collection is not local falls through to BioPortal.
     PagedResults<SearchResult> r = router.integratedSearch(Optional.of("x"), vc("{\"valueSets\":[{}]}"), 1, 50, null);
     assertEquals(REMOTE, r.getCollection().get(0).getPrefLabel());
   }
