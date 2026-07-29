@@ -14,6 +14,7 @@ import org.metadatacenter.rest.context.CedarRequestContext;
 import org.metadatacenter.rest.exception.CedarAssertionException;
 import org.metadatacenter.terms.domainObjects.Ontology;
 import org.metadatacenter.terms.domainObjects.OntologyClass;
+import org.metadatacenter.terms.domainObjects.OntologyVersion;
 import org.metadatacenter.terms.domainObjects.OntologyProperty;
 import org.metadatacenter.util.http.CedarResponse;
 import org.metadatacenter.util.json.JsonMapper;
@@ -91,6 +92,31 @@ public class OntologyResource extends AbstractTerminologyServerResource {
     } catch (HTTPException e) {
       return Response.status(e.getStatusCode()).build();
     } catch (ExecutionException e) {
+      throw new CedarAssertionException(e);
+    }
+  }
+
+  @GET
+  @Path("ontologies/{id}/versions")
+  @Operation(summary = "List local versions of an ontology",
+      description = "Versions of an ontology available in the local, version-pinned store, each with "
+          + "its content-hash id, self-declared version, release date, and whether it is the current "
+          + "one. Empty when the ontology is served from BioPortal (which has no equivalent).",
+      tags = {"Ontologies"})
+  @ApiResponses({
+      @ApiResponse(responseCode = "200", description = "Successful operation"),
+      @ApiResponse(responseCode = "401", description = "Unauthorized"),
+      @ApiResponse(responseCode = "500", description = "Internal server error")
+  })
+  public Response getVersions(
+      @Parameter(description = "Ontology acronym. Examples: DOID, INCENTIVE.", required = true)
+      @PathParam("id") String id) throws CedarException {
+    CedarRequestContext ctx = buildRequestContext();
+    ctx.must(ctx.user()).be(LoggedIn);
+    try {
+      List<OntologyVersion> versions = terminologyService.getVersions(id);
+      return Response.ok().entity(JsonMapper.MAPPER.valueToTree(versions)).build();
+    } catch (IOException e) {
       throw new CedarAssertionException(e);
     }
   }

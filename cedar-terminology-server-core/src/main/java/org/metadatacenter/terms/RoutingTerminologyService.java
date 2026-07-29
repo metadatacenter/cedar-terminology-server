@@ -285,6 +285,13 @@ public class RoutingTerminologyService implements ITerminologyService {
   }
 
   @Override
+  public List<OntologyVersion> getVersions(String ontology) throws IOException {
+    // Versions are a local-store concept; a locally-served ontology reports its versions, everything
+    // else reports none (the remote backend returns an empty list).
+    return dispatch(ontology, s -> s.getVersions(ontology));
+  }
+
+  @Override
   public Ontology findOntology(String id, boolean includeDetails, String apiKey) throws IOException {
     return dispatch(id, s -> s.findOntology(id, includeDetails, apiKey));
   }

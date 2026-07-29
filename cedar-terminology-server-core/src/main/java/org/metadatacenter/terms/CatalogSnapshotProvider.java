@@ -1,6 +1,7 @@
 package org.metadatacenter.terms;
 
 import org.metadatacenter.terms.domainObjects.Ontology;
+import org.metadatacenter.terms.domainObjects.OntologyVersion;
 import org.metadatacenter.terms.store.CatalogStore;
 import org.metadatacenter.terms.store.SnapshotStore;
 import org.slf4j.Logger;
@@ -76,15 +77,15 @@ public class CatalogSnapshotProvider implements SqliteTerminologyService.Snapsho
   }
 
   @Override
-  public List<SqliteTerminologyService.VersionRef> versions(String ontology) {
+  public List<OntologyVersion> versions(String ontology) {
     if (ontology == null || !allowed.contains(ontology)) {
       return List.of();
     }
     try {
       String latest = catalog.resolveLatest(ontology).map(CatalogStore.SnapshotInfo::versionId).orElse(null);
-      List<SqliteTerminologyService.VersionRef> out = new ArrayList<>();
+      List<OntologyVersion> out = new ArrayList<>();
       for (CatalogStore.SnapshotInfo s : catalog.listSnapshots(ontology)) {
-        out.add(new SqliteTerminologyService.VersionRef(
+        out.add(new OntologyVersion(
             s.versionId(), s.declaredVersion(), s.releasedAt(), s.versionId().equals(latest)));
       }
       return out;

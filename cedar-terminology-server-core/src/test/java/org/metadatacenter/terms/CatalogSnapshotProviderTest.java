@@ -4,6 +4,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.metadatacenter.terms.domainObjects.Ontology;
+import org.metadatacenter.terms.domainObjects.OntologyVersion;
 import org.metadatacenter.terms.store.CatalogStore;
 import org.metadatacenter.terms.store.SnapshotStore;
 
@@ -138,9 +139,9 @@ public class CatalogSnapshotProviderTest {
 
   @Test
   public void listsVersionsWithLatestMarked() {
-    List<SqliteTerminologyService.VersionRef> vs = provider.versions("EX");
+    List<OntologyVersion> vs = provider.versions("EX");
     assertEquals(2, vs.size());
-    assertEquals(1, vs.stream().filter(SqliteTerminologyService.VersionRef::latest).count());
+    assertEquals(1, vs.stream().filter(OntologyVersion::latest).count());
     assertTrue(vs.stream().anyMatch(v -> v.versionId().equals("v1") && v.latest()));
     assertTrue(vs.stream().anyMatch(v -> v.versionId().equals("v2") && !v.latest()));
   }

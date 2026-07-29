@@ -55,10 +55,10 @@ public class SqliteTerminologyService implements ITerminologyService {
     }
 
     /**
-     * The versions of an ontology the provider knows, newest-relevant first, each as (versionId,
-     * declaredVersion, isLatest). Empty by default. Used to answer a "what versions exist" query.
+     * The versions of an ontology the provider knows. Empty by default. Answers a "what versions
+     * exist" query.
      */
-    default List<VersionRef> versions(String ontology) {
+    default List<OntologyVersion> versions(String ontology) {
       return List.of();
     }
 
@@ -71,9 +71,6 @@ public class SqliteTerminologyService implements ITerminologyService {
       return List.of();
     }
   }
-
-  /** A version of an ontology available in the local store. */
-  public record VersionRef(String versionId, String declaredVersion, String releasedAt, boolean latest) {}
 
   private final SnapshotProvider provider;
 
@@ -166,6 +163,11 @@ public class SqliteTerminologyService implements ITerminologyService {
   /* --------------------------------------------------------------------------------------------
    * Bucket A — implemented from the snapshot store.
    * ------------------------------------------------------------------------------------------ */
+
+  @Override
+  public List<OntologyVersion> getVersions(String ontology) {
+    return provider.versions(ontology);
+  }
 
   @Override
   public OntologyClass findClass(String id, String ontology, String apiKey) throws IOException {

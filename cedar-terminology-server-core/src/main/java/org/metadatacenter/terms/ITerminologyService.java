@@ -39,6 +39,12 @@ public interface ITerminologyService {
    */
   List<Ontology> findAllOntologies(boolean includeDetails, String apiKey) throws IOException;
 
+  /**
+   * The versions of an ontology available in the local version-pinned store, or empty when it is not
+   * served locally (BioPortal has no equivalent). Each carries the content-hash id that pins it.
+   */
+  List<OntologyVersion> getVersions(String ontology) throws IOException;
+
   Ontology findOntology(String id, boolean includeDetails, String apiKey) throws IOException;
 
   List<OntologyClass> getRootClasses(String ontologyId, boolean isFlat, String apiKey) throws IOException;

@@ -645,6 +645,13 @@ public class TerminologyService implements ITerminologyService {
    * Ontologies
    */
 
+  @Override
+  public List<OntologyVersion> getVersions(String ontology) {
+    // BioPortal has submissions, not the local store's content-hash versions; report none so the
+    // versions surface reflects only what is version-pinned locally.
+    return java.util.Collections.emptyList();
+  }
+
   public List<Ontology> findAllOntologies(boolean includeDetails, String apiKey) throws IOException {
     List<BpOntology> bpOntologies = bpService.findAllOntologies(apiKey);
     List<Ontology> ontologies = new ArrayList<>();
