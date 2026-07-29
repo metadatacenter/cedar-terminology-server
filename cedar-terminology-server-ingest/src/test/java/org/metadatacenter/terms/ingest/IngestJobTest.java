@@ -253,4 +253,22 @@ public class IngestJobTest {
       m.saveOntology(ont, out);
     }
   }
+
+  private static void buildEmptyOntology(Path file) throws Exception {
+    OWLOntologyManager m = OWLManager.createOWLOntologyManager();
+    OWLOntology ont = m.createOntology(IRI.create(BASE + "empty")); // valid ontology, zero classes
+    try (var out = Files.newOutputStream(file)) {
+      m.saveOntology(ont, out);
+    }
+  }
+
+  @Test
+  public void ingest_refusesToRegisterAnEmptyExtraction() throws Exception {
+    // A parse that yields zero classes (a failed download/import, a classpath gap) must not register
+    // a snapshot — otherwise it would silently replace a good snapshot with an empty one.
+    buildEmptyOntology(sourceOwl);
+    IngestJob job = new IngestJob(fakeSource());
+    assertThrows(IOException.class, () -> job.ingestLatest(catalog, "EX", tempDir.resolve("snapshots")));
+    assertTrue(catalog.resolveLatest("EX").isEmpty());
+  }
 }

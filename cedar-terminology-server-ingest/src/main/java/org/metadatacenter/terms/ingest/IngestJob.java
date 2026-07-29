@@ -128,15 +128,29 @@ public class IngestJob {
     Path loadable = decompress(raw);     // .zip/.gz submissions must be expanded before parsing
     loadable = stripOboImports(loadable);// OBO import: declarations must be dropped before parsing
 
+    // Extract into a temp file and only replace the live snapshot once extraction succeeds with a
+    // non-empty result. Extracting in place (delete-then-write) would lose a good snapshot whenever
+    // extraction fails or yields nothing -- as happened when a classpath gap made OWLAPI's import
+    // resolution throw NoClassDefFoundError (an Error, missed by catch(Exception)), leaving an empty
+    // file with the previous good data already deleted. Catch Throwable so such an Error becomes a
+    // skippable failure rather than clobbering data or aborting a batch.
     Path snapshotFile = ontoDir.resolve(versionId + ".sqlite");
-    Files.deleteIfExists(snapshotFile);
+    Path tempFile = ontoDir.resolve(versionId + ".sqlite.tmp");
+    Files.deleteIfExists(tempFile);
     HierarchyExtractor.Result extracted;
-    try (SnapshotStore store = SnapshotStore.openFile(snapshotFile.toString())) {
+    try (SnapshotStore store = SnapshotStore.openFile(tempFile.toString())) {
       store.initSchema();
       extracted = extractorFor(acronym, sub.format()).extractFromFile(loadable.toFile(), store);
-    } catch (Exception e) {
+    } catch (Throwable e) {
+      Files.deleteIfExists(tempFile);
       throw new IOException("Extraction failed for " + acronym + " submission " + sub.submissionId(), e);
     }
+    if (extracted.classCount() == 0) {
+      Files.deleteIfExists(tempFile);
+      throw new IOException("Extraction produced 0 classes for " + acronym + " submission "
+          + sub.submissionId() + "; refusing to overwrite the existing snapshot with an empty one");
+    }
+    Files.move(tempFile, snapshotFile, StandardCopyOption.REPLACE_EXISTING);
 
     catalog.upsertOntology(new CatalogStore.OntologyInfo(acronym, acronym, null, sub.format()));
     catalog.addSnapshot(new CatalogStore.SnapshotInfo(
