@@ -121,6 +121,26 @@ public class OwlHierarchyExtractorTest {
   }
 
   @Test
+  public void englishLabelPreferredWhenAClassIsLabelledInSeveralLanguages() throws Exception {
+    OWLOntologyManager m = OWLManager.createOWLOntologyManager();
+    OWLDataFactory df = m.getOWLDataFactory();
+    OWLOntology o = m.createOntology(IRI.create(BASE + "multilang"));
+    OWLClass disease = df.getOWLClass(iri("disease"));
+    m.addAxiom(o, df.getOWLDeclarationAxiom(disease));
+    // Same term labelled Japanese-first then English (as NANDO does). BioPortal serves the English
+    // label; the extractor must too, regardless of assertion order.
+    m.addAxiom(o, df.getOWLAnnotationAssertionAxiom(df.getRDFSLabel(), disease.getIRI(),
+        df.getOWLLiteral("せんてんせいこつずいふぜんしょうこうぐん", "ja")));
+    m.addAxiom(o, df.getOWLAnnotationAssertionAxiom(df.getRDFSLabel(), disease.getIRI(),
+        df.getOWLLiteral("Congenital bone marrow failure syndrome", "en")));
+    try (SnapshotStore s = SnapshotStore.openInMemory()) {
+      s.initSchema();
+      new OwlHierarchyExtractor().extract(o, s);
+      assertEquals("Congenital bone marrow failure syndrome", s.prefLabel(BASE + "disease").orElseThrow());
+    }
+  }
+
+  @Test
   public void configuredRelationRestrictionBecomesHierarchyEdge() throws Exception {
     OWLOntologyManager m = OWLManager.createOWLOntologyManager();
     OWLDataFactory df = m.getOWLDataFactory();

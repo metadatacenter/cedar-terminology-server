@@ -123,9 +123,8 @@ public class OwlHierarchyExtractor implements HierarchyExtractor {
       }
       OWLClassExpression sup = ax.getSuperClass();
       if (!sup.isAnonymous() && sup.asOWLClass().isOWLThing()) {
-        // An explicit "subClassOf owl:Thing" is a top-level declaration, not a hierarchy edge. Record
-        // it so a declared root is distinguished from a bare, parentless imported reference.
-        store.declareThingSubclass(child.getIRI().toString());
+        // subClassOf owl:Thing is not a hierarchy edge — owl:Thing is never materialized. The class
+        // is left parentless, which is exactly what makes it a root (see SnapshotStore.materialize).
         continue;
       }
       edgeCount += addParents(store, child, namedParents(sup), "rdfs:subClassOf");
@@ -229,22 +228,46 @@ public class OwlHierarchyExtractor implements HierarchyExtractor {
    * name and would otherwise diverge from BioPortal.
    */
   private static String label(OWLClass cls, OWLOntology ont) {
+    // A class can carry the label in several languages; BioPortal serves the English one. Pick the
+    // best-ranked literal (English, then untagged, then any other) rather than the first encountered,
+    // so a multilingual ontology (NANDO's Japanese, ONTOAD's French, ...) does not diverge from
+    // BioPortal on which language it names the term in. rdfs:label wins over skos:prefLabel overall.
+    String rdfsLabel = null;
+    int rdfsRank = -1;
     String prefLabel = null;
+    int prefRank = -1;
     // Across the import closure: an imported class carries its label in the imported ontology.
     for (OWLOntology o : ont.getImportsClosure()) {
       for (OWLAnnotationAssertionAxiom ax : o.getAnnotationAssertionAxioms(cls.getIRI())) {
         if (!(ax.getValue() instanceof OWLLiteral literal)) {
           continue;
         }
+        int rank = langRank(literal);
         if (ax.getProperty().isLabel()) {
-          return literal.getLiteral();
-        }
-        if (prefLabel == null && ax.getProperty().getIRI().equals(SKOS_PREF_LABEL)) {
+          if (rank > rdfsRank) {
+            rdfsRank = rank;
+            rdfsLabel = literal.getLiteral();
+          }
+        } else if (ax.getProperty().getIRI().equals(SKOS_PREF_LABEL) && rank > prefRank) {
+          prefRank = rank;
           prefLabel = literal.getLiteral();
         }
       }
     }
-    return prefLabel;
+    return rdfsLabel != null ? rdfsLabel : prefLabel;
+  }
+
+  /**
+   * Language preference for choosing among a class's labels: English best, then an untagged literal,
+   * then any other language. Matches BioPortal, which serves the English label when several exist.
+   */
+  private static int langRank(OWLLiteral literal) {
+    String lang = literal.getLang();
+    if (lang == null || lang.isEmpty()) {
+      return 1; // untagged
+    }
+    String lower = lang.toLowerCase();
+    return lower.equals("en") || lower.startsWith("en-") ? 2 : 0;
   }
 
   private static boolean isDeprecated(OWLClass cls, OWLOntology ont, OWLAnnotationProperty deprecated) {

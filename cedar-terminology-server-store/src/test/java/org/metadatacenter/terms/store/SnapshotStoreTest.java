@@ -261,9 +261,8 @@ public class SnapshotStoreTest {
       s.initSchema();
       s.addConcept("top", "Top");                     // parentless -> root
       s.addConcept("obsTop", "ObsTop", true, null);   // parentless but obsolete -> not a root
-      s.addConcept("alsoTop", "AlsoTop");             // parentless, no owl:Thing declaration -> still a root
+      s.addConcept("alsoTop", "AlsoTop");             // parentless -> also a root
       s.addConcept("child", "Child");
-      s.declareThingSubclass("top");                  // declaring owl:Thing does not change the outcome
       s.addEdge("child", "top", "rdfs:subClassOf");
       s.materialize();
       assertEquals(List.of("alsoTop", "top"), s.roots());   // both parentless non-obsolete; obsTop excluded

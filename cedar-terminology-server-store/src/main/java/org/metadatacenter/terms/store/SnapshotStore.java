@@ -61,8 +61,7 @@ public class SnapshotStore implements AutoCloseable {
             iri            TEXT NOT NULL UNIQUE,
             pref_label     TEXT,
             obsolete       INTEGER NOT NULL DEFAULT 0,
-            replaced_by    TEXT,
-            declares_thing INTEGER NOT NULL DEFAULT 0
+            replaced_by    TEXT
           )""");
       s.executeUpdate("""
           CREATE TABLE IF NOT EXISTS edge (
@@ -114,20 +113,6 @@ public class SnapshotStore implements AutoCloseable {
       ps.setString(2, prefLabel);
       ps.setInt(3, obsolete ? 1 : 0);
       ps.setString(4, replacedBy);
-      ps.executeUpdate();
-    }
-  }
-
-  /**
-   * Marks a concept as asserting {@code subClassOf owl:Thing} — an explicit top-level declaration.
-   * {@code owl:Thing} itself is never materialized as a concept or edge; this flag lets
-   * {@link #materialize()} distinguish a declared top from a bare, parentless imported reference. The
-   * concept must already exist; a call for an unknown IRI is a no-op.
-   */
-  public void declareThingSubclass(String iri) throws SQLException {
-    try (PreparedStatement ps = connection.prepareStatement(
-        "UPDATE concept SET declares_thing = 1 WHERE iri = ?")) {
-      ps.setString(1, iri);
       ps.executeUpdate();
     }
   }
