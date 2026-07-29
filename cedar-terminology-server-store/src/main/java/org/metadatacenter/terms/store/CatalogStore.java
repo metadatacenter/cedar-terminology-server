@@ -228,6 +228,21 @@ public class CatalogStore implements AutoCloseable {
   }
 
   /**
+   * Resolves a specific version of an ontology by its {@code version_id}, scoped to the acronym so a
+   * content hash shared by two ontologies (INCENTIVE / INCENTIVE-VARS) resolves to this ontology's
+   * own snapshot. This is how a pinned reference is served reproducibly, independent of where
+   * {@code latest} currently points.
+   */
+  public Optional<SnapshotInfo> resolveVersion(String acronym, String versionId) throws SQLException {
+    try (PreparedStatement ps = connection.prepareStatement(
+        "SELECT * FROM snapshot WHERE acronym = ? AND version_id = ?")) {
+      ps.setString(1, acronym);
+      ps.setString(2, versionId);
+      return firstSnapshot(ps);
+    }
+  }
+
+  /**
    * Looks up a snapshot by its version id. Since a content hash can be shared by more than one
    * ontology, this returns any one matching row; callers that only need the frozen content (which is
    * identical across the sharers, by definition of the hash) — such as value-set expansion — do not

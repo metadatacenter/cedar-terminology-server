@@ -42,7 +42,25 @@ public class SqliteTerminologyService implements ITerminologyService {
   /** Resolves the snapshot store that currently serves an ontology, if any. */
   @FunctionalInterface
   public interface SnapshotProvider {
+    /** The snapshot serving an ontology at its current ("latest") version, if any. */
     Optional<SnapshotStore> forOntology(String ontology);
+
+    /**
+     * The snapshot serving an ontology at a specific version (a {@code version_id} or a tag such as
+     * {@code latest}). A null/blank/{@code latest} version means the current one. Default: ignore the
+     * version and serve latest — a bare provider is not version-aware.
+     */
+    default Optional<SnapshotStore> forOntology(String ontology, String version) {
+      return forOntology(ontology);
+    }
+
+    /**
+     * The versions of an ontology the provider knows, newest-relevant first, each as (versionId,
+     * declaredVersion, isLatest). Empty by default. Used to answer a "what versions exist" query.
+     */
+    default List<VersionRef> versions(String ontology) {
+      return List.of();
+    }
 
     /**
      * Metadata for the ontologies this provider serves locally — the catalog's own registry, used to
@@ -53,6 +71,9 @@ public class SqliteTerminologyService implements ITerminologyService {
       return List.of();
     }
   }
+
+  /** A version of an ontology available in the local store. */
+  public record VersionRef(String versionId, String declaredVersion, String releasedAt, boolean latest) {}
 
   private final SnapshotProvider provider;
 

@@ -32,7 +32,10 @@ public class CatalogSnapshotProvider implements SqliteTerminologyService.Snapsho
 
   private final CatalogStore catalog;
   private final Set<String> allowed;
-  private final ConcurrentHashMap<String, SnapshotStore> openByVersion = new ConcurrentHashMap<>();
+  // Cached open stores keyed by snapshot file path (unique per snapshot), not by version_id: two
+  // ontologies can share a content-hash version_id (INCENTIVE / INCENTIVE-VARS) yet have distinct
+  // files, so keying on version_id alone would hand back the wrong ontology's store.
+  private final ConcurrentHashMap<String, SnapshotStore> openByFile = new ConcurrentHashMap<>();
 
   public CatalogSnapshotProvider(CatalogStore catalog, Set<String> allowed) {
     this.catalog = catalog;
@@ -41,20 +44,53 @@ public class CatalogSnapshotProvider implements SqliteTerminologyService.Snapsho
 
   @Override
   public Optional<SnapshotStore> forOntology(String ontology) {
+    return forOntology(ontology, null);
+  }
+
+  @Override
+  public Optional<SnapshotStore> forOntology(String ontology, String version) {
     if (ontology == null || !allowed.contains(ontology)) {
       return Optional.empty();
     }
     try {
-      Optional<CatalogStore.SnapshotInfo> info = catalog.resolveLatest(ontology);
+      Optional<CatalogStore.SnapshotInfo> info = resolveInfo(ontology, version);
       if (info.isEmpty()) {
         return Optional.empty();
       }
-      String versionId = info.get().versionId();
-      SnapshotStore store = openByVersion.computeIfAbsent(versionId, v -> open(info.get().filePath()));
+      SnapshotStore store = openByFile.computeIfAbsent(info.get().filePath(), this::open);
       return Optional.ofNullable(store);
     } catch (SQLException e) {
-      log.warn("Catalog lookup failed for ontology {}; falling back to remote", ontology, e);
+      log.warn("Catalog lookup failed for ontology {} version {}; falling back to remote", ontology, version, e);
       return Optional.empty();
+    }
+  }
+
+  /** Resolves the snapshot for a version: null/blank/"latest" -> current; a known tag -> its target;
+   *  otherwise a version_id, scoped to the acronym. */
+  private Optional<CatalogStore.SnapshotInfo> resolveInfo(String ontology, String version) throws SQLException {
+    if (version == null || version.isBlank() || CatalogStore.TAG_LATEST.equals(version)) {
+      return catalog.resolveLatest(ontology);
+    }
+    Optional<CatalogStore.SnapshotInfo> byTag = catalog.resolve(ontology, version);
+    return byTag.isPresent() ? byTag : catalog.resolveVersion(ontology, version);
+  }
+
+  @Override
+  public List<SqliteTerminologyService.VersionRef> versions(String ontology) {
+    if (ontology == null || !allowed.contains(ontology)) {
+      return List.of();
+    }
+    try {
+      String latest = catalog.resolveLatest(ontology).map(CatalogStore.SnapshotInfo::versionId).orElse(null);
+      List<SqliteTerminologyService.VersionRef> out = new ArrayList<>();
+      for (CatalogStore.SnapshotInfo s : catalog.listSnapshots(ontology)) {
+        out.add(new SqliteTerminologyService.VersionRef(
+            s.versionId(), s.declaredVersion(), s.releasedAt(), s.versionId().equals(latest)));
+      }
+      return out;
+    } catch (SQLException e) {
+      log.warn("Catalog version listing failed for ontology {}", ontology, e);
+      return List.of();
     }
   }
 
@@ -93,14 +129,14 @@ public class CatalogSnapshotProvider implements SqliteTerminologyService.Snapsho
 
   @Override
   public void close() {
-    for (SnapshotStore store : openByVersion.values()) {
+    for (SnapshotStore store : openByFile.values()) {
       try {
         store.close();
       } catch (SQLException e) {
         log.warn("Error closing snapshot store", e);
       }
     }
-    openByVersion.clear();
+    openByFile.clear();
     try {
       catalog.close();
     } catch (SQLException e) {
