@@ -1,6 +1,7 @@
 package org.metadatacenter.cedar.cache;
 
 import org.metadatacenter.cedar.terminology.resources.AbstractTerminologyServerResource;
+import org.metadatacenter.terms.ITerminologyService;
 import org.metadatacenter.terms.domainObjects.Ontology;
 import org.metadatacenter.terms.domainObjects.OntologyDetails;
 import org.metadatacenter.terms.domainObjects.ValueSet;
@@ -29,8 +30,9 @@ public class Cache {
    * acronym. Serving that silently makes the picker show "DOID (DOID)" instead of "Human Disease
    * Ontology (DOID)". The floor is well below a full load and well above any such degraded partial, so
    * a short list becomes a loud failure here and an unhealthy signal in the health check, rather than
-   * plausible-looking wrong data. If a deployment ever serves a genuinely small local-only catalog,
-   * this is the number to revisit.
+   * plausible-looking wrong data. A genuinely small local-only deployment is exempt: {@link
+   * #getOntologies()} skips this floor when the backend {@link ITerminologyService#isLocalOnly() is
+   * local-only}, because then a short list is the authoritative catalogue, not a degraded fetch.
    */
   public static final int MIN_EXPECTED_ONTOLOGIES = 100;
 
@@ -77,8 +79,11 @@ public class Cache {
       }
       // Refuse to serve a partial list. A fetch that comes back far short of the full catalogue is a
       // failed load (cold BioPortal, a rate-limited key), not a real answer; surfacing it as an error
-      // is better than handing the picker a plausible-looking but wrong list.
-      if (map.size() < MIN_EXPECTED_ONTOLOGIES) {
+      // is better than handing the picker a plausible-looking but wrong list. This guards the remote
+      // fetch only: a local-only backend has no BioPortal call to degrade, and its list is
+      // authoritatively small (just the versioned ontologies), so the floor must not apply there.
+      if (!AbstractTerminologyServerResource.terminologyService.isLocalOnly()
+          && map.size() < MIN_EXPECTED_ONTOLOGIES) {
         throw new ExecutionException(new IllegalStateException(
             "Ontology list came back with only " + map.size() + " entries (expected at least "
                 + MIN_EXPECTED_ONTOLOGIES + "); treating it as a failed load rather than serving a partial list."));

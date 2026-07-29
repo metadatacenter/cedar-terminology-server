@@ -255,6 +255,11 @@ public class RoutingTerminologyService implements ITerminologyService {
    * ------------------------------------------------------------------------------------------- */
 
   @Override
+  public boolean isLocalOnly() {
+    return localOnly;
+  }
+
+  @Override
   public List<Ontology> findAllOntologies(boolean includeDetails, String apiKey) throws IOException {
     // Only under localOnly (a fully offline deployment) does the server report just the ontologies it
     // versions locally. Otherwise the local store is a partial, incremental cutover and BioPortal is

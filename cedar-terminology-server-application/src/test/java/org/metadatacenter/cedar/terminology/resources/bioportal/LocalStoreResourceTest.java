@@ -17,6 +17,8 @@ import org.metadatacenter.config.environment.CedarEnvironmentVariableProvider;
 import org.metadatacenter.model.SystemComponent;
 import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.terms.domainObjects.OntologyClass;
+import org.metadatacenter.terms.domainObjects.OntologyVersion;
+import org.metadatacenter.terms.domainObjects.VersionDiff;
 import org.metadatacenter.terms.store.CatalogStore;
 import org.metadatacenter.terms.store.SnapshotStore;
 import org.metadatacenter.util.test.TestAuthUtil;
@@ -25,7 +27,10 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import static org.metadatacenter.cedar.terminology.utils.Constants.BP_CHILDREN;
 import static org.metadatacenter.cedar.terminology.utils.Constants.BP_CLASSES;
@@ -76,13 +81,31 @@ public class LocalStoreResourceTest {
         s.materialize();
       }
 
+      // A second, newer version that adds one concept ("infection", a sibling of "cancer" under
+      // "disease"). It leaves cancer's children unchanged, so the children test above still holds,
+      // while giving the /versions and /versions/diff endpoints real history to report.
+      Path snapshot2 = dir.resolve("snap2.sqlite");
+      try (SnapshotStore s = SnapshotStore.openFile(snapshot2.toString())) {
+        s.initSchema();
+        s.addConcept(BASE + "disease", "Disease");
+        s.addConcept(BASE + "cancer", "Cancer");
+        s.addConcept(BASE + "melanoma", "Melanoma");
+        s.addConcept(BASE + "infection", "Infection");
+        s.addEdge(BASE + "cancer", BASE + "disease", "rdfs:subClassOf");
+        s.addEdge(BASE + "melanoma", BASE + "cancer", "rdfs:subClassOf");
+        s.addEdge(BASE + "infection", BASE + "disease", "rdfs:subClassOf");
+        s.materialize();
+      }
+
       Path catalog = dir.resolve("catalog.sqlite");
       try (CatalogStore c = CatalogStore.openFile(catalog.toString())) {
         c.initSchema();
         c.upsertOntology(new CatalogStore.OntologyInfo(ONT, "Local Test", null, "OWL"));
         c.addSnapshot(new CatalogStore.SnapshotInfo("v1", ONT, "1.0", "2025-01-01", "2025-01-01T00:00:00Z",
             "OWL", "subsumption", 3, 2, snapshot.toString(), "v1", "open"));
-        c.setTag(ONT, CatalogStore.TAG_LATEST, "v1");
+        c.addSnapshot(new CatalogStore.SnapshotInfo("v2", ONT, "2.0", "2025-06-01", "2025-06-01T00:00:00Z",
+            "OWL", "subsumption", 4, 3, snapshot2.toString(), "v2", "open"));
+        c.setTag(ONT, CatalogStore.TAG_LATEST, "v2");
       }
 
       // Override the (empty) cedar-main.yml localStore config for this test. Uses the non-"cedar."
@@ -140,5 +163,53 @@ public class LocalStoreResourceTest {
     OntologyClass child = children.getCollection().get(0);
     Assertions.assertEquals(BASE + "melanoma", child.getLdId());
     Assertions.assertEquals("Melanoma", child.getPrefLabel());
+  }
+
+  @Test
+  public void versionsServedFromLocalStore() {
+    String url = childrenUrlBase + "/" + ONT + "/versions";
+    Response response = clientBuilder.build().target(url).request()
+        .header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
+
+    Assertions.assertEquals(Status.OK.getStatusCode(), response.getStatus());
+    List<OntologyVersion> versions = response.readEntity(new GenericType<List<OntologyVersion>>() {});
+    response.close();
+
+    // Both ingested versions are reported, keyed by content-hash id.
+    Assertions.assertEquals(Set.of("v1", "v2"),
+        versions.stream().map(OntologyVersion::versionId).collect(Collectors.toSet()));
+    // Exactly one is the current version, and it is v2 (the tagged latest).
+    List<OntologyVersion> latest = versions.stream().filter(OntologyVersion::latest).collect(Collectors.toList());
+    Assertions.assertEquals(1, latest.size());
+    Assertions.assertEquals("v2", latest.get(0).versionId());
+  }
+
+  @Test
+  public void versionDiffServedFromLocalStore() {
+    String url = childrenUrlBase + "/" + ONT + "/versions/diff?from=v1&to=v2";
+    Response response = clientBuilder.build().target(url).request()
+        .header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
+
+    Assertions.assertEquals(Status.OK.getStatusCode(), response.getStatus());
+    VersionDiff diff = response.readEntity(VersionDiff.class);
+    response.close();
+
+    // v2 added exactly one concept ("infection") and one subsumption edge; nothing was removed.
+    Assertions.assertEquals(3, diff.conceptsBefore());
+    Assertions.assertEquals(4, diff.conceptsAfter());
+    Assertions.assertEquals(1, diff.conceptsAdded());
+    Assertions.assertEquals(0, diff.conceptsRemoved());
+    Assertions.assertEquals(1, diff.edgesAdded());
+    Assertions.assertTrue(diff.sampleAddedConcepts().contains(BASE + "infection"),
+        "the added concept IRI is sampled in the diff");
+  }
+
+  @Test
+  public void versionDiffForUnknownVersionIs404() {
+    String url = childrenUrlBase + "/" + ONT + "/versions/diff?from=v1&to=nope";
+    Response response = clientBuilder.build().target(url).request()
+        .header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
+    response.close();
+    Assertions.assertEquals(Status.NOT_FOUND.getStatusCode(), response.getStatus());
   }
 }

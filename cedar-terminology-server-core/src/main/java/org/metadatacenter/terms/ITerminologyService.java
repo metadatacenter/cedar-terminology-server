@@ -40,6 +40,16 @@ public interface ITerminologyService {
   List<Ontology> findAllOntologies(boolean includeDetails, String apiKey) throws IOException;
 
   /**
+   * Whether this backend serves only its local catalog, with no BioPortal fallback. When true, the
+   * ontology list is authoritatively small (just the versioned ontologies) rather than the full
+   * ~1300-ontology registry, so callers must not treat a short list as a degraded remote fetch. The
+   * plain BioPortal backend is never local-only.
+   */
+  default boolean isLocalOnly() {
+    return false;
+  }
+
+  /**
    * The versions of an ontology available in the local version-pinned store, or empty when it is not
    * served locally (BioPortal has no equivalent). Each carries the content-hash id that pins it.
    */

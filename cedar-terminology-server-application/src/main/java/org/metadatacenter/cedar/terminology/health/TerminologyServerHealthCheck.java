@@ -11,7 +11,8 @@ import org.metadatacenter.cedar.cache.Cache;
  * <p>This probes the ontology list and reports unhealthy when it cannot be loaded or comes back short
  * (the floor lives in {@link Cache#MIN_EXPECTED_ONTOLOGIES}, which {@link Cache#getOntologies()}
  * enforces by throwing). Ops, monitoring and {@code cedar-services.sh} then see a warming-or-degraded
- * server as not-ready rather than green.
+ * server as not-ready rather than green. A local-only deployment is exempt from the floor (its
+ * catalogue is authoritatively small), so it reports healthy on its true ontology count.
  *
  * <p>The list is fetched live (there is no in-memory cache), so the probe result is memoised for a short
  * window to keep health polling from re-crawling the catalogue on every call.
