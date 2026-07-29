@@ -109,6 +109,29 @@ public class SnapshotStoreTest {
   }
 
   @Test
+  public void pruneDeadEndImportRoots_ownNamespaceIsNotTheDominantImport() throws Exception {
+    try (SnapshotStore s = SnapshotStore.openInMemory()) {
+      s.initSchema();
+      // An import-heavy ontology (acronym matches no namespace): the dominant ID-space is an import
+      // (GO), the ontology's own namespace is a minority. own-namespace detection must fall back to
+      // the dominant NON-IMPORT space (the own one), not the raw dominant, so the own root is kept
+      // and only the foreign dead-ends are pruned.
+      for (int i = 1; i <= 5; i++) {
+        s.addConcept("http://purl.obolibrary.org/obo/GO_000000" + i, null); // 5 foreign dead-ends
+      }
+      s.addConcept("http://example.org/myont#Top", null); // 1 own root (unlabeled, but OWN)
+      s.materialize();
+      assertEquals(6, s.roots().size());
+
+      int pruned = s.pruneDeadEndImportRoots("MYONT"); // token "MYONT" matches no namespace -> fallback
+
+      assertEquals(5, pruned, "the 5 imported GO dead-ends are pruned");
+      assertEquals(java.util.List.of("http://example.org/myont#Top"), s.roots(),
+          "the own-namespace root is kept even though it is the minority and unlabeled");
+    }
+  }
+
+  @Test
   public void children_areDirectSubclassesOnly() throws Exception {
     assertEquals(List.of("animal", "pet"), store.children("thing"));
     assertEquals(List.of("cat", "dog"), store.children("mammal"));
