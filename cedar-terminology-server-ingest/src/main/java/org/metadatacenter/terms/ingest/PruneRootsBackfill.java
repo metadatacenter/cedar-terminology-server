@@ -22,11 +22,15 @@ public final class PruneRootsBackfill {
 
   public static void main(String[] args) throws Exception {
     if (args.length < 1) {
-      System.err.println("Usage: PruneRootsBackfill <catalogPath>");
+      System.err.println("Usage: PruneRootsBackfill <catalogPath> [acronym...]");
+      System.err.println("  With no acronyms: prune every latest snapshot (re-materialize only if emptied).");
+      System.err.println("  With acronyms:    force re-materialize + re-prune only those (to correct a");
+      System.err.println("                    prior run whose own-namespace detection was wrong).");
       System.exit(2);
     }
     Path catalogPath = Path.of(args[0]);
     Path baseDir = catalogPath.toAbsolutePath().getParent();
+    java.util.Set<String> only = new java.util.HashSet<>(java.util.Arrays.asList(args).subList(1, args.length));
 
     int ontologies = 0;
     long totalPruned = 0;
@@ -38,18 +42,22 @@ public final class PruneRootsBackfill {
                  + "WHERE t.tag = 'latest' ORDER BY s.acronym")) {
       while (rs.next()) {
         String acronym = rs.getString(1);
+        if (!only.isEmpty() && !only.contains(acronym)) {
+          continue;
+        }
         Path file = baseDir.resolve(rs.getString(2));
         try (SnapshotStore store = SnapshotStore.openFile(file.toString())) {
-          // Restore roots first if a prior (unguarded) run emptied this snapshot, so the guarded
-          // prune can re-evaluate it. Re-materialize is idempotent; it only recomputes derived data.
-          if (store.rootCount() == 0) {
+          // Re-materialize to restore the full root set before pruning when (a) a prior unguarded run
+          // emptied this snapshot, or (b) this is a targeted re-prune (explicit acronym list) fixing a
+          // prior run's wrong own-namespace — otherwise roots already deleted can't be re-evaluated.
+          if (store.rootCount() == 0 || !only.isEmpty()) {
             store.materialize();
           }
           int pruned = store.pruneDeadEndImportRoots(acronym);
           ontologies++;
           totalPruned += pruned;
-          if (pruned > 0) {
-            System.out.printf("%-24s pruned %d dead-end import roots%n", acronym, pruned);
+          if (pruned > 0 || !only.isEmpty()) {
+            System.out.printf("%-24s roots now %d (pruned %d)%n", acronym, store.rootCount(), pruned);
           }
         } catch (Exception e) {
           System.out.printf("%-24s SKIPPED: %s%n", acronym, e.getMessage());

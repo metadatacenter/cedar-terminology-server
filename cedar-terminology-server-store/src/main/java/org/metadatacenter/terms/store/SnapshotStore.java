@@ -270,9 +270,45 @@ public class SnapshotStore implements AutoCloseable {
       }
     }
     if (own.isEmpty() && !freq.isEmpty()) {
-      own.add(java.util.Collections.max(freq.entrySet(), java.util.Map.Entry.comparingByValue()).getKey());
+      // Acronym matched no namespace: fall back to the dominant namespace AMONG NON-IMPORTS, so a
+      // mostly-imported ontology's own (minority) namespace is not overridden by an import it pulls
+      // in wholesale (e.g. NIF-Dysfunction is 34% GO / 31% PATO / 18% UBERON, its own nifstd only 4%).
+      java.util.Map<String, Integer> pool = new java.util.HashMap<>();
+      for (var e : freq.entrySet()) {
+        if (!isImportSpace(e.getKey())) {
+          pool.put(e.getKey(), e.getValue());
+        }
+      }
+      if (pool.isEmpty()) {
+        pool = freq; // pure aggregator — nothing but imports; keep the plain dominant
+      }
+      own.add(java.util.Collections.max(pool.entrySet(), java.util.Map.Entry.comparingByValue()).getKey());
     }
     return own;
+  }
+
+  /** Common imported / upper-reference ontologies and meta vocabularies — consulted only in the
+   *  {@link #ownIdspaces} frequency fallback, to avoid mistaking imported content for the ontology's
+   *  own. Never applied when the acronym itself matches a namespace, so gating one of these
+   *  ontologies directly still resolves its own space. */
+  private static final java.util.Set<String> IMPORT_OBO = java.util.Set.of(
+      "BFO", "RO", "IAO", "BSPO", "GO", "CHEBI", "PATO", "NCBITAXON", "PR", "UBERON", "CL", "SO",
+      "ENVO", "GAZ", "OGMS", "COB", "OMIM", "CARO", "OBA", "UO", "NBO", "MOP", "CHMO");
+  private static final String[] IMPORT_HOST = {
+      "W3.ORG", "XMLNS.COM/FOAF", "PURL.ORG/DC", "SKOS/CORE", "/2006/TIME", "SCHEMA.ORG", "ONTOLOGY/BIBO"};
+
+  private static boolean isImportSpace(String sp) {
+    java.util.regex.Matcher m = OBO_SPACE.matcher(sp);
+    if (m.matches() && IMPORT_OBO.contains(m.group(1).toUpperCase())) {
+      return true;
+    }
+    String up = sp.toUpperCase();
+    for (String h : IMPORT_HOST) {
+      if (up.contains(h)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /**
