@@ -144,6 +144,10 @@ public class IngestJob {
       // Drop dead-end import references from the roots: unlabeled foreign classes with no labeled
       // descendant are unresolved-owl:imports dangling references, not real tree entry points.
       store.pruneDeadEndImportRoots(acronym);
+      // Then give any still-unlabeled class a fallback label from its IRI fragment (matching
+      // BioPortal), so label-less ontologies are searchable/browsable rather than blank. After the
+      // prune, which keys on the genuinely-unlabeled state.
+      store.fillMissingLabelsFromIri();
     } catch (Throwable e) {
       Files.deleteIfExists(tempFile);
       throw new IOException("Extraction failed for " + acronym + " submission " + sub.submissionId(), e);

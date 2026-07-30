@@ -34,6 +34,7 @@ public final class PruneRootsBackfill {
 
     int ontologies = 0;
     long totalPruned = 0;
+    long totalLabeled = 0;
     try (Connection cat = DriverManager.getConnection("jdbc:sqlite:" + catalogPath);
          Statement s = cat.createStatement();
          ResultSet rs = s.executeQuery(
@@ -54,17 +55,21 @@ public final class PruneRootsBackfill {
             store.materialize();
           }
           int pruned = store.pruneDeadEndImportRoots(acronym);
+          int labeled = store.fillMissingLabelsFromIri();
           ontologies++;
           totalPruned += pruned;
-          if (pruned > 0 || !only.isEmpty()) {
-            System.out.printf("%-24s roots now %d (pruned %d)%n", acronym, store.rootCount(), pruned);
+          totalLabeled += labeled;
+          if (pruned > 0 || labeled > 0 || !only.isEmpty()) {
+            System.out.printf("%-24s roots %d (pruned %d), labeled %d from IRI%n",
+                acronym, store.rootCount(), pruned, labeled);
           }
         } catch (Exception e) {
           System.out.printf("%-24s SKIPPED: %s%n", acronym, e.getMessage());
         }
       }
     }
-    System.out.printf("%nbackfill done: %d ontologies, %d roots pruned%n", ontologies, totalPruned);
+    System.out.printf("%nbackfill done: %d ontologies, %d roots pruned, %d concepts labeled from IRI%n",
+        ontologies, totalPruned, totalLabeled);
   }
 
   private PruneRootsBackfill() {}

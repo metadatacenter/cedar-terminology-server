@@ -109,6 +109,26 @@ public class SnapshotStoreTest {
   }
 
   @Test
+  public void fillMissingLabelsFromIri_usesVerbatimFragmentForUnlabeledConcepts() throws Exception {
+    assertEquals("Alcoholic_Hallucinosis",
+        SnapshotStore.labelFromIri("http://ontology.apa.org/apaonto/x.owl#Alcoholic_Hallucinosis"));
+    assertEquals("3DRadiotherapyPlanning", SnapshotStore.labelFromIri("http://www.ifomis.org/acgt/1.0#3DRadiotherapyPlanning"));
+    try (SnapshotStore s = SnapshotStore.openInMemory()) {
+      s.initSchema();
+      s.addConcept("http://x.org/o#Alcoholic_Hallucinosis", null);  // unlabeled
+      s.addConcept("http://x.org/o#Hypersomnia", "");               // empty label
+      s.addConcept("http://x.org/o#Real", "Real Label");            // labeled — must be left alone
+
+      int n = s.fillMissingLabelsFromIri();
+
+      assertEquals(2, n);
+      assertEquals("Alcoholic_Hallucinosis", s.prefLabel("http://x.org/o#Alcoholic_Hallucinosis").orElseThrow());
+      assertEquals("Hypersomnia", s.prefLabel("http://x.org/o#Hypersomnia").orElseThrow());
+      assertEquals("Real Label", s.prefLabel("http://x.org/o#Real").orElseThrow(), "existing label untouched");
+    }
+  }
+
+  @Test
   public void pruneDeadEndImportRoots_ownNamespaceIsNotTheDominantImport() throws Exception {
     try (SnapshotStore s = SnapshotStore.openInMemory()) {
       s.initSchema();

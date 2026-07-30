@@ -373,6 +373,59 @@ public class SnapshotStore implements AutoCloseable {
     return victims.size();
   }
 
+  /**
+   * The fallback display label for a class that carries no {@code rdfs:label}/{@code skos:prefLabel}:
+   * its IRI fragment (the substring after the last {@code #} or {@code /}), verbatim. This matches
+   * what BioPortal serves for such classes exactly — e.g. {@code …#Alcoholic_Hallucinosis} →
+   * {@code "Alcoholic_Hallucinosis"} (underscores kept, no CamelCase split, no decoding) — so a term
+   * chosen here matches one BioPortal filled, and label-less ontologies stay consistent whether served
+   * locally or from BioPortal. Returns null only for an empty fragment.
+   */
+  public static String labelFromIri(String iri) {
+    if (iri == null) {
+      return null;
+    }
+    int cut = Math.max(iri.lastIndexOf('#'), iri.lastIndexOf('/'));
+    String frag = cut >= 0 ? iri.substring(cut + 1) : iri;
+    return frag.isEmpty() ? null : frag;
+  }
+
+  /**
+   * Gives every unlabeled concept a fallback label from its IRI fragment ({@link #labelFromIri}), so
+   * label-less ontologies (no {@code rdfs:label}/{@code skos:prefLabel} anywhere — their name lives in
+   * the IRI) are searchable and browsable locally instead of returning empty, matching BioPortal.
+   * Run after {@link #pruneDeadEndImportRoots}: the prune keys on the genuinely-unlabeled state, and
+   * this only writes {@code pref_label}, never the {@code root} table, so it does not resurrect pruned
+   * roots. Idempotent. Returns the number of concepts labeled.
+   */
+  public int fillMissingLabelsFromIri() throws SQLException {
+    List<long[]> ids = new ArrayList<>();
+    List<String> labels = new ArrayList<>();
+    try (Statement s = connection.createStatement();
+         ResultSet rs = s.executeQuery(
+             "SELECT id, iri FROM concept WHERE pref_label IS NULL OR pref_label = ''")) {
+      while (rs.next()) {
+        String label = labelFromIri(rs.getString(2));
+        if (label != null) {
+          ids.add(new long[]{rs.getLong(1)});
+          labels.add(label);
+        }
+      }
+    }
+    if (ids.isEmpty()) {
+      return 0;
+    }
+    try (PreparedStatement up = connection.prepareStatement("UPDATE concept SET pref_label = ? WHERE id = ?")) {
+      for (int i = 0; i < ids.size(); i++) {
+        up.setString(1, labels.get(i));
+        up.setLong(2, ids.get(i)[0]);
+        up.addBatch();
+      }
+      up.executeBatch();
+    }
+    return ids.size();
+  }
+
   /* --------------------------------------------------------------------------------------------
    * Reads — the terminology-server operations, each an indexed lookup, no traversal.
    * ------------------------------------------------------------------------------------------ */
