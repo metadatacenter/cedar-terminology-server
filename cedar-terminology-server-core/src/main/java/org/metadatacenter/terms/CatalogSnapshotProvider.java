@@ -66,14 +66,70 @@ public class CatalogSnapshotProvider implements SqliteTerminologyService.Snapsho
     }
   }
 
-  /** Resolves the snapshot for a version: null/blank/"latest" -> current; a known tag -> its target;
-   *  otherwise a version_id, scoped to the acronym. */
+  /**
+   * Resolves the snapshot a version request names. Precedence: {@code null}/blank/{@code "latest"} →
+   * current; then, for a specific request, {@code content hash → tag → as-of date → declared
+   * version}. These are distinct namespaces (a hash is 64 hex chars, a tag a short name, a date
+   * ISO {@code YYYY-MM-DD}, a declared version a free-form label), and the first interpretation that
+   * matches wins.
+   *
+   * A request that matches none resolves to empty — the caller then falls back to the remote adapter
+   * — rather than silently to {@code latest}: a pin that cannot be honored fails loud instead of
+   * serving the wrong content. A date-shaped request that finds no snapshot on or before it falls
+   * through to the declared-version match, in case the string was a label that merely looks like a
+   * date; when the label is genuinely a date, the earlier as-of resolution has already answered.
+   */
   private Optional<CatalogStore.SnapshotInfo> resolveInfo(String ontology, String version) throws SQLException {
     if (version == null || version.isBlank() || CatalogStore.TAG_LATEST.equals(version)) {
       return catalog.resolveLatest(ontology);
     }
+    Optional<CatalogStore.SnapshotInfo> byHash = catalog.resolveVersion(ontology, version);
+    if (byHash.isPresent()) {
+      return byHash;
+    }
     Optional<CatalogStore.SnapshotInfo> byTag = catalog.resolve(ontology, version);
-    return byTag.isPresent() ? byTag : catalog.resolveVersion(ontology, version);
+    if (byTag.isPresent()) {
+      return byTag;
+    }
+    Optional<String> asOf = asOfDate(version);
+    if (asOf.isPresent()) {
+      Optional<CatalogStore.SnapshotInfo> byDate = catalog.resolveAsOfDate(ontology, asOf.get());
+      if (byDate.isPresent()) {
+        return byDate;
+      }
+      // Fall through: nothing was published on or before this date, but the string may still be a
+      // declared-version label that happens to look like a date.
+    }
+    List<CatalogStore.SnapshotInfo> byDeclared = catalog.resolveByDeclaredVersion(ontology, version);
+    if (byDeclared.isEmpty()) {
+      return Optional.empty();
+    }
+    if (byDeclared.size() > 1) {
+      CatalogStore.SnapshotInfo chosen = byDeclared.get(0);
+      log.warn("Declared version '{}' of ontology {} is ambiguous: {} snapshots carry it; serving the "
+              + "newest ({}, released {}). Pin a content hash for a reproducible reference.",
+          version, ontology, byDeclared.size(), chosen.versionId(), chosen.releasedAt());
+    }
+    return Optional.of(byDeclared.get(0));
+  }
+
+  /**
+   * If {@code version} begins with an ISO calendar date ({@code YYYY-MM-DD}, optionally followed by a
+   * time or anything else), returns that date; otherwise empty. This decides whether a version
+   * request is interpreted as an "as of" date. A content-hash id can never match: hex has no
+   * {@code -} at the date separator positions.
+   */
+  static Optional<String> asOfDate(String version) {
+    if (version == null || version.length() < 10) {
+      return Optional.empty();
+    }
+    String head = version.substring(0, 10);
+    try {
+      java.time.LocalDate.parse(head); // validates the calendar date, rejecting e.g. 2024-13-40
+      return Optional.of(head);
+    } catch (java.time.format.DateTimeParseException notADate) {
+      return Optional.empty();
+    }
   }
 
   @Override

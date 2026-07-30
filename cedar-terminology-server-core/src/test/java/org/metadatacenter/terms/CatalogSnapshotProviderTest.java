@@ -152,6 +152,56 @@ public class CatalogSnapshotProviderTest {
   }
 
   @Test
+  public void resolvesByAsOfDate() throws Exception {
+    // v1 released 2025-01-01 (no wolf), v2 released 2025-06-01 (wolf). "As of" a date serves the
+    // newest snapshot published on or before it, independent of where latest (v1) points.
+    assertTrue(provider.forOntology("EX", "2025-03-01").orElseThrow().prefLabel(BASE + "wolf").isEmpty());
+    assertTrue(provider.forOntology("EX", "2025-07-01").orElseThrow().prefLabel(BASE + "wolf").isPresent());
+  }
+
+  @Test
+  public void asOfDateBeforeAllHistoryResolvesEmpty() {
+    // A pin we cannot honor fails to empty (caller falls back to remote), never silently to latest.
+    assertTrue(provider.forOntology("EX", "2024-01-01").isEmpty());
+  }
+
+  @Test
+  public void resolvesByDeclaredVersionLabel() throws Exception {
+    // The free-form declared version resolves its snapshot: "2.0" is v2 (wolf), "1.0" is v1.
+    assertTrue(provider.forOntology("EX", "2.0").orElseThrow().prefLabel(BASE + "wolf").isPresent());
+    assertTrue(provider.forOntology("EX", "1.0").orElseThrow().prefLabel(BASE + "wolf").isEmpty());
+  }
+
+  @Test
+  public void ambiguousDeclaredVersionServesTheNewest() throws Exception {
+    // Two snapshots sharing declared version "2.0": the newer (later release) wins; a warning is
+    // logged (not asserted here). This mirrors INCENTIVE publishing several submissions under one
+    // label. Register a second "2.0" that is newer than v2 and adds "fox".
+    Path v3File = tempDir.resolve("EX_v3.sqlite");
+    try (SnapshotStore store = SnapshotStore.openFile(v3File.toString())) {
+      store.initSchema();
+      store.addConcept(BASE + "thing", "Thing");
+      store.addConcept(BASE + "fox", "Fox");
+      store.addEdge(BASE + "fox", BASE + "thing", "rdfs:subClassOf");
+      store.materialize();
+    }
+    catalog.addSnapshot(new CatalogStore.SnapshotInfo("v3", "EX", "2.0", "2025-09-01", "2025-09-02T00:00:00Z",
+        "OWL", "subsumption", 2, 1, v3File.toString(), "v3", "open"));
+
+    assertTrue(provider.forOntology("EX", "2.0").orElseThrow().prefLabel(BASE + "fox").isPresent());
+  }
+
+  @Test
+  public void asOfDateHelperExtractsLeadingCalendarDate() {
+    assertEquals("2022-06-26", CatalogSnapshotProvider.asOfDate("2022-06-26").orElseThrow());
+    assertEquals("2022-06-26", CatalogSnapshotProvider.asOfDate("2022-06-26T18:07:50.000-07:00").orElseThrow());
+    assertTrue(CatalogSnapshotProvider.asOfDate("2024-13-40").isEmpty()); // not a real date
+    assertTrue(CatalogSnapshotProvider.asOfDate("2.0").isEmpty());        // a declared-version label
+    assertTrue(CatalogSnapshotProvider.asOfDate("ff05a9a36f3a").isEmpty()); // a content hash
+    assertTrue(CatalogSnapshotProvider.asOfDate(null).isEmpty());
+  }
+
+  @Test
   public void servedThroughTheAdapter() throws Exception {
     SqliteTerminologyService service = new SqliteTerminologyService(provider);
     assertTrue(service.isAvailable("EX"));

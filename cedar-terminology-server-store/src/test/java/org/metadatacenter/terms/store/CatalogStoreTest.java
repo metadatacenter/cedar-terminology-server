@@ -140,6 +140,78 @@ public class CatalogStoreTest {
     assertTrue(catalog.getSnapshot("nope").isEmpty());
   }
 
+  /* --------------------------------------------------------------------------------------------
+   * Date and declared-version resolution — fixtures mirror INCENTIVE's real BioPortal history:
+   * three submissions labelled 0.1.1 (two on the same day), then 0.1.2 and 0.1.3 on the same day,
+   * then a second 0.1.3 seventeen months later. Timestamps carry the real varying UTC offsets.
+   * ------------------------------------------------------------------------------------------ */
+
+  private static SnapshotInfo incentive(String vid, String declared, String released, String ingested) {
+    return new SnapshotInfo(vid, "INCENTIVE", declared, released, ingested, "SKOS", "subsumption",
+        81, 75, "/snapshots/INCENTIVE/" + vid + ".sqlite", vid, "open");
+  }
+
+  private void loadIncentiveHistory() throws Exception {
+    catalog.upsertOntology(new OntologyInfo("INCENTIVE", "INCENTIVE", null, "SKOS"));
+    catalog.addSnapshot(incentive("v0_1_1a", "0.1.1", "2022-06-25T00:00:00.000+00:00", "2026-07-29T02:56:35.412653Z"));
+    catalog.addSnapshot(incentive("v0_1_1b", "0.1.1", "2022-06-26T00:00:00.000+00:00", "2026-07-29T02:56:35.632712Z"));
+    catalog.addSnapshot(incentive("v0_1_1c", "0.1.1", "2022-06-26T18:07:50.000-07:00", "2026-07-29T02:56:35.507962Z"));
+    catalog.addSnapshot(incentive("v0_1_2", "0.1.2", "2022-06-28T00:00:00.000+00:00", "2026-07-29T02:56:35.807427Z"));
+    catalog.addSnapshot(incentive("v0_1_3a", "0.1.3", "2022-06-28T00:00:00.000+00:00", "2026-07-29T02:56:35.976592Z"));
+    catalog.addSnapshot(incentive("v0_1_3b", "0.1.3", "2023-11-23T00:00:00.000+00:00", "2026-07-29T02:56:36.324676Z"));
+  }
+
+  @Test
+  public void resolveAsOfDate_picksNewestReleasedOnOrBeforeTheDate() throws Exception {
+    loadIncentiveHistory();
+    // On 06-27 the newest release on or before is the evening 06-26 submission.
+    assertEquals("v0_1_1c", catalog.resolveAsOfDate("INCENTIVE", "2022-06-27").orElseThrow().versionId());
+    // A year and a half later, the 0.1.3 re-release is current.
+    assertEquals("v0_1_3b", catalog.resolveAsOfDate("INCENTIVE", "2024-01-01").orElseThrow().versionId());
+  }
+
+  @Test
+  public void resolveAsOfDate_isInclusiveOfTheReleaseDay() throws Exception {
+    loadIncentiveHistory();
+    // Asking as of 06-25 includes the snapshot released that very day (day-granular, inclusive).
+    assertEquals("v0_1_1a", catalog.resolveAsOfDate("INCENTIVE", "2022-06-25").orElseThrow().versionId());
+  }
+
+  @Test
+  public void resolveAsOfDate_beforeAllHistoryIsEmpty() throws Exception {
+    loadIncentiveHistory();
+    assertTrue(catalog.resolveAsOfDate("INCENTIVE", "2022-06-24").isEmpty());
+  }
+
+  @Test
+  public void resolveAsOfDate_breaksSameDayTiesDeterministically() throws Exception {
+    loadIncentiveHistory();
+    // 0.1.2 and 0.1.3 share the 06-28 release date; the later-ingested (0.1.3) wins the tie.
+    assertEquals("v0_1_3a", catalog.resolveAsOfDate("INCENTIVE", "2022-06-28").orElseThrow().versionId());
+  }
+
+  @Test
+  public void resolveByDeclaredVersion_returnsEveryMatchNewestFirst() throws Exception {
+    loadIncentiveHistory();
+    List<SnapshotInfo> ones = catalog.resolveByDeclaredVersion("INCENTIVE", "0.1.1");
+    assertEquals(3, ones.size()); // the label is not unique
+    assertEquals("v0_1_1c", ones.get(0).versionId()); // newest of the three (06-26 evening)
+  }
+
+  @Test
+  public void resolveByDeclaredVersion_uniqueLabelResolvesToTheOneSnapshot() throws Exception {
+    loadIncentiveHistory();
+    List<SnapshotInfo> two = catalog.resolveByDeclaredVersion("INCENTIVE", "0.1.2");
+    assertEquals(1, two.size());
+    assertEquals("v0_1_2", two.get(0).versionId());
+  }
+
+  @Test
+  public void resolveByDeclaredVersion_unknownLabelIsEmpty() throws Exception {
+    loadIncentiveHistory();
+    assertTrue(catalog.resolveByDeclaredVersion("INCENTIVE", "9.9").isEmpty());
+  }
+
   @Test
   public void inMemoryCatalogHasNoBaseDir() {
     // The shared in-memory catalog has no file, so no base directory to resolve against.

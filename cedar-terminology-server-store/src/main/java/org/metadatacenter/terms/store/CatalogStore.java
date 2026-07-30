@@ -243,6 +243,56 @@ public class CatalogStore implements AutoCloseable {
   }
 
   /**
+   * Resolves the snapshot that was current as of a calendar date: the newest snapshot of the
+   * ontology whose release date is on or before {@code asOfDate} (an ISO {@code YYYY-MM-DD}).
+   *
+   * Comparison is day-granular. BioPortal release timestamps carry varying UTC offsets
+   * ({@code 2022-06-26T18:07:50.000-07:00}), so a lexicographic compare of the full timestamps
+   * against a bare date would be both offset-sensitive and off by the time-of-day suffix. Comparing
+   * on the date component ({@code substr(released_at,1,10)}) is offset-independent and matches the
+   * data's true resolution — publications are dated, not timed. Snapshots with no recorded release
+   * date are excluded: they cannot be placed on a timeline. Within a day, ties are broken by the
+   * full released timestamp, then ingest order, then version id, so the choice is deterministic.
+   */
+  public Optional<SnapshotInfo> resolveAsOfDate(String acronym, String asOfDate) throws SQLException {
+    try (PreparedStatement ps = connection.prepareStatement("""
+        SELECT * FROM snapshot
+        WHERE acronym = ? AND released_at IS NOT NULL AND substr(released_at, 1, 10) <= ?
+        ORDER BY released_at DESC, ingested_at DESC, version_id DESC
+        LIMIT 1""")) {
+      ps.setString(1, acronym);
+      ps.setString(2, asOfDate);
+      return firstSnapshot(ps);
+    }
+  }
+
+  /**
+   * The ontology's snapshots whose self-declared version equals {@code declaredVersion}, newest
+   * first. Declared versions are author-supplied and not unique — one ontology can publish several
+   * submissions under a single label (INCENTIVE has three {@code 0.1.1}s) — so this returns every
+   * match rather than a single row. A caller wanting one snapshot takes the first (newest) and
+   * should note the ambiguity when the list is longer than one. The match is exact: declared
+   * versions are free-form ({@code "Light"}, {@code "English 051319"}, {@code "Version 1.0.0"}) with
+   * no reliable internal ordering, so only the release timestamp orders them.
+   */
+  public List<SnapshotInfo> resolveByDeclaredVersion(String acronym, String declaredVersion) throws SQLException {
+    try (PreparedStatement ps = connection.prepareStatement("""
+        SELECT * FROM snapshot
+        WHERE acronym = ? AND declared_version = ?
+        ORDER BY released_at DESC, ingested_at DESC, version_id DESC""")) {
+      ps.setString(1, acronym);
+      ps.setString(2, declaredVersion);
+      try (ResultSet rs = ps.executeQuery()) {
+        List<SnapshotInfo> out = new ArrayList<>();
+        while (rs.next()) {
+          out.add(readSnapshot(rs));
+        }
+        return out;
+      }
+    }
+  }
+
+  /**
    * Looks up a snapshot by its version id. Since a content hash can be shared by more than one
    * ontology, this returns any one matching row; callers that only need the frozen content (which is
    * identical across the sharers, by definition of the hash) — such as value-set expansion — do not
