@@ -165,6 +165,10 @@ public class IngestJob {
         sub.format(), "subsumption", extracted.classCount(), extracted.edgeCount(),
         catalogRelativePath(catalog, snapshotFile), versionId,
         access.viewingRestriction() == null ? "public" : access.viewingRestriction()));
+    // Display/audit-only provenance: BioPortal's reliable per-upload submission id (in hand here,
+    // unreconstructable offline later) and the version string's self-claimed date.
+    catalog.setSnapshotProvenance(versionId, acronym, sub.submissionId(),
+        CatalogStore.SnapshotProvenance.sourceDateFromDeclaredVersion(sub.version()));
     if (setAsLatest) {
       catalog.setTag(acronym, CatalogStore.TAG_LATEST, versionId);
     }

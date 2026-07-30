@@ -45,6 +45,41 @@ public class CatalogStore implements AutoCloseable {
       String fileHash,
       String licenseTier) {}
 
+  /**
+   * Display/audit-only provenance for a snapshot: the {@code backend} it came from (currently always
+   * {@code bioportal}); the source's {@code submissionId} (BioPortal's monotonic, reliable per-upload
+   * key — captured at ingest, not reconstructable offline); and the {@code sourceDate}, the date the
+   * source claims for itself, distinct from the upload date in {@code released_at}. None of these
+   * participate in identity or resolution.
+   */
+  public record SnapshotProvenance(String backend, Integer submissionId, String sourceDate) {
+
+    private static final java.util.regex.Pattern ISO_DATE =
+        java.util.regex.Pattern.compile("\\d{4}-\\d{2}-\\d{2}");
+
+    /**
+     * The self-claimed date embedded in a declared-version string, or null when it carries none. The
+     * BioPortal version string is often a date or contains one ({@code "2026-06-08"},
+     * {@code "releases/2021-10-26"}); this extracts the first valid ISO calendar date. Free-text or
+     * non-date labels ({@code "Light"}, {@code "English 051319"}, {@code "10-2024"}) yield null. This
+     * is the version-string's self-date (VERSIONING-DESIGN §2), not the BioPortal upload date.
+     */
+    public static String sourceDateFromDeclaredVersion(String declaredVersion) {
+      if (declaredVersion == null) {
+        return null;
+      }
+      java.util.regex.Matcher m = ISO_DATE.matcher(declaredVersion);
+      while (m.find()) {
+        try {
+          return java.time.LocalDate.parse(m.group()).toString(); // validate; reject 2026-13-40
+        } catch (java.time.format.DateTimeParseException notADate) {
+          // keep scanning: a later match may be a real date
+        }
+      }
+      return null;
+    }
+  }
+
   /** The conventional tag for the current version of an ontology. */
   public static final String TAG_LATEST = "latest";
 
@@ -126,6 +161,9 @@ public class CatalogStore implements AutoCloseable {
             file_path        TEXT NOT NULL,
             file_hash        TEXT NOT NULL,
             license_tier     TEXT NOT NULL,
+            backend          TEXT DEFAULT 'bioportal',
+            submission_id    INTEGER,
+            source_date      TEXT,
             PRIMARY KEY (version_id, acronym)
           )""");
       s.executeUpdate("CREATE INDEX IF NOT EXISTS idx_snapshot_acronym ON snapshot(acronym, released_at)");
@@ -143,6 +181,12 @@ public class CatalogStore implements AutoCloseable {
     // initSchema stays safe to call on any existing catalog (the iri backfill calls it).
     ensureColumn("ontology", "iri", "TEXT");
     ensureColumn("ontology", "raw_namespace", "TEXT");
+    // Provenance columns (display/audit only). backend carries a constant DEFAULT so every existing
+    // row reads 'bioportal' with no separate backfill; submission_id and source_date are populated at
+    // ingest and by the provenance backfill.
+    ensureColumn("snapshot", "backend", "TEXT DEFAULT 'bioportal'");
+    ensureColumn("snapshot", "submission_id", "INTEGER");
+    ensureColumn("snapshot", "source_date", "TEXT");
   }
 
   /** Adds {@code column} to {@code table} when absent; a no-op when it is already there. Lets
@@ -235,6 +279,40 @@ public class CatalogStore implements AutoCloseable {
       ps.setString(1, acronym);
       try (ResultSet rs = ps.executeQuery()) {
         return rs.next() ? Optional.ofNullable(rs.getString(1)) : Optional.empty();
+      }
+    }
+  }
+
+  /**
+   * Records display/audit-only provenance for a snapshot: its source {@code submissionId} and
+   * {@code sourceDate}. A no-op when the snapshot is unknown. Leaves {@code backend} at its default
+   * ({@code bioportal}) — every current snapshot is from BioPortal; a future non-BioPortal backend
+   * would set it at ingest. Idempotent.
+   */
+  public void setSnapshotProvenance(String versionId, String acronym, Integer submissionId, String sourceDate)
+      throws SQLException {
+    try (PreparedStatement ps = connection.prepareStatement(
+        "UPDATE snapshot SET submission_id = ?, source_date = ? WHERE version_id = ? AND acronym = ?")) {
+      setNullableInt(ps, 1, submissionId);
+      ps.setString(2, sourceDate);
+      ps.setString(3, versionId);
+      ps.setString(4, acronym);
+      ps.executeUpdate();
+    }
+  }
+
+  /** A snapshot's provenance, or empty when the {@code (versionId, acronym)} is unknown. */
+  public Optional<SnapshotProvenance> snapshotProvenance(String versionId, String acronym) throws SQLException {
+    try (PreparedStatement ps = connection.prepareStatement(
+        "SELECT backend, submission_id, source_date FROM snapshot WHERE version_id = ? AND acronym = ?")) {
+      ps.setString(1, versionId);
+      ps.setString(2, acronym);
+      try (ResultSet rs = ps.executeQuery()) {
+        if (!rs.next()) {
+          return Optional.empty();
+        }
+        return Optional.of(new SnapshotProvenance(rs.getString("backend"),
+            getNullableInt(rs, "submission_id"), rs.getString("source_date")));
       }
     }
   }

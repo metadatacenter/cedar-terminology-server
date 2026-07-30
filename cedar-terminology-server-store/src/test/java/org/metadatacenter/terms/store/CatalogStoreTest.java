@@ -240,6 +240,61 @@ public class CatalogStoreTest {
   }
 
   @Test
+  public void snapshotBackendDefaultsToBioportalForEveryRow() throws Exception {
+    // The backend column carries a constant DEFAULT, so existing snapshots read 'bioportal' with no
+    // separate backfill.
+    assertEquals("bioportal", catalog.snapshotProvenance("hashV1", "DOID").orElseThrow().backend());
+    assertEquals("bioportal", catalog.snapshotProvenance("hashV2", "DOID").orElseThrow().backend());
+  }
+
+  @Test
+  public void snapshotProvenanceRoundTrips() throws Exception {
+    // submission_id and source_date are null until set; then round-trip.
+    var before = catalog.snapshotProvenance("hashV1", "DOID").orElseThrow();
+    assertEquals(null, before.submissionId());
+    assertEquals(null, before.sourceDate());
+
+    catalog.setSnapshotProvenance("hashV1", "DOID", 352, "2025-01-01");
+    var after = catalog.snapshotProvenance("hashV1", "DOID").orElseThrow();
+    assertEquals(Integer.valueOf(352), after.submissionId());
+    assertEquals("2025-01-01", after.sourceDate());
+    assertEquals("bioportal", after.backend()); // unchanged
+  }
+
+  @Test
+  public void snapshotProvenanceIsScopedToTheAcronym() throws Exception {
+    // A content hash shared by two ontologies keeps separate provenance rows (as for the snapshot).
+    catalog.upsertOntology(new OntologyInfo("SHARED-A", "A", null, "SKOS"));
+    catalog.upsertOntology(new OntologyInfo("SHARED-B", "B", null, "SKOS"));
+    String h = "shared";
+    catalog.addSnapshot(new SnapshotInfo(h, "SHARED-A", "1", "2025-01-01", "2025-01-02T00:00:00Z",
+        "SKOS", "subsumption", 1, 1, "/a.sqlite", h, "open"));
+    catalog.addSnapshot(new SnapshotInfo(h, "SHARED-B", "1", "2025-01-01", "2025-01-02T00:00:00Z",
+        "SKOS", "subsumption", 1, 1, "/b.sqlite", h, "open"));
+    catalog.setSnapshotProvenance(h, "SHARED-A", 10, "2025-01-01");
+
+    assertEquals(Integer.valueOf(10), catalog.snapshotProvenance(h, "SHARED-A").orElseThrow().submissionId());
+    assertEquals(null, catalog.snapshotProvenance(h, "SHARED-B").orElseThrow().submissionId());
+  }
+
+  @Test
+  public void unknownSnapshotProvenanceIsEmpty() throws Exception {
+    assertTrue(catalog.snapshotProvenance("nope", "DOID").isEmpty());
+  }
+
+  @Test
+  public void sourceDateExtractedFromDeclaredVersionString() {
+    // A bare or embedded ISO date is a self-claimed source date; free-text/non-ISO yields null.
+    assertEquals("2026-06-08", CatalogStore.SnapshotProvenance.sourceDateFromDeclaredVersion("2026-06-08"));
+    assertEquals("2021-10-26",
+        CatalogStore.SnapshotProvenance.sourceDateFromDeclaredVersion("releases/2021-10-26"));
+    assertEquals(null, CatalogStore.SnapshotProvenance.sourceDateFromDeclaredVersion("Version 1.0.0"));
+    assertEquals(null, CatalogStore.SnapshotProvenance.sourceDateFromDeclaredVersion("10-2024"));
+    assertEquals(null, CatalogStore.SnapshotProvenance.sourceDateFromDeclaredVersion("2026-13-40")); // invalid
+    assertEquals(null, CatalogStore.SnapshotProvenance.sourceDateFromDeclaredVersion(null));
+  }
+
+  @Test
   public void inMemoryCatalogHasNoBaseDir() {
     // The shared in-memory catalog has no file, so no base directory to resolve against.
     assertTrue(catalog.baseDir().isEmpty());
