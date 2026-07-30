@@ -213,6 +213,33 @@ public class CatalogStoreTest {
   }
 
   @Test
+  public void ontologyIri_storesCanonicalAndProvenanceRoundTrip() throws Exception {
+    // Unset until derived.
+    assertTrue(catalog.ontologyIri("DOID").isEmpty());
+    catalog.setOntologyIri("DOID", "http://purl.obolibrary.org/obo/doid",
+        "http://purl.obolibrary.org/obo/DOID_");
+    assertEquals("http://purl.obolibrary.org/obo/doid", catalog.ontologyIri("DOID").orElseThrow());
+    // Re-deriving overwrites rather than duplicating.
+    catalog.setOntologyIri("DOID", "http://purl.obolibrary.org/obo/doid2", "raw2");
+    assertEquals("http://purl.obolibrary.org/obo/doid2", catalog.ontologyIri("DOID").orElseThrow());
+  }
+
+  @Test
+  public void ontologyIri_unknownAcronymIsEmpty() throws Exception {
+    assertTrue(catalog.ontologyIri("NOPE").isEmpty());
+  }
+
+  @Test
+  public void initSchemaIsIdempotentForTheAddedColumns() throws Exception {
+    // ensureColumn must not fail when the iri / raw_namespace columns already exist (re-run of the
+    // backfill, or a fresh catalog whose CREATE already has them).
+    catalog.initSchema();
+    catalog.initSchema();
+    catalog.setOntologyIri("DOID", "http://purl.obolibrary.org/obo/doid", "raw");
+    assertEquals("http://purl.obolibrary.org/obo/doid", catalog.ontologyIri("DOID").orElseThrow());
+  }
+
+  @Test
   public void inMemoryCatalogHasNoBaseDir() {
     // The shared in-memory catalog has no file, so no base directory to resolve against.
     assertTrue(catalog.baseDir().isEmpty());

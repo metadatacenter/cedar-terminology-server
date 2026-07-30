@@ -60,6 +60,44 @@ public class SnapshotStoreTest {
   }
 
   @Test
+  public void dominantOwnIdspace_picksOwnSpaceOverBulkImport() throws Exception {
+    // OBI-like: mostly imported CHEBI_ concepts, a minority of its own OBI_ terms. Acronym-keying
+    // must resolve the own space, not the more frequent import — this is the canonical-iri source.
+    try (SnapshotStore s = SnapshotStore.openInMemory()) {
+      s.initSchema();
+      for (int i = 0; i < 20; i++) {
+        s.addConcept("http://purl.obolibrary.org/obo/CHEBI_" + i, "chebi " + i); // bulk import (majority)
+      }
+      s.addConcept("http://purl.obolibrary.org/obo/OBI_1", "assay");
+      s.addConcept("http://purl.obolibrary.org/obo/OBI_2", "material");
+      s.materialize();
+
+      assertEquals("http://purl.obolibrary.org/obo/OBI_", s.dominantOwnIdspace("OBI").orElseThrow());
+    }
+  }
+
+  @Test
+  public void dominantOwnIdspace_nonOboNamespace() throws Exception {
+    try (SnapshotStore s = SnapshotStore.openInMemory()) {
+      s.initSchema();
+      s.addConcept("http://purl.bioontology.org/ontology/MESH/D000001", "Calcimycin");
+      s.addConcept("http://purl.bioontology.org/ontology/MESH/D000002", "Temefos");
+      s.materialize();
+
+      assertEquals("http://purl.bioontology.org/ontology/MESH/", s.dominantOwnIdspace("MESH").orElseThrow());
+    }
+  }
+
+  @Test
+  public void dominantOwnIdspace_emptySnapshotIsEmpty() throws Exception {
+    try (SnapshotStore s = SnapshotStore.openInMemory()) {
+      s.initSchema();
+      s.materialize();
+      assertTrue(s.dominantOwnIdspace("ANY").isEmpty());
+    }
+  }
+
+  @Test
   public void pruneDeadEndImportRoots_dropsUnlabeledForeignLeavesButKeepsEntryPoints() throws Exception {
     try (SnapshotStore s = SnapshotStore.openInMemory()) {
       s.initSchema();

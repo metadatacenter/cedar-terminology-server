@@ -287,6 +287,38 @@ public class SnapshotStore implements AutoCloseable {
     return own;
   }
 
+  /**
+   * The ontology's single dominant own ID-space: the most frequent among {@link #ownIdspaces}, or
+   * empty when the snapshot holds no concepts. This is the raw term-ID namespace (trailing separator
+   * intact — {@code .../obo/DOID_}, {@code .../ontology/MESH/}) from which the canonical ontology IRI
+   * is normalized ({@link OntologyIri#canonical}). Acronym-keyed like {@link #ownIdspaces}, so an
+   * import-heavy ontology resolves to its own space (OBI → {@code obo/OBI_}), not a bulk-imported one
+   * (OBI's most frequent concept space is {@code obo/CHEBI_}).
+   */
+  public java.util.Optional<String> dominantOwnIdspace(String acronym) throws SQLException {
+    java.util.Set<String> own = ownIdspaces(acronym);
+    if (own.isEmpty()) {
+      return java.util.Optional.empty();
+    }
+    java.util.Map<String, Integer> freq = new java.util.HashMap<>();
+    try (Statement s = connection.createStatement();
+         ResultSet rs = s.executeQuery("SELECT iri FROM concept")) {
+      while (rs.next()) {
+        String sp = idspace(rs.getString(1));
+        if (own.contains(sp)) {
+          freq.merge(sp, 1, Integer::sum);
+        }
+      }
+    }
+    if (freq.isEmpty()) {
+      // Own spaces were identified from the acronym but none was counted among concepts (e.g. the
+      // fallback picked a space no concept sits directly in): keep resolution deterministic.
+      return java.util.Optional.of(java.util.Collections.min(own));
+    }
+    return java.util.Optional.of(
+        java.util.Collections.max(freq.entrySet(), java.util.Map.Entry.comparingByValue()).getKey());
+  }
+
   /** Common imported / upper-reference ontologies and meta vocabularies — consulted only in the
    *  {@link #ownIdspaces} frequency fallback, to avoid mistaking imported content for the ontology's
    *  own. Never applied when the acronym itself matches a namespace, so gating one of these

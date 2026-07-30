@@ -103,7 +103,9 @@ public class CatalogStore implements AutoCloseable {
             acronym        TEXT PRIMARY KEY,
             name           TEXT NOT NULL,
             source_iri     TEXT,
-            default_format TEXT
+            default_format TEXT,
+            iri            TEXT,
+            raw_namespace  TEXT
           )""");
       // The key is (version_id, acronym), not version_id alone: version_id is a pure content hash,
       // and two different ontologies can legitimately publish byte-identical downloads (INCENTIVE and
@@ -136,6 +138,26 @@ public class CatalogStore implements AutoCloseable {
             PRIMARY KEY (acronym, tag),
             FOREIGN KEY (version_id, acronym) REFERENCES snapshot(version_id, acronym)
           )""");
+    }
+    // Migrate catalogs created before the canonical-iri columns existed. Additive and idempotent, so
+    // initSchema stays safe to call on any existing catalog (the iri backfill calls it).
+    ensureColumn("ontology", "iri", "TEXT");
+    ensureColumn("ontology", "raw_namespace", "TEXT");
+  }
+
+  /** Adds {@code column} to {@code table} when absent; a no-op when it is already there. Lets
+   *  {@link #initSchema} evolve an on-disk catalog without a full migration. */
+  private void ensureColumn(String table, String column, String type) throws SQLException {
+    try (Statement s = connection.createStatement();
+         ResultSet rs = s.executeQuery("PRAGMA table_info(" + table + ")")) {
+      while (rs.next()) {
+        if (column.equalsIgnoreCase(rs.getString("name"))) {
+          return;
+        }
+      }
+    }
+    try (Statement s = connection.createStatement()) {
+      s.executeUpdate("ALTER TABLE " + table + " ADD COLUMN " + column + " " + type);
     }
   }
 
@@ -188,6 +210,32 @@ public class CatalogStore implements AutoCloseable {
       ps.setString(11, s.fileHash());
       ps.setString(12, s.licenseTier());
       ps.executeUpdate();
+    }
+  }
+
+  /**
+   * Records an ontology's canonical {@code iri} (its cross-source identity) and the raw term-ID
+   * {@code rawNamespace} it was derived from (kept as provenance). Set by the derivation backfill from
+   * concepts already on disk; a no-op when the acronym is unknown. Idempotent — re-deriving overwrites.
+   */
+  public void setOntologyIri(String acronym, String iri, String rawNamespace) throws SQLException {
+    try (PreparedStatement ps = connection.prepareStatement(
+        "UPDATE ontology SET iri = ?, raw_namespace = ? WHERE acronym = ?")) {
+      ps.setString(1, iri);
+      ps.setString(2, rawNamespace);
+      ps.setString(3, acronym);
+      ps.executeUpdate();
+    }
+  }
+
+  /** The ontology's canonical {@code iri}, or empty when the acronym is unknown or its iri is not yet
+   *  derived. */
+  public Optional<String> ontologyIri(String acronym) throws SQLException {
+    try (PreparedStatement ps = connection.prepareStatement("SELECT iri FROM ontology WHERE acronym = ?")) {
+      ps.setString(1, acronym);
+      try (ResultSet rs = ps.executeQuery()) {
+        return rs.next() ? Optional.ofNullable(rs.getString(1)) : Optional.empty();
+      }
     }
   }
 
