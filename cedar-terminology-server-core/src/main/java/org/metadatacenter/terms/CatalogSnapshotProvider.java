@@ -149,13 +149,22 @@ public class CatalogSnapshotProvider implements SqliteTerminologyService.Snapsho
   /**
    * Builds the {@link VersionTriple} for a snapshot: content-hash id, effective date (the source's
    * release date, or the ingest date when the source records none), and the declared-version label
-   * as-is (may be null). The effective date is the calendar-date component of the stored timestamp —
-   * BioPortal's timestamps are day-granular, so the time-of-day and UTC offset carry no information.
+   * as-is (may be null).
    */
   static VersionTriple toTriple(CatalogStore.SnapshotInfo s) {
+    return new VersionTriple(s.versionId(), effectiveDate(s), s.declaredVersion());
+  }
+
+  /**
+   * The date this snapshot's state entered circulation: the calendar-date component of the source's
+   * release timestamp, or of the ingest timestamp when the source records no release. BioPortal's
+   * timestamps are day-granular, so the time-of-day and UTC offset carry no information; truncating
+   * to the day is both faithful and offset-independent. Shared by the triple and the versions list
+   * so the two never disagree.
+   */
+  private static String effectiveDate(CatalogStore.SnapshotInfo s) {
     String source = s.releasedAt() != null ? s.releasedAt() : s.ingestedAt();
-    String effectiveDate = source != null && source.length() >= 10 ? source.substring(0, 10) : source;
-    return new VersionTriple(s.versionId(), effectiveDate, s.declaredVersion());
+    return source != null && source.length() >= 10 ? source.substring(0, 10) : source;
   }
 
   @Override
@@ -168,7 +177,7 @@ public class CatalogSnapshotProvider implements SqliteTerminologyService.Snapsho
       List<OntologyVersion> out = new ArrayList<>();
       for (CatalogStore.SnapshotInfo s : catalog.listSnapshots(ontology)) {
         out.add(new OntologyVersion(
-            s.versionId(), s.declaredVersion(), s.releasedAt(), s.versionId().equals(latest)));
+            s.versionId(), s.declaredVersion(), s.releasedAt(), effectiveDate(s), s.versionId().equals(latest)));
       }
       return out;
     } catch (SQLException e) {

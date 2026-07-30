@@ -101,8 +101,9 @@ public class OntologyResource extends AbstractTerminologyServerResource {
   @Path("ontologies/{id}/versions")
   @Operation(summary = "List local versions of an ontology",
       description = "Versions of an ontology available in the local, version-pinned store, each with "
-          + "its content-hash id, self-declared version, release date, and whether it is the current "
-          + "one. Empty when the ontology is served from BioPortal (which has no equivalent).",
+          + "its content-hash id, self-declared version, release timestamp, effectiveDate (the "
+          + "release day, or ingest day when the source records no release), and whether it is the "
+          + "current one. Empty when the ontology is served from BioPortal (which has no equivalent).",
       tags = {"Ontologies"})
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "Successful operation"),

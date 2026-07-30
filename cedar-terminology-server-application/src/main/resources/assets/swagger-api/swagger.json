@@ -304,7 +304,7 @@
     },
     "/bioportal/ontologies/{id}/versions" : {
       "get" : {
-        "description" : "Versions of an ontology available in the local, version-pinned store, each with its content-hash id, self-declared version, release date, and whether it is the current one. Empty when the ontology is served from BioPortal (which has no equivalent).",
+        "description" : "Versions of an ontology available in the local, version-pinned store, each with its content-hash id, self-declared version, release timestamp, effectiveDate (the release day, or ingest day when the source records no release), and whether it is the current one. Empty when the ontology is served from BioPortal (which has no equivalent).",
         "operationId" : "getVersions",
         "parameters" : [ {
           "description" : "Ontology acronym. Examples: DOID, INCENTIVE.",

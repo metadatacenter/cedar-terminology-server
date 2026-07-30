@@ -149,6 +149,16 @@ public class CatalogSnapshotProviderTest {
   }
 
   @Test
+  public void listedVersionsCarryTheFullTriple() {
+    // Each entry surfaces effectiveDate (the release day) alongside id and declaredVersion, so a
+    // /versions listing and a resolve-current agree on the same triple. v1 released 2025-01-01.
+    OntologyVersion v1 = provider.versions("EX").stream()
+        .filter(v -> v.versionId().equals("v1")).findFirst().orElseThrow();
+    assertEquals("1.0", v1.version());
+    assertEquals("2025-01-01", v1.effectiveDate());
+  }
+
+  @Test
   public void unknownVersionResolvesEmpty() {
     assertTrue(provider.forOntology("EX", "no-such-version").isEmpty());
   }

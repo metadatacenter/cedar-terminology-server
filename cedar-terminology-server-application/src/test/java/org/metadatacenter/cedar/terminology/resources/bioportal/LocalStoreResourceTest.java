@@ -19,6 +19,7 @@ import org.metadatacenter.model.SystemComponent;
 import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.terms.domainObjects.OntologyClass;
 import org.metadatacenter.terms.domainObjects.OntologyVersion;
+import org.metadatacenter.terms.domainObjects.VersionTriple;
 import org.metadatacenter.terms.domainObjects.SearchResult;
 import org.metadatacenter.terms.domainObjects.VersionDiff;
 import org.metadatacenter.terms.store.CatalogStore;
@@ -184,6 +185,26 @@ public class LocalStoreResourceTest {
     List<OntologyVersion> latest = versions.stream().filter(OntologyVersion::latest).collect(Collectors.toList());
     Assertions.assertEquals(1, latest.size());
     Assertions.assertEquals("v2", latest.get(0).versionId());
+    // Each entry carries the full triple: effectiveDate (the release day) alongside the id and the
+    // declared version. v2 released 2025-06-01.
+    Assertions.assertEquals("2025-06-01", latest.get(0).effectiveDate());
+    Assertions.assertEquals("2.0", latest.get(0).version());
+  }
+
+  @Test
+  public void currentVersionTripleServedFromLocalStore() {
+    String url = childrenUrlBase + "/" + ONT + "/versions/current";
+    Response response = clientBuilder.build().target(url).request()
+        .header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
+
+    Assertions.assertEquals(Status.OK.getStatusCode(), response.getStatus());
+    VersionTriple triple = response.readEntity(VersionTriple.class);
+    response.close();
+
+    // The current snapshot is the tagged latest (v2): its content-hash id, release day, and label.
+    Assertions.assertEquals("v2", triple.id());
+    Assertions.assertEquals("2025-06-01", triple.effectiveDate());
+    Assertions.assertEquals("2.0", triple.declaredVersion());
   }
 
   @Test
