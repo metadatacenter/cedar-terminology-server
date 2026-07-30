@@ -64,6 +64,15 @@ public class SqliteTerminologyService implements ITerminologyService {
     }
 
     /**
+     * The version triple of an ontology's current ("latest") snapshot, or empty when the provider
+     * does not serve it. Empty by default. This is the "resolve current" capability the publish
+     * pipeline calls to freeze a value constraint.
+     */
+    default Optional<VersionTriple> currentVersion(String ontology) {
+      return Optional.empty();
+    }
+
+    /**
      * Metadata for the ontologies this provider serves locally — the catalog's own registry, used to
      * answer the ontology-list endpoint without crawling BioPortal. Empty by default (a bare provider
      * that only resolves snapshot stores).
@@ -176,6 +185,11 @@ public class SqliteTerminologyService implements ITerminologyService {
   @Override
   public List<OntologyVersion> getVersions(String ontology) {
     return provider.versions(ontology);
+  }
+
+  @Override
+  public VersionTriple resolveCurrentVersion(String ontology) {
+    return provider.currentVersion(ontology).orElse(null);
   }
 
   @Override

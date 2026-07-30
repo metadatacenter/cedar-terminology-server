@@ -297,6 +297,13 @@ public class RoutingTerminologyService implements ITerminologyService {
   }
 
   @Override
+  public VersionTriple resolveCurrentVersion(String ontology) throws IOException {
+    // A local-store concept: a locally-served ontology resolves its current triple; everything else
+    // returns null (the remote backend has no content-hash triple), signalling "cannot freeze here".
+    return dispatch(ontology, s -> s.resolveCurrentVersion(ontology));
+  }
+
+  @Override
   public VersionDiff diffVersions(String ontology, String fromVersion, String toVersion) throws IOException {
     return dispatch(ontology, s -> s.diffVersions(ontology, fromVersion, toVersion));
   }

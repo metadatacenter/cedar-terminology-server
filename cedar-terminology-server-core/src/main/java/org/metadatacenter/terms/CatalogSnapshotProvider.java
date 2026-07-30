@@ -2,6 +2,7 @@ package org.metadatacenter.terms;
 
 import org.metadatacenter.terms.domainObjects.Ontology;
 import org.metadatacenter.terms.domainObjects.OntologyVersion;
+import org.metadatacenter.terms.domainObjects.VersionTriple;
 import org.metadatacenter.terms.store.CatalogStore;
 import org.metadatacenter.terms.store.SnapshotStore;
 import org.slf4j.Logger;
@@ -130,6 +131,31 @@ public class CatalogSnapshotProvider implements SqliteTerminologyService.Snapsho
     } catch (java.time.format.DateTimeParseException notADate) {
       return Optional.empty();
     }
+  }
+
+  @Override
+  public Optional<VersionTriple> currentVersion(String ontology) {
+    if (ontology == null || !allowed.contains(ontology)) {
+      return Optional.empty();
+    }
+    try {
+      return catalog.resolveLatest(ontology).map(CatalogSnapshotProvider::toTriple);
+    } catch (SQLException e) {
+      log.warn("Catalog current-version lookup failed for ontology {}", ontology, e);
+      return Optional.empty();
+    }
+  }
+
+  /**
+   * Builds the {@link VersionTriple} for a snapshot: content-hash id, effective date (the source's
+   * release date, or the ingest date when the source records none), and the declared-version label
+   * as-is (may be null). The effective date is the calendar-date component of the stored timestamp —
+   * BioPortal's timestamps are day-granular, so the time-of-day and UTC offset carry no information.
+   */
+  static VersionTriple toTriple(CatalogStore.SnapshotInfo s) {
+    String source = s.releasedAt() != null ? s.releasedAt() : s.ingestedAt();
+    String effectiveDate = source != null && source.length() >= 10 ? source.substring(0, 10) : source;
+    return new VersionTriple(s.versionId(), effectiveDate, s.declaredVersion());
   }
 
   @Override

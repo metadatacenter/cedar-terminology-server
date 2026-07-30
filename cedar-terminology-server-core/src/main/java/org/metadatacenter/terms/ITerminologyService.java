@@ -56,6 +56,16 @@ public interface ITerminologyService {
   List<OntologyVersion> getVersions(String ontology) throws IOException;
 
   /**
+   * The version triple ({@code id}, {@code effectiveDate}, {@code declaredVersion}) of an ontology's
+   * current ("latest") snapshot, or {@code null} when it is not served locally (BioPortal has no
+   * content-hash triple). This is the terminology server's one publish-time capability: the publish
+   * pipeline calls it per value-constraint entry to freeze the entry against its ontology's current
+   * state. A branch, class, or value-set entry passes its ontology's acronym — the triple pins the
+   * ontology snapshot the sub-entry lives in.
+   */
+  VersionTriple resolveCurrentVersion(String ontology) throws IOException;
+
+  /**
    * The vocabulary diff between two locally-stored versions of an ontology (each a version_id or a
    * tag such as {@code latest}), or null when the ontology or a version is not available locally.
    */

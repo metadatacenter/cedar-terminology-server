@@ -5,6 +5,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.metadatacenter.terms.domainObjects.Ontology;
 import org.metadatacenter.terms.domainObjects.OntologyVersion;
+import org.metadatacenter.terms.domainObjects.VersionTriple;
 import org.metadatacenter.terms.store.CatalogStore;
 import org.metadatacenter.terms.store.SnapshotStore;
 
@@ -18,6 +19,7 @@ import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -189,6 +191,46 @@ public class CatalogSnapshotProviderTest {
         "OWL", "subsumption", 2, 1, v3File.toString(), "v3", "open"));
 
     assertTrue(provider.forOntology("EX", "2.0").orElseThrow().prefLabel(BASE + "fox").isPresent());
+  }
+
+  @Test
+  public void resolvesCurrentVersionTripleForLatest() {
+    // latest is v1: released 2025-01-01, declared "1.0", content-hash id "v1".
+    VersionTriple t = provider.currentVersion("EX").orElseThrow();
+    assertEquals("v1", t.id());
+    assertEquals("2025-01-01", t.effectiveDate());
+    assertEquals("1.0", t.declaredVersion());
+  }
+
+  @Test
+  public void currentVersionEmptyWhenNotServed() {
+    assertTrue(provider.currentVersion("OTHER").isEmpty()); // allowlisted but never ingested
+    assertTrue(provider.currentVersion("NOPE").isEmpty());  // not allowlisted
+    assertTrue(provider.currentVersion(null).isEmpty());
+  }
+
+  @Test
+  public void serviceReturnsNullTripleWhenNotServedLocally() throws Exception {
+    // The ITerminologyService contract: null (not an empty Optional) signals "cannot freeze here",
+    // which the publish pipeline reads as "defer to remote / leave unpinned".
+    SqliteTerminologyService service = new SqliteTerminologyService(provider);
+    assertEquals("v1", service.resolveCurrentVersion("EX").id());
+    assertNull(service.resolveCurrentVersion("OTHER"));
+  }
+
+  @Test
+  public void tripleEffectiveDateFallsBackToIngestDateAndTruncatesToDay() {
+    // A source release date is truncated to its calendar day.
+    VersionTriple withRelease = CatalogSnapshotProvider.toTriple(new CatalogStore.SnapshotInfo(
+        "h", "EX", "9.9", "2025-06-01T00:00:00.000+00:00", "2026-07-29T02:56:36.324676Z",
+        "OWL", "subsumption", 1, 1, "/x", "h", "open"));
+    assertEquals("2025-06-01", withRelease.effectiveDate());
+    // No source release date -> the ingest timestamp stands in, likewise truncated. Label may be null.
+    VersionTriple noRelease = CatalogSnapshotProvider.toTriple(new CatalogStore.SnapshotInfo(
+        "h", "EX", null, null, "2026-07-29T02:56:36.324676Z",
+        "OWL", "subsumption", 1, 1, "/x", "h", "open"));
+    assertEquals("2026-07-29", noRelease.effectiveDate());
+    assertNull(noRelease.declaredVersion());
   }
 
   @Test

@@ -654,6 +654,11 @@ public class TerminologyService implements ITerminologyService {
   }
 
   @Override
+  public VersionTriple resolveCurrentVersion(String ontology) {
+    return null; // BioPortal has no content-hash triple to freeze; only the local store can resolve one
+  }
+
+  @Override
   public VersionDiff diffVersions(String ontology, String fromVersion, String toVersion) {
     return null; // diffing local content-hash versions is not a BioPortal capability
   }

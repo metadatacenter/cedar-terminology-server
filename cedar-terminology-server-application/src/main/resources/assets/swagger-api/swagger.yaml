@@ -271,6 +271,36 @@ paths:
       summary: List local versions of an ontology
       tags:
       - Ontologies
+  /bioportal/ontologies/{id}/versions/current:
+    get:
+      description: "The version triple {id (content hash), effectiveDate, declaredVersion}\
+        \ of the ontology's current (latest) local snapshot. This is the publish-time\
+        \ 'resolve current' capability: a publish pipeline calls it per value-constraint\
+        \ entry to freeze the entry against its ontology's current state. 404 when\
+        \ the ontology is not served locally (BioPortal has no content-hash triple\
+        \ to freeze)."
+      operationId: resolveCurrentVersion
+      parameters:
+      - description: "Ontology acronym. Examples: DOID, INCENTIVE."
+        in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: Successful operation
+        "401":
+          description: Unauthorized
+        "404":
+          description: Ontology not served locally
+        "500":
+          description: Internal server error
+      security:
+      - api_key: []
+      summary: Resolve the current version triple of an ontology
+      tags:
+      - Ontologies
   /bioportal/ontologies/{id}/versions/diff:
     get:
       description: "The vocabulary diff (concept and subsumption-edge additions/removals,\
