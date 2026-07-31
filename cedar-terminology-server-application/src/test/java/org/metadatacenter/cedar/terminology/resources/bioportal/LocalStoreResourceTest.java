@@ -110,6 +110,10 @@ public class LocalStoreResourceTest {
         c.addSnapshot(new CatalogStore.SnapshotInfo("v2", ONT, "2.0", "2025-06-01", "2025-06-01T00:00:00Z",
             "OWL", "subsumption", 4, 3, snapshot2.toString(), "v2", "open"));
         c.setTag(ONT, CatalogStore.TAG_LATEST, "v2");
+        // Claim the term ID-space so a class/term IRI can be mapped back to its owning ontology (the
+        // reverse of the A6 iri derivation). idspace("http://localtest/cancer") is "http://localtest/",
+        // so that is LOCALTEST's raw namespace; the iri value itself is only provenance here.
+        c.setOntologyIri(ONT, BASE, BASE);
 
         // A value-set collection, versioned by the same content-hash mechanism. Deliberately NOT in
         // the localOntologies allowlist below: value-set-collection version resolution gates on the
@@ -248,6 +252,56 @@ public class LocalStoreResourceTest {
       Assertions.assertEquals(Status.NOT_FOUND.getStatusCode(), response.getStatus(),
           "collection=" + collection + " must not resolve");
     }
+  }
+
+  @Test
+  public void classCurrentVersionServedForLocalConceptIri() {
+    // A class-valued constraint names a term IRI but not its ontology. The IRI's namespace is mapped
+    // back to LOCALTEST, whose current triple (v2) is returned — the freeze-on-publish path for a
+    // class constraint. This is the only endpoint that resolves an ontology from a bare term IRI.
+    String url = "http://localhost:" + RULE.getLocalPort() + "/" + BP_ENDPOINT + "/classes/version-current?uri="
+        + URLEncoder.encode(BASE + "melanoma", StandardCharsets.UTF_8);
+    Response response = clientBuilder.build().target(url).request()
+        .header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
+
+    Assertions.assertEquals(Status.OK.getStatusCode(), response.getStatus());
+    VersionTriple triple = response.readEntity(VersionTriple.class);
+    response.close();
+
+    Assertions.assertEquals("v2", triple.id());
+    Assertions.assertEquals("2025-06-01", triple.effectiveDate());
+    Assertions.assertEquals("2.0", triple.declaredVersion());
+  }
+
+  @Test
+  public void classCurrentVersionIs404ForAnUnservedNamespace() {
+    // A term whose namespace maps to no locally served ontology cannot be pinned — 404, so a class
+    // constraint pointing outside the local store is left unpinned rather than mis-resolved.
+    String url = "http://localhost:" + RULE.getLocalPort() + "/" + BP_ENDPOINT + "/classes/version-current?uri="
+        + URLEncoder.encode("http://elsewhere.example/nope", StandardCharsets.UTF_8);
+    Response response = clientBuilder.build().target(url).request()
+        .header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
+    response.close();
+    Assertions.assertEquals(Status.NOT_FOUND.getStatusCode(), response.getStatus());
+  }
+
+  @Test
+  public void integratedSearchResolvesAPinByDeclaredVersion() {
+    // The pin is the self-declared label ("1.0"/"2.0"), not the content-hash id ("v1"/"v2") that
+    // integratedSearchHonoursPinnedVersionOverHttp uses — the declared-version branch of the resolver
+    // reached over HTTP. This is exactly the shape a frozen template carries. v1 has 3 concepts, v2 4.
+    Assertions.assertEquals(3, integratedSearchOntologyConceptCount(",\"version\":\"1.0\""));
+    Assertions.assertEquals(4, integratedSearchOntologyConceptCount(",\"version\":\"2.0\""));
+  }
+
+  @Test
+  public void integratedSearchResolvesAPinByAsOfDate() {
+    // A date pin serves the newest snapshot released on or before it (as-of-date resolution). v1
+    // released 2025-01-01, v2 2025-06-01: a 2025-03-01 pin lands on v1 (3 concepts), a later date on
+    // v2 (4). (A date before either would resolve to empty and fall back to the remote adapter, which
+    // is unconfigured here, so that boundary is left to the store-layer unit tests.)
+    Assertions.assertEquals(3, integratedSearchOntologyConceptCount(",\"version\":\"2025-03-01\""));
+    Assertions.assertEquals(4, integratedSearchOntologyConceptCount(",\"version\":\"2025-09-01\""));
   }
 
   @Test
