@@ -67,6 +67,7 @@ public class LocalStoreResourceTest {
   }
 
   private static final String ONT = "LOCALTEST";
+  private static final String VS = "LOCALVS";
   private static final String BASE = "http://localtest/";
 
   static {
@@ -109,6 +110,16 @@ public class LocalStoreResourceTest {
         c.addSnapshot(new CatalogStore.SnapshotInfo("v2", ONT, "2.0", "2025-06-01", "2025-06-01T00:00:00Z",
             "OWL", "subsumption", 4, 3, snapshot2.toString(), "v2", "open"));
         c.setTag(ONT, CatalogStore.TAG_LATEST, "v2");
+
+        // A value-set collection, versioned by the same content-hash mechanism. Deliberately NOT in
+        // the localOntologies allowlist below: value-set-collection version resolution gates on the
+        // catalog's kind marker, not the search/browse allowlist. It reuses the ONT snapshot file (the
+        // version-current endpoint reads only catalog columns for the triple).
+        c.upsertOntology(new CatalogStore.OntologyInfo(VS, "Local Value Sets", null, "SKOS"));
+        c.addSnapshot(new CatalogStore.SnapshotInfo("vs1", VS, "2024-05-01", "2024-05-01",
+            "2024-05-02T00:00:00Z", "SKOS", "subsumption", 3, 2, snapshot.toString(), "vs1", "open"));
+        c.setTag(VS, CatalogStore.TAG_LATEST, "vs1");
+        c.setOntologyKind(VS, CatalogStore.KIND_VALUE_SET_COLLECTION);
       }
 
       // Override the (empty) cedar-main.yml localStore config for this test. Uses the non-"cedar."
@@ -205,6 +216,38 @@ public class LocalStoreResourceTest {
     Assertions.assertEquals("v2", triple.id());
     Assertions.assertEquals("2025-06-01", triple.effectiveDate());
     Assertions.assertEquals("2.0", triple.declaredVersion());
+  }
+
+  @Test
+  public void valueSetCollectionCurrentVersionServedFromLocalStore() {
+    String url = "http://localhost:" + RULE.getLocalPort() + "/" + BP_ENDPOINT
+        + "/vs-collections/version-current?collection=" + VS;
+    Response response = clientBuilder.build().target(url).request()
+        .header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
+
+    Assertions.assertEquals(Status.OK.getStatusCode(), response.getStatus());
+    VersionTriple triple = response.readEntity(VersionTriple.class);
+    response.close();
+
+    // The collection's current snapshot triple — resolved even though LOCALVS is not in the ontology
+    // serving allowlist, because it is marked a value-set collection in the catalog.
+    Assertions.assertEquals("vs1", triple.id());
+    Assertions.assertEquals("2024-05-01", triple.effectiveDate());
+  }
+
+  @Test
+  public void valueSetCollectionCurrentVersionIs404ForAnOntologyOrUnknown() {
+    // An ordinary ontology acronym is not a value-set collection (the kind guard), and an unknown one
+    // is not served — both 404, so a value-set constraint pointing at neither is left unpinned.
+    for (String collection : new String[]{ONT, "NOPE"}) {
+      String url = "http://localhost:" + RULE.getLocalPort() + "/" + BP_ENDPOINT
+          + "/vs-collections/version-current?collection=" + collection;
+      Response response = clientBuilder.build().target(url).request()
+          .header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
+      response.close();
+      Assertions.assertEquals(Status.NOT_FOUND.getStatusCode(), response.getStatus(),
+          "collection=" + collection + " must not resolve");
+    }
   }
 
   @Test

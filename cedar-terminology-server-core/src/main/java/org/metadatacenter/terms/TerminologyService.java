@@ -664,6 +664,11 @@ public class TerminologyService implements ITerminologyService {
   }
 
   @Override
+  public VersionTriple resolveCurrentVersionForValueSetCollection(String vsCollection) {
+    return null; // requires a local content-hash snapshot of the collection; BioPortal has none
+  }
+
+  @Override
   public VersionDiff diffVersions(String ontology, String fromVersion, String toVersion) {
     return null; // diffing local content-hash versions is not a BioPortal capability
   }

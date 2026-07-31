@@ -21,6 +21,7 @@ import java.util.Comparator;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -118,6 +119,28 @@ public class IngestJobTest {
       assertEquals(List.of(BASE + "cat", BASE + "dog"), store.children(BASE + "mammal"));
       assertEquals("Dog", store.prefLabel(BASE + "dog").orElseThrow());
     }
+  }
+
+  @Test
+  public void ingestValueSetCollection_usesTheSameMechanismAndMarksKind() throws Exception {
+    // A value-set collection is ingested through the exact same content-hash path as an ontology (same
+    // snapshot, same version id), then its catalog row is marked kind=value_set_collection so its
+    // version resolves separately. This is what backs freeze-on-publish for a value-set constraint.
+    IngestJob job = new IngestJob(fakeSource());
+    Path snapshotDir = tempDir.resolve("snapshots");
+
+    IngestJob.IngestResult r = job.ingestValueSetCollectionLatest(catalog, "MYVS", snapshotDir);
+
+    // Same snapshot machinery as an ontology: file written, catalog registered, latest tag set.
+    assertEquals(5, r.classCount());
+    assertTrue(Files.exists(r.snapshotFile()));
+    CatalogStore.SnapshotInfo latest = catalog.resolveLatest("MYVS").orElseThrow();
+    assertEquals(r.versionId(), latest.versionId());
+    assertEquals(64, r.versionId().length()); // normalized content hash
+
+    // But the row is now a value-set collection, not an ontology.
+    assertTrue(catalog.isValueSetCollection("MYVS"));
+    assertFalse(catalog.isValueSetCollection("EX")); // an ordinary ingest stays an ontology
   }
 
   @Test

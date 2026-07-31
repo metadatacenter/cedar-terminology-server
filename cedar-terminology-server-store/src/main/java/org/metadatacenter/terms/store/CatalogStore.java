@@ -83,6 +83,17 @@ public class CatalogStore implements AutoCloseable {
   /** The conventional tag for the current version of an ontology. */
   public static final String TAG_LATEST = "latest";
 
+  /** {@code ontology.kind} for a regular ontology — the default for every existing row. */
+  public static final String KIND_ONTOLOGY = "ontology";
+  /**
+   * {@code ontology.kind} for a BioPortal value-set collection. A collection is a distinct BioPortal
+   * artifact type (its members are value sets, not ontology classes), but it is ingested and versioned
+   * through the same content-hash mechanism as an ontology, so it lives in the same tables with this
+   * discriminator. The discriminator keeps a value-set-collection version lookup from answering for an
+   * ontology of the same acronym, and vice versa.
+   */
+  public static final String KIND_VALUE_SET_COLLECTION = "value_set_collection";
+
   private final Connection connection;
   /**
    * Directory the catalog file lives in, used to resolve snapshot {@code file_path}s stored relative
@@ -140,7 +151,8 @@ public class CatalogStore implements AutoCloseable {
             source_iri     TEXT,
             default_format TEXT,
             iri            TEXT,
-            raw_namespace  TEXT
+            raw_namespace  TEXT,
+            kind           TEXT NOT NULL DEFAULT 'ontology'
           )""");
       // The key is (version_id, acronym), not version_id alone: version_id is a pure content hash,
       // and two different ontologies can legitimately publish byte-identical downloads (INCENTIVE and
@@ -181,6 +193,10 @@ public class CatalogStore implements AutoCloseable {
     // initSchema stays safe to call on any existing catalog (the iri backfill calls it).
     ensureColumn("ontology", "iri", "TEXT");
     ensureColumn("ontology", "raw_namespace", "TEXT");
+    // Artifact-kind discriminator: value-set collections share these tables with ontologies but must
+    // resolve separately. The constant DEFAULT means every existing row reads 'ontology' with no
+    // backfill; only a value-set-collection ingest sets it otherwise.
+    ensureColumn("ontology", "kind", "TEXT NOT NULL DEFAULT 'ontology'");
     // Provenance columns (display/audit only). backend carries a constant DEFAULT so every existing
     // row reads 'bioportal' with no separate backfill; submission_id and source_date are populated at
     // ingest and by the provenance backfill.
@@ -269,6 +285,39 @@ public class CatalogStore implements AutoCloseable {
       ps.setString(2, rawNamespace);
       ps.setString(3, acronym);
       ps.executeUpdate();
+    }
+  }
+
+  /**
+   * Records an ontology row's artifact {@code kind} (see {@link #KIND_ONTOLOGY} /
+   * {@link #KIND_VALUE_SET_COLLECTION}). Set by the value-set-collection ingest after the shared
+   * content-hash ingest has registered the row; a no-op when the acronym is unknown. Idempotent.
+   */
+  public void setOntologyKind(String acronym, String kind) throws SQLException {
+    try (PreparedStatement ps = connection.prepareStatement(
+        "UPDATE ontology SET kind = ? WHERE acronym = ?")) {
+      ps.setString(1, kind);
+      ps.setString(2, acronym);
+      ps.executeUpdate();
+    }
+  }
+
+  /**
+   * Whether an acronym is registered as a value-set collection (as opposed to an ordinary ontology, or
+   * unknown). Gates value-set-collection version resolution so it never answers for an ontology of the
+   * same acronym.
+   */
+  public boolean isValueSetCollection(String acronym) throws SQLException {
+    if (acronym == null) {
+      return false;
+    }
+    try (PreparedStatement ps = connection.prepareStatement(
+        "SELECT 1 FROM ontology WHERE acronym = ? AND kind = ?")) {
+      ps.setString(1, acronym);
+      ps.setString(2, KIND_VALUE_SET_COLLECTION);
+      try (ResultSet rs = ps.executeQuery()) {
+        return rs.next();
+      }
     }
   }
 

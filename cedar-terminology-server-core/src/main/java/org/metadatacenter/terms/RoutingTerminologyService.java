@@ -311,6 +311,13 @@ public class RoutingTerminologyService implements ITerminologyService {
   }
 
   @Override
+  public VersionTriple resolveCurrentVersionForValueSetCollection(String vsCollection) throws IOException {
+    // Only the local store has content-hash snapshots of value-set collections; BioPortal has none.
+    // The collection is not one of the routed ontologies, so this bypasses dispatch(ontology).
+    return local != null ? local.resolveCurrentVersionForValueSetCollection(vsCollection) : null;
+  }
+
+  @Override
   public VersionDiff diffVersions(String ontology, String fromVersion, String toVersion) throws IOException {
     return dispatch(ontology, s -> s.diffVersions(ontology, fromVersion, toVersion));
   }

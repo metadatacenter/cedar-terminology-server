@@ -76,6 +76,35 @@ public class IngestJob {
   }
 
   /**
+   * Ingests the latest submission of a BioPortal value-set collection and points {@code latest} at
+   * it. A collection is an ontology of type {@code VALUE_SET_COLLECTION} in BioPortal — fetched,
+   * downloaded, hashed, and snapshotted through the exact same content-hash mechanism as an ontology
+   * ({@link #ingestSubmission}); the only difference is that the catalog row is marked
+   * {@link CatalogStore#KIND_VALUE_SET_COLLECTION} so its version resolves separately. This is what
+   * lets a value-set-valued constraint be frozen on publish.
+   */
+  public IngestResult ingestValueSetCollectionLatest(CatalogStore catalog, String acronym, Path snapshotDir)
+      throws IOException, InterruptedException, SQLException {
+    IngestResult r = ingestLatest(catalog, acronym, snapshotDir);
+    catalog.setOntologyKind(acronym, CatalogStore.KIND_VALUE_SET_COLLECTION);
+    return r;
+  }
+
+  /**
+   * Ingests every submission (version) of a value-set collection and marks the collection's row as
+   * {@link CatalogStore#KIND_VALUE_SET_COLLECTION}. The value-set-collection analogue of
+   * {@link #ingestAll}, giving the collection real version history to resolve and diff.
+   */
+  public List<IngestResult> ingestAllValueSetCollection(CatalogStore catalog, String acronym, Path snapshotDir)
+      throws IOException, InterruptedException, SQLException {
+    List<IngestResult> results = ingestAll(catalog, acronym, snapshotDir);
+    if (!results.isEmpty()) {
+      catalog.setOntologyKind(acronym, CatalogStore.KIND_VALUE_SET_COLLECTION);
+    }
+    return results;
+  }
+
+  /**
    * Ingests every submission (version) of an ontology as its own snapshot, then points
    * {@code latest} at the newest (highest submission id). Older versions remain resolvable by their
    * content-hash version id. Submissions that fail to download or extract are logged and skipped so
@@ -308,13 +337,15 @@ public class IngestJob {
   }
 
   /**
-   * Usage: IngestJob &lt;catalogPath&gt; &lt;snapshotDir&gt; [--all] &lt;acronym&gt; [acronym...]
+   * Usage: IngestJob &lt;catalogPath&gt; &lt;snapshotDir&gt; [--all] [--valuesets] &lt;acronym&gt; [acronym...]
    * With {@code --all}, every submission (version) of each ontology is ingested; otherwise only the
-   * latest. The BioPortal API key is read from the {@code BIOPORTAL_API_KEY} environment variable.
+   * latest. With {@code --valuesets}, the listed acronyms are ingested as value-set collections
+   * (same content-hash mechanism, marked {@code value_set_collection} in the catalog) rather than
+   * ontologies. The BioPortal API key is read from the {@code BIOPORTAL_API_KEY} environment variable.
    */
   public static void main(String[] args) throws Exception {
     if (args.length < 3) {
-      System.err.println("Usage: IngestJob <catalogPath> <snapshotDir> [--all] <acronym> [acronym...]");
+      System.err.println("Usage: IngestJob <catalogPath> <snapshotDir> [--all] [--valuesets] <acronym> [acronym...]");
       System.exit(2);
     }
     String apiKey = System.getenv("BIOPORTAL_API_KEY");
@@ -327,11 +358,14 @@ public class IngestJob {
     Files.createDirectories(snapshotDir);
 
     boolean all = false;
+    boolean valuesets = false;
     List<Integer> submissionIds = new ArrayList<>();
     List<String> acronyms = new ArrayList<>();
     for (int i = 2; i < args.length; i++) {
       if ("--all".equals(args[i])) {
         all = true;
+      } else if ("--valuesets".equals(args[i])) {
+        valuesets = true;
       } else if ("--submission".equals(args[i]) && i + 1 < args.length) {
         submissionIds.add(Integer.parseInt(args[++i]));
       } else {
@@ -354,16 +388,24 @@ public class IngestJob {
             System.out.printf("%s submission %d (%s): version %s, %d classes, %d edges%n",
                 acronym, id, sub.format(), r.versionId(), r.classCount(), r.edgeCount());
           }
+          if (valuesets) {
+            catalog.setOntologyKind(acronym, CatalogStore.KIND_VALUE_SET_COLLECTION);
+          }
         } else if (all) {
-          List<IngestResult> rs = job.ingestAll(catalog, acronym, snapshotDir);
-          System.out.printf("%s: ingested %d versions (latest -> %s)%n",
-              acronym, rs.size(),
+          List<IngestResult> rs = valuesets
+              ? job.ingestAllValueSetCollection(catalog, acronym, snapshotDir)
+              : job.ingestAll(catalog, acronym, snapshotDir);
+          System.out.printf("%s%s: ingested %d versions (latest -> %s)%n",
+              valuesets ? "[value-set collection] " : "", acronym, rs.size(),
               rs.stream().max(Comparator.comparingInt(IngestResult::submissionId))
                   .map(IngestResult::versionId).orElse("none"));
         } else {
-          IngestResult r = job.ingestLatest(catalog, acronym, snapshotDir);
-          System.out.printf("%s: version %s, %d classes, %d edges -> %s%n",
-              acronym, r.versionId(), r.classCount(), r.edgeCount(), r.snapshotFile());
+          IngestResult r = valuesets
+              ? job.ingestValueSetCollectionLatest(catalog, acronym, snapshotDir)
+              : job.ingestLatest(catalog, acronym, snapshotDir);
+          System.out.printf("%s%s: version %s, %d classes, %d edges -> %s%n",
+              valuesets ? "[value-set collection] " : "", acronym, r.versionId(), r.classCount(),
+              r.edgeCount(), r.snapshotFile());
         }
       }
     }

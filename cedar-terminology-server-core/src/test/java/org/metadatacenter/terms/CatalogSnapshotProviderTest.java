@@ -237,6 +237,34 @@ public class CatalogSnapshotProviderTest {
   }
 
   @Test
+  public void resolvesCurrentVersionForValueSetCollection() throws Exception {
+    // A value-set collection MYVS, ingested and marked as such, resolves its current triple — even
+    // though it is NOT in the ontology serving allowlist (Set.of("EX","OTHER")). Value-set-collection
+    // version resolution gates on the catalog's kind marker, not the search/browse allowlist.
+    catalog.upsertOntology(new CatalogStore.OntologyInfo("MYVS", "My Value Sets", null, "SKOS"));
+    catalog.addSnapshot(new CatalogStore.SnapshotInfo("vs1", "MYVS", "2024-05-01", "2024-05-01",
+        "2024-05-02T00:00:00Z", "SKOS", "subsumption", 3, 2, "/snapshots/MYVS/vs1.sqlite", "vs1", "open"));
+    catalog.setTag("MYVS", CatalogStore.TAG_LATEST, "vs1");
+    catalog.setOntologyKind("MYVS", CatalogStore.KIND_VALUE_SET_COLLECTION);
+
+    VersionTriple triple = provider.currentVersionForValueSetCollection("MYVS").orElseThrow();
+    assertEquals("vs1", triple.id());
+    assertEquals("2024-05-01", triple.effectiveDate());
+
+    // An ordinary ontology (EX) is not a value-set collection: the kind guard declines, so an
+    // ontology of the same acronym can never answer here.
+    assertTrue(provider.currentVersionForValueSetCollection("EX").isEmpty());
+    assertTrue(provider.currentVersionForValueSetCollection("NOPE").isEmpty());
+    assertTrue(provider.currentVersionForValueSetCollection(null).isEmpty());
+
+    // End-to-end through the service: the freeze capability behind currentVersionByValueSetCollection.
+    SqliteTerminologyService service = new SqliteTerminologyService(provider);
+    assertEquals("vs1", service.resolveCurrentVersionForValueSetCollection("MYVS").id());
+    assertNull(service.resolveCurrentVersionForValueSetCollection("EX"));   // an ontology, not a collection
+    assertNull(service.resolveCurrentVersionForValueSetCollection("NOPE")); // unknown
+  }
+
+  @Test
   public void serviceReturnsNullTripleWhenNotServedLocally() throws Exception {
     // The ITerminologyService contract: null (not an empty Optional) signals "cannot freeze here",
     // which the publish pipeline reads as "defer to remote / leave unpinned".

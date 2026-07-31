@@ -74,6 +74,15 @@ public interface ITerminologyService {
   VersionTriple resolveCurrentVersionForClass(String classIri) throws IOException;
 
   /**
+   * The version triple of a value-set collection's current ("latest") snapshot — the freeze capability
+   * for a value-set-valued constraint, whose value space is a BioPortal value-set collection rather
+   * than an ontology. {@code null} when the collection is not ingested and served locally. Value-set
+   * collections are versioned by the same content-hash mechanism as ontologies, so this mirrors
+   * {@link #resolveCurrentVersion}, keyed by the collection acronym.
+   */
+  VersionTriple resolveCurrentVersionForValueSetCollection(String vsCollection) throws IOException;
+
+  /**
    * The vocabulary diff between two locally-stored versions of an ontology (each a version_id or a
    * tag such as {@code latest}), or null when the ontology or a version is not available locally.
    */

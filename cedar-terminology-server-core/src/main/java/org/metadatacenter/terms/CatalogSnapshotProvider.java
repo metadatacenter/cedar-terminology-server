@@ -161,6 +161,26 @@ public class CatalogSnapshotProvider implements SqliteTerminologyService.Snapsho
     }
   }
 
+  @Override
+  public Optional<VersionTriple> currentVersionForValueSetCollection(String vsCollection) {
+    if (vsCollection == null) {
+      return Optional.empty();
+    }
+    try {
+      // Gate on the catalog's artifact-kind, not the ontology serving allowlist: a value-set
+      // collection is not served for search/browse, so it is never allowlisted. It resolves purely on
+      // being ingested and marked a value-set collection (with the whole local store off in prod, this
+      // answers nothing there). The kind check also stops an ontology of the same acronym answering.
+      if (!catalog.isValueSetCollection(vsCollection)) {
+        return Optional.empty();
+      }
+      return catalog.resolveLatest(vsCollection).map(CatalogSnapshotProvider::toTriple);
+    } catch (SQLException e) {
+      log.warn("Catalog current-version lookup failed for value-set collection {}", vsCollection, e);
+      return Optional.empty();
+    }
+  }
+
   /**
    * Builds the {@link VersionTriple} for a snapshot: content-hash id, effective date (the source's
    * release date, or the ingest date when the source records none), and the declared-version label

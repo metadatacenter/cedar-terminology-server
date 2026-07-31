@@ -82,6 +82,15 @@ public class SqliteTerminologyService implements ITerminologyService {
     }
 
     /**
+     * The version triple of a value-set collection's current ("latest") snapshot, or empty when the
+     * provider does not serve it as a value-set collection. Empty by default. The value-set analogue
+     * of {@link #currentVersion}: it lets a value-set-valued constraint be frozen on publish.
+     */
+    default Optional<VersionTriple> currentVersionForValueSetCollection(String vsCollection) {
+      return Optional.empty();
+    }
+
+    /**
      * Metadata for the ontologies this provider serves locally — the catalog's own registry, used to
      * answer the ontology-list endpoint without crawling BioPortal. Empty by default (a bare provider
      * that only resolves snapshot stores).
@@ -205,6 +214,11 @@ public class SqliteTerminologyService implements ITerminologyService {
   public VersionTriple resolveCurrentVersionForClass(String classIri) {
     // classIri -> owning ontology (by namespace) -> that ontology's current triple.
     return provider.ontologyForConceptIri(classIri).flatMap(provider::currentVersion).orElse(null);
+  }
+
+  @Override
+  public VersionTriple resolveCurrentVersionForValueSetCollection(String vsCollection) {
+    return provider.currentVersionForValueSetCollection(vsCollection).orElse(null);
   }
 
   @Override

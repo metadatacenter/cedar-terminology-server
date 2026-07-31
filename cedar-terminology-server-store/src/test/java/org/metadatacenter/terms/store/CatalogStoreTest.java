@@ -261,6 +261,48 @@ public class CatalogStoreTest {
   }
 
   @Test
+  public void ontologyKindDefaultsToOntology_andIsNotAValueSetCollection() throws Exception {
+    // Every ordinary ontology row reads kind='ontology' via the column DEFAULT, so a value-set
+    // collection lookup never mistakes it for one.
+    assertFalse(catalog.isValueSetCollection("DOID"));
+    assertFalse(catalog.isValueSetCollection("NOPE")); // unknown acronym
+    assertFalse(catalog.isValueSetCollection(null));
+  }
+
+  @Test
+  public void setOntologyKind_marksAValueSetCollection() throws Exception {
+    catalog.upsertOntology(new OntologyInfo("CEDARVS", "CEDAR Value Sets", null, "SKOS"));
+    assertFalse(catalog.isValueSetCollection("CEDARVS")); // defaults to ontology until marked
+    catalog.setOntologyKind("CEDARVS", CatalogStore.KIND_VALUE_SET_COLLECTION);
+    assertTrue(catalog.isValueSetCollection("CEDARVS"));
+    // Idempotent, and reversible back to an ontology.
+    catalog.setOntologyKind("CEDARVS", CatalogStore.KIND_VALUE_SET_COLLECTION);
+    assertTrue(catalog.isValueSetCollection("CEDARVS"));
+    catalog.setOntologyKind("CEDARVS", CatalogStore.KIND_ONTOLOGY);
+    assertFalse(catalog.isValueSetCollection("CEDARVS"));
+  }
+
+  @Test
+  public void ensureColumnBackfillsKindOnAPreExistingCatalog(@TempDir Path dir) throws Exception {
+    // A catalog created before the kind column existed: build the old ontology table (no kind) via raw
+    // JDBC, insert a row, then open a CatalogStore and run initSchema (which ensureColumn-migrates).
+    // The migrated row must read the default and be markable as a value-set collection.
+    Path dbFile = dir.resolve("legacy.sqlite");
+    try (var conn = java.sql.DriverManager.getConnection("jdbc:sqlite:" + dbFile);
+         var s = conn.createStatement()) {
+      s.executeUpdate("CREATE TABLE ontology (acronym TEXT PRIMARY KEY, name TEXT NOT NULL, "
+          + "source_iri TEXT, default_format TEXT)");
+      s.executeUpdate("INSERT INTO ontology (acronym, name) VALUES ('OLDVS', 'legacy')");
+    }
+    try (CatalogStore legacy = CatalogStore.openFile(dbFile.toString())) {
+      legacy.initSchema(); // adds iri/raw_namespace/provenance/kind columns idempotently
+      assertFalse(legacy.isValueSetCollection("OLDVS")); // reads the DEFAULT after migration
+      legacy.setOntologyKind("OLDVS", CatalogStore.KIND_VALUE_SET_COLLECTION);
+      assertTrue(legacy.isValueSetCollection("OLDVS"));
+    }
+  }
+
+  @Test
   public void snapshotBackendDefaultsToBioportalForEveryRow() throws Exception {
     // The backend column carries a constant DEFAULT, so existing snapshots read 'bioportal' with no
     // separate backfill.
