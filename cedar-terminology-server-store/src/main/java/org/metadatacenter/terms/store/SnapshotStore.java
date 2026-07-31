@@ -208,6 +208,81 @@ public class SnapshotStore implements AutoCloseable {
     }
   }
 
+  /**
+   * A content hash of the normalized extracted model, independent of the source file's bytes and
+   * serialization (VERSIONING-DESIGN §4.3). Two snapshots with the same served content hash to the
+   * same value even when they came from different serializations (OBO vs OWL) or backends; a genuine
+   * content change gives a different hash. This is the alternative to the raw-file hash that today's
+   * {@code version_id} uses.
+   *
+   * The canonical form is built over IRIs (stable, source-independent), never internal row ids:
+   * <ul>
+   *   <li>every concept, sorted by IRI, as {@code C<TAB>iri<TAB>obsolete} — and, when
+   *       {@code includeLabels}, also {@code <TAB>prefLabel<TAB>replacedBy};</li>
+   *   <li>every subsumption edge, sorted, as {@code E<TAB>childIri<TAB>parentIri<TAB>sourcePred};</li>
+   *   <li>every typed relation, sorted, as {@code R<TAB>subjectIri<TAB>predicate<TAB>objectIri}.</li>
+   * </ul>
+   * Edges and relations are structure and are always included; {@code includeLabels} is the one open
+   * knob (§4.3) — structure-only identity vs identity that also moves when a display label changes.
+   * Section tags (C/E/R) prevent cross-section collisions; the binary default collation makes the
+   * SQL ordering deterministic.
+   */
+  public String normalizedContentHash(boolean includeLabels) throws SQLException {
+    java.security.MessageDigest md;
+    try {
+      md = java.security.MessageDigest.getInstance("SHA-256");
+    } catch (java.security.NoSuchAlgorithmException e) {
+      throw new IllegalStateException("SHA-256 unavailable", e); // guaranteed present on every JVM
+    }
+    try (Statement s = connection.createStatement();
+         ResultSet rs = s.executeQuery(
+             "SELECT iri, pref_label, obsolete, replaced_by FROM concept ORDER BY iri")) {
+      while (rs.next()) {
+        StringBuilder line = new StringBuilder("C\t").append(rs.getString("iri"))
+            .append('\t').append(rs.getInt("obsolete"));
+        if (includeLabels) {
+          line.append('\t').append(hashField(rs.getString("pref_label")))
+              .append('\t').append(hashField(rs.getString("replaced_by")));
+        }
+        md.update(line.append('\n').toString().getBytes(java.nio.charset.StandardCharsets.UTF_8));
+      }
+    }
+    try (Statement s = connection.createStatement();
+         ResultSet rs = s.executeQuery(
+             "SELECT c.iri AS child, p.iri AS parent, e.source_pred AS pred FROM edge e "
+                 + "JOIN concept c ON c.id = e.child_id JOIN concept p ON p.id = e.parent_id "
+                 + "ORDER BY child, parent, pred")) {
+      while (rs.next()) {
+        String line = "E\t" + rs.getString("child") + '\t' + rs.getString("parent")
+            + '\t' + hashField(rs.getString("pred")) + '\n';
+        md.update(line.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+      }
+    }
+    try (Statement s = connection.createStatement();
+         ResultSet rs = s.executeQuery(
+             "SELECT s.iri AS subj, r.predicate AS pred, o.iri AS obj FROM relation r "
+                 + "JOIN concept s ON s.id = r.subject_id JOIN concept o ON o.id = r.object_id "
+                 + "ORDER BY subj, pred, obj")) {
+      while (rs.next()) {
+        String line = "R\t" + rs.getString("subj") + '\t' + rs.getString("pred")
+            + '\t' + rs.getString("obj") + '\n';
+        md.update(line.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+      }
+    }
+    byte[] digest = md.digest();
+    StringBuilder hex = new StringBuilder(digest.length * 2);
+    for (byte b : digest) {
+      hex.append(Character.forDigit((b >> 4) & 0xF, 16)).append(Character.forDigit(b & 0xF, 16));
+    }
+    return hex.toString();
+  }
+
+  /** Represents a null field with a NUL sentinel so it is distinct from an empty string in the hash
+   *  stream (NUL never appears in an IRI or a well-formed label). */
+  private static String hashField(String value) {
+    return value == null ? "\u0000" : value;
+  }
+
   private static final java.util.regex.Pattern OBO_ID =
       java.util.regex.Pattern.compile("^(.*/obo/)([A-Za-z][A-Za-z0-9]*)_");
   private static final java.util.regex.Pattern OBO_SPACE =

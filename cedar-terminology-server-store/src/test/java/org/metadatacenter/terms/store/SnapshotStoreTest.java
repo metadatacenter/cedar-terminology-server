@@ -60,6 +60,72 @@ public class SnapshotStoreTest {
   }
 
   @Test
+  public void normalizedContentHash_ignoresIngestOrderAndInternalIds() throws Exception {
+    // Same content ingested in a different order (different internal row ids) hashes identically:
+    // the canonical form is over IRIs, not row ids.
+    String h1, h2;
+    try (SnapshotStore a = SnapshotStore.openInMemory()) {
+      a.initSchema();
+      a.addConcept("http://ex/z", "Zed");
+      a.addConcept("http://ex/a", "Ay");
+      a.addEdge("http://ex/z", "http://ex/a", "rdfs:subClassOf");
+      a.materialize();
+      h1 = a.normalizedContentHash(true);
+    }
+    try (SnapshotStore b = SnapshotStore.openInMemory()) {
+      b.initSchema();
+      b.addConcept("http://ex/a", "Ay"); // reverse insert order
+      b.addConcept("http://ex/z", "Zed");
+      b.addEdge("http://ex/z", "http://ex/a", "rdfs:subClassOf");
+      b.materialize();
+      h2 = b.normalizedContentHash(true);
+    }
+    assertEquals(h1, h2);
+  }
+
+  @Test
+  public void normalizedContentHash_labelChangeMovesFullButNotStructure() throws Exception {
+    String structBefore, structAfter, fullBefore, fullAfter;
+    try (SnapshotStore a = SnapshotStore.openInMemory()) {
+      a.initSchema();
+      a.addConcept("http://ex/c", "cancer");
+      a.materialize();
+      structBefore = a.normalizedContentHash(false);
+      fullBefore = a.normalizedContentHash(true);
+    }
+    try (SnapshotStore b = SnapshotStore.openInMemory()) {
+      b.initSchema();
+      b.addConcept("http://ex/c", "Cancer"); // only the label differs
+      b.materialize();
+      structAfter = b.normalizedContentHash(false);
+      fullAfter = b.normalizedContentHash(true);
+    }
+    assertEquals(structBefore, structAfter, "structure-only hash ignores a label change");
+    assertFalse(fullBefore.equals(fullAfter), "full hash moves when a label changes");
+  }
+
+  @Test
+  public void normalizedContentHash_structureChangeMovesBoth() throws Exception {
+    String s1, s2;
+    try (SnapshotStore a = SnapshotStore.openInMemory()) {
+      a.initSchema();
+      a.addConcept("http://ex/p", "P");
+      a.addConcept("http://ex/c", "C");
+      a.materialize();
+      s1 = a.normalizedContentHash(false);
+    }
+    try (SnapshotStore b = SnapshotStore.openInMemory()) {
+      b.initSchema();
+      b.addConcept("http://ex/p", "P");
+      b.addConcept("http://ex/c", "C");
+      b.addEdge("http://ex/c", "http://ex/p", "rdfs:subClassOf"); // an added edge is real content
+      b.materialize();
+      s2 = b.normalizedContentHash(false);
+    }
+    assertFalse(s1.equals(s2), "adding a subsumption edge changes the structure hash");
+  }
+
+  @Test
   public void dominantOwnIdspace_picksOwnSpaceOverBulkImport() throws Exception {
     // OBI-like: mostly imported CHEBI_ concepts, a minority of its own OBI_ terms. Acronym-keying
     // must resolve the own space, not the more frequent import — this is the canonical-iri source.
