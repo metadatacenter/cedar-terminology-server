@@ -257,6 +257,50 @@ public class IngestJobTest {
     assertEquals("v2", catalog.resolveLatest("EX").orElseThrow().declaredVersion()); // latest = the good one
   }
 
+  @Test
+  public void recordsTheSourceBackendOnTheSnapshot() throws Exception {
+    // The backend a snapshot's bytes came from is recorded as audit provenance. The default BioPortal
+    // source leaves it 'bioportal'; a second source (here an OBO-Foundry-like stub) records its own id.
+    // Identity is unaffected — same content, same version_id regardless of backend.
+    IngestJob.IngestResult bp = new IngestJob(fakeSource()).ingestLatest(catalog, "EX", tempDir.resolve("bp"));
+    assertEquals("bioportal", catalog.snapshotProvenance(bp.versionId(), "EX").orElseThrow().backend());
+
+    SubmissionSource obo = new SubmissionSource() {
+      @Override
+      public String backendId() {
+        return "obofoundry";
+      }
+
+      @Override
+      public OntologyAccess accessInfo(String acronym) {
+        return new OntologyAccess("public", null);
+      }
+
+      @Override
+      public List<Submission> listSubmissions(String acronym) {
+        return List.of(submission());
+      }
+
+      @Override
+      public Submission latestSubmission(String acronym) {
+        return submission();
+      }
+
+      @Override
+      public Path download(String acronym, int submissionId, Path targetDir) throws IOException {
+        Files.createDirectories(targetDir);
+        Path dest = targetDir.resolve("source.owl");
+        Files.copy(sourceOwl, dest, StandardCopyOption.REPLACE_EXISTING);
+        return dest;
+      }
+    };
+    IngestJob.IngestResult r = new IngestJob(obo).ingestLatest(catalog, "OBOEX", tempDir.resolve("obo"));
+    assertEquals("obofoundry", catalog.snapshotProvenance(r.versionId(), "OBOEX").orElseThrow().backend());
+    // Same source bytes as the BioPortal ingest ⇒ identical content-hash version_id: identity does not
+    // depend on the backend.
+    assertEquals(bp.versionId(), r.versionId());
+  }
+
   private static void buildOntology(Path file) throws Exception {
     OWLOntologyManager m = OWLManager.createOWLOntologyManager();
     OWLDataFactory df = m.getOWLDataFactory();

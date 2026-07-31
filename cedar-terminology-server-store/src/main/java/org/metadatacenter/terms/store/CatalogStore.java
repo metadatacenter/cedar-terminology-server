@@ -374,6 +374,22 @@ public class CatalogStore implements AutoCloseable {
     }
   }
 
+  /**
+   * Records the backend a snapshot's bytes were ingested from (the {@code snapshot.backend} column).
+   * A no-op when the snapshot is unknown. Every snapshot defaults to {@code bioportal}; a
+   * non-BioPortal ingest calls this to record its true origin. Backend is audit provenance only — it
+   * does not participate in identity, which is the source-independent content hash. Idempotent.
+   */
+  public void setSnapshotBackend(String versionId, String acronym, String backend) throws SQLException {
+    try (PreparedStatement ps = connection.prepareStatement(
+        "UPDATE snapshot SET backend = ? WHERE version_id = ? AND acronym = ?")) {
+      ps.setString(1, backend);
+      ps.setString(2, versionId);
+      ps.setString(3, acronym);
+      ps.executeUpdate();
+    }
+  }
+
   /** A snapshot's provenance, or empty when the {@code (versionId, acronym)} is unknown. */
   public Optional<SnapshotProvenance> snapshotProvenance(String versionId, String acronym) throws SQLException {
     try (PreparedStatement ps = connection.prepareStatement(

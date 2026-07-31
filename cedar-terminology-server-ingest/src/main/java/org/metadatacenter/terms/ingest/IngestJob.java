@@ -206,6 +206,9 @@ public class IngestJob {
     // unreconstructable offline later) and the version string's self-claimed date.
     catalog.setSnapshotProvenance(versionId, acronym, sub.submissionId(),
         CatalogStore.SnapshotProvenance.sourceDateFromDeclaredVersion(sub.version()));
+    // Record the backend the bytes came from (default bioportal). Identity is unaffected — the same
+    // release from a different authority resolves to the same content-hash version_id and merges here.
+    catalog.setSnapshotBackend(versionId, acronym, source.backendId());
     if (setAsLatest) {
       catalog.setTag(acronym, CatalogStore.TAG_LATEST, versionId);
     }
