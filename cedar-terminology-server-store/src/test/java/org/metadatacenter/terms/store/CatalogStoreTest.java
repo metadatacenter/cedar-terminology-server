@@ -230,6 +230,22 @@ public class CatalogStoreTest {
   }
 
   @Test
+  public void acronymsForIri_joinsTheSameOntologyAcrossSources() throws Exception {
+    // The canonical iri is content-derived, so one ontology held under two acronyms (as two
+    // authorities might label it) shares one iri; acronymsForIri returns both, the join acronym cannot
+    // make. DOID's own acronym has no iri yet, so it is not returned.
+    catalog.upsertOntology(new OntologyInfo("DO", "Disease Ontology", null, "OWL"));
+    catalog.upsertOntology(new OntologyInfo("HUMAN-DO", "Human Disease Ontology", null, "OWL"));
+    String iri = "http://purl.obolibrary.org/obo/doid";
+    catalog.setOntologyIri("DO", iri, "http://purl.obolibrary.org/obo/DOID_");
+    catalog.setOntologyIri("HUMAN-DO", iri, "http://purl.obolibrary.org/obo/DOID_");
+
+    assertEquals(List.of("DO", "HUMAN-DO"), catalog.acronymsForIri(iri)); // both, ascending
+    assertEquals(List.of(), catalog.acronymsForIri("http://purl.obolibrary.org/obo/unknown"));
+    assertEquals(List.of(), catalog.acronymsForIri(null));
+  }
+
+  @Test
   public void acronymForNamespace_resolvesTheUniqueOwner() throws Exception {
     catalog.setOntologyIri("DOID", "http://purl.obolibrary.org/obo/doid",
         "http://purl.obolibrary.org/obo/DOID_");

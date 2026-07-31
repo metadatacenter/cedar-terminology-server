@@ -1,6 +1,7 @@
 package org.metadatacenter.terms.ingest;
 
 import org.metadatacenter.terms.store.CatalogStore;
+import org.metadatacenter.terms.store.OntologyIri;
 import org.metadatacenter.terms.store.SnapshotStore;
 import org.semanticweb.owlapi.model.IRI;
 import org.slf4j.Logger;
@@ -171,6 +172,7 @@ public class IngestJob {
     Files.deleteIfExists(tempFile);
     HierarchyExtractor.Result extracted;
     String versionId;
+    String ownNamespace = null; // this snapshot's dominant own ID-space, for the canonical iri
     try (SnapshotStore store = SnapshotStore.openFile(tempFile.toString())) {
       store.initSchema();
       extracted = extractorFor(acronym, sub.format()).extractFromFile(loadable.toFile(), store);
@@ -184,6 +186,9 @@ public class IngestJob {
       // Identity = the normalized served model, independent of the source bytes/serialization. Two
       // uploads that extract to the same hierarchy share a version id and merge to one snapshot.
       versionId = store.normalizedContentHash(true);
+      // The ontology's own ID-space, folded to the canonical iri below — computed on the final
+      // (pruned, labelled) snapshot, the same state the A6 backfill reads.
+      ownNamespace = store.dominantOwnIdspace(acronym).orElse(null);
     } catch (Throwable e) {
       Files.deleteIfExists(tempFile);
       throw new IOException("Extraction failed for " + acronym + " submission " + sub.submissionId(), e);
@@ -209,6 +214,14 @@ public class IngestJob {
     // Record the backend the bytes came from (default bioportal). Identity is unaffected — the same
     // release from a different authority resolves to the same content-hash version_id and merges here.
     catalog.setSnapshotBackend(versionId, acronym, source.backendId());
+    // Derive and store the ontology's canonical iri (VERSIONING-DESIGN §6.4) at ingest — its
+    // content-derived, source-independent cross-source identity — rather than leaving it to the A6
+    // backfill, so a fresh ingest is iri-identified immediately and two sources of one ontology can be
+    // joined by iri. Set on the first ingest and whenever this is the latest; the own namespace is
+    // stable across versions, so re-setting is idempotent.
+    if (ownNamespace != null && (setAsLatest || catalog.ontologyIri(acronym).isEmpty())) {
+      catalog.setOntologyIri(acronym, OntologyIri.canonical(ownNamespace), ownNamespace);
+    }
     if (setAsLatest) {
       catalog.setTag(acronym, CatalogStore.TAG_LATEST, versionId);
     }

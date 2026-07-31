@@ -357,6 +357,32 @@ public class CatalogStore implements AutoCloseable {
   }
 
   /**
+   * Every ontology whose canonical {@code iri} equals the given one, by acronym (ascending). The
+   * cross-source identity query (VERSIONING-DESIGN §6.4): the canonical iri is content-derived and
+   * source-independent, so the same ontology ingested from two authorities under two acronyms shares
+   * one iri and this returns both — the join that {@code acronym} alone cannot make. Normally a single
+   * acronym; more than one means the same ontology is held under several labels. Empty for an unknown
+   * or not-yet-derived iri. This is the read side of promoting {@code iri} to the ontology key
+   * (decision 2); the key demotion itself is deferred.
+   */
+  public List<String> acronymsForIri(String iri) throws SQLException {
+    List<String> acronyms = new ArrayList<>();
+    if (iri == null) {
+      return acronyms;
+    }
+    try (PreparedStatement ps = connection.prepareStatement(
+        "SELECT acronym FROM ontology WHERE iri = ? ORDER BY acronym")) {
+      ps.setString(1, iri);
+      try (ResultSet rs = ps.executeQuery()) {
+        while (rs.next()) {
+          acronyms.add(rs.getString(1));
+        }
+      }
+    }
+    return acronyms;
+  }
+
+  /**
    * Records display/audit-only provenance for a snapshot: its source {@code submissionId} and
    * {@code sourceDate}. A no-op when the snapshot is unknown. Leaves {@code backend} at its default
    * ({@code bioportal}) — every current snapshot is from BioPortal; a future non-BioPortal backend

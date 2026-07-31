@@ -301,6 +301,21 @@ public class IngestJobTest {
     assertEquals(bp.versionId(), r.versionId());
   }
 
+  @Test
+  public void derivesTheCanonicalIriAtIngest_andJoinsSourcesByIri() throws Exception {
+    // A6 derived iri via a later backfill; ingest now derives it inline (from this snapshot's dominant
+    // own namespace), so a fresh ingest is iri-identified immediately. The iri is content-derived, so
+    // the same ontology ingested under two acronyms — as two authorities might label it — shares one
+    // iri, and acronymsForIri joins them. The test ontology's namespace is http://ex/ -> iri http://ex.
+    IngestJob job = new IngestJob(fakeSource());
+    job.ingestLatest(catalog, "EX", tempDir.resolve("a"));
+    assertEquals("http://ex", catalog.ontologyIri("EX").orElseThrow());
+
+    job.ingestLatest(catalog, "EX_ALIAS", tempDir.resolve("b")); // same bytes, a different acronym
+    assertEquals("http://ex", catalog.ontologyIri("EX_ALIAS").orElseThrow());
+    assertEquals(List.of("EX", "EX_ALIAS"), catalog.acronymsForIri("http://ex"));
+  }
+
   private static void buildOntology(Path file) throws Exception {
     OWLOntologyManager m = OWLManager.createOWLOntologyManager();
     OWLDataFactory df = m.getOWLDataFactory();
