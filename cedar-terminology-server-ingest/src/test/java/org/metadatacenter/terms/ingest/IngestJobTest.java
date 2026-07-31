@@ -258,6 +258,22 @@ public class IngestJobTest {
   }
 
   @Test
+  public void selectSource_choosesOboFoundryWithTheGivenRelease() {
+    // The standard ingest CLI can draw from OBO Foundry, not just BioPortal (no network here — the
+    // selection + PURL addressing is what's under test). BioPortal selection needs the API key env and
+    // is covered by the ingest path elsewhere.
+    SubmissionSource current = IngestJob.selectSource("obofoundry", null);
+    assertTrue(current instanceof OboFoundrySubmissionSource);
+    assertEquals("obofoundry", current.backendId());
+    assertEquals("http://purl.obolibrary.org/obo/doid.owl",
+        ((OboFoundrySubmissionSource) current).downloadUrl("DOID"));
+
+    SubmissionSource dated = IngestJob.selectSource("obofoundry", "2024-05-29");
+    assertEquals("http://purl.obolibrary.org/obo/doid/releases/2024-05-29/doid.owl",
+        ((OboFoundrySubmissionSource) dated).downloadUrl("DOID"));
+  }
+
+  @Test
   public void recordsTheSourceBackendOnTheSnapshot() throws Exception {
     // The backend a snapshot's bytes came from is recorded as audit provenance. The default BioPortal
     // source leaves it 'bioportal'; a second source (here an OBO-Foundry-like stub) records its own id.

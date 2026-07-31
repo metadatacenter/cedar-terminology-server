@@ -360,20 +360,44 @@ public class IngestJob {
   }
 
   /**
-   * Usage: IngestJob &lt;catalogPath&gt; &lt;snapshotDir&gt; [--all] [--valuesets] &lt;acronym&gt; [acronym...]
+   * Usage: IngestJob &lt;catalogPath&gt; &lt;snapshotDir&gt; [--source bioportal|obofoundry] [--release
+   *        &lt;date&gt;] [--all] [--valuesets] [--submission &lt;id&gt;] &lt;acronym&gt; [acronym...]
    * With {@code --all}, every submission (version) of each ontology is ingested; otherwise only the
    * latest. With {@code --valuesets}, the listed acronyms are ingested as value-set collections
    * (same content-hash mechanism, marked {@code value_set_collection} in the catalog) rather than
-   * ontologies. The BioPortal API key is read from the {@code BIOPORTAL_API_KEY} environment variable.
+   * ontologies. {@code --source obofoundry} draws from the OBO Foundry PURL instead of BioPortal — the
+   * current release, or the {@code --release <date>} dated release — and records the snapshot backend
+   * accordingly; identity is unchanged (the content hash is source-independent), so the same release
+   * from either source merges. {@code --submission} is BioPortal-only. The BioPortal API key is read
+   * from {@code BIOPORTAL_API_KEY} (required only for the BioPortal source).
    */
+  /**
+   * The ingest source named by {@code --source}: {@code bioportal} (default; needs
+   * {@code BIOPORTAL_API_KEY}) or {@code obofoundry} (public; {@code release} targets a dated PURL, or
+   * null for the current release). Exits the process on an unknown name or a missing BioPortal key.
+   * Package-visible for testing the selection without the network.
+   */
+  static SubmissionSource selectSource(String sourceName, String release) {
+    if ("obofoundry".equals(sourceName)) {
+      return new OboFoundrySubmissionSource(release);
+    }
+    if ("bioportal".equals(sourceName)) {
+      String apiKey = System.getenv("BIOPORTAL_API_KEY");
+      if (apiKey == null || apiKey.isBlank()) {
+        System.err.println("BIOPORTAL_API_KEY environment variable is not set");
+        System.exit(2);
+      }
+      return new BioPortalDownloader(apiKey);
+    }
+    System.err.println("Unknown --source '" + sourceName + "' (expected bioportal or obofoundry)");
+    System.exit(2);
+    throw new IllegalStateException("unreachable"); // System.exit does not return
+  }
+
   public static void main(String[] args) throws Exception {
     if (args.length < 3) {
-      System.err.println("Usage: IngestJob <catalogPath> <snapshotDir> [--all] [--valuesets] <acronym> [acronym...]");
-      System.exit(2);
-    }
-    String apiKey = System.getenv("BIOPORTAL_API_KEY");
-    if (apiKey == null || apiKey.isBlank()) {
-      System.err.println("BIOPORTAL_API_KEY environment variable is not set");
+      System.err.println("Usage: IngestJob <catalogPath> <snapshotDir> [--source bioportal|obofoundry] "
+          + "[--release <date>] [--all] [--valuesets] [--submission <id>] <acronym> [acronym...]");
       System.exit(2);
     }
     Path catalogPath = Path.of(args[0]);
@@ -382,6 +406,8 @@ public class IngestJob {
 
     boolean all = false;
     boolean valuesets = false;
+    String sourceName = "bioportal";
+    String oboRelease = null;
     List<Integer> submissionIds = new ArrayList<>();
     List<String> acronyms = new ArrayList<>();
     for (int i = 2; i < args.length; i++) {
@@ -389,6 +415,10 @@ public class IngestJob {
         all = true;
       } else if ("--valuesets".equals(args[i])) {
         valuesets = true;
+      } else if ("--source".equals(args[i]) && i + 1 < args.length) {
+        sourceName = args[++i];
+      } else if ("--release".equals(args[i]) && i + 1 < args.length) {
+        oboRelease = args[++i];
       } else if ("--submission".equals(args[i]) && i + 1 < args.length) {
         submissionIds.add(Integer.parseInt(args[++i]));
       } else {
@@ -396,14 +426,14 @@ public class IngestJob {
       }
     }
 
-    BioPortalDownloader downloader = new BioPortalDownloader(apiKey);
-    IngestJob job = new IngestJob(downloader);
+    SubmissionSource source = selectSource(sourceName, oboRelease);
+    IngestJob job = new IngestJob(source);
     try (CatalogStore catalog = CatalogStore.openFile(catalogPath.toString())) {
       catalog.initSchema();
       for (String acronym : acronyms) {
         if (!submissionIds.isEmpty()) {
           // Ingest specific historical submissions without moving the latest tag.
-          List<Submission> subs = downloader.listSubmissions(acronym);
+          List<Submission> subs = source.listSubmissions(acronym);
           for (int id : submissionIds) {
             Submission sub = subs.stream().filter(s -> s.submissionId() == id).findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("No submission " + id + " for " + acronym));
