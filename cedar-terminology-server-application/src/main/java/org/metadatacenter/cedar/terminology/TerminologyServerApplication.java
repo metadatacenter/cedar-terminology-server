@@ -104,6 +104,11 @@ public class TerminologyServerApplication extends CedarMicroserviceApplication<T
     }
     try {
       CatalogStore catalog = CatalogStore.openFile(catalogPath);
+      // Bring the catalog to the current schema before serving. Idempotent and additive, so a catalog
+      // built by the ingest tools is unchanged; a pre-re-key acronym-keyed catalog is migrated to the
+      // iri-keyed identity + ontology_source split this server queries. Without this the server would
+      // query ontology_source against an unmigrated catalog that has none.
+      catalog.initSchema();
       // Roots-browse allowlist: blank means browse everything local (same as search). Otherwise only
       // these ontologies browse locally; the rest are local for search but browse from BioPortal.
       Set<String> rootsOntologies = parseAllowlist(System.getProperty(PROP_LOCAL_ROOTS_ONTOLOGIES));
