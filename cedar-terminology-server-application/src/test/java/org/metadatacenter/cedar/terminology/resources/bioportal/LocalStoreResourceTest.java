@@ -67,7 +67,10 @@ public class LocalStoreResourceTest {
   }
 
   private static final String ONT = "LOCALTEST";
-  private static final String VS = "LOCALVS";
+  // Named CEDARVS because integrated-search restricts a value-set constraint's collection to the three
+  // known collections (CEDARVS / NLMVS / CADSR-VS) via BP_VS_COLLECTIONS_READ_REGEX; a value-set read
+  // (pinned or current) is only reachable for one of those.
+  private static final String VS = "CEDARVS";
   private static final String BASE = "http://localtest/";
 
   static {
@@ -122,6 +125,11 @@ public class LocalStoreResourceTest {
         c.upsertOntology(new CatalogStore.OntologyInfo(VS, "Local Value Sets", null, "SKOS"));
         c.addSnapshot(new CatalogStore.SnapshotInfo("vs1", VS, "2024-05-01", "2024-05-01",
             "2024-05-02T00:00:00Z", "SKOS", "subsumption", 3, 2, snapshot.toString(), "vs1", "open"));
+        // A second, newer version of the collection (reusing the v2 snapshot, which adds "infection"
+        // under "disease"), left un-tagged so `latest` stays vs1 — it gives a value-set constraint a
+        // pinned version distinct from current, so a frozen value-set read can be exercised.
+        c.addSnapshot(new CatalogStore.SnapshotInfo("vs2", VS, "2024-11-01", "2024-11-01",
+            "2024-11-02T00:00:00Z", "SKOS", "subsumption", 4, 3, snapshot2.toString(), "vs2", "open"));
         c.setTag(VS, CatalogStore.TAG_LATEST, "vs1");
         c.setOntologyKind(VS, CatalogStore.KIND_VALUE_SET_COLLECTION);
       }
@@ -129,7 +137,9 @@ public class LocalStoreResourceTest {
       // Override the (empty) cedar-main.yml localStore config for this test. Uses the non-"cedar."
       // property names the app recognizes, set before the app starts so the local store is enabled.
       System.setProperty("terminologyStore.catalogPath", catalog.toString());
-      System.setProperty("terminologyStore.localOntologies", ONT);
+      // Serve LOCALTEST and the LOCALVS collection: a value-set collection is in the serving allowlist
+      // (as CEDARVS is in production) so its members can be enumerated at populate time.
+      System.setProperty("terminologyStore.localOntologies", ONT + "," + VS);
     } catch (Exception e) {
       throw new ExceptionInInitializerError(e);
     }
@@ -345,6 +355,53 @@ public class LocalStoreResourceTest {
   public void integratedSearchHonoursPinnedVersionOverHttp() {
     Assertions.assertEquals(3, integratedSearchOntologyConceptCount(",\"version\":\"v1\""));
     Assertions.assertEquals(4, integratedSearchOntologyConceptCount("")); // no version -> latest (v2)
+  }
+
+  @Test
+  public void integratedSearchHonoursPinnedVersionForABranch() {
+    // A branch (a class + its descendants) served at a pinned version. The "disease" branch spans the
+    // whole tree; v2 adds "infection" under "disease", so latest carries exactly one more concept than
+    // v1. Pinning v1 must serve the smaller v1 subtree, proving the pin reaches the branch read path.
+    int pinnedV1 = integratedSearchCount("{\"ontologies\":[],\"branches\":[{\"acronym\":\"" + ONT
+        + "\",\"uri\":\"" + BASE + "disease\",\"version\":\"v1\"}],\"valueSets\":[],\"classes\":[]}");
+    int latest = integratedSearchCount("{\"ontologies\":[],\"branches\":[{\"acronym\":\"" + ONT
+        + "\",\"uri\":\"" + BASE + "disease\"}],\"valueSets\":[],\"classes\":[]}");
+    Assertions.assertTrue(pinnedV1 >= 2, "v1 branch is non-empty");
+    Assertions.assertEquals(pinnedV1 + 1, latest, "v2 adds exactly one concept to the disease branch");
+  }
+
+  @Test
+  public void integratedSearchHonoursPinnedVersionForAValueSet() {
+    // A value set's members are the children of its root class in the collection snapshot. Under
+    // "disease": 1 child (cancer) in vs1, 2 (cancer, infection) in vs2. Pinning each serves that version.
+    Assertions.assertEquals(1, integratedSearchCount("{\"ontologies\":[],\"branches\":[],\"valueSets\":[{"
+        + "\"vsCollection\":\"" + VS + "\",\"uri\":\"" + BASE + "disease\",\"version\":\"vs1\"}],\"classes\":[]}"));
+    Assertions.assertEquals(2, integratedSearchCount("{\"ontologies\":[],\"branches\":[],\"valueSets\":[{"
+        + "\"vsCollection\":\"" + VS + "\",\"uri\":\"" + BASE + "disease\",\"version\":\"vs2\"}],\"classes\":[]}"));
+  }
+
+  @Test
+  public void integratedSearchToleratesTheFrozenSpecFieldsOnAClassConstraint() {
+    // A frozen template carries iri / sourceSystem / version on a class entry too. An enumerated class
+    // is self-describing (uri + prefLabel used as-is), so those fields are not consumed — but the
+    // request must still deserialize and return the class rather than 400 on the extra fields.
+    int count = integratedSearchCount("{\"ontologies\":[],\"branches\":[],\"valueSets\":[],\"classes\":[{"
+        + "\"uri\":\"" + BASE + "cancer\",\"prefLabel\":\"Cancer\",\"type\":\"OntologyClass\","
+        + "\"source\":\"" + ONT + "\",\"iri\":\"" + BASE + "cancer\",\"sourceSystem\":\"bioportal\","
+        + "\"version\":{\"id\":\"v1\",\"effectiveDate\":\"2025-01-01\",\"declaredVersion\":\"1.0\"}}]}");
+    Assertions.assertEquals(1, count);
+  }
+
+  /** POST integrated-search with an explicit valueConstraints object (inner JSON) and return the total. */
+  private static int integratedSearchCount(String valueConstraintsJson) {
+    String url = "http://localhost:" + RULE.getLocalPort() + "/" + BP_ENDPOINT + "/integrated-search";
+    String body = "{\"parameterObject\":{\"valueConstraints\":" + valueConstraintsJson
+        + ",\"inputText\":\"\"},\"page\":1,\"pageSize\":50}";
+    Response response = clientBuilder.build().target(url).request().post(Entity.json(body));
+    Assertions.assertEquals(Status.OK.getStatusCode(), response.getStatus());
+    PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {});
+    response.close();
+    return results.getTotalCount();
   }
 
   /** POST integrated-search enumerating one ontology constraint (empty input text) and return its
