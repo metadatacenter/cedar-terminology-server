@@ -243,6 +243,64 @@ public class CatalogStoreTest {
     assertEquals(List.of("DO", "HUMAN-DO"), catalog.acronymsForIri(iri)); // both, ascending
     assertEquals(List.of(), catalog.acronymsForIri("http://purl.obolibrary.org/obo/unknown"));
     assertEquals(List.of(), catalog.acronymsForIri(null));
+    // Both acronyms map to one canonical identity row.
+    assertEquals(List.of(iri), catalog.listOntologyIdentities());
+  }
+
+  @Test
+  public void resolveLatestByIri_spansSourcesAndPicksNewest() throws Exception {
+    // Identity is the iri, so a lookup by iri spans every source-acronym that holds the ontology. Here
+    // DOID (from setUp, latest hashV2 released 2025-06-01) and a second source DOID-OBO (latest hashObo
+    // released 2026-01-01) share one iri; resolveLatestByIri returns the newest across both, while
+    // resolveLatest stays scoped to a single acronym.
+    String iri = "http://purl.obolibrary.org/obo/doid";
+    catalog.setOntologyIri("DOID", iri, "http://purl.obolibrary.org/obo/DOID_");
+    catalog.upsertOntology(new OntologyInfo("DOID-OBO", "DOID via OBO Foundry", null, "OWL"));
+    catalog.setOntologyIri("DOID-OBO", iri, "http://purl.obolibrary.org/obo/DOID_");
+    catalog.addSnapshot(new SnapshotInfo("hashObo", "DOID-OBO", "2026-01-01", "2026-01-01",
+        "2026-01-02T00:00:00Z", "OWL", "subsumption", 1, 0, "/snapshots/DOID-OBO/hashObo.sqlite",
+        "hashObo", "open"));
+    catalog.setTag("DOID-OBO", CatalogStore.TAG_LATEST, "hashObo");
+
+    assertEquals("hashObo", catalog.resolveLatestByIri(iri).orElseThrow().versionId()); // newest source wins
+    assertEquals("hashV2", catalog.resolveLatest("DOID").orElseThrow().versionId());    // acronym-scoped
+    assertTrue(catalog.resolveLatestByIri("http://purl.obolibrary.org/obo/unknown").isEmpty());
+  }
+
+  @Test
+  public void reKey_migratesAcronymKeyedCatalogToIriIdentityPlusSource(@TempDir Path dir) throws Exception {
+    // A pre-re-key catalog: the old single acronym-keyed ontology table, iri already derived on its
+    // rows. Opening it must split into the iri-keyed identity table + the acronym-keyed source table,
+    // preserving every acronym read and building one identity row per distinct iri.
+    Path dbFile = dir.resolve("prekey.sqlite");
+    try (var conn = java.sql.DriverManager.getConnection("jdbc:sqlite:" + dbFile);
+         var s = conn.createStatement()) {
+      s.executeUpdate("CREATE TABLE ontology (acronym TEXT PRIMARY KEY, name TEXT NOT NULL, "
+          + "source_iri TEXT, default_format TEXT, iri TEXT, raw_namespace TEXT, "
+          + "kind TEXT NOT NULL DEFAULT 'ontology')");
+      // Two source-acronyms of one ontology (same iri), one distinct value-set collection, one with no iri.
+      s.executeUpdate("INSERT INTO ontology VALUES ('DOID','Disease Ontology',null,'OWL',"
+          + "'http://purl.obolibrary.org/obo/doid','http://purl.obolibrary.org/obo/DOID_','ontology')");
+      s.executeUpdate("INSERT INTO ontology VALUES ('HUMANDO','Human DO',null,'OWL',"
+          + "'http://purl.obolibrary.org/obo/doid','http://purl.obolibrary.org/obo/DOID_','ontology')");
+      s.executeUpdate("INSERT INTO ontology VALUES ('CEDARVS','Value Sets',null,'SKOS',"
+          + "'http://x/cedarvs','http://x/cedarvs/','value_set_collection')");
+      s.executeUpdate("INSERT INTO ontology VALUES ('LC-CARRIERS','Empty',null,'OWL',null,null,'ontology')");
+    }
+    try (CatalogStore migrated = CatalogStore.openFile(dbFile.toString())) {
+      migrated.initSchema();
+      // Every acronym read is preserved through the split.
+      assertEquals("http://purl.obolibrary.org/obo/doid", migrated.ontologyIri("DOID").orElseThrow());
+      assertTrue(migrated.isValueSetCollection("CEDARVS"));
+      assertFalse(migrated.isValueSetCollection("DOID"));
+      assertTrue(migrated.ontologyIri("LC-CARRIERS").isEmpty()); // a null iri stays null, no identity row
+      // The two acronyms of one ontology join by iri.
+      assertEquals(List.of("DOID", "HUMANDO"),
+          migrated.acronymsForIri("http://purl.obolibrary.org/obo/doid"));
+      // One identity row per distinct iri (LC-CARRIERS contributes none).
+      assertEquals(List.of("http://purl.obolibrary.org/obo/doid", "http://x/cedarvs"),
+          migrated.listOntologyIdentities());
+    }
   }
 
   @Test

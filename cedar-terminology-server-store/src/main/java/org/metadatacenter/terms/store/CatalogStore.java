@@ -22,6 +22,14 @@ import java.util.Optional;
  * {@code version_id}. Request resolution is: look up {@code (acronym, tag)} here to get a
  * {@link SnapshotInfo}, open that snapshot file, then serve the read from it.
  *
+ * <b>Ontology identity is the canonical {@code iri}</b> (VERSIONING-DESIGN §6.4, decision 2), held in
+ * the iri-keyed {@code ontology} table. {@code acronym} is a per-source addressing label in
+ * {@code ontology_source} — still the public handle every caller uses (REST paths, freeze pins,
+ * template constraints), but no longer the identity, so the same ontology reached from two authorities
+ * under two acronyms is one identity joined by iri. {@code snapshot} and {@code version_tag} stay
+ * acronym-scoped (a snapshot is a specific source's version), so acronym-keyed resolution is unchanged
+ * by the re-key; iri-keyed resolution ({@link #resolveLatestByIri}) spans an ontology's sources.
+ *
  * A {@code version_id} is a content hash of the frozen subgraph, not the ontology's self-declared
  * version, so a pinned reference is reproducible.
  */
@@ -143,26 +151,47 @@ public class CatalogStore implements AutoCloseable {
   }
 
   public void initSchema() throws SQLException {
+    // The ontology key is its canonical iri (VERSIONING-DESIGN §6.4, decision 2): iri is the
+    // content-derived, source-independent identity, so the same ontology reached from two authorities
+    // is one identity. acronym is demoted to a per-source addressing label in `ontology_source` — it
+    // stays the public handle (REST paths, freeze pins, template constraints all address by acronym),
+    // but it is no longer the identity. Migrate an old acronym-keyed `ontology` table to this split
+    // before creating anything, so initSchema stays safe to call on any existing catalog.
+    migrateAcronymKeyedOntologyTable();
+
     try (Statement s = connection.createStatement()) {
+      // Canonical cross-source identity, keyed by iri. One row per distinct ontology; populated when
+      // an iri is derived (an ontology whose iri cannot be derived — the empty LC-CARRIERS — has a
+      // source row but no identity row, and is addressable only by acronym).
       s.executeUpdate("""
           CREATE TABLE IF NOT EXISTS ontology (
+            iri  TEXT PRIMARY KEY,
+            name TEXT NOT NULL
+          )""");
+      // Per-source addressing label. acronym is unique within a catalog and is what callers address;
+      // iri links it to its canonical identity (null until derived). Several acronyms can share one
+      // iri when the same ontology is ingested from more than one source.
+      s.executeUpdate("""
+          CREATE TABLE IF NOT EXISTS ontology_source (
             acronym        TEXT PRIMARY KEY,
+            iri            TEXT REFERENCES ontology(iri),
             name           TEXT NOT NULL,
             source_iri     TEXT,
             default_format TEXT,
-            iri            TEXT,
             raw_namespace  TEXT,
             kind           TEXT NOT NULL DEFAULT 'ontology'
           )""");
+      s.executeUpdate("CREATE INDEX IF NOT EXISTS idx_ontology_source_iri ON ontology_source(iri)");
       // The key is (version_id, acronym), not version_id alone: version_id is a pure content hash,
       // and two different ontologies can legitimately publish byte-identical downloads (INCENTIVE and
       // INCENTIVE-VARS both resolve to the same SKOS file on BioPortal), which then share a hash.
-      // Keying on the pair lets that content live once per ontology; keying on the hash alone would
-      // let one ontology's snapshot silently overwrite the other's.
+      // Keying on the pair lets that content live once per source-ontology; keying on the hash alone
+      // would let one ontology's snapshot silently overwrite the other's. Snapshots stay acronym-scoped
+      // (a snapshot is a specific source's version), so resolution is unchanged by the iri re-key.
       s.executeUpdate("""
           CREATE TABLE IF NOT EXISTS snapshot (
             version_id       TEXT NOT NULL,
-            acronym          TEXT NOT NULL REFERENCES ontology(acronym),
+            acronym          TEXT NOT NULL REFERENCES ontology_source(acronym),
             declared_version TEXT,
             released_at      TEXT,
             ingested_at      TEXT,
@@ -182,27 +211,67 @@ public class CatalogStore implements AutoCloseable {
       s.executeUpdate("CREATE INDEX IF NOT EXISTS idx_snapshot_version ON snapshot(version_id)");
       s.executeUpdate("""
           CREATE TABLE IF NOT EXISTS version_tag (
-            acronym    TEXT NOT NULL REFERENCES ontology(acronym),
+            acronym    TEXT NOT NULL REFERENCES ontology_source(acronym),
             tag        TEXT NOT NULL,
             version_id TEXT NOT NULL,
             PRIMARY KEY (acronym, tag),
             FOREIGN KEY (version_id, acronym) REFERENCES snapshot(version_id, acronym)
           )""");
     }
-    // Migrate catalogs created before the canonical-iri columns existed. Additive and idempotent, so
-    // initSchema stays safe to call on any existing catalog (the iri backfill calls it).
-    ensureColumn("ontology", "iri", "TEXT");
-    ensureColumn("ontology", "raw_namespace", "TEXT");
+    // Additive column migrations, idempotent, so initSchema stays safe on any existing catalog.
+    ensureColumn("ontology_source", "iri", "TEXT");
+    ensureColumn("ontology_source", "raw_namespace", "TEXT");
     // Artifact-kind discriminator: value-set collections share these tables with ontologies but must
     // resolve separately. The constant DEFAULT means every existing row reads 'ontology' with no
     // backfill; only a value-set-collection ingest sets it otherwise.
-    ensureColumn("ontology", "kind", "TEXT NOT NULL DEFAULT 'ontology'");
+    ensureColumn("ontology_source", "kind", "TEXT NOT NULL DEFAULT 'ontology'");
     // Provenance columns (display/audit only). backend carries a constant DEFAULT so every existing
     // row reads 'bioportal' with no separate backfill; submission_id and source_date are populated at
     // ingest and by the provenance backfill.
     ensureColumn("snapshot", "backend", "TEXT DEFAULT 'bioportal'");
     ensureColumn("snapshot", "submission_id", "INTEGER");
     ensureColumn("snapshot", "source_date", "TEXT");
+  }
+
+  /**
+   * Migrates a pre-re-key catalog whose {@code ontology} table is acronym-keyed to the iri-keyed
+   * split: the old table becomes {@code ontology_source} (its acronym PK and every column intact), and
+   * a fresh iri-keyed {@code ontology} identity table is populated from the distinct canonical iris
+   * already stored. Detected by the old table still carrying an {@code acronym} column; a no-op
+   * afterwards (the new {@code ontology} has no acronym), so it is safe to call on every open.
+   */
+  private void migrateAcronymKeyedOntologyTable() throws SQLException {
+    if (!tableHasColumn("ontology", "acronym")) {
+      return; // fresh catalog, or already migrated
+    }
+    try (Statement s = connection.createStatement()) {
+      s.executeUpdate("ALTER TABLE ontology RENAME TO ontology_source");
+    }
+    // Old catalogs may predate the iri / raw_namespace / kind columns; ensure the source table has them.
+    ensureColumn("ontology_source", "iri", "TEXT");
+    ensureColumn("ontology_source", "raw_namespace", "TEXT");
+    ensureColumn("ontology_source", "kind", "TEXT NOT NULL DEFAULT 'ontology'");
+    try (Statement s = connection.createStatement()) {
+      s.executeUpdate("CREATE TABLE IF NOT EXISTS ontology (iri TEXT PRIMARY KEY, name TEXT NOT NULL)");
+      // One identity row per distinct derived iri, taking any of the source rows' names.
+      s.executeUpdate("""
+          INSERT OR IGNORE INTO ontology (iri, name)
+          SELECT iri, MIN(name) FROM ontology_source
+          WHERE iri IS NOT NULL AND iri <> '' GROUP BY iri""");
+    }
+  }
+
+  /** Whether {@code table} exists and has a column named {@code column} (case-insensitive). */
+  private boolean tableHasColumn(String table, String column) throws SQLException {
+    try (Statement s = connection.createStatement();
+         ResultSet rs = s.executeQuery("PRAGMA table_info(" + table + ")")) {
+      while (rs.next()) {
+        if (column.equalsIgnoreCase(rs.getString("name"))) {
+          return true;
+        }
+      }
+    }
+    return false;
   }
 
   /** Adds {@code column} to {@code table} when absent; a no-op when it is already there. Lets
@@ -225,10 +294,11 @@ public class CatalogStore implements AutoCloseable {
    * Registration
    * ------------------------------------------------------------------------------------------ */
 
-  /** Registers or updates an ontology. */
+  /** Registers or updates an ontology's per-source addressing row. Its canonical iri is linked later
+   *  by {@link #setOntologyIri}, once derived from the ingested content. */
   public void upsertOntology(OntologyInfo o) throws SQLException {
     try (PreparedStatement ps = connection.prepareStatement("""
-        INSERT INTO ontology (acronym, name, source_iri, default_format) VALUES (?, ?, ?, ?)
+        INSERT INTO ontology_source (acronym, name, source_iri, default_format) VALUES (?, ?, ?, ?)
         ON CONFLICT(acronym) DO UPDATE SET
           name = excluded.name, source_iri = excluded.source_iri, default_format = excluded.default_format""")) {
       ps.setString(1, o.acronym());
@@ -280,11 +350,21 @@ public class CatalogStore implements AutoCloseable {
    */
   public void setOntologyIri(String acronym, String iri, String rawNamespace) throws SQLException {
     try (PreparedStatement ps = connection.prepareStatement(
-        "UPDATE ontology SET iri = ?, raw_namespace = ? WHERE acronym = ?")) {
+        "UPDATE ontology_source SET iri = ?, raw_namespace = ? WHERE acronym = ?")) {
       ps.setString(1, iri);
       ps.setString(2, rawNamespace);
       ps.setString(3, acronym);
       ps.executeUpdate();
+    }
+    // Link the source to (and create if new) its canonical identity row. This is where an acronym
+    // joins the iri-keyed identity: two acronyms deriving the same iri map to one identity row.
+    if (iri != null && !iri.isBlank()) {
+      try (PreparedStatement ps = connection.prepareStatement(
+          "INSERT OR IGNORE INTO ontology (iri, name) SELECT ?, name FROM ontology_source WHERE acronym = ?")) {
+        ps.setString(1, iri);
+        ps.setString(2, acronym);
+        ps.executeUpdate();
+      }
     }
   }
 
@@ -295,7 +375,7 @@ public class CatalogStore implements AutoCloseable {
    */
   public void setOntologyKind(String acronym, String kind) throws SQLException {
     try (PreparedStatement ps = connection.prepareStatement(
-        "UPDATE ontology SET kind = ? WHERE acronym = ?")) {
+        "UPDATE ontology_source SET kind = ? WHERE acronym = ?")) {
       ps.setString(1, kind);
       ps.setString(2, acronym);
       ps.executeUpdate();
@@ -312,7 +392,7 @@ public class CatalogStore implements AutoCloseable {
       return false;
     }
     try (PreparedStatement ps = connection.prepareStatement(
-        "SELECT 1 FROM ontology WHERE acronym = ? AND kind = ?")) {
+        "SELECT 1 FROM ontology_source WHERE acronym = ? AND kind = ?")) {
       ps.setString(1, acronym);
       ps.setString(2, KIND_VALUE_SET_COLLECTION);
       try (ResultSet rs = ps.executeQuery()) {
@@ -333,7 +413,7 @@ public class CatalogStore implements AutoCloseable {
       return Optional.empty();
     }
     try (PreparedStatement ps = connection.prepareStatement(
-        "SELECT acronym FROM ontology WHERE raw_namespace = ?")) {
+        "SELECT acronym FROM ontology_source WHERE raw_namespace = ?")) {
       ps.setString(1, rawNamespace);
       try (ResultSet rs = ps.executeQuery()) {
         if (!rs.next()) {
@@ -348,7 +428,7 @@ public class CatalogStore implements AutoCloseable {
   /** The ontology's canonical {@code iri}, or empty when the acronym is unknown or its iri is not yet
    *  derived. */
   public Optional<String> ontologyIri(String acronym) throws SQLException {
-    try (PreparedStatement ps = connection.prepareStatement("SELECT iri FROM ontology WHERE acronym = ?")) {
+    try (PreparedStatement ps = connection.prepareStatement("SELECT iri FROM ontology_source WHERE acronym = ?")) {
       ps.setString(1, acronym);
       try (ResultSet rs = ps.executeQuery()) {
         return rs.next() ? Optional.ofNullable(rs.getString(1)) : Optional.empty();
@@ -371,7 +451,7 @@ public class CatalogStore implements AutoCloseable {
       return acronyms;
     }
     try (PreparedStatement ps = connection.prepareStatement(
-        "SELECT acronym FROM ontology WHERE iri = ? ORDER BY acronym")) {
+        "SELECT acronym FROM ontology_source WHERE iri = ? ORDER BY acronym")) {
       ps.setString(1, iri);
       try (ResultSet rs = ps.executeQuery()) {
         while (rs.next()) {
@@ -614,12 +694,49 @@ public class CatalogStore implements AutoCloseable {
 
   public List<OntologyInfo> listOntologies() throws SQLException {
     try (Statement s = connection.createStatement();
-         ResultSet rs = s.executeQuery("SELECT acronym, name, source_iri, default_format FROM ontology ORDER BY acronym")) {
+         ResultSet rs = s.executeQuery(
+             "SELECT acronym, name, source_iri, default_format FROM ontology_source ORDER BY acronym")) {
       List<OntologyInfo> out = new ArrayList<>();
       while (rs.next()) {
         out.add(new OntologyInfo(rs.getString(1), rs.getString(2), rs.getString(3), rs.getString(4)));
       }
       return out;
+    }
+  }
+
+  /** Every canonical ontology identity (iri), ascending — one row per distinct ontology, spanning
+   *  sources. The iri-keyed counterpart of {@link #listOntologies} (which lists source acronyms). */
+  public List<String> listOntologyIdentities() throws SQLException {
+    try (Statement s = connection.createStatement();
+         ResultSet rs = s.executeQuery("SELECT iri FROM ontology ORDER BY iri")) {
+      List<String> out = new ArrayList<>();
+      while (rs.next()) {
+        out.add(rs.getString(1));
+      }
+      return out;
+    }
+  }
+
+  /**
+   * Resolves the current snapshot for an ontology by its canonical {@code iri}, across every source
+   * that holds it — the iri-keyed counterpart of {@link #resolveLatest} (which is scoped to one
+   * acronym). When the ontology is held under several acronyms (ingested from more than one authority),
+   * the newest {@code latest} snapshot among them wins (by release date, then ingest order, then
+   * version id, deterministically). This is the resolution the iri re-key enables: identity is the
+   * iri, so a lookup spans sources rather than a single source-acronym. Empty when no source of the
+   * iri has a current snapshot.
+   */
+  public Optional<SnapshotInfo> resolveLatestByIri(String iri) throws SQLException {
+    try (PreparedStatement ps = connection.prepareStatement("""
+        SELECT s.* FROM version_tag t
+        JOIN snapshot s ON s.version_id = t.version_id AND s.acronym = t.acronym
+        JOIN ontology_source os ON os.acronym = t.acronym
+        WHERE os.iri = ? AND t.tag = ?
+        ORDER BY s.released_at DESC, s.ingested_at DESC, s.version_id DESC
+        LIMIT 1""")) {
+      ps.setString(1, iri);
+      ps.setString(2, TAG_LATEST);
+      return firstSnapshot(ps);
     }
   }
 
