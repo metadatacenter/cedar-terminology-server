@@ -63,6 +63,14 @@ public final class DeriveOntologyIriBackfill {
           System.out.printf("%-24s SKIPPED: %s%n", acronym, e.getMessage());
         }
       }
+      // Enforce the identity invariant across the whole corpus: a canonical iri shared by
+      // content-distinct ontologies (a placeholder/host base, or a namespace an ontology only imports)
+      // is a false merge — keep it for its OBO owner, decline it for the rest.
+      IriDeconfliction.Result d = IriDeconfliction.run(catalog, true);
+      System.out.printf("de-confliction: %d shared iris — %d duplicates kept, %d owner-resolved, "
+              + "%d ownerless; %d acronyms declined, %d orphan identities pruned%n",
+          d.sharedIris(), d.duplicates(), d.conflictsWithOwner(), d.conflictsNoOwner(),
+          d.acronymsDeclined(), d.orphanIdentitiesPruned());
     }
     System.out.printf("%nbackfill done: %d derived, %d empty, %d skipped%n", derived, empty, skipped);
   }

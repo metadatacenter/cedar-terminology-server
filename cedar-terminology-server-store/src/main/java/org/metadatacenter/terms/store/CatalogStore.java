@@ -369,6 +369,43 @@ public class CatalogStore implements AutoCloseable {
   }
 
   /**
+   * Detaches an ontology from its canonical identity, leaving it addressable by acronym only. The
+   * {@code raw_namespace} is kept as provenance. Used when a derived iri turns out not to identify
+   * this ontology — a placeholder/host base, or a namespace it merely imports (de-confliction). The
+   * orphaned identity row, if any, is left for {@link #pruneOrphanIdentities} to reap.
+   */
+  public void clearOntologyIri(String acronym) throws SQLException {
+    try (PreparedStatement ps = connection.prepareStatement(
+        "UPDATE ontology_source SET iri = NULL WHERE acronym = ?")) {
+      ps.setString(1, acronym);
+      ps.executeUpdate();
+    }
+  }
+
+  /** Canonical iris claimed by more than one source-acronym, ascending — the de-confliction work
+   *  list: each is either a true duplicate (same content) or a false merge to resolve. */
+  public List<String> sharedIris() throws SQLException {
+    try (Statement s = connection.createStatement();
+         ResultSet rs = s.executeQuery("SELECT iri FROM ontology_source "
+             + "WHERE iri IS NOT NULL GROUP BY iri HAVING COUNT(*) > 1 ORDER BY iri")) {
+      List<String> out = new ArrayList<>();
+      while (rs.next()) {
+        out.add(rs.getString(1));
+      }
+      return out;
+    }
+  }
+
+  /** Deletes identity rows no source-acronym points at any more (after de-confliction cleared their
+   *  last referrer). Returns the number removed. */
+  public int pruneOrphanIdentities() throws SQLException {
+    try (Statement s = connection.createStatement()) {
+      return s.executeUpdate("DELETE FROM ontology WHERE iri NOT IN "
+          + "(SELECT iri FROM ontology_source WHERE iri IS NOT NULL)");
+    }
+  }
+
+  /**
    * Records an ontology row's artifact {@code kind} (see {@link #KIND_ONTOLOGY} /
    * {@link #KIND_VALUE_SET_COLLECTION}). Set by the value-set-collection ingest after the shared
    * content-hash ingest has registered the row; a no-op when the acronym is unknown. Idempotent.
