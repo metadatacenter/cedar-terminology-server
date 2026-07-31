@@ -295,6 +295,55 @@ public class CatalogStoreTest {
   }
 
   @Test
+  public void cutover_rewritesVersionIdsAndMergesDuplicates() throws Exception {
+    // MERGE has three snapshots: raw1 and raw2 are the same content (content hash "cA"), raw3 is
+    // distinct ("cB"). latest is raw3.
+    catalog.upsertOntology(new OntologyInfo("MERGE", "Merge", null, "OWL"));
+    catalog.addSnapshot(mergeSnap("raw1", "2025-01-01"));
+    catalog.addSnapshot(mergeSnap("raw2", "2025-02-01"));
+    catalog.addSnapshot(mergeSnap("raw3", "2025-03-01"));
+    catalog.setTag("MERGE", CatalogStore.TAG_LATEST, "raw3");
+
+    catalog.cutoverToContentHash(List.of(
+        new CatalogStore.VersionRemap("MERGE", "raw2", "cA", true),  // survivor of the dup pair
+        new CatalogStore.VersionRemap("MERGE", "raw1", "cA", false), // merged away
+        new CatalogStore.VersionRemap("MERGE", "raw3", "cB", true)));
+
+    // Two rows remain, keyed by content hash; the duplicate is gone.
+    List<SnapshotInfo> after = catalog.listSnapshots("MERGE");
+    assertEquals(2, after.size());
+    assertTrue(catalog.resolveVersion("MERGE", "cA").isPresent());
+    assertTrue(catalog.resolveVersion("MERGE", "cB").isPresent());
+    assertTrue(catalog.resolveVersion("MERGE", "raw1").isEmpty()); // old raw ids no longer resolve
+    assertTrue(catalog.resolveVersion("MERGE", "raw2").isEmpty());
+    // latest followed raw3 -> its content hash.
+    assertEquals("cB", catalog.resolveLatest("MERGE").orElseThrow().versionId());
+    // file_hash is untouched (still the raw hash) on the surviving row.
+    assertEquals("raw2", catalog.resolveVersion("MERGE", "cA").orElseThrow().fileHash());
+  }
+
+  @Test
+  public void cutover_repointsATagThatSatOnAMergedAwayDuplicate() throws Exception {
+    // latest points at the row that gets merged away; it must repoint to the survivor's content hash.
+    catalog.upsertOntology(new OntologyInfo("MERGE", "Merge", null, "OWL"));
+    catalog.addSnapshot(mergeSnap("raw1", "2025-01-01"));
+    catalog.addSnapshot(mergeSnap("raw2", "2025-02-01"));
+    catalog.setTag("MERGE", CatalogStore.TAG_LATEST, "raw1"); // tag on the loser
+
+    catalog.cutoverToContentHash(List.of(
+        new CatalogStore.VersionRemap("MERGE", "raw2", "cA", true),
+        new CatalogStore.VersionRemap("MERGE", "raw1", "cA", false)));
+
+    assertEquals(1, catalog.listSnapshots("MERGE").size());
+    assertEquals("cA", catalog.resolveLatest("MERGE").orElseThrow().versionId());
+  }
+
+  private static SnapshotInfo mergeSnap(String rawHash, String released) {
+    return new SnapshotInfo(rawHash, "MERGE", "1.0", released, "2026-01-01T00:00:00Z",
+        "OWL", "subsumption", 1, 1, "/snapshots/MERGE/" + rawHash + ".sqlite", rawHash, "open");
+  }
+
+  @Test
   public void inMemoryCatalogHasNoBaseDir() {
     // The shared in-memory catalog has no file, so no base directory to resolve against.
     assertTrue(catalog.baseDir().isEmpty());

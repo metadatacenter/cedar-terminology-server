@@ -332,6 +332,72 @@ public class CatalogStore implements AutoCloseable {
     }
   }
 
+  /**
+   * One snapshot's place in a content-hash cutover: its current {@code (acronym, oldVersionId)} and
+   * the {@code newVersionId} (normalized content hash) it should take. {@code keep} is false for a
+   * merged-away duplicate — a snapshot whose content is byte-different but identical to another of
+   * the same ontology; its row is dropped and its tag repointed to the survivor that shares the
+   * content hash.
+   */
+  public record VersionRemap(String acronym, String oldVersionId, String newVersionId, boolean keep) {}
+
+  /**
+   * Rewrites {@code version_id}s from the raw-file hash to the normalized content hash in a single
+   * transaction (VERSIONING-DESIGN §4.3 cutover). Tags are repointed to the surviving content hash,
+   * merged-away duplicate rows are deleted, and surviving rows take their new id. {@code file_path}
+   * and {@code file_hash} are left untouched: {@code file_hash} already holds the raw hash (now
+   * provenance), and existing snapshot files keep their names ({@code file_path} stays authoritative).
+   * Foreign-key enforcement is disabled first so the intermediate state (tags repointed before rows)
+   * is allowed.
+   */
+  public void cutoverToContentHash(List<VersionRemap> remaps) throws SQLException {
+    try (Statement fk = connection.createStatement()) {
+      fk.execute("PRAGMA foreign_keys=OFF"); // a no-op inside a transaction, so set it before one
+    }
+    boolean autoCommit = connection.getAutoCommit();
+    connection.setAutoCommit(false);
+    try (PreparedStatement tag = connection.prepareStatement(
+             "UPDATE version_tag SET version_id = ? WHERE acronym = ? AND version_id = ?");
+         PreparedStatement del = connection.prepareStatement(
+             "DELETE FROM snapshot WHERE acronym = ? AND version_id = ?");
+         PreparedStatement upd = connection.prepareStatement(
+             "UPDATE snapshot SET version_id = ? WHERE acronym = ? AND version_id = ?")) {
+      // 1. Repoint every tag from its old id to the surviving content hash (covers a tag that sat on
+      //    a merged-away duplicate — it maps to the survivor).
+      for (VersionRemap r : remaps) {
+        if (!r.newVersionId().equals(r.oldVersionId())) {
+          tag.setString(1, r.newVersionId());
+          tag.setString(2, r.acronym());
+          tag.setString(3, r.oldVersionId());
+          tag.executeUpdate();
+        }
+      }
+      // 2. Drop merged-away duplicate rows.
+      for (VersionRemap r : remaps) {
+        if (!r.keep()) {
+          del.setString(1, r.acronym());
+          del.setString(2, r.oldVersionId());
+          del.executeUpdate();
+        }
+      }
+      // 3. Give each surviving row its content-hash id.
+      for (VersionRemap r : remaps) {
+        if (r.keep() && !r.newVersionId().equals(r.oldVersionId())) {
+          upd.setString(1, r.newVersionId());
+          upd.setString(2, r.acronym());
+          upd.setString(3, r.oldVersionId());
+          upd.executeUpdate();
+        }
+      }
+      connection.commit();
+    } catch (SQLException e) {
+      connection.rollback();
+      throw e;
+    } finally {
+      connection.setAutoCommit(autoCommit);
+    }
+  }
+
   /* --------------------------------------------------------------------------------------------
    * Resolution
    * ------------------------------------------------------------------------------------------ */

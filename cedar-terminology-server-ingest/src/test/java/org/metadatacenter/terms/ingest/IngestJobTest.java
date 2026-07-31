@@ -21,6 +21,7 @@ import java.util.Comparator;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -153,11 +154,15 @@ public class IngestJobTest {
   }
 
   @Test
-  public void versionIdIsContentHashOfRawFile() throws Exception {
-    String expected = IngestJob.sha256(sourceOwl);
+  public void versionIdIsNormalizedContentHash_rawHashKeptAsFileHash() throws Exception {
+    // Identity is the normalized content hash (VERSIONING-DESIGN §4.3), not the raw-file hash; the
+    // raw hash is retained as file_hash for provenance.
+    String rawHash = IngestJob.sha256(sourceOwl);
     IngestJob job = new IngestJob(fakeSource());
     IngestJob.IngestResult r = job.ingestLatest(catalog, "EX", tempDir.resolve("snapshots"));
-    assertEquals(expected, r.versionId());
+    assertNotEquals(rawHash, r.versionId());
+    assertEquals(64, r.versionId().length());
+    assertEquals(rawHash, catalog.getSnapshot(r.versionId()).orElseThrow().fileHash());
   }
 
   @Test

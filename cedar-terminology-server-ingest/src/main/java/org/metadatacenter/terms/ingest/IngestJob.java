@@ -124,7 +124,7 @@ public class IngestJob {
 
     Path ontoDir = snapshotDir.resolve(acronym);
     Path raw = source.download(acronym, sub.submissionId(), ontoDir.resolve("raw"));
-    String versionId = sha256(raw);      // version id hashes the archival download as-is
+    String rawHash = sha256(raw);        // hash of the archival download, kept as file_hash provenance
     Path loadable = decompress(raw);     // .zip/.gz submissions must be expanded before parsing
     loadable = stripOboImports(loadable);// OBO import: declarations must be dropped before parsing
 
@@ -134,10 +134,14 @@ public class IngestJob {
     // resolution throw NoClassDefFoundError (an Error, missed by catch(Exception)), leaving an empty
     // file with the previous good data already deleted. Catch Throwable so such an Error becomes a
     // skippable failure rather than clobbering data or aborting a batch.
-    Path snapshotFile = ontoDir.resolve(versionId + ".sqlite");
-    Path tempFile = ontoDir.resolve(versionId + ".sqlite.tmp");
+    //
+    // The version id is the normalized content hash (VERSIONING-DESIGN §4.3), so it can only be
+    // computed after extraction. The temp file is therefore named by the raw hash (name-independent
+    // of identity); the final file is named by the content-hash version id.
+    Path tempFile = ontoDir.resolve(rawHash + ".sqlite.tmp");
     Files.deleteIfExists(tempFile);
     HierarchyExtractor.Result extracted;
+    String versionId;
     try (SnapshotStore store = SnapshotStore.openFile(tempFile.toString())) {
       store.initSchema();
       extracted = extractorFor(acronym, sub.format()).extractFromFile(loadable.toFile(), store);
@@ -148,6 +152,9 @@ public class IngestJob {
       // BioPortal), so label-less ontologies are searchable/browsable rather than blank. After the
       // prune, which keys on the genuinely-unlabeled state.
       store.fillMissingLabelsFromIri();
+      // Identity = the normalized served model, independent of the source bytes/serialization. Two
+      // uploads that extract to the same hierarchy share a version id and merge to one snapshot.
+      versionId = store.normalizedContentHash(true);
     } catch (Throwable e) {
       Files.deleteIfExists(tempFile);
       throw new IOException("Extraction failed for " + acronym + " submission " + sub.submissionId(), e);
@@ -157,13 +164,14 @@ public class IngestJob {
       throw new IOException("Extraction produced 0 classes for " + acronym + " submission "
           + sub.submissionId() + "; refusing to overwrite the existing snapshot with an empty one");
     }
+    Path snapshotFile = ontoDir.resolve(versionId + ".sqlite");
     Files.move(tempFile, snapshotFile, StandardCopyOption.REPLACE_EXISTING);
 
     catalog.upsertOntology(new CatalogStore.OntologyInfo(acronym, acronym, null, sub.format()));
     catalog.addSnapshot(new CatalogStore.SnapshotInfo(
         versionId, acronym, sub.version(), sub.released(), Instant.now().toString(),
         sub.format(), "subsumption", extracted.classCount(), extracted.edgeCount(),
-        catalogRelativePath(catalog, snapshotFile), versionId,
+        catalogRelativePath(catalog, snapshotFile), rawHash,
         access.viewingRestriction() == null ? "public" : access.viewingRestriction()));
     // Display/audit-only provenance: BioPortal's reliable per-upload submission id (in hand here,
     // unreconstructable offline later) and the version string's self-claimed date.

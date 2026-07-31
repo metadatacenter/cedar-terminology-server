@@ -123,6 +123,34 @@ public class MultiVersionIngestTest {
     }
   }
 
+  @Test
+  public void versionIdIsTheContentHash_soIdenticalContentMergesAndDiffersFromRawHash() throws Exception {
+    // Two submissions with byte-different files but the SAME extracted content (v1 saved twice)
+    // share a content-hash version id, so ingestAll registers one snapshot, not two -- the merge the
+    // §4.3 cutover does for existing data now happens at ingest time.
+    SubmissionSource sameContentTwice = new SubmissionSource() {
+      @Override public OntologyAccess accessInfo(String acronym) { return new OntologyAccess("public", null); }
+      @Override public List<Submission> listSubmissions(String acronym) {
+        return List.of(new Submission(1, "a", "2024-01-01", "OWL"), new Submission(2, "b", "2025-01-01", "OWL"));
+      }
+      @Override public Submission latestSubmission(String acronym) { return new Submission(2, "b", "2025-01-01", "OWL"); }
+      @Override public Path download(String acronym, int submissionId, Path targetDir) throws IOException {
+        Files.createDirectories(targetDir);
+        Path dest = targetDir.resolve("sub" + submissionId + ".owl");
+        Files.copy(owlV1, dest, StandardCopyOption.REPLACE_EXISTING); // same content for both submissions
+        return dest;
+      }
+    };
+    List<IngestJob.IngestResult> results = new IngestJob(sameContentTwice)
+        .ingestAll(catalog, ONT, tempDir.resolve("snapshots"));
+
+    assertEquals(1, catalog.listSnapshots(ONT).size(), "identical content collapses to one snapshot");
+    // The version id is a content hash (64 hex chars), not the raw-file hash recorded as file_hash.
+    CatalogStore.SnapshotInfo snap = catalog.listSnapshots(ONT).get(0);
+    assertEquals(64, snap.versionId().length());
+    assertTrue(results.stream().allMatch(r -> r.versionId().equals(snap.versionId())));
+  }
+
   private static void buildOntology(Path file, String leaf) throws Exception {
     OWLOntologyManager m = OWLManager.createOWLOntologyManager();
     OWLDataFactory df = m.getOWLDataFactory();
