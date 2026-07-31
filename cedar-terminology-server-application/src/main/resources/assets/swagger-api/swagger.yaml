@@ -41,6 +41,36 @@ paths:
       summary: Get provisional classes
       tags:
       - Classes
+  /bioportal/classes/version-current:
+    get:
+      description: "The version triple of the ontology that owns the given class/term\
+        \ IRI — the freeze-on-publish capability for a class-valued constraint, which\
+        \ names a term but not its ontology. The IRI's namespace is mapped to its\
+        \ ontology, then that ontology's current triple is returned. 404 when the\
+        \ ontology cannot be determined unambiguously or is not served locally."
+      operationId: resolveCurrentVersionForClass
+      parameters:
+      - description: "Class/term IRI. Example: http://purl.obolibrary.org/obo/DOID_9351."
+        in: query
+        name: uri
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: Successful operation
+        "401":
+          description: Unauthorized
+        "404":
+          description: Ontology for the class not resolvable locally
+        "500":
+          description: Internal server error
+      security:
+      - api_key: []
+      summary: Resolve the current version triple for a class IRI
+      tags:
+      - Classes
+      - Ontologies
   /bioportal/classes/{id}:
     delete:
       description: Update a provisional class.

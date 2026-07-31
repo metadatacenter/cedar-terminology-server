@@ -659,6 +659,11 @@ public class TerminologyService implements ITerminologyService {
   }
 
   @Override
+  public VersionTriple resolveCurrentVersionForClass(String classIri) {
+    return null; // requires the local catalog's namespace map; BioPortal cannot resolve a triple
+  }
+
+  @Override
   public VersionDiff diffVersions(String ontology, String fromVersion, String toVersion) {
     return null; // diffing local content-hash versions is not a BioPortal capability
   }

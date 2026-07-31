@@ -304,6 +304,13 @@ public class RoutingTerminologyService implements ITerminologyService {
   }
 
   @Override
+  public VersionTriple resolveCurrentVersionForClass(String classIri) throws IOException {
+    // Only the local store can map a class IRI's namespace to an ontology and resolve its triple; the
+    // remote backend has none. The ontology is derived inside, so this cannot go through dispatch(ontology).
+    return local != null ? local.resolveCurrentVersionForClass(classIri) : null;
+  }
+
+  @Override
   public VersionDiff diffVersions(String ontology, String fromVersion, String toVersion) throws IOException {
     return dispatch(ontology, s -> s.diffVersions(ontology, fromVersion, toVersion));
   }

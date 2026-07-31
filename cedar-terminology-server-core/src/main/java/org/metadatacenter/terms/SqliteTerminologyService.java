@@ -73,6 +73,15 @@ public class SqliteTerminologyService implements ITerminologyService {
     }
 
     /**
+     * The acronym of the served ontology that owns a concept/class IRI (by its namespace), or empty
+     * when it cannot be determined unambiguously or is not served. Empty by default. Lets a
+     * class-valued constraint be frozen without naming its ontology.
+     */
+    default Optional<String> ontologyForConceptIri(String conceptIri) {
+      return Optional.empty();
+    }
+
+    /**
      * Metadata for the ontologies this provider serves locally — the catalog's own registry, used to
      * answer the ontology-list endpoint without crawling BioPortal. Empty by default (a bare provider
      * that only resolves snapshot stores).
@@ -190,6 +199,12 @@ public class SqliteTerminologyService implements ITerminologyService {
   @Override
   public VersionTriple resolveCurrentVersion(String ontology) {
     return provider.currentVersion(ontology).orElse(null);
+  }
+
+  @Override
+  public VersionTriple resolveCurrentVersionForClass(String classIri) {
+    // classIri -> owning ontology (by namespace) -> that ontology's current triple.
+    return provider.ontologyForConceptIri(classIri).flatMap(provider::currentVersion).orElse(null);
   }
 
   @Override

@@ -84,6 +84,8 @@ public class CatalogSnapshotProviderTest {
     }
     catalog.addSnapshot(new CatalogStore.SnapshotInfo("v2", "EX", "2.0", "2025-06-01", "2025-06-02T00:00:00Z",
         "OWL", "subsumption", 7, 7, v2File.toString(), "v2", "open")); // latest stays v1
+    // Record EX's namespace so a class IRI can be mapped back to it (A6 raw_namespace reverse lookup).
+    catalog.setOntologyIri("EX", "http://ex", "http://ex/");
 
     // Allowlist EX and OTHER; only EX is actually ingested.
     provider = new CatalogSnapshotProvider(catalog, Set.of("EX", "OTHER"));
@@ -217,6 +219,21 @@ public class CatalogSnapshotProviderTest {
     assertTrue(provider.currentVersion("OTHER").isEmpty()); // allowlisted but never ingested
     assertTrue(provider.currentVersion("NOPE").isEmpty());  // not allowlisted
     assertTrue(provider.currentVersion(null).isEmpty());
+  }
+
+  @Test
+  public void resolvesOntologyForConceptIriByNamespace() {
+    assertEquals("EX", provider.ontologyForConceptIri("http://ex/wolf").orElseThrow());
+    assertTrue(provider.ontologyForConceptIri("http://other/thing").isEmpty()); // unknown namespace
+    assertTrue(provider.ontologyForConceptIri(null).isEmpty());
+  }
+
+  @Test
+  public void resolvesCurrentVersionForClassViaTheService() throws Exception {
+    // A class IRI -> its ontology (EX, by namespace) -> EX's current triple (latest is v1).
+    SqliteTerminologyService service = new SqliteTerminologyService(provider);
+    assertEquals("v1", service.resolveCurrentVersionForClass("http://ex/wolf").id());
+    assertNull(service.resolveCurrentVersionForClass("http://other/x")); // namespace not ours
   }
 
   @Test

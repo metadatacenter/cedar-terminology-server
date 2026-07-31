@@ -66,6 +66,14 @@ public interface ITerminologyService {
   VersionTriple resolveCurrentVersion(String ontology) throws IOException;
 
   /**
+   * The version triple of the ontology that owns a class/term IRI — the freeze capability for a
+   * class-valued constraint, which names a term but not its ontology. Maps the IRI to its ontology by
+   * namespace, then resolves that ontology's current triple. {@code null} when the ontology cannot be
+   * determined unambiguously or is not served locally.
+   */
+  VersionTriple resolveCurrentVersionForClass(String classIri) throws IOException;
+
+  /**
    * The vocabulary diff between two locally-stored versions of an ontology (each a version_id or a
    * tag such as {@code latest}), or null when the ontology or a version is not available locally.
    */

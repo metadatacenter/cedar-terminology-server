@@ -155,6 +155,38 @@ public class OntologyResource extends AbstractTerminologyServerResource {
   }
 
   @GET
+  @Path("classes/version-current")
+  @Operation(summary = "Resolve the current version triple for a class IRI",
+      description = "The version triple of the ontology that owns the given class/term IRI — the "
+          + "freeze-on-publish capability for a class-valued constraint, which names a term but not "
+          + "its ontology. The IRI's namespace is mapped to its ontology, then that ontology's current "
+          + "triple is returned. 404 when the ontology cannot be determined unambiguously or is not "
+          + "served locally.",
+      tags = {"Classes"})
+  @ApiResponses({
+      @ApiResponse(responseCode = "200", description = "Successful operation"),
+      @ApiResponse(responseCode = "401", description = "Unauthorized"),
+      @ApiResponse(responseCode = "404", description = "Ontology for the class not resolvable locally"),
+      @ApiResponse(responseCode = "500", description = "Internal server error")
+  })
+  public Response resolveCurrentVersionForClass(
+      @Parameter(description = "Class/term IRI. Example: http://purl.obolibrary.org/obo/DOID_9351.",
+          required = true)
+      @jakarta.ws.rs.QueryParam("uri") String uri) throws CedarException {
+    CedarRequestContext ctx = buildRequestContext();
+    ctx.must(ctx.user()).be(LoggedIn);
+    try {
+      VersionTriple triple = terminologyService.resolveCurrentVersionForClass(uri);
+      if (triple == null) {
+        return CedarResponse.notFound().build();
+      }
+      return Response.ok().entity(JsonMapper.MAPPER.valueToTree(triple)).build();
+    } catch (IOException e) {
+      throw new CedarAssertionException(e);
+    }
+  }
+
+  @GET
   @Path("ontologies/{id}/versions/diff")
   @Operation(summary = "Diff two local versions of an ontology",
       description = "The vocabulary diff (concept and subsumption-edge additions/removals, newly "

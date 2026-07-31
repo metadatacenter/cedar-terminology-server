@@ -272,6 +272,30 @@ public class CatalogStore implements AutoCloseable {
     }
   }
 
+  /**
+   * The acronym of the ontology that owns a term ID-space (raw namespace) — the reverse of the A6
+   * {@code iri} derivation. Resolves <b>only when exactly one</b> ontology claims the namespace: a
+   * namespace shared by several (generic webprotege/host bases) is ambiguous and yields empty, so a
+   * caller mapping a class IRI to its ontology never guesses. Used to freeze a class-valued
+   * constraint: {@code classIri → idspace → acronym → resolve-current}.
+   */
+  public Optional<String> acronymForNamespace(String rawNamespace) throws SQLException {
+    if (rawNamespace == null) {
+      return Optional.empty();
+    }
+    try (PreparedStatement ps = connection.prepareStatement(
+        "SELECT acronym FROM ontology WHERE raw_namespace = ?")) {
+      ps.setString(1, rawNamespace);
+      try (ResultSet rs = ps.executeQuery()) {
+        if (!rs.next()) {
+          return Optional.empty();
+        }
+        String only = rs.getString(1);
+        return rs.next() ? Optional.empty() : Optional.of(only); // >1 match ⇒ ambiguous ⇒ empty
+      }
+    }
+  }
+
   /** The ontology's canonical {@code iri}, or empty when the acronym is unknown or its iri is not yet
    *  derived. */
   public Optional<String> ontologyIri(String acronym) throws SQLException {

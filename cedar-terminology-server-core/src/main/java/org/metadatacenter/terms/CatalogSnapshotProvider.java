@@ -134,6 +134,21 @@ public class CatalogSnapshotProvider implements SqliteTerminologyService.Snapsho
   }
 
   @Override
+  public Optional<String> ontologyForConceptIri(String conceptIri) {
+    if (conceptIri == null) {
+      return Optional.empty();
+    }
+    try {
+      // The concept's ID-space (SnapshotStore.idspace) is the ontology's raw namespace; reverse-look
+      // it up in the catalog, then keep it only if we actually serve that ontology.
+      return catalog.acronymForNamespace(SnapshotStore.idspace(conceptIri)).filter(allowed::contains);
+    } catch (SQLException e) {
+      log.warn("Catalog namespace lookup failed for concept {}", conceptIri, e);
+      return Optional.empty();
+    }
+  }
+
+  @Override
   public Optional<VersionTriple> currentVersion(String ontology) {
     if (ontology == null || !allowed.contains(ontology)) {
       return Optional.empty();

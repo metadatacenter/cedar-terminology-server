@@ -230,6 +230,27 @@ public class CatalogStoreTest {
   }
 
   @Test
+  public void acronymForNamespace_resolvesTheUniqueOwner() throws Exception {
+    catalog.setOntologyIri("DOID", "http://purl.obolibrary.org/obo/doid",
+        "http://purl.obolibrary.org/obo/DOID_");
+    assertEquals("DOID",
+        catalog.acronymForNamespace("http://purl.obolibrary.org/obo/DOID_").orElseThrow());
+    assertTrue(catalog.acronymForNamespace("http://unknown.example/").isEmpty());
+    assertTrue(catalog.acronymForNamespace(null).isEmpty());
+  }
+
+  @Test
+  public void acronymForNamespace_ambiguousNamespaceResolvesEmpty() throws Exception {
+    // Two ontologies share a generic base (as webprotege-hosted ones do) — the owner can't be
+    // determined from a namespace alone, so the reverse lookup declines rather than guessing.
+    catalog.upsertOntology(new OntologyInfo("WP-A", "A", null, "OWL"));
+    catalog.upsertOntology(new OntologyInfo("WP-B", "B", null, "OWL"));
+    catalog.setOntologyIri("WP-A", "http://webprotege.stanford.edu/A", "http://webprotege.stanford.edu/");
+    catalog.setOntologyIri("WP-B", "http://webprotege.stanford.edu/B", "http://webprotege.stanford.edu/");
+    assertTrue(catalog.acronymForNamespace("http://webprotege.stanford.edu/").isEmpty());
+  }
+
+  @Test
   public void initSchemaIsIdempotentForTheAddedColumns() throws Exception {
     // ensureColumn must not fail when the iri / raw_namespace columns already exist (re-run of the
     // backfill, or a fresh catalog whose CREATE already has them).
