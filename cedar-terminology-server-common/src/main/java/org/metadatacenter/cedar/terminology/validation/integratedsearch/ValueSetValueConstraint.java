@@ -20,6 +20,8 @@ public class ValueSetValueConstraint {
   // Optional pinned version (version_id or tag) of the collection; absent means the current version.
   @JsonDeserialize(using = ConstraintVersionDeserializer.class)
   private String version;
+  // Optional source system; absent/blank means BioPortal (see OntologyValueConstraint).
+  private String sourceSystem;
 
   public ValueSetValueConstraint() { }
 
@@ -33,6 +35,10 @@ public class ValueSetValueConstraint {
 
   public String getVsCollection() {
     return vsCollection;
+  }
+
+  public String getSourceSystem() {
+    return sourceSystem;
   }
 
 }

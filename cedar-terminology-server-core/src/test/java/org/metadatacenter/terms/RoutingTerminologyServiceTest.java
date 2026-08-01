@@ -19,6 +19,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
@@ -233,6 +234,27 @@ public class RoutingTerminologyServiceTest {
     // returning the REMOTE sentinel.
     assertThrows(PinnedVersionUnavailableException.class, () -> router.integratedSearch(Optional.empty(),
         vc("{\"ontologies\":[{\"acronym\":\"OTHER\",\"version\":\"deadbeef\"}]}"), 1, 50, null));
+  }
+
+  /* sourceSystem routing — a non-BioPortal source is served locally or reported unavailable, never proxied */
+
+  @Test
+  public void integratedSearchNonBioPortalSourceNotLocal_unavailableNotRemote() throws Exception {
+    // OTHER names a non-BioPortal source and is not served locally: return no results rather than proxy
+    // BioPortal (which would answer with a different source's content).
+    PagedResults<SearchResult> r = router.integratedSearch(Optional.of("x"),
+        vc("{\"ontologies\":[{\"acronym\":\"OTHER\",\"sourceSystem\":\"agroportal\"}]}"), 1, 50, null);
+    assertEquals(Integer.valueOf(0), r.getTotalCount());
+    assertTrue(r.getCollection().isEmpty());
+  }
+
+  @Test
+  public void integratedSearchNonBioPortalSourceServedLocally_servedByLocal() throws Exception {
+    // A non-BioPortal source that IS served locally is answered from the local store — identity is
+    // source-independent, so sourceSystem does not change the result.
+    PagedResults<SearchResult> r = router.integratedSearch(Optional.empty(),
+        vc("{\"ontologies\":[{\"acronym\":\"" + EX + "\",\"sourceSystem\":\"agroportal\"}]}"), 1, 50, null);
+    assertEquals(Integer.valueOf(3), r.getTotalCount());
   }
 
   /* localOnly — the strict mode the equivalence harness runs under */

@@ -203,7 +203,53 @@ public class RoutingTerminologyService implements ITerminologyService {
           "A constraint pins a version, but its source is not served locally; refusing to serve latest "
               + "from the remote adapter.");
     }
+    // A constraint that names a non-BioPortal source is served from the local store or not at all — it is
+    // never proxied to BioPortal. Identity is source-independent, so a locally-served snapshot already
+    // answered above; reaching here means it is not served locally. Return no results rather than
+    // BioPortal's content for a different source.
+    if (hasNonBioPortalSource(valueConstraints)) {
+      return emptyResults(page, pageSize);
+    }
     return remote.integratedSearch(q, valueConstraints, page, pageSize, apiKey);
+  }
+
+  /** Whether any ontology / branch / value-set constraint names a source system other than BioPortal (a
+   *  non-null, non-blank {@code sourceSystem} that is not {@code "bioportal"}). Such a constraint must be
+   *  served locally or reported unavailable — never proxied to BioPortal. */
+  private static boolean hasNonBioPortalSource(ValueConstraints vc) {
+    if (vc == null) {
+      return false;
+    }
+    if (vc.getOntologies() != null) {
+      for (OntologyValueConstraint o : vc.getOntologies()) {
+        if (isNonBioPortalSource(o.getSourceSystem())) {
+          return true;
+        }
+      }
+    }
+    if (vc.getBranches() != null) {
+      for (BranchValueConstraint b : vc.getBranches()) {
+        if (isNonBioPortalSource(b.getSourceSystem())) {
+          return true;
+        }
+      }
+    }
+    if (vc.getValueSets() != null) {
+      for (ValueSetValueConstraint v : vc.getValueSets()) {
+        if (isNonBioPortalSource(v.getSourceSystem())) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  private static boolean isNonBioPortalSource(String sourceSystem) {
+    return sourceSystem != null && !sourceSystem.isBlank() && !"bioportal".equalsIgnoreCase(sourceSystem);
+  }
+
+  private static PagedResults<SearchResult> emptyResults(int page, int pageSize) {
+    return new PagedResults<>(page, 0, pageSize, 0, null, null, java.util.List.of());
   }
 
   /** Whether any ontology / branch / value-set constraint carries an explicit version pin (a value that

@@ -15,6 +15,8 @@ public class BranchValueConstraint {
   // so existing constraints are unchanged; when set, the local store serves that version reproducibly.
   @JsonDeserialize(using = ConstraintVersionDeserializer.class)
   private String version;
+  // Optional source system; absent/blank means BioPortal (see OntologyValueConstraint).
+  private String sourceSystem;
 
   public BranchValueConstraint() { }
 
@@ -28,6 +30,10 @@ public class BranchValueConstraint {
 
   public String getVersion() {
     return version;
+  }
+
+  public String getSourceSystem() {
+    return sourceSystem;
   }
 
 }

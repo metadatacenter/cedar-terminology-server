@@ -12,6 +12,9 @@ public class OntologyValueConstraint {
   // Optional pinned version (version_id or tag); absent means the current version.
   @JsonDeserialize(using = ConstraintVersionDeserializer.class)
   private String version;
+  // Optional source system the terms come from; absent/blank means BioPortal. A non-BioPortal source is
+  // served from the local store or not at all — it is never proxied to BioPortal.
+  private String sourceSystem;
 
   public OntologyValueConstraint() { }
 
@@ -21,6 +24,10 @@ public class OntologyValueConstraint {
 
   public String getAcronym() {
     return acronym;
+  }
+
+  public String getSourceSystem() {
+    return sourceSystem;
   }
 
 }
