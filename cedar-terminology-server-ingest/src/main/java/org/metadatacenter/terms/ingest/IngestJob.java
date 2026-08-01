@@ -398,14 +398,32 @@ public class IngestJob {
       }
       return new BioPortalDownloader(apiKey);
     }
-    System.err.println("Unknown --source '" + sourceName + "' (expected bioportal or obofoundry)");
+    System.err.println("Unknown --source '" + sourceName + "' (expected bioportal, obofoundry, or url)");
     System.exit(2);
     throw new IllegalStateException("unreachable"); // System.exit does not return
   }
 
+  /**
+   * Overload adding the {@code url} source: {@code --source url} downloads from {@code --url <URL>} with
+   * an optional {@code --format} ({@code OWL} default, or {@code SKOS}) and {@code --backend} provenance
+   * label. Any other source name delegates to {@link #selectSource(String, String)}.
+   */
+  static SubmissionSource selectSource(String sourceName, String release, String url, String format,
+                                       String backend) {
+    if ("url".equals(sourceName)) {
+      if (url == null || url.isBlank()) {
+        System.err.println("--source url requires --url <URL>");
+        System.exit(2);
+      }
+      return new DirectUrlSubmissionSource(url, format, backend);
+    }
+    return selectSource(sourceName, release);
+  }
+
   public static void main(String[] args) throws Exception {
     if (args.length < 3) {
-      System.err.println("Usage: IngestJob <catalogPath> <snapshotDir> [--source bioportal|obofoundry] "
+      System.err.println("Usage: IngestJob <catalogPath> <snapshotDir> "
+          + "[--source bioportal|obofoundry|url] [--url <URL>] [--format OWL|SKOS] [--backend <name>] "
           + "[--release <date>] [--all] [--valuesets] [--submission <id>] <acronym> [acronym...]");
       System.exit(2);
     }
@@ -417,6 +435,9 @@ public class IngestJob {
     boolean valuesets = false;
     String sourceName = "bioportal";
     String oboRelease = null;
+    String url = null;
+    String format = null;
+    String backend = null;
     List<Integer> submissionIds = new ArrayList<>();
     List<String> acronyms = new ArrayList<>();
     for (int i = 2; i < args.length; i++) {
@@ -428,6 +449,12 @@ public class IngestJob {
         sourceName = args[++i];
       } else if ("--release".equals(args[i]) && i + 1 < args.length) {
         oboRelease = args[++i];
+      } else if ("--url".equals(args[i]) && i + 1 < args.length) {
+        url = args[++i];
+      } else if ("--format".equals(args[i]) && i + 1 < args.length) {
+        format = args[++i];
+      } else if ("--backend".equals(args[i]) && i + 1 < args.length) {
+        backend = args[++i];
       } else if ("--submission".equals(args[i]) && i + 1 < args.length) {
         submissionIds.add(Integer.parseInt(args[++i]));
       } else {
@@ -435,7 +462,7 @@ public class IngestJob {
       }
     }
 
-    SubmissionSource source = selectSource(sourceName, oboRelease);
+    SubmissionSource source = selectSource(sourceName, oboRelease, url, format, backend);
     IngestJob job = new IngestJob(source);
     try (CatalogStore catalog = CatalogStore.openFile(catalogPath.toString())) {
       catalog.initSchema();
