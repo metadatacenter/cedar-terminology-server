@@ -404,18 +404,28 @@ public class IngestJob {
   }
 
   /**
-   * Overload adding the {@code url} source: {@code --source url} downloads from {@code --url <URL>} with
-   * an optional {@code --format} ({@code OWL} default, or {@code SKOS}) and {@code --backend} provenance
-   * label. Any other source name delegates to {@link #selectSource(String, String)}.
+   * Overload adding two source options: {@code --source url} downloads from {@code --url <URL>} with an
+   * optional {@code --format} ({@code OWL} default, or {@code SKOS}) and {@code --backend} label; and a
+   * {@code --base-url} pointing {@code --source bioportal} at any OntoPortal instance (AgroPortal,
+   * EcoPortal, …) instead of BioPortal — same REST API, its own {@code BIOPORTAL_API_KEY}. Any other
+   * combination delegates to {@link #selectSource(String, String)}.
    */
   static SubmissionSource selectSource(String sourceName, String release, String url, String format,
-                                       String backend) {
+                                       String backend, String baseUrl) {
     if ("url".equals(sourceName)) {
       if (url == null || url.isBlank()) {
         System.err.println("--source url requires --url <URL>");
         System.exit(2);
       }
       return new DirectUrlSubmissionSource(url, format, backend);
+    }
+    if ("bioportal".equals(sourceName) && baseUrl != null && !baseUrl.isBlank()) {
+      String apiKey = System.getenv("BIOPORTAL_API_KEY");
+      if (apiKey == null || apiKey.isBlank()) {
+        System.err.println("BIOPORTAL_API_KEY environment variable is not set (the OntoPortal instance's key)");
+        System.exit(2);
+      }
+      return new BioPortalDownloader(apiKey, baseUrl);
     }
     return selectSource(sourceName, release);
   }
@@ -424,6 +434,7 @@ public class IngestJob {
     if (args.length < 3) {
       System.err.println("Usage: IngestJob <catalogPath> <snapshotDir> "
           + "[--source bioportal|obofoundry|url] [--url <URL>] [--format OWL|SKOS] [--backend <name>] "
+          + "[--base-url <ontoportal-api>] "
           + "[--release <date>] [--all] [--valuesets] [--submission <id>] <acronym> [acronym...]");
       System.exit(2);
     }
@@ -438,6 +449,7 @@ public class IngestJob {
     String url = null;
     String format = null;
     String backend = null;
+    String baseUrl = null;
     List<Integer> submissionIds = new ArrayList<>();
     List<String> acronyms = new ArrayList<>();
     for (int i = 2; i < args.length; i++) {
@@ -455,6 +467,8 @@ public class IngestJob {
         format = args[++i];
       } else if ("--backend".equals(args[i]) && i + 1 < args.length) {
         backend = args[++i];
+      } else if ("--base-url".equals(args[i]) && i + 1 < args.length) {
+        baseUrl = args[++i];
       } else if ("--submission".equals(args[i]) && i + 1 < args.length) {
         submissionIds.add(Integer.parseInt(args[++i]));
       } else {
@@ -462,7 +476,7 @@ public class IngestJob {
       }
     }
 
-    SubmissionSource source = selectSource(sourceName, oboRelease, url, format, backend);
+    SubmissionSource source = selectSource(sourceName, oboRelease, url, format, backend, baseUrl);
     IngestJob job = new IngestJob(source);
     try (CatalogStore catalog = CatalogStore.openFile(catalogPath.toString())) {
       catalog.initSchema();
