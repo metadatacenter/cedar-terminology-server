@@ -7,6 +7,7 @@ import org.metadatacenter.cedar.terminology.validation.integratedsearch.ValueCon
 import org.metadatacenter.cedar.terminology.validation.integratedsearch.ValueSetValueConstraint;
 import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.terms.domainObjects.*;
+import org.metadatacenter.terms.store.CatalogStore;
 import org.metadatacenter.terms.store.SnapshotDiff;
 import org.metadatacenter.terms.store.SnapshotStore;
 import org.metadatacenter.terms.util.ObjectConverter;
@@ -116,12 +117,32 @@ public class SqliteTerminologyService implements ITerminologyService {
         .orElseThrow(() -> new UnsupportedOperationException("Ontology not served locally: " + ontology));
   }
 
-  /** The snapshot for an ontology at a pinned version (null/blank/"latest" = current). Throws — so the
-   *  router falls back to BioPortal — when the ontology or that version is not served locally. */
+  /**
+   * The snapshot for an ontology at a pinned version (null/blank/"latest" = current). The failure mode
+   * depends on whether a version was explicitly pinned:
+   * <ul>
+   *   <li>An <em>unpinned</em> (latest) miss throws {@link UnsupportedOperationException} — the ontology
+   *       is simply not served locally, so the router routes the request to BioPortal (latest), which is
+   *       the right answer for an unpinned request.</li>
+   *   <li>An <em>explicit pin</em> miss throws {@link PinnedVersionUnavailableException} — the router
+   *       must NOT downgrade this to BioPortal, because BioPortal serves latest and would silently break
+   *       the frozen read. A pin that cannot be honored fails loud.</li>
+   * </ul>
+   */
   private SnapshotStore store(String ontology, String version) {
-    return provider.forOntology(ontology, version)
-        .orElseThrow(() -> new UnsupportedOperationException(
-            "Ontology/version not served locally: " + ontology + "@" + (version == null ? "latest" : version)));
+    Optional<SnapshotStore> snapshot = provider.forOntology(ontology, version);
+    if (snapshot.isPresent()) {
+      return snapshot.get();
+    }
+    if (isExplicitPin(version)) {
+      throw new PinnedVersionUnavailableException("Pinned version not served locally: " + ontology + "@" + version);
+    }
+    throw new UnsupportedOperationException("Ontology not served locally: " + ontology);
+  }
+
+  /** A version request is an explicit pin unless it is null, blank, or the "latest" sentinel. */
+  private static boolean isExplicitPin(String version) {
+    return version != null && !version.isBlank() && !CatalogStore.TAG_LATEST.equals(version);
   }
 
   private OntologyClass toClass(SnapshotStore.Concept c, String ontology) {

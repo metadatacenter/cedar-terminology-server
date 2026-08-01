@@ -74,9 +74,11 @@ public class CatalogSnapshotProvider implements SqliteTerminologyService.Snapsho
    * ISO {@code YYYY-MM-DD}, a declared version a free-form label), and the first interpretation that
    * matches wins.
    *
-   * A request that matches none resolves to empty — the caller then falls back to the remote adapter
-   * — rather than silently to {@code latest}: a pin that cannot be honored fails loud instead of
-   * serving the wrong content. A date-shaped request that finds no snapshot on or before it falls
+   * A request that matches none resolves to empty. The caller then distinguishes by whether a version
+   * was explicitly pinned: an unpinned (latest) miss may route to the remote adapter, but an explicit
+   * pin fails loud ({@link PinnedVersionUnavailableException}) rather than silently serving {@code
+   * latest} from remote — a pin that cannot be honored must not resolve to the wrong content. A
+   * date-shaped request that finds no snapshot on or before it falls
    * through to the declared-version match, in case the string was a label that merely looks like a
    * date; when the label is genuinely a date, the earlier as-of resolution has already answered.
    */

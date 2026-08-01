@@ -184,10 +184,60 @@ public class RoutingTerminologyService implements ITerminologyService {
       try {
         return local.integratedSearch(q, valueConstraints, page, pageSize, apiKey);
       } catch (UnsupportedOperationException notImplementedLocally) {
+        // The local backend cannot serve this search *shape* (e.g. multi-source or mixed constraints).
+        // Routing to the remote adapter is fine for an unpinned request, but never for a pinned one:
+        // BioPortal serves latest, which would silently break the freeze. (A pinned *version* miss is a
+        // PinnedVersionUnavailableException — not an UnsupportedOperationException — so it is not caught
+        // here; it propagates and fails loud.)
+        if (hasExplicitVersionPin(valueConstraints)) {
+          throw new PinnedVersionUnavailableException(
+              "A constraint pins a version, but the local backend cannot serve this search; refusing to "
+                  + "serve latest from the remote adapter.");
+        }
         // Fall through to remote.
       }
+    } else if (hasExplicitVersionPin(valueConstraints)) {
+      // The pinned source is not served locally at all; the remote adapter would serve latest, breaking
+      // the freeze. Fail loud instead of silently resolving against current content.
+      throw new PinnedVersionUnavailableException(
+          "A constraint pins a version, but its source is not served locally; refusing to serve latest "
+              + "from the remote adapter.");
     }
     return remote.integratedSearch(q, valueConstraints, page, pageSize, apiKey);
+  }
+
+  /** Whether any ontology / branch / value-set constraint carries an explicit version pin (a value that
+   *  is not null, blank, or the "latest" sentinel). Enumerated classes cannot be pinned. */
+  private static boolean hasExplicitVersionPin(ValueConstraints vc) {
+    if (vc == null) {
+      return false;
+    }
+    if (vc.getOntologies() != null) {
+      for (OntologyValueConstraint o : vc.getOntologies()) {
+        if (isVersionPin(o.getVersion())) {
+          return true;
+        }
+      }
+    }
+    if (vc.getBranches() != null) {
+      for (BranchValueConstraint b : vc.getBranches()) {
+        if (isVersionPin(b.getVersion())) {
+          return true;
+        }
+      }
+    }
+    if (vc.getValueSets() != null) {
+      for (ValueSetValueConstraint v : vc.getValueSets()) {
+        if (isVersionPin(v.getVersion())) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  private static boolean isVersionPin(String version) {
+    return version != null && !version.isBlank() && !"latest".equalsIgnoreCase(version);
   }
 
   /**
