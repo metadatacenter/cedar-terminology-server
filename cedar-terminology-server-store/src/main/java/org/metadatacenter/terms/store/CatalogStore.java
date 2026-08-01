@@ -630,6 +630,38 @@ public class CatalogStore implements AutoCloseable {
     }
   }
 
+  /** A unit of catalog work run atomically inside one transaction. */
+  @FunctionalInterface
+  public interface TransactionalWork {
+    void run() throws SQLException;
+  }
+
+  /**
+   * Runs {@code work} inside a single transaction: every catalog write it performs commits together,
+   * or on failure rolls back together. Used to register a freshly-ingested snapshot atomically, so a
+   * crash mid-registration cannot leave the catalog exposing a half-registered snapshot — a snapshot
+   * row without its {@code latest} tag, or a served snapshot with no canonical iri. Each write is also
+   * an idempotent upsert, so re-running the work after an interruption heals any partial state; the
+   * transaction additionally guarantees no partial state is ever visible to a concurrent reader.
+   *
+   * Not reentrant: do not nest, and do not call from a method that manages its own transaction
+   * ({@link #cutoverToContentHash}). Foreign keys stay enforced, so the work must write in dependency
+   * order (ontology_source before snapshot before version_tag).
+   */
+  public void inTransaction(TransactionalWork work) throws SQLException {
+    boolean autoCommit = connection.getAutoCommit();
+    connection.setAutoCommit(false);
+    try {
+      work.run();
+      connection.commit();
+    } catch (SQLException e) {
+      connection.rollback();
+      throw e;
+    } finally {
+      connection.setAutoCommit(autoCommit);
+    }
+  }
+
   /* --------------------------------------------------------------------------------------------
    * Resolution
    * ------------------------------------------------------------------------------------------ */

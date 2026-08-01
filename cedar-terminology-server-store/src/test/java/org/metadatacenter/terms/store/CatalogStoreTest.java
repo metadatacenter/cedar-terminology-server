@@ -14,6 +14,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class CatalogStoreTest {
@@ -56,6 +57,30 @@ public class CatalogStoreTest {
     assertEquals("hashV1", catalog.resolveLatest("DOID").orElseThrow().versionId());
     catalog.setTag("DOID", CatalogStore.TAG_LATEST, "hashV2");
     assertEquals("hashV2", catalog.resolveLatest("DOID").orElseThrow().versionId());
+  }
+
+  @Test
+  public void inTransaction_rollsBackEveryWriteOnFailure() throws Exception {
+    // The atomicity a crash mid-ingest relies on: a unit of work that writes and then fails must leave
+    // the catalog exactly as it was — the tag flip and the new snapshot are both rolled back.
+    assertThrows(java.sql.SQLException.class, () -> catalog.inTransaction(() -> {
+      catalog.setTag("DOID", CatalogStore.TAG_LATEST, "hashV1"); // would move latest off hashV2
+      catalog.addSnapshot(doidSnapshot("hashV3", "2025-09-01"));  // would register a third snapshot
+      throw new java.sql.SQLException("simulated crash mid-registration");
+    }));
+    assertEquals("hashV2", catalog.resolveLatest("DOID").orElseThrow().versionId());
+    assertTrue(catalog.getSnapshot("hashV3").isEmpty());
+    assertEquals(2, catalog.listSnapshots("DOID").size());
+  }
+
+  @Test
+  public void inTransaction_commitsEveryWriteOnSuccess() throws Exception {
+    catalog.inTransaction(() -> {
+      catalog.addSnapshot(doidSnapshot("hashV3", "2025-09-01"));
+      catalog.setTag("DOID", CatalogStore.TAG_LATEST, "hashV3");
+    });
+    assertEquals("hashV3", catalog.resolveLatest("DOID").orElseThrow().versionId());
+    assertEquals(3, catalog.listSnapshots("DOID").size());
   }
 
   @Test

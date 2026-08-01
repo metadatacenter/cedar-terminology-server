@@ -201,37 +201,46 @@ public class IngestJob {
     Path snapshotFile = ontoDir.resolve(versionId + ".sqlite");
     Files.move(tempFile, snapshotFile, StandardCopyOption.REPLACE_EXISTING);
 
-    catalog.upsertOntology(new CatalogStore.OntologyInfo(acronym, acronym, null, sub.format()));
-    catalog.addSnapshot(new CatalogStore.SnapshotInfo(
-        versionId, acronym, sub.version(), sub.released(), Instant.now().toString(),
-        sub.format(), "subsumption", extracted.classCount(), extracted.edgeCount(),
-        catalogRelativePath(catalog, snapshotFile), rawHash,
-        access.viewingRestriction() == null ? "public" : access.viewingRestriction()));
-    // Display/audit-only provenance: BioPortal's reliable per-upload submission id (in hand here,
-    // unreconstructable offline later) and the version string's self-claimed date.
-    catalog.setSnapshotProvenance(versionId, acronym, sub.submissionId(),
-        CatalogStore.SnapshotProvenance.sourceDateFromDeclaredVersion(sub.version()));
-    // Record the backend the bytes came from (default bioportal). Identity is unaffected — the same
-    // release from a different authority resolves to the same content-hash version_id and merges here.
-    catalog.setSnapshotBackend(versionId, acronym, source.backendId());
-    if (setAsLatest) {
-      catalog.setTag(acronym, CatalogStore.TAG_LATEST, versionId);
-    }
-    // Derive and store the ontology's canonical iri (VERSIONING-DESIGN §6.4) at ingest — its
-    // content-derived, source-independent cross-source identity — rather than leaving it to the
-    // derivation backfill, so a fresh ingest is iri-identified immediately and two sources of one
-    // ontology can be joined by iri. Set on the first ingest and whenever this is the latest; the own
-    // namespace is stable across versions, so re-setting is idempotent. Runs after the latest tag so
-    // the de-confliction below sees this ontology's own content.
-    if (ownNamespace != null && (setAsLatest || catalog.ontologyIri(acronym).isEmpty())) {
-      String canonicalIri = OntologyIri.canonical(ownNamespace);
-      catalog.setOntologyIri(acronym, canonicalIri, ownNamespace);
-      // Enforce the identity invariant: a placeholder/host base or a merely-imported namespace is
-      // shared with a content-distinct ontology. Decline it here (and any importer this ingest
-      // displaces), keeping the iri only for its true OBO owner; then reap any orphaned identity row.
-      IriDeconfliction.reconcile(catalog, canonicalIri);
-      catalog.pruneOrphanIdentities();
-    }
+    // Register the snapshot and reconcile its canonical identity atomically. These steps are all
+    // idempotent upserts, so re-running the ingest after a crash heals any partial state; the
+    // transaction additionally ensures a concurrent reader never sees a half-registered snapshot (a
+    // snapshot row without its latest tag, or a served snapshot with no canonical iri). The snapshot
+    // file was moved into place first — it is content-addressed by version id — so a rollback leaves
+    // only an unreferenced orphan file that the next ingest overwrites in place.
+    String ownNamespaceFinal = ownNamespace; // effectively-final copy for the transaction lambda
+    catalog.inTransaction(() -> {
+      catalog.upsertOntology(new CatalogStore.OntologyInfo(acronym, acronym, null, sub.format()));
+      catalog.addSnapshot(new CatalogStore.SnapshotInfo(
+          versionId, acronym, sub.version(), sub.released(), Instant.now().toString(),
+          sub.format(), "subsumption", extracted.classCount(), extracted.edgeCount(),
+          catalogRelativePath(catalog, snapshotFile), rawHash,
+          access.viewingRestriction() == null ? "public" : access.viewingRestriction()));
+      // Display/audit-only provenance: BioPortal's reliable per-upload submission id (in hand here,
+      // unreconstructable offline later) and the version string's self-claimed date.
+      catalog.setSnapshotProvenance(versionId, acronym, sub.submissionId(),
+          CatalogStore.SnapshotProvenance.sourceDateFromDeclaredVersion(sub.version()));
+      // Record the backend the bytes came from (default bioportal). Identity is unaffected — the same
+      // release from a different authority resolves to the same content-hash version_id and merges here.
+      catalog.setSnapshotBackend(versionId, acronym, source.backendId());
+      if (setAsLatest) {
+        catalog.setTag(acronym, CatalogStore.TAG_LATEST, versionId);
+      }
+      // Derive and store the ontology's canonical iri (VERSIONING-DESIGN §6.4) at ingest — its
+      // content-derived, source-independent cross-source identity — rather than leaving it to the
+      // derivation backfill, so a fresh ingest is iri-identified immediately and two sources of one
+      // ontology can be joined by iri. Set on the first ingest and whenever this is the latest; the own
+      // namespace is stable across versions, so re-setting is idempotent. Runs after the latest tag so
+      // the de-confliction below sees this ontology's own content.
+      if (ownNamespaceFinal != null && (setAsLatest || catalog.ontologyIri(acronym).isEmpty())) {
+        String canonicalIri = OntologyIri.canonical(ownNamespaceFinal);
+        catalog.setOntologyIri(acronym, canonicalIri, ownNamespaceFinal);
+        // Enforce the identity invariant: a placeholder/host base or a merely-imported namespace is
+        // shared with a content-distinct ontology. Decline it here (and any importer this ingest
+        // displaces), keeping the iri only for its true OBO owner; then reap any orphaned identity row.
+        IriDeconfliction.reconcile(catalog, canonicalIri);
+        catalog.pruneOrphanIdentities();
+      }
+    });
 
     log.info("Ingested {} submission {} -> {} ({} classes, {} edges)",
         acronym, sub.submissionId(), versionId, extracted.classCount(), extracted.edgeCount());

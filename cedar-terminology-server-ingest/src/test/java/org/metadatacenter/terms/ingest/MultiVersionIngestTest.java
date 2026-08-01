@@ -128,6 +128,26 @@ public class MultiVersionIngestTest {
   }
 
   @Test
+  public void reIngestingIsIdempotent_soAnInterruptedRunHealsOnRerun() throws Exception {
+    // A crash mid-registration can leave a partial catalog state; the operator's remedy is to re-run
+    // the ingest. Because every registration step is an idempotent upsert inside one transaction, a
+    // full re-run converges to the same single, correct state — no duplicate snapshots, same latest,
+    // same canonical identity.
+    IngestJob job = new IngestJob(twoVersionSource());
+    job.ingestAll(catalog, ONT, tempDir.resolve("snapshots"));
+
+    int snapshotsAfterFirst = catalog.listSnapshots(ONT).size();
+    String latestAfterFirst = catalog.resolveLatest(ONT).orElseThrow().versionId();
+    java.util.Optional<String> iriAfterFirst = catalog.ontologyIri(ONT);
+
+    job.ingestAll(catalog, ONT, tempDir.resolve("snapshots")); // re-run, as recovery after interruption
+
+    assertEquals(snapshotsAfterFirst, catalog.listSnapshots(ONT).size());
+    assertEquals(latestAfterFirst, catalog.resolveLatest(ONT).orElseThrow().versionId());
+    assertEquals(iriAfterFirst, catalog.ontologyIri(ONT));
+  }
+
+  @Test
   public void versionIdIsTheContentHash_soIdenticalContentMergesAndDiffersFromRawHash() throws Exception {
     // Two submissions with byte-different files but the SAME extracted content (v1 saved twice)
     // share a content-hash version id, so ingestAll registers one snapshot, not two -- the merge the
