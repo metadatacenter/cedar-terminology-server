@@ -353,7 +353,8 @@ public class LocalStoreResourceTest {
    */
   @Test
   public void integratedSearchHonoursPinnedVersionOverHttp() {
-    Assertions.assertEquals(3, integratedSearchOntologyConceptCount(",\"version\":\"v1\""));
+    Assertions.assertEquals(3, integratedSearchOntologyConceptCount(",\"version\":{\"id\":\"v1\","
+        + "\"effectiveDate\":\"2025-01-01\",\"declaredVersion\":\"1.0\"}"));
     Assertions.assertEquals(4, integratedSearchOntologyConceptCount("")); // no version -> latest (v2)
   }
 
@@ -363,7 +364,8 @@ public class LocalStoreResourceTest {
     // whole tree; v2 adds "infection" under "disease", so latest carries exactly one more concept than
     // v1. Pinning v1 must serve the smaller v1 subtree, proving the pin reaches the branch read path.
     int pinnedV1 = integratedSearchCount("{\"ontologies\":[],\"branches\":[{\"acronym\":\"" + ONT
-        + "\",\"uri\":\"" + BASE + "disease\",\"version\":\"v1\"}],\"valueSets\":[],\"classes\":[]}");
+        + "\",\"uri\":\"" + BASE + "disease\",\"version\":{\"id\":\"v1\"}}],"
+        + "\"valueSets\":[],\"classes\":[]}");
     int latest = integratedSearchCount("{\"ontologies\":[],\"branches\":[{\"acronym\":\"" + ONT
         + "\",\"uri\":\"" + BASE + "disease\"}],\"valueSets\":[],\"classes\":[]}");
     Assertions.assertTrue(pinnedV1 >= 2, "v1 branch is non-empty");
@@ -375,9 +377,11 @@ public class LocalStoreResourceTest {
     // A value set's members are the children of its root class in the collection snapshot. Under
     // "disease": 1 child (cancer) in vs1, 2 (cancer, infection) in vs2. Pinning each serves that version.
     Assertions.assertEquals(1, integratedSearchCount("{\"ontologies\":[],\"branches\":[],\"valueSets\":[{"
-        + "\"vsCollection\":\"" + VS + "\",\"uri\":\"" + BASE + "disease\",\"version\":\"vs1\"}],\"classes\":[]}"));
+        + "\"vsCollection\":\"" + VS + "\",\"uri\":\"" + BASE
+        + "disease\",\"version\":{\"id\":\"vs1\"}}],\"classes\":[]}"));
     Assertions.assertEquals(2, integratedSearchCount("{\"ontologies\":[],\"branches\":[],\"valueSets\":[{"
-        + "\"vsCollection\":\"" + VS + "\",\"uri\":\"" + BASE + "disease\",\"version\":\"vs2\"}],\"classes\":[]}"));
+        + "\"vsCollection\":\"" + VS + "\",\"uri\":\"" + BASE
+        + "disease\",\"version\":{\"id\":\"vs2\"}}],\"classes\":[]}"));
   }
 
   @Test

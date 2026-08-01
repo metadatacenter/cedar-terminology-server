@@ -142,7 +142,7 @@ public class SqliteTerminologyService implements ITerminologyService {
 
   /** A version request is an explicit pin unless it is null, blank, or the "latest" sentinel. */
   private static boolean isExplicitPin(String version) {
-    return version != null && !version.isBlank() && !CatalogStore.TAG_LATEST.equals(version);
+    return version != null && !version.isBlank() && !CatalogStore.TAG_LATEST.equalsIgnoreCase(version);
   }
 
   private OntologyClass toClass(SnapshotStore.Concept c, String ontology) {
@@ -254,10 +254,13 @@ public class SqliteTerminologyService implements ITerminologyService {
       int cap = 25;
       return new VersionDiff(fromVersion, toVersion,
           d.fromConcepts(), d.toConcepts(), d.addedConcepts().size(), d.removedConcepts().size(),
+          d.changedConcepts().size(),
           d.fromEdges(), d.toEdges(), d.addedEdges().size(), d.removedEdges().size(),
+          d.fromRelations(), d.toRelations(), d.addedRelations().size(), d.removedRelations().size(),
           d.newlyObsoleted().size(),
           d.addedConcepts().stream().limit(cap).toList(),
           d.removedConcepts().stream().limit(cap).toList(),
+          d.changedConcepts().stream().limit(cap).toList(),
           d.summary());
     } catch (SQLException e) {
       throw new IOException(e);

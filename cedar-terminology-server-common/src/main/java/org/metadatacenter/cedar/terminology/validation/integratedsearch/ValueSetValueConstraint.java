@@ -1,6 +1,7 @@
 package org.metadatacenter.cedar.terminology.validation.integratedsearch;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import org.hibernate.validator.constraints.NotEmpty;
 
 import jakarta.validation.constraints.Pattern;
@@ -17,6 +18,7 @@ public class ValueSetValueConstraint {
   @Pattern(regexp=BP_VS_COLLECTIONS_READ_REGEX) // Checks that the vsCollection is valid
   private String vsCollection;
   // Optional pinned version (version_id or tag) of the collection; absent means the current version.
+  @JsonDeserialize(using = ConstraintVersionDeserializer.class)
   private String version;
 
   public ValueSetValueConstraint() { }

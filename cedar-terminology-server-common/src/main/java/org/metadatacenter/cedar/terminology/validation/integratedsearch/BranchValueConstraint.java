@@ -1,6 +1,7 @@
 package org.metadatacenter.cedar.terminology.validation.integratedsearch;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import org.hibernate.validator.constraints.NotEmpty;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -12,6 +13,7 @@ public class BranchValueConstraint {
   private String acronym;
   // Optional pinned version (a version_id or tag such as "latest"). Absent means the current version,
   // so existing constraints are unchanged; when set, the local store serves that version reproducibly.
+  @JsonDeserialize(using = ConstraintVersionDeserializer.class)
   private String version;
 
   public BranchValueConstraint() { }

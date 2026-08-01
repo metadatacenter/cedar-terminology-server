@@ -37,6 +37,9 @@ public class SnapshotStore implements AutoCloseable {
   /** A concept's cross-version identity metadata: IRI, obsolete flag, and replacement IRI if any. */
   public record ConceptMeta(String iri, boolean obsolete, String replacedBy) {}
 
+  /** Every concept field that participates in label-sensitive normalized content identity. */
+  public record ConceptState(String iri, String prefLabel, boolean obsolete, String replacedBy) {}
+
   private final Connection connection;
 
   private SnapshotStore(Connection connection) {
@@ -862,6 +865,18 @@ public class SnapshotStore implements AutoCloseable {
     }
   }
 
+  /** Every concept's complete label-sensitive content state, for version comparison. */
+  public List<ConceptState> allConceptStates() throws SQLException {
+    try (Statement s = connection.createStatement();
+         ResultSet rs = s.executeQuery("SELECT iri, pref_label, obsolete, replaced_by FROM concept")) {
+      List<ConceptState> out = new ArrayList<>();
+      while (rs.next()) {
+        out.add(new ConceptState(rs.getString(1), rs.getString(2), rs.getInt(3) != 0, rs.getString(4)));
+      }
+      return out;
+    }
+  }
+
   /** Every direct edge as a {@code [childIri, parentIri]} pair. */
   public List<String[]> allEdges() throws SQLException {
     try (Statement s = connection.createStatement();
@@ -872,6 +887,36 @@ public class SnapshotStore implements AutoCloseable {
       List<String[]> out = new ArrayList<>();
       while (rs.next()) {
         out.add(new String[]{rs.getString(1), rs.getString(2)});
+      }
+      return out;
+    }
+  }
+
+  /** Every direct edge as a {@code [childIri, parentIri, sourcePredicate]} triple. */
+  public List<String[]> allEdgesWithPredicates() throws SQLException {
+    try (Statement s = connection.createStatement();
+         ResultSet rs = s.executeQuery("""
+             SELECT c.iri, p.iri, e.source_pred FROM edge e
+             JOIN concept c ON c.id = e.child_id
+             JOIN concept p ON p.id = e.parent_id""")) {
+      List<String[]> out = new ArrayList<>();
+      while (rs.next()) {
+        out.add(new String[]{rs.getString(1), rs.getString(2), rs.getString(3)});
+      }
+      return out;
+    }
+  }
+
+  /** Every typed relation as a {@code [subjectIri, predicate, objectIri]} triple. */
+  public List<String[]> allRelations() throws SQLException {
+    try (Statement s = connection.createStatement();
+         ResultSet rs = s.executeQuery("""
+             SELECT subj.iri, r.predicate, obj.iri FROM relation r
+             JOIN concept subj ON subj.id = r.subject_id
+             JOIN concept obj ON obj.id = r.object_id""")) {
+      List<String[]> out = new ArrayList<>();
+      while (rs.next()) {
+        out.add(new String[]{rs.getString(1), rs.getString(2), rs.getString(3)});
       }
       return out;
     }

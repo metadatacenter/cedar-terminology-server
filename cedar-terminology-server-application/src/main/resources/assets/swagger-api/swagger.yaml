@@ -215,6 +215,8 @@ paths:
           description: Forbidden
         "404":
           description: Not found
+        "422":
+          description: A constraint pins a vocabulary version that cannot be served
         "500":
           description: Internal server error
       security:

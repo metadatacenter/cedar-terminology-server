@@ -118,8 +118,12 @@ public class MultiVersionIngestTest {
       SnapshotDiff.Diff d = new SnapshotDiff().diff(from, to);
       assertTrue(d.addedConcepts().contains(BASE + "carcinoma"));
       assertTrue(d.removedConcepts().contains(BASE + "melanoma"));
-      assertTrue(d.addedEdges().contains(BASE + "carcinoma -> " + BASE + "cancer"));
-      assertTrue(d.removedEdges().contains(BASE + "melanoma -> " + BASE + "cancer"));
+      // Edge strings now carry the source predicate ("child -[pred]-> parent"); assert the subsumption
+      // edge by its endpoints, regardless of the predicate token.
+      assertTrue(d.addedEdges().stream()
+          .anyMatch(e -> e.startsWith(BASE + "carcinoma") && e.endsWith("-> " + BASE + "cancer")));
+      assertTrue(d.removedEdges().stream()
+          .anyMatch(e -> e.startsWith(BASE + "melanoma") && e.endsWith("-> " + BASE + "cancer")));
     }
   }
 

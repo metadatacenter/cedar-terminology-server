@@ -83,7 +83,7 @@ public class CatalogSnapshotProvider implements SqliteTerminologyService.Snapsho
    * date; when the label is genuinely a date, the earlier as-of resolution has already answered.
    */
   private Optional<CatalogStore.SnapshotInfo> resolveInfo(String ontology, String version) throws SQLException {
-    if (version == null || version.isBlank() || CatalogStore.TAG_LATEST.equals(version)) {
+    if (version == null || version.isBlank() || CatalogStore.TAG_LATEST.equalsIgnoreCase(version)) {
       return catalog.resolveLatest(ontology);
     }
     Optional<CatalogStore.SnapshotInfo> byHash = catalog.resolveVersion(ontology, version);
