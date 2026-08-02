@@ -120,6 +120,14 @@ public class CatalogStore implements AutoCloseable {
     return new CatalogStore(DriverManager.getConnection("jdbc:sqlite:" + path), parent);
   }
 
+  /** How long a write waits for a lock held by another connection (e.g. a live server reading the
+   *  catalog) before failing, instead of erroring immediately with SQLITE_BUSY. */
+  public void setBusyTimeoutMillis(int millis) throws SQLException {
+    try (Statement s = connection.createStatement()) {
+      s.execute("PRAGMA busy_timeout = " + millis);
+    }
+  }
+
   public static CatalogStore openInMemory() throws SQLException {
     return new CatalogStore(DriverManager.getConnection("jdbc:sqlite::memory:"), null);
   }

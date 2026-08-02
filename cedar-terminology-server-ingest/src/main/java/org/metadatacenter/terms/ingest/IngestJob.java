@@ -149,6 +149,10 @@ public class IngestJob {
     Prepared prep = prepareSubmission(acronym, sub, ontoDir); // licensing guard + download + decompress + strip
     OntologyAccess access = prep.access();
     String rawHash = prep.rawHash();     // hash of the archival download, kept as file_hash provenance
+    // The ontology's self-declared owl:Ontology IRI, read cheaply from the file head. A fallback
+    // identity for when the class namespace is a file/host base or a merely-imported namespace that
+    // de-confliction declines (VERSIONING item 6).
+    String headerIri = OntologyHeaderIri.fromFile(prep.loadable()).orElse(null);
 
     // Extract into a temp file and only replace the live snapshot once extraction succeeds with a
     // non-empty result. Extracting in place (delete-then-write) would lose a good snapshot whenever
@@ -168,6 +172,9 @@ public class IngestJob {
     try (SnapshotStore store = SnapshotStore.openFile(tempFile.toString())) {
       store.initSchema();
       Extraction ex = extractInto(store, acronym, sub, prep.loadable());
+      if (headerIri != null) {
+        store.setMeta("ontology_iri", headerIri); // record the declared IRI in the snapshot
+      }
       extracted = ex.result();
       versionId = ex.versionId();
       ownNamespace = ex.ownNamespace();
@@ -220,6 +227,17 @@ public class IngestJob {
         // shared with a content-distinct ontology. Decline it here (and any importer this ingest
         // displaces), keeping the iri only for its true OBO owner; then reap any orphaned identity row.
         IriDeconfliction.reconcile(catalog, canonicalIri);
+        catalog.pruneOrphanIdentities();
+      }
+      // Header-IRI fallback (item 6): if the class namespace produced no identity, or de-confliction
+      // just declined it (a file/host base, or a namespace this ontology only imports), fall back to the
+      // ontology's own owl:Ontology IRI. Guarded on the acronym still being identity-less, so a clean
+      // class-derived, source-independent iri always wins. De-conflict it too — a header IRI shared by
+      // two content-distinct ontologies is still not a merge.
+      if (headerIri != null && catalog.ontologyIri(acronym).isEmpty()) {
+        String headerCanonical = OntologyIri.canonical(headerIri);
+        catalog.setOntologyIri(acronym, headerCanonical, headerIri);
+        IriDeconfliction.reconcile(catalog, headerCanonical);
         catalog.pruneOrphanIdentities();
       }
     });
@@ -385,6 +403,73 @@ public class IngestJob {
       }
     }
     return new BackfillSummary(filled, already, otherBackend, noSub, mismatched, failed, labelsAdded);
+  }
+
+  /** Tally of a header-IRI backfill run. */
+  public record HeaderIriSummary(int targets, int headerFound, int noHeader, int failed,
+                                 int nowIdentified, int stillAcronymOnly) {}
+
+  /**
+   * Restores identity for acronym-only ontologies (item 6) from the {@code owl:Ontology} header. For
+   * every ontology the catalog leaves without a canonical iri, downloads its latest submission, reads
+   * the declared header IRI ({@link OntologyHeaderIri}) — cheaply, a file-head scan, not a full parse —
+   * and sets it as the ontology's identity, also recording it in the served snapshot's {@code meta}.
+   * A single de-confliction pass then settles collisions (a header IRI two content-distinct ontologies
+   * both declare is still not a merge), so an ontology can end still acronym-only if it has no header or
+   * its header collides. The catalog is written in place; {@code only} limits the run to given acronyms.
+   */
+  public HeaderIriSummary backfillHeaderIris(CatalogStore catalog, Path snapshotDir, Set<String> only)
+      throws SQLException {
+    List<String> targets = new ArrayList<>();
+    for (CatalogStore.OntologyInfo o : catalog.listOntologies()) {
+      if (!only.isEmpty() && !only.contains(o.acronym())) {
+        continue;
+      }
+      if (catalog.ontologyIri(o.acronym()).isEmpty()) {
+        targets.add(o.acronym());
+      }
+    }
+    int headerFound = 0, noHeader = 0, failed = 0, i = 0;
+    java.util.Optional<Path> base = catalog.baseDir();
+    for (String acronym : targets) {
+      i++;
+      try {
+        Submission sub = source.latestSubmission(acronym); // the header IRI is stable across versions
+        Prepared prep = prepareSubmission(acronym, sub, snapshotDir.resolve(acronym));
+        java.util.Optional<String> header = OntologyHeaderIri.fromFile(prep.loadable());
+        if (header.isEmpty()) {
+          noHeader++;
+          log.info("[{}/{}] {}: no owl:Ontology header IRI", i, targets.size(), acronym);
+          continue;
+        }
+        catalog.setOntologyIri(acronym, OntologyIri.canonical(header.get()), header.get());
+        // Persist the declared IRI in the served snapshot too, so a later re-derivation keeps it.
+        for (CatalogStore.SnapshotInfo snap : catalog.listSnapshots(acronym)) {
+          Path file = base.map(b -> b.resolve(snap.filePath())).orElse(Path.of(snap.filePath()));
+          try (SnapshotStore s = SnapshotStore.openFile(file.toString())) {
+            s.setBusyTimeoutMillis(60_000);
+            s.initSchema();
+            s.setMeta("ontology_iri", header.get());
+          }
+        }
+        headerFound++;
+        log.info("[{}/{}] {}: header IRI {}", i, targets.size(), acronym, header.get());
+      } catch (Throwable e) {
+        failed++;
+        log.warn("[{}/{}] {}: header backfill failed: {}", i, targets.size(), acronym, e.toString());
+        System.err.printf("FAIL %s: %s%n", acronym, e);
+      }
+    }
+    // Settle collisions among the newly-set header IRIs, and against existing identities.
+    IriDeconfliction.run(catalog, true);
+    int stillAcronymOnly = 0;
+    for (String acronym : targets) {
+      if (catalog.ontologyIri(acronym).isEmpty()) {
+        stillAcronymOnly++;
+      }
+    }
+    return new HeaderIriSummary(targets.size(), headerFound, noHeader, failed,
+        targets.size() - stillAcronymOnly, stillAcronymOnly);
   }
 
   /**
@@ -585,6 +670,7 @@ public class IngestJob {
     boolean all = false;
     boolean valuesets = false;
     boolean backfillLabels = false;
+    boolean backfillHeaderIri = false;
     String sourceName = "bioportal";
     String oboRelease = null;
     String url = null;
@@ -600,6 +686,8 @@ public class IngestJob {
         valuesets = true;
       } else if ("--backfill-labels".equals(args[i])) {
         backfillLabels = true;
+      } else if ("--backfill-header-iri".equals(args[i])) {
+        backfillHeaderIri = true;
       } else if ("--source".equals(args[i]) && i + 1 < args.length) {
         sourceName = args[++i];
       } else if ("--release".equals(args[i]) && i + 1 < args.length) {
@@ -631,6 +719,17 @@ public class IngestJob {
                 + "%d no-submission, %d hash-mismatch, %d failed%n",
             sum.filled(), sum.labelsAdded(), sum.alreadyLabeled(), sum.otherBackend(),
             sum.noSubmission(), sum.mismatched(), sum.failed());
+        return;
+      }
+      if (backfillHeaderIri) {
+        catalog.setBusyTimeoutMillis(60_000); // write identity while the server reads the catalog
+        IngestJob.HeaderIriSummary sum =
+            job.backfillHeaderIris(catalog, snapshotDir, new java.util.HashSet<>(acronyms));
+        System.out.printf(
+            "backfill-header-iri: %d acronym-only targets — %d header found, %d no header, %d failed; "
+                + "after de-confliction: %d now identified, %d still acronym-only%n",
+            sum.targets(), sum.headerFound(), sum.noHeader(), sum.failed(),
+            sum.nowIdentified(), sum.stillAcronymOnly());
         return;
       }
       for (String acronym : acronyms) {

@@ -71,6 +71,35 @@ public final class DeriveOntologyIriBackfill {
               + "%d ownerless; %d acronyms declined, %d orphan identities pruned%n",
           d.sharedIris(), d.duplicates(), d.conflictsWithOwner(), d.conflictsNoOwner(),
           d.acronymsDeclined(), d.orphanIdentitiesPruned());
+
+      // Header-IRI fallback (item 6): anything the class namespace left acronym-only (a file/host base,
+      // or a namespace it only imports) gets its identity from the declared owl:Ontology IRI recorded in
+      // the snapshot meta at ingest — no re-download. Settle collisions with a second de-confliction pass.
+      int headerRestored = 0;
+      for (CatalogStore.OntologyInfo o : catalog.listOntologies()) {
+        if (!only.isEmpty() && !only.contains(o.acronym())) {
+          continue;
+        }
+        if (catalog.ontologyIri(o.acronym()).isPresent()) {
+          continue;
+        }
+        Optional<CatalogStore.SnapshotInfo> latest = catalog.resolveLatest(o.acronym());
+        if (latest.isEmpty()) {
+          continue;
+        }
+        try (SnapshotStore store = SnapshotStore.openFile(latest.get().filePath())) {
+          store.initSchema();
+          Optional<String> header = store.getMeta("ontology_iri");
+          if (header.isPresent()) {
+            catalog.setOntologyIri(o.acronym(), OntologyIri.canonical(header.get()), header.get());
+            headerRestored++;
+          }
+        }
+      }
+      if (headerRestored > 0) {
+        IriDeconfliction.run(catalog, true);
+      }
+      System.out.printf("header-iri fallback: %d identities restored from snapshot meta%n", headerRestored);
     }
     System.out.printf("%nbackfill done: %d derived, %d empty, %d skipped%n", derived, empty, skipped);
   }
