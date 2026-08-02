@@ -104,7 +104,14 @@ public interface ITerminologyService {
 
   OntologyClass findRegularClass(String id, String ontology, String apiKey) throws IOException;
 
-  OntologyClass findClass(String id, String ontology, String apiKey) throws IOException;
+  /** Find a class, returning its label in {@code lang} (a BCP-47 code) when the ontology is served
+   *  locally and has that language; null/blank {@code lang} keeps the default (English-preferred) label.
+   *  The remote (BioPortal) path uses BioPortal's own default regardless. */
+  OntologyClass findClass(String id, String ontology, String apiKey, String lang) throws IOException;
+
+  default OntologyClass findClass(String id, String ontology, String apiKey) throws IOException {
+    return findClass(id, ontology, apiKey, null);
+  }
 
   PagedResults<OntologyClass> findAllClassesInOntology(String ontology, int page, int pageSize, String apiKey) throws
       IOException;

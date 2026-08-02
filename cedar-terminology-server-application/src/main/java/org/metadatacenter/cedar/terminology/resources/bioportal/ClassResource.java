@@ -88,12 +88,15 @@ public class ClassResource extends AbstractTerminologyServerResource {
           "http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C3224 (regular class).", required = true)
       @PathParam("id") @Encoded String id,
       @Parameter(description = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
-      @PathParam("ontology") String ontology) throws
+      @PathParam("ontology") String ontology,
+      @Parameter(description = "Optional BCP-47 language for the returned label (e.g. fr). Honored for "
+          + "locally-served ontologies; ignored for BioPortal-proxied ones.")
+      @QueryParam("lang") String lang) throws
       CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
     try {
-      OntologyClass c = terminologyService.findClass(id, ontology, apiKey);
+      OntologyClass c = terminologyService.findClass(id, ontology, apiKey, lang);
       return Response.ok().entity(JsonMapper.MAPPER.valueToTree(c)).build();
     } catch (HTTPException e) {
       return Response.status(e.getStatusCode()).build();

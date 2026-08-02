@@ -854,7 +854,8 @@ public class TerminologyService implements ITerminologyService {
     return ObjectConverter.toOntologyClass(c);
   }
 
-  public OntologyClass findClass(String id, String ontology, String apiKey) throws IOException {
+  // lang is honored only on the local path; BioPortal returns its own default label here.
+  public OntologyClass findClass(String id, String ontology, String apiKey, String lang) throws IOException {
     OntologyClass c;
     try {
       c = findRegularClass(id, ontology, apiKey);

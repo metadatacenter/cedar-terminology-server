@@ -543,4 +543,20 @@ public class SnapshotStoreTest {
   private boolean matches(String q) throws Exception {
     return store.searchByLabel(q, false, 0).stream().anyMatch(c -> c.iri().equals("dog"));
   }
+
+  @Test
+  public void labelInLang_selectsLanguageWithExactnessAndPropertyPreference() throws Exception {
+    store.addLabels(List.of(
+        new SnapshotStore.LabelRow("dog", "rdfs:label", "en", "Dog"),
+        new SnapshotStore.LabelRow("dog", "rdfs:label", "fr", "Chien"),
+        new SnapshotStore.LabelRow("dog", "skos:prefLabel", "fr", "chien (skos)"),
+        new SnapshotStore.LabelRow("dog", "rdfs:label", "fr-CA", "Chien quebecois"),
+        new SnapshotStore.LabelRow("cat", "rdfs:label", "fr-CA", "Chat")));
+    assertEquals("Chien", store.labelInLang("dog", "fr").orElseThrow());        // exact fr, rdfs over skos
+    assertEquals("Chien quebecois", store.labelInLang("dog", "fr-CA").orElseThrow());
+    assertEquals("Dog", store.labelInLang("dog", "en").orElseThrow());
+    assertEquals("Chat", store.labelInLang("cat", "fr").orElseThrow());         // fr matches the fr-CA variant
+    assertTrue(store.labelInLang("dog", "de").isEmpty());                        // absent language -> empty (fallback)
+    assertTrue(store.labelInLang("dog", null).isEmpty());
+  }
 }

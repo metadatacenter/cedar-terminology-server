@@ -151,10 +151,13 @@ public class SqliteTerminologyService implements ITerminologyService {
   }
 
   /** As {@link #toClass(SnapshotStore.Concept, String)} but also fills the captured synonyms (altLabels
-   *  and OBO synonym scopes) from the snapshot's label table — used on the class-detail path. */
-  private OntologyClass toClass(SnapshotStore st, SnapshotStore.Concept c, String ontology) throws SQLException {
+   *  and OBO synonym scopes) and, when {@code lang} is given, the label in that language (falling back to
+   *  the served pref_label) — used on the class-detail path. */
+  private OntologyClass toClass(SnapshotStore st, SnapshotStore.Concept c, String ontology, String lang)
+      throws SQLException {
     List<String> synonyms = st.synonyms(c.iri());
-    return new OntologyClass(Util.getShortIdentifier(c.iri()), c.iri(), c.prefLabel(), null, ontology,
+    String label = st.labelInLang(c.iri(), lang).orElse(c.prefLabel());
+    return new OntologyClass(Util.getShortIdentifier(c.iri()), c.iri(), label, null, ontology,
         null, synonyms.isEmpty() ? null : synonyms, null, null, false, null, c.hasChildren());
   }
 
@@ -276,11 +279,11 @@ public class SqliteTerminologyService implements ITerminologyService {
   }
 
   @Override
-  public OntologyClass findClass(String id, String ontology, String apiKey) throws IOException {
+  public OntologyClass findClass(String id, String ontology, String apiKey, String lang) throws IOException {
     try {
       SnapshotStore st = store(ontology);
       Optional<SnapshotStore.Concept> c = st.get(decodeIri(id));
-      return c.isPresent() ? toClass(st, c.get(), ontology) : null;
+      return c.isPresent() ? toClass(st, c.get(), ontology, lang) : null;
     } catch (SQLException e) {
       throw new IOException(e);
     }

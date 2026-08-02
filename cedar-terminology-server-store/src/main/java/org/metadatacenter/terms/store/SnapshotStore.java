@@ -254,6 +254,30 @@ public class SnapshotStore implements AutoCloseable {
       "'skos:altLabel','skos:hiddenLabel','oboInOwl:hasExactSynonym','oboInOwl:hasRelatedSynonym',"
           + "'oboInOwl:hasBroadSynonym','oboInOwl:hasNarrowSynonym','oboInOwl:hasSynonym'";
 
+  /** The concept's label in a requested BCP-47 language, or empty if it has none in that language (the
+   *  caller falls back to the served {@code pref_label}). Matches the exact tag or a regional variant
+   *  ({@code fr} matches {@code fr-CA}), preferring an exact tag and {@code rdfs:label} over
+   *  {@code skos:prefLabel}. A null/blank language yields empty. */
+  public Optional<String> labelInLang(String conceptIri, String lang) throws SQLException {
+    if (lang == null || lang.isBlank()) {
+      return Optional.empty();
+    }
+    try (PreparedStatement ps = connection.prepareStatement(
+        "SELECT l.value FROM label l JOIN concept c ON c.id = l.concept_id "
+            + "WHERE c.iri = ? AND l.property IN ('rdfs:label','skos:prefLabel') "
+            + "AND (LOWER(l.lang) = LOWER(?) OR LOWER(l.lang) LIKE LOWER(?)) "
+            + "ORDER BY (CASE WHEN LOWER(l.lang) = LOWER(?) THEN 0 ELSE 1 END), "
+            + "(CASE l.property WHEN 'rdfs:label' THEN 0 ELSE 1 END), l.value LIMIT 1")) {
+      ps.setString(1, conceptIri);
+      ps.setString(2, lang);
+      ps.setString(3, lang + "-%");
+      ps.setString(4, lang);
+      try (ResultSet rs = ps.executeQuery()) {
+        return rs.next() ? Optional.of(rs.getString(1)) : Optional.empty();
+      }
+    }
+  }
+
   /** A concept's synonyms — the captured altLabels and OBO synonym scopes, distinct values across all
    *  languages, ordered. The label proper ({@code rdfs:label}/{@code skos:prefLabel}) is excluded. */
   public List<String> synonyms(String conceptIri) throws SQLException {

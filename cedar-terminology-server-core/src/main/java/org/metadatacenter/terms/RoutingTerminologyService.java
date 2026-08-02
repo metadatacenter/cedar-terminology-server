@@ -439,8 +439,8 @@ public class RoutingTerminologyService implements ITerminologyService {
   }
 
   @Override
-  public OntologyClass findClass(String id, String ontology, String apiKey) throws IOException {
-    return dispatch(ontology, s -> s.findClass(id, ontology, apiKey));
+  public OntologyClass findClass(String id, String ontology, String apiKey, String lang) throws IOException {
+    return dispatch(ontology, s -> s.findClass(id, ontology, apiKey, lang));
   }
 
   @Override
