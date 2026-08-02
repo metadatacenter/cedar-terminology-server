@@ -111,8 +111,9 @@ public class TerminologyService implements ITerminologyService {
    *  https://github.com/metadatacenter/cedar-project/issues/1160.
    *
    */
+  // lang is honored only on the local path; BioPortal returns labels in its own default language.
   public PagedResults<SearchResult> integratedSearch(Optional<String> q, ValueConstraints valueConstraints,
-                                                     int page, int pageSize, String apiKey) throws IOException {
+                                                     int page, int pageSize, String apiKey, String lang) throws IOException {
 
     PagedResults<SearchResult> results;
 

@@ -176,13 +176,13 @@ public class RoutingTerminologyService implements ITerminologyService {
 
   @Override
   public PagedResults<SearchResult> integratedSearch(Optional<String> q, ValueConstraints valueConstraints, int page,
-                                                     int pageSize, String apiKey) throws IOException {
+                                                     int pageSize, String apiKey, String lang) throws IOException {
     if (local != null && integratedSearchServedLocally(valueConstraints)) {
       if (localOnly) {
-        return local.integratedSearch(q, valueConstraints, page, pageSize, apiKey);
+        return local.integratedSearch(q, valueConstraints, page, pageSize, apiKey, lang);
       }
       try {
-        return local.integratedSearch(q, valueConstraints, page, pageSize, apiKey);
+        return local.integratedSearch(q, valueConstraints, page, pageSize, apiKey, lang);
       } catch (UnsupportedOperationException notImplementedLocally) {
         // The local backend cannot serve this search *shape* (e.g. multi-source or mixed constraints).
         // Routing to the remote adapter is fine for an unpinned request, but never for a pinned one:
@@ -210,7 +210,7 @@ public class RoutingTerminologyService implements ITerminologyService {
     if (hasNonBioPortalSource(valueConstraints)) {
       return emptyResults(page, pageSize);
     }
-    return remote.integratedSearch(q, valueConstraints, page, pageSize, apiKey);
+    return remote.integratedSearch(q, valueConstraints, page, pageSize, apiKey, lang);
   }
 
   /** Whether any ontology / branch / value-set constraint names a source system other than BioPortal (a

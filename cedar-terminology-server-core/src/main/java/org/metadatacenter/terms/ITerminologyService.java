@@ -25,8 +25,15 @@ public interface ITerminologyService {
   /**
    * CEDAR Integrated Search
    */
+  /** Integrated search, returning result labels in {@code lang} (BCP-47) for locally-served, single-source
+   *  constraints; null/blank keeps the default label. The remote path uses BioPortal's own default. */
   PagedResults<SearchResult> integratedSearch(Optional<String> q, ValueConstraints valueConstraints,
-                        int page, int pageSize, String apiKey) throws IOException;
+                        int page, int pageSize, String apiKey, String lang) throws IOException;
+
+  default PagedResults<SearchResult> integratedSearch(Optional<String> q, ValueConstraints valueConstraints,
+                        int page, int pageSize, String apiKey) throws IOException {
+    return integratedSearch(q, valueConstraints, page, pageSize, apiKey, null);
+  }
 
   /**
    * CEDAR Integrated Retrieve
