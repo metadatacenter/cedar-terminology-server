@@ -514,4 +514,33 @@ public class SnapshotStoreTest {
       assertEquals(fullBefore, s.normalizedContentHash(true), "labels do not affect the label-sensitive hash");
     }
   }
+
+  @Test
+  public void synonyms_returnsOnlySynonymScopesDistinctAndOrdered() throws Exception {
+    store.addLabels(List.of(
+        new SnapshotStore.LabelRow("dog", "rdfs:label", "en", "Dog"),                 // label proper — excluded
+        new SnapshotStore.LabelRow("dog", "skos:prefLabel", "en", "Dog"),             // excluded
+        new SnapshotStore.LabelRow("dog", "skos:altLabel", "en", "canine"),
+        new SnapshotStore.LabelRow("dog", "oboInOwl:hasExactSynonym", "en", "domestic dog"),
+        new SnapshotStore.LabelRow("dog", "oboInOwl:hasExactSynonym", "fr", "chien domestique"),
+        new SnapshotStore.LabelRow("dog", "skos:altLabel", "en", "canine")));         // duplicate value
+    assertEquals(List.of("canine", "chien domestique", "domestic dog"), store.synonyms("dog"));
+    assertTrue(store.synonyms("cat").isEmpty());
+  }
+
+  @Test
+  public void searchByLabel_matchesAnyLanguageAndSynonym() throws Exception {
+    store.addLabels(List.of(
+        new SnapshotStore.LabelRow("dog", "rdfs:label", "fr", "chien"),               // French label
+        new SnapshotStore.LabelRow("dog", "oboInOwl:hasExactSynonym", "en", "canine"))); // synonym
+    assertTrue(matches("Dog"), "served pref_label still matches");
+    assertTrue(matches("chien"), "a non-English label matches");
+    assertTrue(matches("canine"), "a synonym matches");
+    assertEquals(1, store.searchByLabel("chien", false, 0).size(), "one concept, not duplicated");
+    assertTrue(store.searchByLabel("no-such-term", false, 0).isEmpty());
+  }
+
+  private boolean matches(String q) throws Exception {
+    return store.searchByLabel(q, false, 0).stream().anyMatch(c -> c.iri().equals("dog"));
+  }
 }

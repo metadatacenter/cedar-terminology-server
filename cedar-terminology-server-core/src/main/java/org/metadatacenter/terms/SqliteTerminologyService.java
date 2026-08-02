@@ -150,6 +150,14 @@ public class SqliteTerminologyService implements ITerminologyService {
         null, null, null, null, false, null, c.hasChildren());
   }
 
+  /** As {@link #toClass(SnapshotStore.Concept, String)} but also fills the captured synonyms (altLabels
+   *  and OBO synonym scopes) from the snapshot's label table — used on the class-detail path. */
+  private OntologyClass toClass(SnapshotStore st, SnapshotStore.Concept c, String ontology) throws SQLException {
+    List<String> synonyms = st.synonyms(c.iri());
+    return new OntologyClass(Util.getShortIdentifier(c.iri()), c.iri(), c.prefLabel(), null, ontology,
+        null, synonyms.isEmpty() ? null : synonyms, null, null, false, null, c.hasChildren());
+  }
+
   private PagedResults<OntologyClass> paginate(List<SnapshotStore.Concept> rows, String ontology,
                                                int page, int pageSize) {
     int total = rows.size();
@@ -270,7 +278,9 @@ public class SqliteTerminologyService implements ITerminologyService {
   @Override
   public OntologyClass findClass(String id, String ontology, String apiKey) throws IOException {
     try {
-      return store(ontology).get(decodeIri(id)).map(c -> toClass(c, ontology)).orElse(null);
+      SnapshotStore st = store(ontology);
+      Optional<SnapshotStore.Concept> c = st.get(decodeIri(id));
+      return c.isPresent() ? toClass(st, c.get(), ontology) : null;
     } catch (SQLException e) {
       throw new IOException(e);
     }

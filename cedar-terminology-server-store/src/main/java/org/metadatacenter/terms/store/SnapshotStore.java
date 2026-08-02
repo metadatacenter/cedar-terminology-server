@@ -248,6 +248,29 @@ public class SnapshotStore implements AutoCloseable {
     }
   }
 
+  /** The synonym-scope property CURIEs — every captured name that is a synonym rather than the label
+   *  proper. Kept in sync with the ingest-side capture (LabelProperties); the label table stores CURIEs. */
+  private static final String SYNONYM_PROPERTY_LIST =
+      "'skos:altLabel','skos:hiddenLabel','oboInOwl:hasExactSynonym','oboInOwl:hasRelatedSynonym',"
+          + "'oboInOwl:hasBroadSynonym','oboInOwl:hasNarrowSynonym','oboInOwl:hasSynonym'";
+
+  /** A concept's synonyms — the captured altLabels and OBO synonym scopes, distinct values across all
+   *  languages, ordered. The label proper ({@code rdfs:label}/{@code skos:prefLabel}) is excluded. */
+  public List<String> synonyms(String conceptIri) throws SQLException {
+    try (PreparedStatement ps = connection.prepareStatement(
+        "SELECT DISTINCT l.value FROM label l JOIN concept c ON c.id = l.concept_id "
+            + "WHERE c.iri = ? AND l.property IN (" + SYNONYM_PROPERTY_LIST + ") ORDER BY l.value")) {
+      ps.setString(1, conceptIri);
+      try (ResultSet rs = ps.executeQuery()) {
+        List<String> out = new ArrayList<>();
+        while (rs.next()) {
+          out.add(rs.getString(1));
+        }
+        return out;
+      }
+    }
+  }
+
   /** Every captured name literal in the snapshot, as insertable rows (concept IRI carried). Used to
    *  copy a freshly-extracted snapshot's labels into an existing snapshot file during backfill. */
   public List<LabelRow> allLabels() throws SQLException {
@@ -892,6 +915,15 @@ public class SnapshotStore implements AutoCloseable {
   private List<Concept> labelSearch(String rootIri, String query, boolean prefixOnly, int limit) throws SQLException {
     String escaped = escapeLike(query == null ? "" : query);
     String pattern = prefixOnly ? escaped + "%" : "%" + escaped + "%";
+    // A non-empty query also matches any captured name — a label in any language, or a synonym — so a
+    // French term or an exact synonym finds the concept, not only its served pref_label. An empty query
+    // is a browse: pref_label already matches every concept, so the label join is skipped (and its per-row
+    // cost avoided). The match column, factored so it is used identically in the rooted and unrooted forms.
+    boolean searchNames = query != null && !query.isEmpty();
+    String match = searchNames
+        ? "(COALESCE(c.pref_label, '') LIKE ? ESCAPE '\\'"
+            + " OR EXISTS(SELECT 1 FROM label l WHERE l.concept_id = c.id AND l.value LIKE ? ESCAPE '\\'))"
+        : "COALESCE(c.pref_label, '') LIKE ? ESCAPE '\\'";
     StringBuilder sql = new StringBuilder(
         "SELECT c.iri, c.pref_label, c.obsolete,\n" +
         "       EXISTS(SELECT 1 FROM edge e2 WHERE e2.parent_id = c.id) AS has_children\n" +
@@ -911,9 +943,9 @@ public class SnapshotStore implements AutoCloseable {
                  "        SELECT cl.descendant_id FROM closure cl\n" +
                  "        JOIN concept a ON a.id = cl.ancestor_id WHERE a.iri = ?)\n" +
                  "  AND c.iri <> ?\n" +
-                 "  AND COALESCE(c.pref_label, '') LIKE ? ESCAPE '\\'\n");
+                 "  AND ").append(match).append('\n');
     } else {
-      sql.append("WHERE COALESCE(c.pref_label, '') LIKE ? ESCAPE '\\'\n");
+      sql.append("WHERE ").append(match).append('\n');
     }
     sql.append("ORDER BY length(c.pref_label), c.pref_label, c.iri");
     if (limit > 0) {
@@ -925,7 +957,10 @@ public class SnapshotStore implements AutoCloseable {
         ps.setString(i++, rootIri);
         ps.setString(i++, rootIri);
       }
-      ps.setString(i, pattern);
+      ps.setString(i++, pattern);
+      if (searchNames) {
+        ps.setString(i, pattern); // the label-table match reuses the same pattern
+      }
       try (ResultSet rs = ps.executeQuery()) {
         List<Concept> out = new ArrayList<>();
         while (rs.next()) {
