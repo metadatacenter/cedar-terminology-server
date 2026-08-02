@@ -141,6 +141,38 @@ public class OwlHierarchyExtractorTest {
   }
 
   @Test
+  public void everyLanguageVariantAndSynonymIsCapturedWhilePrefLabelIsUnchanged() throws Exception {
+    OWLOntologyManager m = OWLManager.createOWLOntologyManager();
+    OWLDataFactory df = m.getOWLDataFactory();
+    OWLOntology o = m.createOntology(IRI.create(BASE + "names"));
+    OWLClass water = df.getOWLClass(iri("water"));
+    m.addAxiom(o, df.getOWLDeclarationAxiom(water));
+    OWLAnnotationProperty altLabel =
+        df.getOWLAnnotationProperty(IRI.create("http://www.w3.org/2004/02/skos/core#altLabel"));
+    OWLAnnotationProperty exactSynonym = df.getOWLAnnotationProperty(
+        IRI.create("http://www.geneontology.org/formats/oboInOwl#hasExactSynonym"));
+    // French label first, then English (English must still win the single pref_label pick).
+    m.addAxiom(o, df.getOWLAnnotationAssertionAxiom(df.getRDFSLabel(), water.getIRI(), df.getOWLLiteral("eau", "fr")));
+    m.addAxiom(o, df.getOWLAnnotationAssertionAxiom(df.getRDFSLabel(), water.getIRI(), df.getOWLLiteral("water", "en")));
+    m.addAxiom(o, df.getOWLAnnotationAssertionAxiom(altLabel, water.getIRI(), df.getOWLLiteral("Wasser", "de")));
+    m.addAxiom(o, df.getOWLAnnotationAssertionAxiom(exactSynonym, water.getIRI(), df.getOWLLiteral("H2O", "en")));
+
+    try (SnapshotStore s = SnapshotStore.openInMemory()) {
+      s.initSchema();
+      new OwlHierarchyExtractor().extract(o, s);
+      // The single served label is unchanged by capture: English rdfs:label still wins.
+      assertEquals("water", s.prefLabel(BASE + "water").orElseThrow());
+      // Every variant is preserved, each with its language tag and source property.
+      List<SnapshotStore.LabelEntry> labels = s.labels(BASE + "water");
+      assertEquals(4, labels.size());
+      assertTrue(labels.contains(new SnapshotStore.LabelEntry("rdfs:label", "en", "water")));
+      assertTrue(labels.contains(new SnapshotStore.LabelEntry("rdfs:label", "fr", "eau")));
+      assertTrue(labels.contains(new SnapshotStore.LabelEntry("skos:altLabel", "de", "Wasser")));
+      assertTrue(labels.contains(new SnapshotStore.LabelEntry("oboInOwl:hasExactSynonym", "en", "H2O")));
+    }
+  }
+
+  @Test
   public void configuredRelationRestrictionBecomesHierarchyEdge() throws Exception {
     OWLOntologyManager m = OWLManager.createOWLOntologyManager();
     OWLDataFactory df = m.getOWLDataFactory();

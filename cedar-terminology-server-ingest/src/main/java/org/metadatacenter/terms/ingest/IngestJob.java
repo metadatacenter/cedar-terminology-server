@@ -145,18 +145,10 @@ public class IngestJob {
     log.info("Ingesting {} submission {} (version {}, format {})",
         acronym, sub.submissionId(), sub.version(), sub.format());
 
-    // Licensing guard: never download or ingest content BioPortal marks as restricted/licensed.
-    OntologyAccess access = source.accessInfo(acronym);
-    if (!access.isPublic()) {
-      throw new IOException("Refusing to ingest restricted ontology " + acronym
-          + " (viewingRestriction=" + access.viewingRestriction() + "); licensed content is not ingested");
-    }
-
     Path ontoDir = snapshotDir.resolve(acronym);
-    Path raw = source.download(acronym, sub.submissionId(), ontoDir.resolve("raw"));
-    String rawHash = sha256(raw);        // hash of the archival download, kept as file_hash provenance
-    Path loadable = decompress(raw);     // .zip/.gz submissions must be expanded before parsing
-    loadable = stripOboImports(loadable);// OBO import: declarations must be dropped before parsing
+    Prepared prep = prepareSubmission(acronym, sub, ontoDir); // licensing guard + download + decompress + strip
+    OntologyAccess access = prep.access();
+    String rawHash = prep.rawHash();     // hash of the archival download, kept as file_hash provenance
 
     // Extract into a temp file and only replace the live snapshot once extraction succeeds with a
     // non-empty result. Extracting in place (delete-then-write) would lose a good snapshot whenever
@@ -172,23 +164,13 @@ public class IngestJob {
     Files.deleteIfExists(tempFile);
     HierarchyExtractor.Result extracted;
     String versionId;
-    String ownNamespace = null; // this snapshot's dominant own ID-space, for the canonical iri
+    String ownNamespace; // this snapshot's dominant own ID-space, for the canonical iri
     try (SnapshotStore store = SnapshotStore.openFile(tempFile.toString())) {
       store.initSchema();
-      extracted = extractorFor(acronym, sub.format()).extractFromFile(loadable.toFile(), store);
-      // Drop dead-end import references from the roots: unlabeled foreign classes with no labeled
-      // descendant are unresolved-owl:imports dangling references, not real tree entry points.
-      store.pruneDeadEndImportRoots(acronym);
-      // Then give any still-unlabeled class a fallback label from its IRI fragment (matching
-      // BioPortal), so label-less ontologies are searchable/browsable rather than blank. After the
-      // prune, which keys on the genuinely-unlabeled state.
-      store.fillMissingLabelsFromIri();
-      // Identity = the normalized served model, independent of the source bytes/serialization. Two
-      // uploads that extract to the same hierarchy share a version id and merge to one snapshot.
-      versionId = store.normalizedContentHash(true);
-      // The ontology's own ID-space, folded to the canonical iri below — computed on the final
-      // (pruned, labelled) snapshot, the same state the A6 backfill reads.
-      ownNamespace = store.dominantOwnIdspace(acronym).orElse(null);
+      Extraction ex = extractInto(store, acronym, sub, prep.loadable());
+      extracted = ex.result();
+      versionId = ex.versionId();
+      ownNamespace = ex.ownNamespace();
     } catch (Throwable e) {
       Files.deleteIfExists(tempFile);
       throw new IOException("Extraction failed for " + acronym + " submission " + sub.submissionId(), e);
@@ -245,6 +227,164 @@ public class IngestJob {
     log.info("Ingested {} submission {} -> {} ({} classes, {} edges)",
         acronym, sub.submissionId(), versionId, extracted.classCount(), extracted.edgeCount());
     return new IngestResult(sub.submissionId(), versionId, snapshotFile, extracted.classCount(), extracted.edgeCount());
+  }
+
+  /** A downloaded, parse-ready submission: the loadable file, its raw-bytes hash, and its access info. */
+  private record Prepared(Path loadable, String rawHash, OntologyAccess access) {}
+
+  /** The result of extracting a submission into a store: the counts, the content-hash version id, and
+   *  the ontology's dominant own ID-space (for the canonical iri). */
+  private record Extraction(HierarchyExtractor.Result result, String versionId, String ownNamespace) {}
+
+  /**
+   * Applies the licensing guard, downloads the submission, and expands/normalizes it to a parse-ready
+   * file (decompress {@code .gz}/{@code .zip}, strip OBO {@code import:} lines). Shared by
+   * {@link #ingestSubmission} and {@link #backfillLabels} so both feed the extractor identical bytes.
+   */
+  private Prepared prepareSubmission(String acronym, Submission sub, Path ontoDir)
+      throws IOException, InterruptedException {
+    // Licensing guard: never download or ingest content BioPortal marks as restricted/licensed.
+    OntologyAccess access = source.accessInfo(acronym);
+    if (!access.isPublic()) {
+      throw new IOException("Refusing to ingest restricted ontology " + acronym
+          + " (viewingRestriction=" + access.viewingRestriction() + "); licensed content is not ingested");
+    }
+    Path raw = source.download(acronym, sub.submissionId(), ontoDir.resolve("raw"));
+    String rawHash = sha256(raw);
+    Path loadable = decompress(raw);      // .zip/.gz submissions must be expanded before parsing
+    loadable = stripOboImports(loadable); // OBO import: declarations must be dropped before parsing
+    return new Prepared(loadable, rawHash, access);
+  }
+
+  /**
+   * Extracts a prepared submission into {@code store} with the exact post-processing ingest applies —
+   * prune dead-end import roots, then IRI-fragment fallback labels — and returns the counts, the
+   * content-hash version id, and the own ID-space. Shared so {@link #backfillLabels} reproduces a
+   * snapshot's identity byte-for-byte; the label backfill gates on the returned version id matching.
+   */
+  private Extraction extractInto(SnapshotStore store, String acronym, Submission sub, Path loadable)
+      throws Exception {
+    HierarchyExtractor.Result extracted =
+        extractorFor(acronym, sub.format()).extractFromFile(loadable.toFile(), store);
+    // Drop dead-end import references from the roots: unlabeled foreign classes with no labeled
+    // descendant are unresolved-owl:imports dangling references, not real tree entry points.
+    store.pruneDeadEndImportRoots(acronym);
+    // Then give any still-unlabeled class a fallback label from its IRI fragment (matching BioPortal),
+    // so label-less ontologies are searchable/browsable rather than blank. After the prune, which keys
+    // on the genuinely-unlabeled state.
+    store.fillMissingLabelsFromIri();
+    // Identity = the normalized served model, independent of the source bytes/serialization.
+    String versionId = store.normalizedContentHash(true);
+    String ownNamespace = store.dominantOwnIdspace(acronym).orElse(null);
+    return new Extraction(extracted, versionId, ownNamespace);
+  }
+
+  /** Tally of a label backfill run. */
+  public record BackfillSummary(int filled, int alreadyLabeled, int otherBackend, int noSubmission,
+                                int mismatched, int failed, long labelsAdded) {}
+
+  /**
+   * Backfills the multilingual {@code label} table of already-ingested snapshots that predate label
+   * capture. For each snapshot served from this run's source (matched by backend), re-fetches the exact
+   * submission, re-extracts it into a throwaway store, and — only if the recomputed content-hash
+   * version id equals the snapshot's — copies the captured labels into the existing snapshot file. The
+   * version-id gate makes it fail-safe: a snapshot is enriched in place with identity-preserving labels,
+   * or skipped, never rewritten with different content. Snapshots that already carry labels are skipped,
+   * so the run is resumable and idempotent. {@code only} limits the run to the given acronyms (empty =
+   * all). The catalog is never mutated.
+   */
+  private static final String BACKFILLED_MARKER = "labels_backfilled";
+
+  public BackfillSummary backfillLabels(CatalogStore catalog, Path snapshotDir, Set<String> only)
+      throws SQLException {
+    int filled = 0, already = 0, otherBackend = 0, noSub = 0, mismatched = 0, failed = 0;
+    long labelsAdded = 0;
+    String myBackend = source.backendId();
+    List<String> acronyms = new ArrayList<>();
+    for (CatalogStore.OntologyInfo o : catalog.listOntologies()) {
+      if (only.isEmpty() || only.contains(o.acronym())) {
+        acronyms.add(o.acronym());
+      }
+    }
+    java.util.Optional<Path> base = catalog.baseDir();
+    int idx = 0;
+    for (String acronym : acronyms) {
+      idx++;
+      for (CatalogStore.SnapshotInfo snap : catalog.listSnapshots(acronym)) {
+        Path file = base.map(b -> b.resolve(snap.filePath())).orElse(Path.of(snap.filePath()));
+        try {
+          // Skip snapshots already processed (resumable/idempotent): either they carry captured labels,
+          // or a prior backfill marked them done (a label-less ontology legitimately has zero labels).
+          // initSchema migrates a pre-label snapshot to the empty label/meta tables.
+          try (SnapshotStore existing = SnapshotStore.openFile(file.toString())) {
+            existing.initSchema();
+            if (existing.labelCount() > 0 || existing.getMeta(BACKFILLED_MARKER).isPresent()) {
+              already++;
+              continue;
+            }
+          }
+          // Only backfill snapshots this source can re-fetch (matched by backend).
+          java.util.Optional<CatalogStore.SnapshotProvenance> prov =
+              catalog.snapshotProvenance(snap.versionId(), acronym);
+          String backend = prov.map(CatalogStore.SnapshotProvenance::backend).orElse("bioportal");
+          if (!myBackend.equals(backend)) {
+            otherBackend++;
+            continue;
+          }
+          // Prefer the exact submission when its id was recorded; otherwise fall back to the source's
+          // current latest. Either way the version-id gate below rejects any content drift, so the
+          // fallback can only ever enrich the identical snapshot, never a different one.
+          Integer submissionId = prov.map(CatalogStore.SnapshotProvenance::submissionId).orElse(null);
+          Submission sub;
+          if (submissionId != null) {
+            sub = source.listSubmissions(acronym).stream()
+                .filter(s -> s.submissionId() == submissionId).findFirst().orElse(null);
+          } else {
+            sub = source.latestSubmission(acronym);
+          }
+          if (sub == null) {
+            noSub++;
+            log.warn("[{}/{}] {}: no re-fetchable submission (id {})", idx, acronyms.size(),
+                acronym, submissionId);
+            continue;
+          }
+          Path ontoDir = snapshotDir.resolve(acronym);
+          Prepared prep = prepareSubmission(acronym, sub, ontoDir);
+          Path tempFile = ontoDir.resolve(prep.rawHash() + ".backfill.tmp");
+          Files.deleteIfExists(tempFile);
+          List<SnapshotStore.LabelRow> labels;
+          String recomputed;
+          try (SnapshotStore tmp = SnapshotStore.openFile(tempFile.toString())) {
+            tmp.initSchema();
+            recomputed = extractInto(tmp, acronym, sub, prep.loadable()).versionId();
+            labels = tmp.allLabels();
+          } finally {
+            Files.deleteIfExists(tempFile);
+          }
+          if (!recomputed.equals(snap.versionId())) {
+            mismatched++;
+            log.warn("[{}/{}] {}: re-extraction hashed to {} not {}; leaving snapshot untouched",
+                idx, acronyms.size(), acronym, recomputed, snap.versionId());
+            continue;
+          }
+          try (SnapshotStore existing = SnapshotStore.openFile(file.toString())) {
+            existing.setBusyTimeoutMillis(60_000); // wait out the live server's brief read locks
+            existing.initSchema();
+            existing.addLabels(labels);
+            existing.setMeta(BACKFILLED_MARKER, recomputed); // mark done even when there were 0 labels
+          }
+          filled++;
+          labelsAdded += labels.size();
+          log.info("[{}/{}] {} {}: +{} labels", idx, acronyms.size(), acronym, snap.versionId(), labels.size());
+        } catch (Throwable e) {
+          failed++;
+          log.warn("[{}/{}] {} {}: backfill failed: {}", idx, acronyms.size(), acronym, snap.versionId(),
+              e.toString());
+          System.err.printf("FAIL %s %s: %s%n", acronym, snap.versionId(), e);
+        }
+      }
+    }
+    return new BackfillSummary(filled, already, otherBackend, noSub, mismatched, failed, labelsAdded);
   }
 
   /**
@@ -444,6 +584,7 @@ public class IngestJob {
 
     boolean all = false;
     boolean valuesets = false;
+    boolean backfillLabels = false;
     String sourceName = "bioportal";
     String oboRelease = null;
     String url = null;
@@ -457,6 +598,8 @@ public class IngestJob {
         all = true;
       } else if ("--valuesets".equals(args[i])) {
         valuesets = true;
+      } else if ("--backfill-labels".equals(args[i])) {
+        backfillLabels = true;
       } else if ("--source".equals(args[i]) && i + 1 < args.length) {
         sourceName = args[++i];
       } else if ("--release".equals(args[i]) && i + 1 < args.length) {
@@ -480,6 +623,16 @@ public class IngestJob {
     IngestJob job = new IngestJob(source);
     try (CatalogStore catalog = CatalogStore.openFile(catalogPath.toString())) {
       catalog.initSchema();
+      if (backfillLabels) {
+        IngestJob.BackfillSummary sum =
+            job.backfillLabels(catalog, snapshotDir, new java.util.HashSet<>(acronyms));
+        System.out.printf(
+            "backfill-labels: %d filled (+%d labels), %d already labeled, %d other-backend, "
+                + "%d no-submission, %d hash-mismatch, %d failed%n",
+            sum.filled(), sum.labelsAdded(), sum.alreadyLabeled(), sum.otherBackend(),
+            sum.noSubmission(), sum.mismatched(), sum.failed());
+        return;
+      }
       for (String acronym : acronyms) {
         if (!submissionIds.isEmpty()) {
           // Ingest specific historical submissions without moving the latest tag.

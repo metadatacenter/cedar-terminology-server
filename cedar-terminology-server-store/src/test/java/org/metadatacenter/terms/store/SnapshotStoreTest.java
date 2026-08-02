@@ -477,4 +477,41 @@ public class SnapshotStoreTest {
       assertEquals(List.of("a"), s.roots());
     }
   }
+
+  @Test
+  public void labelTable_roundTripsAndKeysOnConcept() throws Exception {
+    store.addLabels(List.of(
+        new SnapshotStore.LabelRow("dog", "rdfs:label", "en", "Dog"),
+        new SnapshotStore.LabelRow("dog", "rdfs:label", "fr", "Chien"),
+        new SnapshotStore.LabelRow("dog", "skos:altLabel", "", "canine"),
+        new SnapshotStore.LabelRow("dog", "rdfs:label", "en", "Dog"),   // duplicate: dropped by PK
+        new SnapshotStore.LabelRow("no-such-iri", "rdfs:label", "en", "X"))); // no concept: ignored
+
+    List<SnapshotStore.LabelEntry> dog = store.labels("dog");
+    assertEquals(3, dog.size(), "duplicate dropped, foreign-concept row ignored");
+    assertTrue(dog.contains(new SnapshotStore.LabelEntry("rdfs:label", "en", "Dog")));
+    assertTrue(dog.contains(new SnapshotStore.LabelEntry("rdfs:label", "fr", "Chien")));
+    assertTrue(dog.contains(new SnapshotStore.LabelEntry("skos:altLabel", "", "canine")));
+    assertEquals(3, store.labelCount());
+    assertEquals(3, store.allLabels().size());
+  }
+
+  @Test
+  public void labels_doNotParticipateInContentIdentity() throws Exception {
+    // The label table is out of identity by construction: adding names must move neither the
+    // structure-only nor the label-sensitive content hash.
+    try (SnapshotStore s = SnapshotStore.openInMemory()) {
+      s.initSchema();
+      s.addConcept("http://ex/c", "cancer");
+      s.materialize();
+      String structBefore = s.normalizedContentHash(false);
+      String fullBefore = s.normalizedContentHash(true);
+      s.addLabels(List.of(
+          new SnapshotStore.LabelRow("http://ex/c", "rdfs:label", "en", "cancer"),
+          new SnapshotStore.LabelRow("http://ex/c", "rdfs:label", "de", "Krebs"),
+          new SnapshotStore.LabelRow("http://ex/c", "oboInOwl:hasExactSynonym", "en", "malignant neoplasm")));
+      assertEquals(structBefore, s.normalizedContentHash(false), "labels do not affect structure hash");
+      assertEquals(fullBefore, s.normalizedContentHash(true), "labels do not affect the label-sensitive hash");
+    }
+  }
 }

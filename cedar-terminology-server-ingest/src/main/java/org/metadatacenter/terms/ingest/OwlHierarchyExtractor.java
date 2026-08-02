@@ -97,14 +97,20 @@ public class OwlHierarchyExtractor implements HierarchyExtractor {
     OWLAnnotationProperty replacedBy = df.getOWLAnnotationProperty(TERM_REPLACED_BY);
 
     int classCount = 0;
+    List<SnapshotStore.LabelRow> labelRows = new ArrayList<>();
     for (OWLClass cls : ont.getClassesInSignature(Imports.INCLUDED)) {
       if (cls.isOWLThing() || cls.isOWLNothing()) {
         continue;
       }
       store.addConcept(cls.getIRI().toString(), label(cls, ont),
           isDeprecated(cls, ont, deprecated), replacedBy(cls, ont, replacedBy));
+      captureLabels(cls, ont, labelRows);
       classCount++;
     }
+    // Preserve every language variant of every name (labels + synonyms) alongside the single served
+    // pref_label. Additive: pref_label (and thus content identity) is unchanged; this only records what
+    // the single-label pick discards.
+    store.addLabels(labelRows);
 
     int edgeCount = 0;
     // Asserted rdfs:subClassOf. A named superclass is a parent; a named genus inside an
@@ -255,6 +261,29 @@ public class OwlHierarchyExtractor implements HierarchyExtractor {
       }
     }
     return rdfsLabel != null ? rdfsLabel : prefLabel;
+  }
+
+  /**
+   * Records every name literal of a class — labels and synonyms ({@link LabelProperties}) — with its
+   * language tag into {@code out}, for the snapshot's {@code label} table. Reads the class's own
+   * annotation-assertion axioms across the import closure, the same clean source {@link #label} uses
+   * (an OBO {@code xref} description exposed as an axiom-annotation label is not surfaced here). This
+   * preserves the multilingual names the single {@code pref_label} pick drops; it does not affect
+   * which literal that pick chooses.
+   */
+  private static void captureLabels(OWLClass cls, OWLOntology ont, List<SnapshotStore.LabelRow> out) {
+    String iri = cls.getIRI().toString();
+    for (OWLOntology o : ont.getImportsClosure()) {
+      for (OWLAnnotationAssertionAxiom ax : o.getAnnotationAssertionAxioms(cls.getIRI())) {
+        if (!(ax.getValue() instanceof OWLLiteral literal)) {
+          continue;
+        }
+        String curie = LabelProperties.curieFor(ax.getProperty().getIRI());
+        if (curie != null) {
+          out.add(new SnapshotStore.LabelRow(iri, curie, literal.getLang(), literal.getLiteral()));
+        }
+      }
+    }
   }
 
   /**

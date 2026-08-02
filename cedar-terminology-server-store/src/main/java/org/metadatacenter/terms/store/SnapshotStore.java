@@ -40,6 +40,13 @@ public class SnapshotStore implements AutoCloseable {
   /** Every concept field that participates in label-sensitive normalized content identity. */
   public record ConceptState(String iri, String prefLabel, boolean obsolete, String replacedBy) {}
 
+  /** One captured name literal to insert: the concept it names, the property CURIE (e.g.
+   *  {@code skos:prefLabel}), the BCP-47 language tag ({@code ""} = untagged), and the value. */
+  public record LabelRow(String conceptIri, String property, String lang, String value) {}
+
+  /** One captured name literal read back, without the concept IRI (the caller keyed the query on it). */
+  public record LabelEntry(String property, String lang, String value) {}
+
   private final Connection connection;
 
   private SnapshotStore(Connection connection) {
@@ -92,6 +99,23 @@ public class SnapshotStore implements AutoCloseable {
             PRIMARY KEY (subject_id, predicate, object_id)
           ) WITHOUT ROWID""");
       s.executeUpdate("CREATE INDEX IF NOT EXISTS idx_relation_obj ON relation(predicate, object_id)");
+      // Every language variant of a concept's names — its labels and synonyms — with the BCP-47
+      // language tag ('' = untagged, BioPortal's "none"). The served pref_label keeps the single
+      // best-ranked label; this table preserves the rest so a multilingual ontology is not collapsed
+      // to one language. Outside content identity by construction: normalizedContentHash never reads
+      // it. CREATE ... IF NOT EXISTS, so opening a pre-existing snapshot migrates it to an empty table
+      // that the label backfill then fills.
+      s.executeUpdate("""
+          CREATE TABLE IF NOT EXISTS label (
+            concept_id INTEGER NOT NULL,
+            property   TEXT NOT NULL,
+            lang       TEXT NOT NULL DEFAULT '',
+            value      TEXT NOT NULL,
+            PRIMARY KEY (concept_id, property, lang, value)
+          ) WITHOUT ROWID""");
+      // Small key/value provenance for the snapshot itself (e.g. a marker that label backfill has run,
+      // so a resume skips a snapshot even when it legitimately has zero real labels). Outside identity.
+      s.executeUpdate("CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT)");
     }
   }
 
@@ -171,6 +195,101 @@ public class SnapshotStore implements AutoCloseable {
       connection.commit();
     } finally {
       connection.setAutoCommit(autoCommit);
+    }
+  }
+
+  /** How long a write waits for a lock held by another connection (e.g. a live server reading this
+   *  snapshot) before failing, instead of erroring immediately with SQLITE_BUSY. Lets a backfill write
+   *  labels into a snapshot the server is serving. */
+  public void setBusyTimeoutMillis(int millis) throws SQLException {
+    try (Statement s = connection.createStatement()) {
+      s.execute("PRAGMA busy_timeout = " + millis);
+    }
+  }
+
+  /**
+   * Bulk-adds captured name literals in a single transaction. Each row names an existing concept by
+   * IRI; a row whose concept IRI is not in the store is silently ignored (matches {@link #addEdge}).
+   * Idempotent — duplicate rows are dropped by the primary key. Outside content identity.
+   */
+  public void addLabels(List<LabelRow> rows) throws SQLException {
+    boolean autoCommit = connection.getAutoCommit();
+    connection.setAutoCommit(false);
+    try (PreparedStatement ps = connection.prepareStatement("""
+        INSERT OR IGNORE INTO label (concept_id, property, lang, value)
+        SELECT c.id, ?, ?, ? FROM concept c WHERE c.iri = ?""")) {
+      for (LabelRow r : rows) {
+        ps.setString(1, r.property());
+        ps.setString(2, r.lang() == null ? "" : r.lang());
+        ps.setString(3, r.value());
+        ps.setString(4, r.conceptIri());
+        ps.addBatch();
+      }
+      ps.executeBatch();
+      connection.commit();
+    } finally {
+      connection.setAutoCommit(autoCommit);
+    }
+  }
+
+  /** Every captured name literal for one concept, ordered by property then language. */
+  public List<LabelEntry> labels(String conceptIri) throws SQLException {
+    try (PreparedStatement ps = connection.prepareStatement(
+        "SELECT l.property, l.lang, l.value FROM label l JOIN concept c ON c.id = l.concept_id "
+            + "WHERE c.iri = ? ORDER BY l.property, l.lang, l.value")) {
+      ps.setString(1, conceptIri);
+      try (ResultSet rs = ps.executeQuery()) {
+        List<LabelEntry> out = new ArrayList<>();
+        while (rs.next()) {
+          out.add(new LabelEntry(rs.getString("property"), rs.getString("lang"), rs.getString("value")));
+        }
+        return out;
+      }
+    }
+  }
+
+  /** Every captured name literal in the snapshot, as insertable rows (concept IRI carried). Used to
+   *  copy a freshly-extracted snapshot's labels into an existing snapshot file during backfill. */
+  public List<LabelRow> allLabels() throws SQLException {
+    try (Statement s = connection.createStatement();
+         ResultSet rs = s.executeQuery(
+             "SELECT c.iri, l.property, l.lang, l.value FROM label l "
+                 + "JOIN concept c ON c.id = l.concept_id")) {
+      List<LabelRow> out = new ArrayList<>();
+      while (rs.next()) {
+        out.add(new LabelRow(rs.getString("iri"), rs.getString("property"),
+            rs.getString("lang"), rs.getString("value")));
+      }
+      return out;
+    }
+  }
+
+  /** Total captured name literals. Zero means labels have not been captured for this snapshot yet
+   *  (the backfill skip check). */
+  public int labelCount() throws SQLException {
+    try (Statement s = connection.createStatement();
+         ResultSet rs = s.executeQuery("SELECT COUNT(*) FROM label")) {
+      return rs.next() ? rs.getInt(1) : 0;
+    }
+  }
+
+  /** Sets a snapshot-level provenance value (see the {@code meta} table). */
+  public void setMeta(String key, String value) throws SQLException {
+    try (PreparedStatement ps = connection.prepareStatement(
+        "INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value")) {
+      ps.setString(1, key);
+      ps.setString(2, value);
+      ps.executeUpdate();
+    }
+  }
+
+  /** A snapshot-level provenance value, or empty if unset. */
+  public java.util.Optional<String> getMeta(String key) throws SQLException {
+    try (PreparedStatement ps = connection.prepareStatement("SELECT value FROM meta WHERE key = ?")) {
+      ps.setString(1, key);
+      try (ResultSet rs = ps.executeQuery()) {
+        return rs.next() ? java.util.Optional.ofNullable(rs.getString(1)) : java.util.Optional.empty();
+      }
     }
   }
 
