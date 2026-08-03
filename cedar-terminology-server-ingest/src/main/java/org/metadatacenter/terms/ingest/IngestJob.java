@@ -198,9 +198,11 @@ public class IngestJob {
     // only an unreferenced orphan file that the next ingest overwrites in place.
     String ownNamespaceFinal = ownNamespace; // effectively-final copy for the transaction lambda
     // The source's human-readable title becomes the catalog display name (shown in the ontology
-    // picker); sources without one leave access.name() null, so fall back to the acronym rather
-    // than storing the acronym as the name.
-    String displayName = access.name() != null && !access.name().isBlank() ? access.name() : acronym;
+    // picker). BioPortal supplies one in its submission metadata; a direct-URL/OBO source does not, so
+    // fall back to the title the ontology declares in its own owl:Ontology header, and only then to the
+    // acronym. This keeps a URL-sourced ontology's real name across re-ingests instead of resetting it.
+    String displayName = access.name() != null && !access.name().isBlank() ? access.name()
+        : OntologyHeaderTitle.fromFile(prep.loadable()).filter(t -> !t.isBlank()).orElse(acronym);
     catalog.inTransaction(() -> {
       catalog.upsertOntology(new CatalogStore.OntologyInfo(acronym, displayName, null, sub.format()));
       catalog.addSnapshot(new CatalogStore.SnapshotInfo(
