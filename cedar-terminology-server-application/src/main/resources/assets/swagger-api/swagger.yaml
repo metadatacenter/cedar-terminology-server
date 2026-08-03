@@ -71,63 +71,6 @@ paths:
       tags:
       - Classes
       - Ontologies
-  /bioportal/classes/{id}:
-    delete:
-      description: Update a provisional class.
-      operationId: deleteClass
-      parameters:
-      - description: "Provisional class identifier. Example: http://data.bioontology.org/provisional_classes/4f82a7f0-bbba-0133-b23e-005056010074."
-        in: path
-        name: id
-        required: true
-        schema:
-          type: string
-      responses:
-        "204":
-          description: Successful operation (no content)
-        "400":
-          description: Bad request
-        "401":
-          description: Unauthorized
-        "403":
-          description: Forbidden
-        "404":
-          description: Not found
-        "500":
-          description: Internal server error
-      security:
-      - api_key: []
-      summary: Delete a provisional class
-      tags:
-      - Classes
-    put:
-      description: Update a provisional class.
-      operationId: updateClass
-      parameters:
-      - description: "Provisional class identifier. Example: http://data.bioontology.org/provisional_classes/4f82a7f0-bbba-0133-b23e-005056010074."
-        in: path
-        name: id
-        required: true
-        schema:
-          type: string
-      responses:
-        "204":
-          description: Successful operation (no content)
-        "400":
-          description: Bad request
-        "401":
-          description: Unauthorized
-        "403":
-          description: Forbidden
-        "404":
-          description: Not found
-        "500":
-          description: Internal server error
-      security:
-      - api_key: []
-      summary: Update a provisional class
-      tags:
-      - Classes
   /bioportal/integrated-retrieve:
     post:
       description: "Retrieve ontology classes, value sets, and values based on CEDAR\
@@ -190,6 +133,14 @@ paths:
         \ cannot be computed consistently, and the server will assign a 'null' value\
         \ to those fields."
       operationId: cedarIntegratedSearch
+      parameters:
+      - description: "Optional BCP-47 language for result labels (e.g. fr). Honored\
+          \ for locally-served, single-source constraints; ignored for BioPortal-proxied\
+          \ ones."
+        in: query
+        name: lang
+        schema:
+          type: string
       requestBody:
         content:
           application/json:
@@ -417,34 +368,6 @@ paths:
       summary: Get classes
       tags:
       - Classes
-    post:
-      description: Create a provisional class.
-      operationId: createClass
-      parameters:
-      - description: "BioPortal ontology identifier. Examples: NCIT, FMA, OBI."
-        in: path
-        name: ontology
-        required: true
-        schema:
-          type: string
-      responses:
-        "204":
-          description: Successful operation (no content)
-        "400":
-          description: Bad request
-        "401":
-          description: Unauthorized
-        "403":
-          description: Forbidden
-        "404":
-          description: Not found
-        "500":
-          description: Internal server error
-      security:
-      - api_key: []
-      summary: Create class
-      tags:
-      - Classes
   /bioportal/ontologies/{ontology}/classes/provisional:
     get:
       description: Get all provisional classes in a particular ontology (including
@@ -537,6 +460,12 @@ paths:
         in: path
         name: ontology
         required: true
+        schema:
+          type: string
+      - description: Optional BCP-47 language for the returned label (e.g. fr). Honored
+          for locally-served ontologies; ignored for BioPortal-proxied ones.
+        in: query
+        name: lang
         schema:
           type: string
       responses:
@@ -1022,57 +951,7 @@ paths:
       tags:
       - Properties
       - Classes
-  /bioportal/relations:
-    post:
-      description: Create a provisional relation.
-      operationId: createRelation
-      responses:
-        "204":
-          description: Successful operation (no content)
-        "400":
-          description: Bad request
-        "401":
-          description: Unauthorized
-        "403":
-          description: Forbidden
-        "404":
-          description: Not found
-        "500":
-          description: Internal server error
-      security:
-      - api_key: []
-      summary: Create a provisional relation
-      tags:
-      - Relations
   /bioportal/relations/{id}:
-    delete:
-      description: Delete provisional relation by id.
-      operationId: deleteRelation
-      parameters:
-      - description: "Provisional relation short identifier. Examples: 720f50f0-ae6f-0133-848f-005056010073."
-        in: path
-        name: id
-        required: true
-        schema:
-          type: string
-      responses:
-        "200":
-          description: Successful operation
-        "400":
-          description: Bad request
-        "401":
-          description: Unauthorized
-        "403":
-          description: Forbidden
-        "404":
-          description: Not found
-        "500":
-          description: Internal server error
-      security:
-      - api_key: []
-      summary: Delete provisional relation
-      tags:
-      - Relations
     get:
       description: Find provisional relation by id.
       operationId: findRelation
@@ -1209,120 +1088,6 @@ paths:
       summary: Find all value sets
       tags:
       - Value sets
-  /bioportal/value-sets/{id}:
-    delete:
-      description: Update a provisional value set.
-      operationId: deleteValueSet
-      parameters:
-      - description: "Provisional value set short identifier. Example: af033050-b04b-0133-981f-005056010074"
-        in: path
-        name: id
-        required: true
-        schema:
-          type: string
-      responses:
-        "204":
-          description: Successful operation (no content)
-        "400":
-          description: Bad request
-        "401":
-          description: Unauthorized
-        "403":
-          description: Forbidden
-        "404":
-          description: Not found
-        "500":
-          description: Internal server error
-      security:
-      - api_key: []
-      summary: Delete a provisional value set
-      tags:
-      - Value sets
-    put:
-      description: Update a provisional value set.
-      operationId: updateValueSet
-      parameters:
-      - description: "Provisional value set short identifier. Example: af033050-b04b-0133-981f-005056010074"
-        in: path
-        name: id
-        required: true
-        schema:
-          type: string
-      responses:
-        "204":
-          description: Successful operation (no content)
-        "400":
-          description: Bad request
-        "401":
-          description: Unauthorized
-        "403":
-          description: Forbidden
-        "404":
-          description: Not found
-        "500":
-          description: Internal server error
-      security:
-      - api_key: []
-      summary: Update a provisional value set
-      tags:
-      - Value sets
-  /bioportal/values/{id}:
-    delete:
-      description: Delete a provisional value.
-      operationId: deleteValue
-      parameters:
-      - description: "Value identifier. Example: 42f22880-b04b-0133-848f-005056010073"
-        in: path
-        name: id
-        required: true
-        schema:
-          type: string
-      responses:
-        "204":
-          description: Successful operation (no content)
-        "400":
-          description: Bad request
-        "401":
-          description: Unauthorized
-        "403":
-          description: Forbidden
-        "404":
-          description: Not found
-        "500":
-          description: Internal server error
-      security:
-      - api_key: []
-      summary: Delete a provisional value
-      tags:
-      - Values
-    put:
-      description: Update a provisional value.
-      operationId: updateValue
-      parameters:
-      - description: "Value identifier. Example: 42f22880-b04b-0133-848f-005056010073"
-        in: path
-        name: id
-        required: true
-        schema:
-          type: string
-      responses:
-        "204":
-          description: Successful operation (no content)
-        "400":
-          description: Bad request
-        "401":
-          description: Unauthorized
-        "403":
-          description: Forbidden
-        "404":
-          description: Not found
-        "500":
-          description: Internal server error
-      security:
-      - api_key: []
-      summary: Update a provisional value
-      tags:
-      - Values
   /bioportal/vs-collections:
     get:
       description: Find all value set collections.
@@ -1422,34 +1187,6 @@ paths:
       security:
       - api_key: []
       summary: Get all value sets in a value set collection
-      tags:
-      - Value sets
-    post:
-      description: Create a provisional value set in a particular value set collection.
-      operationId: createValueSet
-      parameters:
-      - description: "Value set collection. Example: CEDARVS."
-        in: path
-        name: vs_collection
-        required: true
-        schema:
-          type: string
-      responses:
-        "204":
-          description: Successful operation (no content)
-        "400":
-          description: Bad request
-        "401":
-          description: Unauthorized
-        "403":
-          description: Forbidden
-        "404":
-          description: Not found
-        "500":
-          description: Internal server error
-      security:
-      - api_key: []
-      summary: Create a provisional value set
       tags:
       - Value sets
   /bioportal/vs-collections/{vs_collection}/value-sets/{id}:
@@ -1568,40 +1305,6 @@ paths:
       security:
       - api_key: []
       summary: Find all values in a value set
-      tags:
-      - Values
-    post:
-      description: Create a provisional value in a given value set.
-      operationId: createValue
-      parameters:
-      - description: "Value set collection. Example: CEDARVS."
-        in: path
-        name: vs_collection
-        required: true
-        schema:
-          type: string
-      - description: "Value set identifier. Example: http://www.semanticweb.org/jgraybeal/ontologies/2015/7/cedarvaluesets#Study_File_Type"
-        in: path
-        name: vs
-        required: true
-        schema:
-          type: string
-      responses:
-        "204":
-          description: Successful operation (no content)
-        "400":
-          description: Bad request
-        "401":
-          description: Unauthorized
-        "403":
-          description: Forbidden
-        "404":
-          description: Not found
-        "500":
-          description: Internal server error
-      security:
-      - api_key: []
-      summary: Create a provisional value
       tags:
       - Values
   /bioportal/vs-collections/{vs_collection}/values/{id}:
@@ -1796,6 +1499,8 @@ components:
           type: string
           maxLength: 2147483647
           minLength: 1
+        sourceSystem:
+          type: string
         uri:
           type: string
           maxLength: 2147483647
@@ -2288,6 +1993,8 @@ components:
           type: string
           maxLength: 2147483647
           minLength: 1
+        sourceSystem:
+          type: string
         version:
           type: string
       required:
@@ -2332,6 +2039,8 @@ components:
     ValueSetValueConstraint:
       type: object
       properties:
+        sourceSystem:
+          type: string
         uri:
           type: string
           maxLength: 2147483647
@@ -2342,7 +2051,6 @@ components:
           type: string
           maxLength: 2147483647
           minLength: 1
-          pattern: CEDARVS|NLMVS|CADSR-VS
       required:
       - uri
       - vsCollection
