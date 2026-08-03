@@ -710,6 +710,7 @@ public class IngestJob {
     SubmissionSource source = selectSource(sourceName, oboRelease, url, format, backend, baseUrl);
     IngestJob job = new IngestJob(source);
     try (CatalogStore catalog = CatalogStore.openFile(catalogPath.toString())) {
+      catalog.setBusyTimeoutMillis(60_000); // wait out a live server's brief catalog read locks
       catalog.initSchema();
       if (backfillLabels) {
         IngestJob.BackfillSummary sum =
