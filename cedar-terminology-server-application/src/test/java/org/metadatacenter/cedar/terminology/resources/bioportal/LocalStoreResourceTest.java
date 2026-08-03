@@ -67,10 +67,10 @@ public class LocalStoreResourceTest {
   }
 
   private static final String ONT = "LOCALTEST";
-  // Named CEDARVS because integrated-search restricts a value-set constraint's collection to the three
-  // known collections (CEDARVS / NLMVS / CADSR-VS) via BP_VS_COLLECTIONS_READ_REGEX; a value-set read
-  // (pinned or current) is only reachable for one of those.
-  private static final String VS = "CEDARVS";
+  // A non-standard collection name (not one of the historical CEDARVS/NLMVS/CADSR-VS): integrated-search
+  // now imposes no collection allow-list, so a value-set constraint on any collection resolves. Serving
+  // this proves the cap is gone.
+  private static final String VS = "LOCALVS";
   private static final String BASE = "http://localtest/";
 
   static {
