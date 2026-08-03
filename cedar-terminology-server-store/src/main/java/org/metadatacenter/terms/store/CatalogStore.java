@@ -305,15 +305,37 @@ public class CatalogStore implements AutoCloseable {
   /** Registers or updates an ontology's per-source addressing row. Its canonical iri is linked later
    *  by {@link #setOntologyIri}, once derived from the ingested content. */
   public void upsertOntology(OntologyInfo o) throws SQLException {
+    // Never downgrade an existing human-readable name back to the bare acronym. A re-ingest of a source
+    // that offers no title (a direct URL or OBO Foundry, where the display name falls back to the
+    // acronym) would otherwise wipe a name captured earlier or set by hand. So when the incoming name is
+    // just the acronym, keep whatever richer name the row already holds; a real title still overwrites.
+    String name = o.name();
+    if (name == null || name.equals(o.acronym())) {
+      String existing = ontologyName(o.acronym());
+      if (existing != null && !existing.isBlank() && !existing.equals(o.acronym())) {
+        name = existing;
+      }
+    }
     try (PreparedStatement ps = connection.prepareStatement("""
         INSERT INTO ontology_source (acronym, name, source_iri, default_format) VALUES (?, ?, ?, ?)
         ON CONFLICT(acronym) DO UPDATE SET
           name = excluded.name, source_iri = excluded.source_iri, default_format = excluded.default_format""")) {
       ps.setString(1, o.acronym());
-      ps.setString(2, o.name());
+      ps.setString(2, name);
       ps.setString(3, o.sourceIri());
       ps.setString(4, o.defaultFormat());
       ps.executeUpdate();
+    }
+  }
+
+  /** The display name currently stored for {@code acronym}, or null if the ontology is not registered. */
+  public String ontologyName(String acronym) throws SQLException {
+    try (PreparedStatement ps =
+             connection.prepareStatement("SELECT name FROM ontology_source WHERE acronym = ?")) {
+      ps.setString(1, acronym);
+      try (ResultSet rs = ps.executeQuery()) {
+        return rs.next() ? rs.getString(1) : null;
+      }
     }
   }
 
