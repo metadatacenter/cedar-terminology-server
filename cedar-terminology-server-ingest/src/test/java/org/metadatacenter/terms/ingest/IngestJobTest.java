@@ -97,6 +97,55 @@ public class IngestJobTest {
     };
   }
 
+  /** {@link #fakeSource()} with a display name supplied on its access info, like BioPortal's. */
+  private SubmissionSource namedSource(String displayName) {
+    SubmissionSource base = fakeSource();
+    return new SubmissionSource() {
+      @Override
+      public OntologyAccess accessInfo(String acronym) {
+        return new OntologyAccess("public", null, displayName);
+      }
+
+      @Override
+      public List<Submission> listSubmissions(String acronym) throws IOException, InterruptedException {
+        return base.listSubmissions(acronym);
+      }
+
+      @Override
+      public Submission latestSubmission(String acronym) throws IOException, InterruptedException {
+        return base.latestSubmission(acronym);
+      }
+
+      @Override
+      public Path download(String acronym, int submissionId, Path targetDir)
+          throws IOException, InterruptedException {
+        return base.download(acronym, submissionId, targetDir);
+      }
+    };
+  }
+
+  private String displayNameOf(String acronym) throws Exception {
+    return catalog.listOntologies().stream()
+        .filter(o -> acronym.equals(o.acronym()))
+        .map(CatalogStore.OntologyInfo::name)
+        .findFirst()
+        .orElseThrow();
+  }
+
+  @Test
+  public void ingestLatest_persistsSourceDisplayName_elseFallsBackToAcronym() throws Exception {
+    // A source that supplies a human-readable title stores it as the catalog display name.
+    new IngestJob(namedSource("Human Disease Ontology"))
+        .ingestLatest(catalog, "DOID", tempDir.resolve("snapshots"));
+    assertEquals("Human Disease Ontology", displayNameOf("DOID"));
+
+    // A source with no title falls back to the acronym — the only label available — rather than
+    // leaving the name null.
+    new IngestJob(fakeSource())
+        .ingestLatest(catalog, "EX", tempDir.resolve("snapshots"));
+    assertEquals("EX", displayNameOf("EX"));
+  }
+
   @Test
   public void ingestLatest_writesSnapshotAndRegistersCatalog() throws Exception {
     IngestJob job = new IngestJob(fakeSource());
