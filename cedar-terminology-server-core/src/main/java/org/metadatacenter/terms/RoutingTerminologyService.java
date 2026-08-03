@@ -579,11 +579,6 @@ public class RoutingTerminologyService implements ITerminologyService {
    * ------------------------------------------------------------------------------------------- */
 
   @Override
-  public OntologyClass createProvisionalClass(OntologyClass c, String apiKey) throws IOException {
-    return remote.createProvisionalClass(c, apiKey);
-  }
-
-  @Override
   public OntologyClass findProvisionalClass(String id, String apiKey) throws IOException {
     return remote.findProvisionalClass(id, apiKey);
   }
@@ -595,33 +590,8 @@ public class RoutingTerminologyService implements ITerminologyService {
   }
 
   @Override
-  public void updateProvisionalClass(OntologyClass c, String apiKey) throws IOException {
-    remote.updateProvisionalClass(c, apiKey);
-  }
-
-  @Override
-  public void deleteProvisionalClass(String id, String apiKey) throws IOException {
-    remote.deleteProvisionalClass(id, apiKey);
-  }
-
-  @Override
-  public Relation createProvisionalRelation(Relation relation, String apiKey) throws IOException {
-    return remote.createProvisionalRelation(relation, apiKey);
-  }
-
-  @Override
   public Relation findProvisionalRelation(String id, String apiKey) throws IOException {
     return remote.findProvisionalRelation(id, apiKey);
-  }
-
-  @Override
-  public void deleteProvisionalRelation(String id, String apiKey) throws IOException {
-    remote.deleteProvisionalRelation(id, apiKey);
-  }
-
-  @Override
-  public ValueSet createProvisionalValueSet(ValueSet vs, String apiKey) throws IOException {
-    return remote.createProvisionalValueSet(vs, apiKey);
   }
 
   @Override
@@ -630,32 +600,8 @@ public class RoutingTerminologyService implements ITerminologyService {
   }
 
   @Override
-  public void updateProvisionalValueSet(ValueSet vs, String apiKey) throws IOException {
-    remote.updateProvisionalValueSet(vs, apiKey);
-  }
-
-  @Override
-  public void deleteProvisionalValueSet(String id, String apiKey) throws IOException {
-    remote.deleteProvisionalValueSet(id, apiKey);
-  }
-
-  @Override
-  public Value createProvisionalValue(Value v, String apiKey) throws IOException {
-    return remote.createProvisionalValue(v, apiKey);
-  }
-
-  @Override
   public Value findProvisionalValue(String id, String apiKey) throws IOException {
     return remote.findProvisionalValue(id, apiKey);
   }
 
-  @Override
-  public void updateProvisionalValue(Value v, String apiKey) throws IOException {
-    remote.updateProvisionalValue(v, apiKey);
-  }
-
-  @Override
-  public void deleteProvisionalValue(String id, String apiKey) throws IOException {
-    remote.deleteProvisionalValue(id, apiKey);
-  }
 }

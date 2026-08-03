@@ -105,8 +105,6 @@ public interface ITerminologyService {
    * Classes
    **/
 
-  OntologyClass createProvisionalClass(OntologyClass c, String apiKey) throws IOException;
-
   OntologyClass findProvisionalClass(String id, String apiKey) throws IOException;
 
   OntologyClass findRegularClass(String id, String ontology, String apiKey) throws IOException;
@@ -126,10 +124,6 @@ public interface ITerminologyService {
   PagedResults<OntologyClass> findAllProvisionalClasses(String ontology, int page, int pageSize, String apiKey)
       throws IOException;
 
-  void updateProvisionalClass(OntologyClass c, String apiKey) throws IOException;
-
-  void deleteProvisionalClass(String id, String apiKey) throws IOException;
-
   List<TreeNode> getClassTree(String id, String ontology, boolean isFlat, String apiKey) throws IOException;
 
   PagedResults<OntologyClass> getClassChildren(String id, String ontology, int page, int pageSize, String apiKey)
@@ -144,19 +138,11 @@ public interface ITerminologyService {
    * Relations
    **/
 
-  Relation createProvisionalRelation(Relation relation, String apiKey) throws IOException;
-
   Relation findProvisionalRelation(String id, String apiKey) throws IOException;
-
-//  void updateProvisionalRelation(Relation r, String apiKey) throws IOException;
-
-  void deleteProvisionalRelation(String id, String apiKey) throws IOException;
 
   /**
    * Value sets
    **/
-
-  ValueSet createProvisionalValueSet(ValueSet vs, String apiKey) throws IOException;
 
   ValueSet findProvisionalValueSet(String id, String apiKey) throws IOException;
 
@@ -165,10 +151,6 @@ public interface ITerminologyService {
   ValueSet findValueSet(String id, String vsCollection, String apiKey) throws IOException;
 
   ValueSet findValueSetByValue(String id, String vsCollection, String apiKey) throws IOException;
-
-  void updateProvisionalValueSet(ValueSet vs, String apiKey) throws IOException;
-
-  void deleteProvisionalValueSet(String id, String apiKey) throws IOException;
 
   // TODO: does not support provisional classes yet
   PagedResults<ValueSet> findValueSetsByVsCollection(String vsCollection, int page, int pageSize, String apiKey)
@@ -186,8 +168,6 @@ public interface ITerminologyService {
    * Values
    **/
 
-  Value createProvisionalValue(Value v, String apiKey) throws IOException;
-
   Value findProvisionalValue(String id, String apiKey) throws IOException;
 
   Value findRegularValue(String id, String ontology, String apiKey) throws IOException;
@@ -200,10 +180,6 @@ public interface ITerminologyService {
 
   PagedResults<Value> findAllValuesInValueSetByValue(String id, String ontology, int page, int pageSize, String
       apiKey) throws IOException;
-
-  void updateProvisionalValue(Value v, String apiKey) throws IOException;
-
-  void deleteProvisionalValue(String id, String apiKey) throws IOException;
 
   /**
    * Properties

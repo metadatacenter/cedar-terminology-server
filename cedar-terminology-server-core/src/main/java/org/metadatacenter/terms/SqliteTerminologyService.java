@@ -634,11 +634,6 @@ public class SqliteTerminologyService implements ITerminologyService {
   }
 
   @Override
-  public OntologyClass createProvisionalClass(OntologyClass c, String apiKey) {
-    throw unsupported("createProvisionalClass");
-  }
-
-  @Override
   public OntologyClass findProvisionalClass(String id, String apiKey) {
     throw unsupported("findProvisionalClass");
   }
@@ -649,33 +644,8 @@ public class SqliteTerminologyService implements ITerminologyService {
   }
 
   @Override
-  public void updateProvisionalClass(OntologyClass c, String apiKey) {
-    throw unsupported("updateProvisionalClass");
-  }
-
-  @Override
-  public void deleteProvisionalClass(String id, String apiKey) {
-    throw unsupported("deleteProvisionalClass");
-  }
-
-  @Override
-  public Relation createProvisionalRelation(Relation relation, String apiKey) {
-    throw unsupported("createProvisionalRelation");
-  }
-
-  @Override
   public Relation findProvisionalRelation(String id, String apiKey) {
     throw unsupported("findProvisionalRelation");
-  }
-
-  @Override
-  public void deleteProvisionalRelation(String id, String apiKey) {
-    throw unsupported("deleteProvisionalRelation");
-  }
-
-  @Override
-  public ValueSet createProvisionalValueSet(ValueSet vs, String apiKey) {
-    throw unsupported("createProvisionalValueSet");
   }
 
   @Override
@@ -696,16 +666,6 @@ public class SqliteTerminologyService implements ITerminologyService {
   @Override
   public ValueSet findValueSetByValue(String id, String vsCollection, String apiKey) {
     throw unsupported("findValueSetByValue");
-  }
-
-  @Override
-  public void updateProvisionalValueSet(ValueSet vs, String apiKey) {
-    throw unsupported("updateProvisionalValueSet");
-  }
-
-  @Override
-  public void deleteProvisionalValueSet(String id, String apiKey) {
-    throw unsupported("deleteProvisionalValueSet");
   }
 
   @Override
@@ -730,23 +690,8 @@ public class SqliteTerminologyService implements ITerminologyService {
   }
 
   @Override
-  public Value createProvisionalValue(Value v, String apiKey) {
-    throw unsupported("createProvisionalValue");
-  }
-
-  @Override
   public Value findProvisionalValue(String id, String apiKey) {
     throw unsupported("findProvisionalValue");
-  }
-
-  @Override
-  public void updateProvisionalValue(Value v, String apiKey) {
-    throw unsupported("updateProvisionalValue");
-  }
-
-  @Override
-  public void deleteProvisionalValue(String id, String apiKey) {
-    throw unsupported("deleteProvisionalValue");
   }
 
   @Override
