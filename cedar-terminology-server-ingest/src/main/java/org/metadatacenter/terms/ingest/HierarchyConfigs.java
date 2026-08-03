@@ -19,6 +19,8 @@ public final class HierarchyConfigs {
   private static final IRI SKOS_PREF_LABEL = IRI.create("http://www.w3.org/2004/02/skos/core#prefLabel");
   private static final IRI RXNORM_ISA = IRI.create("http://purl.bioontology.org/ontology/RXNORM/isa");
   private static final IRI PART_OF = IRI.create("http://purl.obolibrary.org/obo/BFO_0000050");
+  // Old OBO files with a bare `part_of` typedef (no BFO xref) render it on obo2owl's TEMP# namespace.
+  private static final IRI TEMP_PART_OF = IRI.create("http://purl.obolibrary.org/obo/TEMP#part_of");
   private static final IRI DEVELOPS_FROM = IRI.create("http://purl.obolibrary.org/obo/RO_0002202");
   private static final String SKOS = "http://www.w3.org/2004/02/skos/core#";
   private static final IRI SKOS_BROADER = IRI.create(SKOS + "broader");
@@ -64,6 +66,11 @@ public final class HierarchyConfigs {
       // PSI-MS is a partonomy too: its instrument/acquisition branches hang off part_of, not is_a
       // (verified — is_a + part_of reproduces BioPortal's descendant counts exactly).
       return Optional.of(Set.of(PART_OF));
+    }
+    if ("EHDAA".equalsIgnoreCase(acronym)) {
+      // Human developmental anatomy (abstract), an old OBO partonomy: its whole tree is `part_of`
+      // (2335 part_of, 0 is_a), which obo2owl puts on the TEMP# namespace. BioPortal browses that tree.
+      return Optional.of(Set.of(TEMP_PART_OF));
     }
     return Optional.empty();
   }

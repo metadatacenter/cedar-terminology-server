@@ -60,6 +60,11 @@ public class OwlHierarchyExtractor implements HierarchyExtractor {
   /** OBO "term replaced by": links an obsolete term to its successor. */
   private static final IRI TERM_REPLACED_BY = IRI.create("http://purl.obolibrary.org/obo/IAO_0100001");
 
+  /** obo2owl renders an OBO {@code relationship: is_a X} clause (a non-standard way some ontologies write
+   *  subsumption, e.g. BSAO) as {@code is_a some X} on its TEMP# placeholder namespace rather than as
+   *  {@code rdfs:subClassOf}. It is still subsumption, so this property is always a hierarchy edge. */
+  private static final IRI OBO_RELATIONSHIP_IS_A = IRI.create("http://purl.obolibrary.org/obo/TEMP#is_a");
+
   /** SKOS preferred label: the label BioPortal serves for UMLS/TTL ontologies (e.g. ICD10CM, MESH,
    *  LOINC), which carry an OWL {@code rdfs:subClassOf} hierarchy but label concepts with
    *  {@code skos:prefLabel} rather than {@code rdfs:label}. */
@@ -194,12 +199,17 @@ public class OwlHierarchyExtractor implements HierarchyExtractor {
       for (OWLClassExpression operand : intersection.getOperands()) {
         collectParents(operand, parents);
       }
-    } else if (expr instanceof OWLObjectSomeValuesFrom svf && !hierarchyProperties.isEmpty()
-        && !svf.getProperty().isAnonymous()
-        && hierarchyProperties.contains(svf.getProperty().asOWLObjectProperty().getIRI())
-        && !svf.getFiller().isAnonymous()) {
-      // e.g. BTO: "part_of some hematopoietic system" makes hematopoietic system a parent.
-      addNamed(parents, svf.getFiller());
+    } else if (expr instanceof OWLObjectSomeValuesFrom svf
+        && !svf.getProperty().isAnonymous() && !svf.getFiller().isAnonymous()) {
+      IRI prop = svf.getProperty().asOWLObjectProperty().getIRI();
+      // An OBO `relationship: is_a X` clause (as some ontologies write their subsumption — BSAO) is
+      // rendered by obo2owl as `is_a some X` on the TEMP# namespace, not rdfs:subClassOf. It is still
+      // subsumption, so treat it as a hierarchy edge everywhere. Plus, for a configured partonomy, the
+      // configured relations (e.g. BTO/EHDAA part_of some system) also make the filler a parent.
+      if (OBO_RELATIONSHIP_IS_A.equals(prop)
+          || (!hierarchyProperties.isEmpty() && hierarchyProperties.contains(prop))) {
+        addNamed(parents, svf.getFiller());
+      }
     }
   }
 

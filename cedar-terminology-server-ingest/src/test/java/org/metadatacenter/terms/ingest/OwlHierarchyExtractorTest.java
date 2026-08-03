@@ -173,6 +173,27 @@ public class OwlHierarchyExtractorTest {
   }
 
   @Test
+  public void oboRelationshipIsAIsAlwaysAHierarchyEdge() throws Exception {
+    // Some OBO ontologies (BSAO) write subsumption as `relationship: is_a X`, which obo2owl renders as
+    // `is_a some X` on its TEMP# namespace rather than rdfs:subClassOf. The default extractor must still
+    // treat it as a parent edge — no per-ontology config.
+    OWLOntologyManager m = OWLManager.createOWLOntologyManager();
+    OWLDataFactory df = m.getOWLDataFactory();
+    OWLOntology o = m.createOntology(IRI.create(BASE + "obois_a"));
+    OWLClass child = df.getOWLClass(iri("child"));
+    OWLClass parent = df.getOWLClass(iri("parent"));
+    OWLObjectProperty isAtemp =
+        df.getOWLObjectProperty(IRI.create("http://purl.obolibrary.org/obo/TEMP#is_a"));
+    m.addAxiom(o, df.getOWLSubClassOfAxiom(child, df.getOWLObjectSomeValuesFrom(isAtemp, parent)));
+    try (SnapshotStore s = SnapshotStore.openInMemory()) {
+      s.initSchema();
+      new OwlHierarchyExtractor().extract(o, s); // default extractor, no config
+      assertEquals(List.of(BASE + "parent"), s.parents(BASE + "child"));
+      assertEquals(List.of(BASE + "child"), s.children(BASE + "parent"));
+    }
+  }
+
+  @Test
   public void configuredRelationRestrictionBecomesHierarchyEdge() throws Exception {
     OWLOntologyManager m = OWLManager.createOWLOntologyManager();
     OWLDataFactory df = m.getOWLDataFactory();
