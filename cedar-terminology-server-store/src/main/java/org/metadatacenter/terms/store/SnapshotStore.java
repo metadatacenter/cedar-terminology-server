@@ -48,6 +48,7 @@ public class SnapshotStore implements AutoCloseable {
   public record LabelEntry(String property, String lang, String value) {}
 
   private final Connection connection;
+  private Boolean labelTablePresent; // cached: a snapshot ingested before label capture has no label table
 
   private SnapshotStore(Connection connection) {
     this.connection = connection;
@@ -254,12 +255,26 @@ public class SnapshotStore implements AutoCloseable {
       "'skos:altLabel','skos:hiddenLabel','oboInOwl:hasExactSynonym','oboInOwl:hasRelatedSynonym',"
           + "'oboInOwl:hasBroadSynonym','oboInOwl:hasNarrowSynonym','oboInOwl:hasSynonym'";
 
+  /** Whether this snapshot has a {@code label} table. A snapshot ingested before multilingual capture
+   *  (and never backfilled) has none; the read paths that consult labels must tolerate its absence rather
+   *  than fail with "no such table: label". Cached per connection. */
+  private boolean hasLabelTable() throws SQLException {
+    if (labelTablePresent == null) {
+      try (Statement s = connection.createStatement();
+           ResultSet rs = s.executeQuery(
+               "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'label'")) {
+        labelTablePresent = rs.next();
+      }
+    }
+    return labelTablePresent;
+  }
+
   /** The concept's label in a requested BCP-47 language, or empty if it has none in that language (the
    *  caller falls back to the served {@code pref_label}). Matches the exact tag or a regional variant
    *  ({@code fr} matches {@code fr-CA}), preferring an exact tag and {@code rdfs:label} over
    *  {@code skos:prefLabel}. A null/blank language yields empty. */
   public Optional<String> labelInLang(String conceptIri, String lang) throws SQLException {
-    if (lang == null || lang.isBlank()) {
+    if (lang == null || lang.isBlank() || !hasLabelTable()) {
       return Optional.empty();
     }
     try (PreparedStatement ps = connection.prepareStatement(
@@ -281,6 +296,9 @@ public class SnapshotStore implements AutoCloseable {
   /** A concept's synonyms — the captured altLabels and OBO synonym scopes, distinct values across all
    *  languages, ordered. The label proper ({@code rdfs:label}/{@code skos:prefLabel}) is excluded. */
   public List<String> synonyms(String conceptIri) throws SQLException {
+    if (!hasLabelTable()) {
+      return new ArrayList<>();
+    }
     try (PreparedStatement ps = connection.prepareStatement(
         "SELECT DISTINCT l.value FROM label l JOIN concept c ON c.id = l.concept_id "
             + "WHERE c.iri = ? AND l.property IN (" + SYNONYM_PROPERTY_LIST + ") ORDER BY l.value")) {
@@ -943,7 +961,7 @@ public class SnapshotStore implements AutoCloseable {
     // French term or an exact synonym finds the concept, not only its served pref_label. An empty query
     // is a browse: pref_label already matches every concept, so the label join is skipped (and its per-row
     // cost avoided). The match column, factored so it is used identically in the rooted and unrooted forms.
-    boolean searchNames = query != null && !query.isEmpty();
+    boolean searchNames = query != null && !query.isEmpty() && hasLabelTable();
     String match = searchNames
         ? "(COALESCE(c.pref_label, '') LIKE ? ESCAPE '\\'"
             + " OR EXISTS(SELECT 1 FROM label l WHERE l.concept_id = c.id AND l.value LIKE ? ESCAPE '\\'))"
