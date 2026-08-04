@@ -90,7 +90,11 @@ public class DirectUrlSubmissionSource implements SubmissionSource {
   @Override
   public Path download(String acronym, int submissionId, Path targetDir)
       throws IOException, InterruptedException {
-    HttpRequest req = HttpRequest.newBuilder(URI.create(url)).timeout(Duration.ofMinutes(10)).GET().build();
+    // The request timeout caps the whole streamed transfer, not just the connect, so a large ontology
+    // (GAZ's release is hundreds of MB from a slow mirror) must be given real headroom — 10 minutes
+    // cancelled it mid-download. A generous ceiling still guards a genuinely stalled connection while
+    // letting a legitimate slow download finish; connectTimeout already fails fast on a dead host.
+    HttpRequest req = HttpRequest.newBuilder(URI.create(url)).timeout(Duration.ofMinutes(90)).GET().build();
     HttpResponse<InputStream> resp = http.send(req, HttpResponse.BodyHandlers.ofInputStream());
     int status = resp.statusCode();
     if (status / 100 != 2) {
