@@ -411,6 +411,112 @@ public class IngestJob {
     return new BackfillSummary(filled, already, otherBackend, noSub, mismatched, failed, labelsAdded);
   }
 
+  /**
+   * Like {@link #backfillLabels}, but re-extracts each snapshot's labels from the <b>retained local raw
+   * download</b> — the file under {@code <snapshotDir>/<acronym>/raw/} whose SHA-256 equals the
+   * snapshot's stored {@code file_hash} — instead of re-fetching from the source. This is the reliable
+   * path once a source has drifted: BioPortal no longer serves the exact bytes a snapshot was built from
+   * (its live submission moved on, or the ontology was withdrawn), so a re-download hashes to a different
+   * version and the identity gate declines it (the {@code hash-mismatch} case). The retained raw is by
+   * definition that exact content, so the recomputed hash matches and the labels attach. Needs no network
+   * and no source credentials. Resumable/idempotent (skips snapshots already labeled or marked);
+   * {@code only} limits the run to the given acronyms (empty = all).
+   */
+  public BackfillSummary backfillLabelsFromRaw(CatalogStore catalog, Path snapshotDir, Set<String> only)
+      throws SQLException {
+    int filled = 0, already = 0, noRaw = 0, drifted = 0, failed = 0;
+    long labelsAdded = 0;
+    List<String> acronyms = new ArrayList<>();
+    for (CatalogStore.OntologyInfo o : catalog.listOntologies()) {
+      if (only.isEmpty() || only.contains(o.acronym())) {
+        acronyms.add(o.acronym());
+      }
+    }
+    java.util.Optional<Path> base = catalog.baseDir();
+    int idx = 0;
+    for (String acronym : acronyms) {
+      idx++;
+      for (CatalogStore.SnapshotInfo snap : catalog.listSnapshots(acronym)) {
+        Path file = base.map(b -> b.resolve(snap.filePath())).orElse(Path.of(snap.filePath()));
+        try {
+          try (SnapshotStore existing = SnapshotStore.openFile(file.toString())) {
+            existing.initSchema();
+            if (existing.labelCount() > 0 || existing.getMeta(BACKFILLED_MARKER).isPresent()) {
+              already++;
+              continue;
+            }
+          }
+          Path rawDir = snapshotDir.resolve(acronym).resolve("raw");
+          Path raw = findRawByHash(rawDir, snap.fileHash());
+          if (raw == null) {
+            noRaw++;
+            log.warn("[{}/{}] {}: no retained raw matches file_hash {}", idx, acronyms.size(),
+                acronym, snap.fileHash());
+            continue;
+          }
+          Path loadable = stripOboImports(decompress(raw));
+          // extractInto only reads the format off the Submission; the rest is display metadata we don't need.
+          Submission sub = new Submission(0, "", "", snap.format());
+          Path tempFile = rawDir.resolveSibling(snap.versionId() + ".rawbackfill.tmp");
+          Files.deleteIfExists(tempFile);
+          List<SnapshotStore.LabelRow> labels;
+          String recomputed;
+          try (SnapshotStore tmp = SnapshotStore.openFile(tempFile.toString())) {
+            tmp.initSchema();
+            recomputed = extractInto(tmp, acronym, sub, loadable).versionId();
+            labels = tmp.allLabels();
+          } finally {
+            Files.deleteIfExists(tempFile);
+          }
+          // No version-id gate here (unlike the source-refetch path): the matched file_hash already
+          // proves this raw is the exact bytes the snapshot was built from, and labels are keyed by
+          // concept IRI (addLabels is INSERT-OR-IGNORE on c.iri), so authentic labels attach to the right
+          // concepts even when today's extractor derives a different model hash than the stored snapshot
+          // (extractor evolution since ingest). A drift is noted, not fatal.
+          if (!recomputed.equals(snap.versionId())) {
+            drifted++;
+            log.info("[{}/{}] {}: extractor drift (recomputed {} vs stored {}); labels still authentic "
+                + "(raw hash matched)", idx, acronyms.size(), acronym, recomputed, snap.versionId());
+          }
+          try (SnapshotStore existing = SnapshotStore.openFile(file.toString())) {
+            existing.setBusyTimeoutMillis(60_000); // wait out the live server's brief read locks
+            existing.initSchema();
+            existing.addLabels(labels);
+            existing.setMeta(BACKFILLED_MARKER, recomputed);
+          }
+          filled++;
+          labelsAdded += labels.size();
+          log.info("[{}/{}] {} {}: +{} labels (from local raw)", idx, acronyms.size(), acronym,
+              snap.versionId(), labels.size());
+        } catch (Throwable e) {
+          failed++;
+          log.warn("[{}/{}] {} {}: raw backfill failed: {}", idx, acronyms.size(), acronym,
+              snap.versionId(), e.toString());
+          System.err.printf("FAIL %s %s: %s%n", acronym, snap.versionId(), e);
+        }
+      }
+    }
+    // otherBackend is unused here (no source involved); noSubmission carries no-matching-raw, mismatched
+    // carries the drift count (those were still filled — informational only).
+    return new BackfillSummary(filled, already, 0, noRaw, drifted, failed, labelsAdded);
+  }
+
+  /** The file in {@code rawDir} whose SHA-256 equals {@code wantHash} (the exact download a snapshot was
+   *  built from), or null. Located by content, so a later re-download left in the same dir can't fool it. */
+  private static Path findRawByHash(Path rawDir, String wantHash) throws IOException {
+    if (wantHash == null || wantHash.isBlank() || !Files.isDirectory(rawDir)) {
+      return null;
+    }
+    try (java.util.stream.Stream<Path> entries = Files.list(rawDir)) {
+      for (Path p : (Iterable<Path>) entries.sorted()::iterator) {
+        if (Files.isRegularFile(p) && wantHash.equals(sha256(p))) {
+          return p;
+        }
+      }
+    }
+    return null;
+  }
+
   /** Tally of a header-IRI backfill run. */
   public record HeaderIriSummary(int targets, int headerFound, int noHeader, int failed,
                                  int nowIdentified, int stillAcronymOnly) {}
@@ -676,6 +782,7 @@ public class IngestJob {
     boolean all = false;
     boolean valuesets = false;
     boolean backfillLabels = false;
+    boolean backfillLabelsFromRaw = false;
     boolean backfillHeaderIri = false;
     String sourceName = "bioportal";
     String oboRelease = null;
@@ -692,6 +799,8 @@ public class IngestJob {
         valuesets = true;
       } else if ("--backfill-labels".equals(args[i])) {
         backfillLabels = true;
+      } else if ("--backfill-labels-from-raw".equals(args[i])) {
+        backfillLabelsFromRaw = true;
       } else if ("--backfill-header-iri".equals(args[i])) {
         backfillHeaderIri = true;
       } else if ("--source".equals(args[i]) && i + 1 < args.length) {
@@ -713,7 +822,9 @@ public class IngestJob {
       }
     }
 
-    SubmissionSource source = selectSource(sourceName, oboRelease, url, format, backend, baseUrl);
+    // A raw-file backfill reads only local snapshot bytes, so it needs no source and no credentials.
+    SubmissionSource source =
+        backfillLabelsFromRaw ? null : selectSource(sourceName, oboRelease, url, format, backend, baseUrl);
     IngestJob job = new IngestJob(source);
     try (CatalogStore catalog = CatalogStore.openFile(catalogPath.toString())) {
       catalog.setBusyTimeoutMillis(60_000); // wait out a live server's brief catalog read locks
@@ -726,6 +837,16 @@ public class IngestJob {
                 + "%d no-submission, %d hash-mismatch, %d failed%n",
             sum.filled(), sum.labelsAdded(), sum.alreadyLabeled(), sum.otherBackend(),
             sum.noSubmission(), sum.mismatched(), sum.failed());
+        return;
+      }
+      if (backfillLabelsFromRaw) {
+        IngestJob.BackfillSummary sum =
+            job.backfillLabelsFromRaw(catalog, snapshotDir, new java.util.HashSet<>(acronyms));
+        System.out.printf(
+            "backfill-labels-from-raw: %d filled (+%d labels; %d of them despite extractor-drift), "
+                + "%d already labeled, %d no-matching-raw, %d failed%n",
+            sum.filled(), sum.labelsAdded(), sum.mismatched(), sum.alreadyLabeled(),
+            sum.noSubmission(), sum.failed());
         return;
       }
       if (backfillHeaderIri) {
