@@ -615,6 +615,68 @@ public class IngestJob {
     return orphans;
   }
 
+  /** Tally of an orphan-file prune. */
+  public record PruneSummary(int orphans, long bytes, int referencedPresent, boolean applied) {}
+
+  /**
+   * Deletes — or by default only reports — snapshot {@code .sqlite} files under {@code snapshotDir} that
+   * no catalog row references, the reclaimable residue of re-ingests. Read-only unless {@code apply}.
+   * Guards against a path misconfiguration wiping the store: if not one catalog-referenced snapshot is
+   * found on disk, every file would look orphaned, so it refuses to delete anything.
+   */
+  public PruneSummary pruneOrphans(CatalogStore catalog, Path snapshotDir, boolean apply)
+      throws SQLException, IOException {
+    java.util.Set<Path> referenced = referencedSnapshotFiles(catalog);
+    java.util.List<Path> orphans = new java.util.ArrayList<>();
+    long bytes = 0;
+    int referencedPresent = 0;
+    if (Files.isDirectory(snapshotDir)) {
+      try (java.util.stream.Stream<Path> walk = Files.walk(snapshotDir)) {
+        for (Path p : (Iterable<Path>) walk::iterator) {
+          if (!Files.isRegularFile(p) || !p.getFileName().toString().endsWith(".sqlite")
+              || p.toString().contains("/raw/")) {
+            continue;
+          }
+          if (referenced.contains(p.toAbsolutePath().normalize())) {
+            referencedPresent++;
+          } else {
+            orphans.add(p);
+            bytes += Files.size(p);
+          }
+        }
+      }
+    }
+    // Safety: if nothing on disk matches the catalog the paths are misconfigured — every file looks
+    // orphaned. Refuse to delete rather than wipe the store.
+    if (apply && !orphans.isEmpty() && referencedPresent == 0) {
+      throw new IOException("refusing to prune: no catalog-referenced snapshot found under " + snapshotDir
+          + " — check the catalog and snapshot paths");
+    }
+    for (Path p : orphans) {
+      long sz = Files.size(p);
+      if (apply) {
+        Files.delete(p);
+        log.warn("DELETED ORPHAN {} ({} bytes)", p, sz);
+      } else {
+        log.warn("WOULD DELETE   {} ({} bytes)", p, sz);
+      }
+    }
+    return new PruneSummary(orphans.size(), bytes, referencedPresent, apply);
+  }
+
+  /** Absolute, normalized paths of every snapshot file the catalog references. */
+  private static java.util.Set<Path> referencedSnapshotFiles(CatalogStore catalog) throws SQLException {
+    java.util.Optional<Path> base = catalog.baseDir();
+    java.util.Set<Path> referenced = new java.util.HashSet<>();
+    for (CatalogStore.OntologyInfo o : catalog.listOntologies()) {
+      for (CatalogStore.SnapshotInfo snap : catalog.listSnapshots(o.acronym())) {
+        Path file = base.map(b -> b.resolve(snap.filePath())).orElse(Path.of(snap.filePath()));
+        referenced.add(file.toAbsolutePath().normalize());
+      }
+    }
+    return referenced;
+  }
+
   /** Tally of a header-IRI backfill run. */
   public record HeaderIriSummary(int targets, int headerFound, int noHeader, int failed,
                                  int nowIdentified, int stillAcronymOnly) {}
@@ -884,6 +946,8 @@ public class IngestJob {
     boolean backfillHeaderIri = false;
     boolean verify = false;
     boolean deep = false;
+    boolean pruneOrphans = false;
+    boolean apply = false;
     String sourceName = "bioportal";
     String oboRelease = null;
     String url = null;
@@ -905,6 +969,10 @@ public class IngestJob {
         verify = true;
       } else if ("--deep".equals(args[i])) {
         deep = true;
+      } else if ("--prune-orphans".equals(args[i])) {
+        pruneOrphans = true;
+      } else if ("--apply".equals(args[i])) {
+        apply = true;
       } else if ("--backfill-header-iri".equals(args[i])) {
         backfillHeaderIri = true;
       } else if ("--source".equals(args[i]) && i + 1 < args.length) {
@@ -926,8 +994,9 @@ public class IngestJob {
       }
     }
 
-    // A raw-file backfill and the integrity check read only local files, so they need no source or creds.
-    SubmissionSource source = (backfillLabelsFromRaw || verify)
+    // A raw-file backfill, the integrity check, and the orphan prune read only local files, so they need
+    // no source or credentials.
+    SubmissionSource source = (backfillLabelsFromRaw || verify || pruneOrphans)
         ? null : selectSource(sourceName, oboRelease, url, format, backend, baseUrl);
     IngestJob job = new IngestJob(source);
     try (CatalogStore catalog = CatalogStore.openFile(catalogPath.toString())) {
@@ -964,6 +1033,13 @@ public class IngestJob {
           System.err.println("STORE INTEGRITY: problems found (see the tagged lines above); exit 1.");
           System.exit(1);
         }
+        return;
+      }
+      if (pruneOrphans) {
+        IngestJob.PruneSummary p = job.pruneOrphans(catalog, snapshotDir, apply);
+        System.out.printf("prune-orphans %s: %d orphan files (%.1f MB), %d referenced snapshots present%n",
+            p.applied() ? "APPLIED" : "dry-run (pass --apply to delete)",
+            p.orphans(), p.bytes() / 1048576.0, p.referencedPresent());
         return;
       }
       if (backfillHeaderIri) {

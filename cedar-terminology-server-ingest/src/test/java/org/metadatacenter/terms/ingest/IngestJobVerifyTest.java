@@ -77,4 +77,37 @@ class IngestJobVerifyTest {
       assertFalse(broken.clean());
     }
   }
+
+  @Test
+  void pruneOrphans_reportsThenDeletesUnreferencedSnapshotsButNeverReferencedOnes() throws Exception {
+    Path catFile = dir.resolve("catalog.sqlite");
+    Path snapshots = dir.resolve("snapshots");
+    Path good = snapshots.resolve("DOID/v1.sqlite");
+    addConcept(emptySnapshotFile(good));
+    Path orphan = snapshots.resolve("DOID/orphan.sqlite");
+    Files.copy(good, orphan);
+
+    IngestJob job = new IngestJob(null);
+    try (CatalogStore cat = CatalogStore.openFile(catFile.toString())) {
+      cat.initSchema();
+      cat.upsertOntology(new CatalogStore.OntologyInfo("DOID", "Human Disease Ontology",
+          "http://purl.obolibrary.org/obo/doid.owl", "OWL"));
+      cat.addSnapshot(snap("v1", "snapshots/DOID/v1.sqlite"));
+      cat.setTag("DOID", CatalogStore.TAG_LATEST, "v1");
+
+      // Dry-run: reports the orphan, deletes nothing.
+      IngestJob.PruneSummary dry = job.pruneOrphans(cat, snapshots, false);
+      assertEquals(1, dry.orphans());
+      assertFalse(dry.applied());
+      assertTrue(Files.exists(orphan), "dry-run must not delete");
+      assertTrue(Files.exists(good));
+
+      // Apply: deletes the orphan, leaves the referenced snapshot untouched.
+      IngestJob.PruneSummary applied = job.pruneOrphans(cat, snapshots, true);
+      assertEquals(1, applied.orphans());
+      assertTrue(applied.applied());
+      assertFalse(Files.exists(orphan), "orphan deleted");
+      assertTrue(Files.exists(good), "referenced snapshot never deleted");
+    }
+  }
 }
