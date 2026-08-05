@@ -517,6 +517,104 @@ public class IngestJob {
     return null;
   }
 
+  /** Tally of a store integrity check. */
+  public record VerifySummary(int snapshots, int ok, int missingFile, int unreadable, int emptyConcepts,
+                              int hashMismatch, int unresolvableLatest, int orphanFiles) {
+    public boolean clean() {
+      return missingFile + unreadable + emptyConcepts + hashMismatch + unresolvableLatest + orphanFiles == 0;
+    }
+  }
+
+  /**
+   * Read-only integrity check of the store. The reproducibility guarantee is only as good as snapshot
+   * retention, and nothing else verifies it: this confirms every catalog snapshot row resolves to a
+   * present, readable file that holds concepts; that every ontology's {@code latest} resolves to a
+   * present snapshot; and reports any snapshot {@code .sqlite} on disk the catalog does not reference (an
+   * orphan). With {@code deep}, it also recomputes each snapshot's content hash and asserts it equals the
+   * stored {@code version_id} — this reads every snapshot in full (28&nbsp;GB+), so it is opt-in. Mutates
+   * nothing; problems are logged with a leading tag (MISSING FILE / UNREADABLE / EMPTY / HASH MISMATCH /
+   * NO LATEST / ORPHAN FILE) and tallied.
+   */
+  public VerifySummary verifyStore(CatalogStore catalog, Path snapshotDir, boolean deep)
+      throws SQLException, IOException {
+    int total = 0, ok = 0, missingFile = 0, unreadable = 0, emptyConcepts = 0, hashMismatch = 0,
+        unresolvableLatest = 0;
+    java.util.Optional<Path> base = catalog.baseDir();
+    java.util.Set<Path> referenced = new java.util.HashSet<>();
+    for (CatalogStore.OntologyInfo o : catalog.listOntologies()) {
+      for (CatalogStore.SnapshotInfo snap : catalog.listSnapshots(o.acronym())) {
+        total++;
+        Path file = base.map(b -> b.resolve(snap.filePath())).orElse(Path.of(snap.filePath()));
+        referenced.add(file.toAbsolutePath().normalize());
+        if (!Files.isRegularFile(file)) {
+          missingFile++;
+          log.error("MISSING FILE   {} {} -> {}", o.acronym(), snap.versionId(), snap.filePath());
+          continue;
+        }
+        try (SnapshotStore s = SnapshotStore.openFile(file.toString())) {
+          if (s.conceptCount() == 0) { // throws below if the concept table is absent (malformed store)
+            emptyConcepts++;
+            log.warn("EMPTY          {} {} (0 concepts)", o.acronym(), snap.versionId());
+            continue;
+          }
+          if (deep) {
+            String recomputed = s.normalizedContentHash(true);
+            if (!recomputed.equals(snap.versionId())) {
+              hashMismatch++;
+              log.error("HASH MISMATCH  {} recomputed {} != stored {}", o.acronym(), recomputed,
+                  snap.versionId());
+              continue;
+            }
+          }
+        } catch (Exception e) {
+          unreadable++;
+          log.error("UNREADABLE     {} {} ({}): {}", o.acronym(), snap.versionId(), file, e.toString());
+          continue;
+        }
+        ok++;
+      }
+      // Every served ontology should have a latest that resolves to a present snapshot file.
+      java.util.Optional<CatalogStore.SnapshotInfo> latest = catalog.resolveLatest(o.acronym());
+      if (latest.isEmpty()) {
+        unresolvableLatest++;
+        log.error("NO LATEST      {} (latest tag missing or dangling)", o.acronym());
+      } else {
+        Path lf = base.map(b -> b.resolve(latest.get().filePath())).orElse(Path.of(latest.get().filePath()));
+        if (!Files.isRegularFile(lf)) {
+          unresolvableLatest++;
+          log.error("LATEST MISSING {} -> {} (file absent)", o.acronym(), latest.get().filePath());
+        }
+      }
+    }
+    int orphanFiles = reportOrphanSnapshotFiles(snapshotDir, referenced);
+    return new VerifySummary(total, ok, missingFile, unreadable, emptyConcepts, hashMismatch,
+        unresolvableLatest, orphanFiles);
+  }
+
+  /** Snapshot {@code .sqlite} files under {@code snapshotDir} that no catalog row references (the per-
+   *  ontology {@code raw/} downloads are excluded). Reported, never deleted. */
+  private static int reportOrphanSnapshotFiles(Path snapshotDir, java.util.Set<Path> referenced)
+      throws IOException {
+    if (!Files.isDirectory(snapshotDir)) {
+      return 0;
+    }
+    int orphans = 0;
+    try (java.util.stream.Stream<Path> walk = Files.walk(snapshotDir)) {
+      for (Path p : (Iterable<Path>) walk::iterator) {
+        if (!Files.isRegularFile(p) || !p.getFileName().toString().endsWith(".sqlite")
+            || p.toString().contains("/raw/")) {
+          continue;
+        }
+        if (!referenced.contains(p.toAbsolutePath().normalize())) {
+          orphans++;
+          log.warn("ORPHAN FILE    {} ({} bytes) — on disk but no catalog row references it", p,
+              Files.size(p));
+        }
+      }
+    }
+    return orphans;
+  }
+
   /** Tally of a header-IRI backfill run. */
   public record HeaderIriSummary(int targets, int headerFound, int noHeader, int failed,
                                  int nowIdentified, int stillAcronymOnly) {}
@@ -784,6 +882,8 @@ public class IngestJob {
     boolean backfillLabels = false;
     boolean backfillLabelsFromRaw = false;
     boolean backfillHeaderIri = false;
+    boolean verify = false;
+    boolean deep = false;
     String sourceName = "bioportal";
     String oboRelease = null;
     String url = null;
@@ -801,6 +901,10 @@ public class IngestJob {
         backfillLabels = true;
       } else if ("--backfill-labels-from-raw".equals(args[i])) {
         backfillLabelsFromRaw = true;
+      } else if ("--verify".equals(args[i])) {
+        verify = true;
+      } else if ("--deep".equals(args[i])) {
+        deep = true;
       } else if ("--backfill-header-iri".equals(args[i])) {
         backfillHeaderIri = true;
       } else if ("--source".equals(args[i]) && i + 1 < args.length) {
@@ -822,9 +926,9 @@ public class IngestJob {
       }
     }
 
-    // A raw-file backfill reads only local snapshot bytes, so it needs no source and no credentials.
-    SubmissionSource source =
-        backfillLabelsFromRaw ? null : selectSource(sourceName, oboRelease, url, format, backend, baseUrl);
+    // A raw-file backfill and the integrity check read only local files, so they need no source or creds.
+    SubmissionSource source = (backfillLabelsFromRaw || verify)
+        ? null : selectSource(sourceName, oboRelease, url, format, backend, baseUrl);
     IngestJob job = new IngestJob(source);
     try (CatalogStore catalog = CatalogStore.openFile(catalogPath.toString())) {
       catalog.setBusyTimeoutMillis(60_000); // wait out a live server's brief catalog read locks
@@ -847,6 +951,19 @@ public class IngestJob {
                 + "%d already labeled, %d no-matching-raw, %d failed%n",
             sum.filled(), sum.labelsAdded(), sum.mismatched(), sum.alreadyLabeled(),
             sum.noSubmission(), sum.failed());
+        return;
+      }
+      if (verify) {
+        IngestJob.VerifySummary v = job.verifyStore(catalog, snapshotDir, deep);
+        System.out.printf(
+            "verify%s: %d snapshots — %d ok, %d missing-file, %d unreadable, %d empty, %d hash-mismatch, "
+                + "%d unresolvable-latest, %d orphan-files%n",
+            deep ? " (deep)" : "", v.snapshots(), v.ok(), v.missingFile(), v.unreadable(),
+            v.emptyConcepts(), v.hashMismatch(), v.unresolvableLatest(), v.orphanFiles());
+        if (!v.clean()) {
+          System.err.println("STORE INTEGRITY: problems found (see the tagged lines above); exit 1.");
+          System.exit(1);
+        }
         return;
       }
       if (backfillHeaderIri) {

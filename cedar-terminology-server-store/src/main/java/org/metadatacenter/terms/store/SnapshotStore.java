@@ -338,6 +338,16 @@ public class SnapshotStore implements AutoCloseable {
     }
   }
 
+  /** Number of concepts in the snapshot. Queries the {@code concept} table directly (no schema
+   *  creation), so it throws on a malformed or truncated store whose table is absent — which the
+   *  integrity check treats as unreadable. */
+  public long conceptCount() throws SQLException {
+    try (Statement s = connection.createStatement();
+         ResultSet rs = s.executeQuery("SELECT COUNT(*) FROM concept")) {
+      return rs.next() ? rs.getLong(1) : 0;
+    }
+  }
+
   /** Sets a snapshot-level provenance value (see the {@code meta} table). */
   public void setMeta(String key, String value) throws SQLException {
     try (PreparedStatement ps = connection.prepareStatement(
