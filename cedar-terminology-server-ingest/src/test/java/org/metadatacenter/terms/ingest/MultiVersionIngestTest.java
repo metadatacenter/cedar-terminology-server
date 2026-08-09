@@ -118,9 +118,33 @@ public class MultiVersionIngestTest {
       SnapshotDiff.Diff d = new SnapshotDiff().diff(from, to);
       assertTrue(d.addedConcepts().contains(BASE + "carcinoma"));
       assertTrue(d.removedConcepts().contains(BASE + "melanoma"));
-      assertTrue(d.addedEdges().contains(BASE + "carcinoma -> " + BASE + "cancer"));
-      assertTrue(d.removedEdges().contains(BASE + "melanoma -> " + BASE + "cancer"));
+      // Edge strings now carry the source predicate ("child -[pred]-> parent"); assert the subsumption
+      // edge by its endpoints, regardless of the predicate token.
+      assertTrue(d.addedEdges().stream()
+          .anyMatch(e -> e.startsWith(BASE + "carcinoma") && e.endsWith("-> " + BASE + "cancer")));
+      assertTrue(d.removedEdges().stream()
+          .anyMatch(e -> e.startsWith(BASE + "melanoma") && e.endsWith("-> " + BASE + "cancer")));
     }
+  }
+
+  @Test
+  public void reIngestingIsIdempotent_soAnInterruptedRunHealsOnRerun() throws Exception {
+    // A crash mid-registration can leave a partial catalog state; the operator's remedy is to re-run
+    // the ingest. Because every registration step is an idempotent upsert inside one transaction, a
+    // full re-run converges to the same single, correct state — no duplicate snapshots, same latest,
+    // same canonical identity.
+    IngestJob job = new IngestJob(twoVersionSource());
+    job.ingestAll(catalog, ONT, tempDir.resolve("snapshots"));
+
+    int snapshotsAfterFirst = catalog.listSnapshots(ONT).size();
+    String latestAfterFirst = catalog.resolveLatest(ONT).orElseThrow().versionId();
+    java.util.Optional<String> iriAfterFirst = catalog.ontologyIri(ONT);
+
+    job.ingestAll(catalog, ONT, tempDir.resolve("snapshots")); // re-run, as recovery after interruption
+
+    assertEquals(snapshotsAfterFirst, catalog.listSnapshots(ONT).size());
+    assertEquals(latestAfterFirst, catalog.resolveLatest(ONT).orElseThrow().versionId());
+    assertEquals(iriAfterFirst, catalog.ontologyIri(ONT));
   }
 
   @Test

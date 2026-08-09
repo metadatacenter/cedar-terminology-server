@@ -25,8 +25,15 @@ public interface ITerminologyService {
   /**
    * CEDAR Integrated Search
    */
+  /** Integrated search, returning result labels in {@code lang} (BCP-47) for locally-served, single-source
+   *  constraints; null/blank keeps the default label. The remote path uses BioPortal's own default. */
   PagedResults<SearchResult> integratedSearch(Optional<String> q, ValueConstraints valueConstraints,
-                        int page, int pageSize, String apiKey) throws IOException;
+                        int page, int pageSize, String apiKey, String lang) throws IOException;
+
+  default PagedResults<SearchResult> integratedSearch(Optional<String> q, ValueConstraints valueConstraints,
+                        int page, int pageSize, String apiKey) throws IOException {
+    return integratedSearch(q, valueConstraints, page, pageSize, apiKey, null);
+  }
 
   /**
    * CEDAR Integrated Retrieve
@@ -98,23 +105,24 @@ public interface ITerminologyService {
    * Classes
    **/
 
-  OntologyClass createProvisionalClass(OntologyClass c, String apiKey) throws IOException;
-
   OntologyClass findProvisionalClass(String id, String apiKey) throws IOException;
 
   OntologyClass findRegularClass(String id, String ontology, String apiKey) throws IOException;
 
-  OntologyClass findClass(String id, String ontology, String apiKey) throws IOException;
+  /** Find a class, returning its label in {@code lang} (a BCP-47 code) when the ontology is served
+   *  locally and has that language; null/blank {@code lang} keeps the default (English-preferred) label.
+   *  The remote (BioPortal) path uses BioPortal's own default regardless. */
+  OntologyClass findClass(String id, String ontology, String apiKey, String lang) throws IOException;
+
+  default OntologyClass findClass(String id, String ontology, String apiKey) throws IOException {
+    return findClass(id, ontology, apiKey, null);
+  }
 
   PagedResults<OntologyClass> findAllClassesInOntology(String ontology, int page, int pageSize, String apiKey) throws
       IOException;
 
   PagedResults<OntologyClass> findAllProvisionalClasses(String ontology, int page, int pageSize, String apiKey)
       throws IOException;
-
-  void updateProvisionalClass(OntologyClass c, String apiKey) throws IOException;
-
-  void deleteProvisionalClass(String id, String apiKey) throws IOException;
 
   List<TreeNode> getClassTree(String id, String ontology, boolean isFlat, String apiKey) throws IOException;
 
@@ -130,19 +138,11 @@ public interface ITerminologyService {
    * Relations
    **/
 
-  Relation createProvisionalRelation(Relation relation, String apiKey) throws IOException;
-
   Relation findProvisionalRelation(String id, String apiKey) throws IOException;
-
-//  void updateProvisionalRelation(Relation r, String apiKey) throws IOException;
-
-  void deleteProvisionalRelation(String id, String apiKey) throws IOException;
 
   /**
    * Value sets
    **/
-
-  ValueSet createProvisionalValueSet(ValueSet vs, String apiKey) throws IOException;
 
   ValueSet findProvisionalValueSet(String id, String apiKey) throws IOException;
 
@@ -151,10 +151,6 @@ public interface ITerminologyService {
   ValueSet findValueSet(String id, String vsCollection, String apiKey) throws IOException;
 
   ValueSet findValueSetByValue(String id, String vsCollection, String apiKey) throws IOException;
-
-  void updateProvisionalValueSet(ValueSet vs, String apiKey) throws IOException;
-
-  void deleteProvisionalValueSet(String id, String apiKey) throws IOException;
 
   // TODO: does not support provisional classes yet
   PagedResults<ValueSet> findValueSetsByVsCollection(String vsCollection, int page, int pageSize, String apiKey)
@@ -172,8 +168,6 @@ public interface ITerminologyService {
    * Values
    **/
 
-  Value createProvisionalValue(Value v, String apiKey) throws IOException;
-
   Value findProvisionalValue(String id, String apiKey) throws IOException;
 
   Value findRegularValue(String id, String ontology, String apiKey) throws IOException;
@@ -186,10 +180,6 @@ public interface ITerminologyService {
 
   PagedResults<Value> findAllValuesInValueSetByValue(String id, String ontology, int page, int pageSize, String
       apiKey) throws IOException;
-
-  void updateProvisionalValue(Value v, String apiKey) throws IOException;
-
-  void deleteProvisionalValue(String id, String apiKey) throws IOException;
 
   /**
    * Properties

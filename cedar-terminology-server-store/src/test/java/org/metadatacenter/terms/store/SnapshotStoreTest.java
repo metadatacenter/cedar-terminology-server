@@ -477,4 +477,86 @@ public class SnapshotStoreTest {
       assertEquals(List.of("a"), s.roots());
     }
   }
+
+  @Test
+  public void labelTable_roundTripsAndKeysOnConcept() throws Exception {
+    store.addLabels(List.of(
+        new SnapshotStore.LabelRow("dog", "rdfs:label", "en", "Dog"),
+        new SnapshotStore.LabelRow("dog", "rdfs:label", "fr", "Chien"),
+        new SnapshotStore.LabelRow("dog", "skos:altLabel", "", "canine"),
+        new SnapshotStore.LabelRow("dog", "rdfs:label", "en", "Dog"),   // duplicate: dropped by PK
+        new SnapshotStore.LabelRow("no-such-iri", "rdfs:label", "en", "X"))); // no concept: ignored
+
+    List<SnapshotStore.LabelEntry> dog = store.labels("dog");
+    assertEquals(3, dog.size(), "duplicate dropped, foreign-concept row ignored");
+    assertTrue(dog.contains(new SnapshotStore.LabelEntry("rdfs:label", "en", "Dog")));
+    assertTrue(dog.contains(new SnapshotStore.LabelEntry("rdfs:label", "fr", "Chien")));
+    assertTrue(dog.contains(new SnapshotStore.LabelEntry("skos:altLabel", "", "canine")));
+    assertEquals(3, store.labelCount());
+    assertEquals(3, store.allLabels().size());
+  }
+
+  @Test
+  public void labels_doNotParticipateInContentIdentity() throws Exception {
+    // The label table is out of identity by construction: adding names must move neither the
+    // structure-only nor the label-sensitive content hash.
+    try (SnapshotStore s = SnapshotStore.openInMemory()) {
+      s.initSchema();
+      s.addConcept("http://ex/c", "cancer");
+      s.materialize();
+      String structBefore = s.normalizedContentHash(false);
+      String fullBefore = s.normalizedContentHash(true);
+      s.addLabels(List.of(
+          new SnapshotStore.LabelRow("http://ex/c", "rdfs:label", "en", "cancer"),
+          new SnapshotStore.LabelRow("http://ex/c", "rdfs:label", "de", "Krebs"),
+          new SnapshotStore.LabelRow("http://ex/c", "oboInOwl:hasExactSynonym", "en", "malignant neoplasm")));
+      assertEquals(structBefore, s.normalizedContentHash(false), "labels do not affect structure hash");
+      assertEquals(fullBefore, s.normalizedContentHash(true), "labels do not affect the label-sensitive hash");
+    }
+  }
+
+  @Test
+  public void synonyms_returnsOnlySynonymScopesDistinctAndOrdered() throws Exception {
+    store.addLabels(List.of(
+        new SnapshotStore.LabelRow("dog", "rdfs:label", "en", "Dog"),                 // label proper — excluded
+        new SnapshotStore.LabelRow("dog", "skos:prefLabel", "en", "Dog"),             // excluded
+        new SnapshotStore.LabelRow("dog", "skos:altLabel", "en", "canine"),
+        new SnapshotStore.LabelRow("dog", "oboInOwl:hasExactSynonym", "en", "domestic dog"),
+        new SnapshotStore.LabelRow("dog", "oboInOwl:hasExactSynonym", "fr", "chien domestique"),
+        new SnapshotStore.LabelRow("dog", "skos:altLabel", "en", "canine")));         // duplicate value
+    assertEquals(List.of("canine", "chien domestique", "domestic dog"), store.synonyms("dog"));
+    assertTrue(store.synonyms("cat").isEmpty());
+  }
+
+  @Test
+  public void searchByLabel_matchesAnyLanguageAndSynonym() throws Exception {
+    store.addLabels(List.of(
+        new SnapshotStore.LabelRow("dog", "rdfs:label", "fr", "chien"),               // French label
+        new SnapshotStore.LabelRow("dog", "oboInOwl:hasExactSynonym", "en", "canine"))); // synonym
+    assertTrue(matches("Dog"), "served pref_label still matches");
+    assertTrue(matches("chien"), "a non-English label matches");
+    assertTrue(matches("canine"), "a synonym matches");
+    assertEquals(1, store.searchByLabel("chien", false, 0).size(), "one concept, not duplicated");
+    assertTrue(store.searchByLabel("no-such-term", false, 0).isEmpty());
+  }
+
+  private boolean matches(String q) throws Exception {
+    return store.searchByLabel(q, false, 0).stream().anyMatch(c -> c.iri().equals("dog"));
+  }
+
+  @Test
+  public void labelInLang_selectsLanguageWithExactnessAndPropertyPreference() throws Exception {
+    store.addLabels(List.of(
+        new SnapshotStore.LabelRow("dog", "rdfs:label", "en", "Dog"),
+        new SnapshotStore.LabelRow("dog", "rdfs:label", "fr", "Chien"),
+        new SnapshotStore.LabelRow("dog", "skos:prefLabel", "fr", "chien (skos)"),
+        new SnapshotStore.LabelRow("dog", "rdfs:label", "fr-CA", "Chien quebecois"),
+        new SnapshotStore.LabelRow("cat", "rdfs:label", "fr-CA", "Chat")));
+    assertEquals("Chien", store.labelInLang("dog", "fr").orElseThrow());        // exact fr, rdfs over skos
+    assertEquals("Chien quebecois", store.labelInLang("dog", "fr-CA").orElseThrow());
+    assertEquals("Dog", store.labelInLang("dog", "en").orElseThrow());
+    assertEquals("Chat", store.labelInLang("cat", "fr").orElseThrow());         // fr matches the fr-CA variant
+    assertTrue(store.labelInLang("dog", "de").isEmpty());                        // absent language -> empty (fallback)
+    assertTrue(store.labelInLang("dog", null).isEmpty());
+  }
 }

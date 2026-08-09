@@ -7,6 +7,7 @@ import org.metadatacenter.cedar.terminology.validation.integratedsearch.ValueCon
 import org.metadatacenter.cedar.terminology.validation.integratedsearch.ValueSetValueConstraint;
 import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.terms.domainObjects.*;
+import org.metadatacenter.terms.store.CatalogStore;
 import org.metadatacenter.terms.store.SnapshotDiff;
 import org.metadatacenter.terms.store.SnapshotStore;
 import org.metadatacenter.terms.util.ObjectConverter;
@@ -116,17 +117,48 @@ public class SqliteTerminologyService implements ITerminologyService {
         .orElseThrow(() -> new UnsupportedOperationException("Ontology not served locally: " + ontology));
   }
 
-  /** The snapshot for an ontology at a pinned version (null/blank/"latest" = current). Throws — so the
-   *  router falls back to BioPortal — when the ontology or that version is not served locally. */
+  /**
+   * The snapshot for an ontology at a pinned version (null/blank/"latest" = current). The failure mode
+   * depends on whether a version was explicitly pinned:
+   * <ul>
+   *   <li>An <em>unpinned</em> (latest) miss throws {@link UnsupportedOperationException} — the ontology
+   *       is simply not served locally, so the router routes the request to BioPortal (latest), which is
+   *       the right answer for an unpinned request.</li>
+   *   <li>An <em>explicit pin</em> miss throws {@link PinnedVersionUnavailableException} — the router
+   *       must NOT downgrade this to BioPortal, because BioPortal serves latest and would silently break
+   *       the frozen read. A pin that cannot be honored fails loud.</li>
+   * </ul>
+   */
   private SnapshotStore store(String ontology, String version) {
-    return provider.forOntology(ontology, version)
-        .orElseThrow(() -> new UnsupportedOperationException(
-            "Ontology/version not served locally: " + ontology + "@" + (version == null ? "latest" : version)));
+    Optional<SnapshotStore> snapshot = provider.forOntology(ontology, version);
+    if (snapshot.isPresent()) {
+      return snapshot.get();
+    }
+    if (isExplicitPin(version)) {
+      throw new PinnedVersionUnavailableException("Pinned version not served locally: " + ontology + "@" + version);
+    }
+    throw new UnsupportedOperationException("Ontology not served locally: " + ontology);
+  }
+
+  /** A version request is an explicit pin unless it is null, blank, or the "latest" sentinel. */
+  private static boolean isExplicitPin(String version) {
+    return version != null && !version.isBlank() && !CatalogStore.TAG_LATEST.equalsIgnoreCase(version);
   }
 
   private OntologyClass toClass(SnapshotStore.Concept c, String ontology) {
     return new OntologyClass(Util.getShortIdentifier(c.iri()), c.iri(), c.prefLabel(), null, ontology,
         null, null, null, null, false, null, c.hasChildren());
+  }
+
+  /** As {@link #toClass(SnapshotStore.Concept, String)} but also fills the captured synonyms (altLabels
+   *  and OBO synonym scopes) and, when {@code lang} is given, the label in that language (falling back to
+   *  the served pref_label) — used on the class-detail path. */
+  private OntologyClass toClass(SnapshotStore st, SnapshotStore.Concept c, String ontology, String lang)
+      throws SQLException {
+    List<String> synonyms = st.synonyms(c.iri());
+    String label = st.labelInLang(c.iri(), lang).orElse(c.prefLabel());
+    return new OntologyClass(Util.getShortIdentifier(c.iri()), c.iri(), label, null, ontology,
+        null, synonyms.isEmpty() ? null : synonyms, null, null, false, null, c.hasChildren());
   }
 
   private PagedResults<OntologyClass> paginate(List<SnapshotStore.Concept> rows, String ontology,
@@ -153,6 +185,22 @@ public class SqliteTerminologyService implements ITerminologyService {
    */
   private PagedResults<SearchResult> pagedSearchResults(List<SnapshotStore.Concept> rows, String ontology,
                                                         int page, int pageSize) {
+    try {
+      return pagedSearchResults(rows, ontology, page, pageSize, null, null);
+    } catch (SQLException impossible) {
+      // The store is read only when lang is non-null; with lang null it is never touched.
+      throw new RuntimeException(impossible);
+    }
+  }
+
+  /**
+   * As above, but when {@code lang} is given re-labels each returned row in that language (falling back
+   * to its served pref_label), reading from {@code st}. Only the paginated slice is re-labelled, so the
+   * per-row label lookup runs at most {@code pageSize} times, not over the whole result set.
+   */
+  private PagedResults<SearchResult> pagedSearchResults(List<SnapshotStore.Concept> rows, String ontology,
+                                                        int page, int pageSize, SnapshotStore st, String lang)
+      throws SQLException {
     int total = rows.size();
     if (total == 0) {
       return new PagedResults<>(page, 0, 0, 0, null, null, new ArrayList<>());
@@ -161,9 +209,15 @@ public class SqliteTerminologyService implements ITerminologyService {
     int pageCount = (int) Math.ceil((double) total / reqSize);
     int from = Math.max(0, (page - 1) * reqSize);
     int to = Math.min(total, from + reqSize);
+    boolean relabel = st != null && lang != null && !lang.isBlank();
     List<SearchResult> slice = new ArrayList<>();
     for (int i = from; i < to; i++) {
-      slice.add(ObjectConverter.toSearchResult(toClass(rows.get(i), ontology)));
+      SnapshotStore.Concept c = rows.get(i);
+      if (relabel) {
+        String label = st.labelInLang(c.iri(), lang).orElse(c.prefLabel());
+        c = new SnapshotStore.Concept(c.iri(), label, c.obsolete(), c.hasChildren());
+      }
+      slice.add(ObjectConverter.toSearchResult(toClass(c, ontology)));
     }
     Integer prev = page > 1 ? page - 1 : null;
     Integer next = page < pageCount ? page + 1 : null;
@@ -233,10 +287,13 @@ public class SqliteTerminologyService implements ITerminologyService {
       int cap = 25;
       return new VersionDiff(fromVersion, toVersion,
           d.fromConcepts(), d.toConcepts(), d.addedConcepts().size(), d.removedConcepts().size(),
+          d.changedConcepts().size(),
           d.fromEdges(), d.toEdges(), d.addedEdges().size(), d.removedEdges().size(),
+          d.fromRelations(), d.toRelations(), d.addedRelations().size(), d.removedRelations().size(),
           d.newlyObsoleted().size(),
           d.addedConcepts().stream().limit(cap).toList(),
           d.removedConcepts().stream().limit(cap).toList(),
+          d.changedConcepts().stream().limit(cap).toList(),
           d.summary());
     } catch (SQLException e) {
       throw new IOException(e);
@@ -244,9 +301,11 @@ public class SqliteTerminologyService implements ITerminologyService {
   }
 
   @Override
-  public OntologyClass findClass(String id, String ontology, String apiKey) throws IOException {
+  public OntologyClass findClass(String id, String ontology, String apiKey, String lang) throws IOException {
     try {
-      return store(ontology).get(decodeIri(id)).map(c -> toClass(c, ontology)).orElse(null);
+      SnapshotStore st = store(ontology);
+      Optional<SnapshotStore.Concept> c = st.get(decodeIri(id));
+      return c.isPresent() ? toClass(st, c.get(), ontology, lang) : null;
     } catch (SQLException e) {
       throw new IOException(e);
     }
@@ -460,7 +519,7 @@ public class SqliteTerminologyService implements ITerminologyService {
    */
   @Override
   public PagedResults<SearchResult> integratedSearch(Optional<String> q, ValueConstraints valueConstraints, int page,
-                                                     int pageSize, String apiKey) throws IOException {
+                                                     int pageSize, String apiKey, String lang) throws IOException {
     if (valueConstraints == null) {
       throw unsupported("integratedSearch (no value constraints)");
     }
@@ -480,20 +539,20 @@ public class SqliteTerminologyService implements ITerminologyService {
     if (hasValueSets && valueSets.size() == 1 && !hasOntologies && !hasBranches && !hasClasses) {
       ValueSetValueConstraint vs = valueSets.get(0);
       String acronym = vsCollectionAcronym(vs.getVsCollection());
-      List<SnapshotStore.Concept> values;
       try {
-        values = new ArrayList<>(store(acronym, vs.getVersion()).childrenDetailed(decodeIri(vs.getUri())));
+        SnapshotStore st = store(acronym, vs.getVersion());
+        List<SnapshotStore.Concept> values = new ArrayList<>(st.childrenDetailed(decodeIri(vs.getUri())));
+        String query = q.map(String::trim).orElse("");
+        if (!query.isEmpty()) {
+          String needle = query.toLowerCase();
+          values.removeIf(c -> c.prefLabel() == null || !c.prefLabel().toLowerCase().contains(needle));
+        }
+        values.sort(Comparator.comparing(c -> c.prefLabel() == null ? "" : c.prefLabel(),
+            String.CASE_INSENSITIVE_ORDER));
+        return pagedSearchResults(values, acronym, page, pageSize, st, lang);
       } catch (SQLException e) {
         throw new IOException(e);
       }
-      String query = q.map(String::trim).orElse("");
-      if (!query.isEmpty()) {
-        String needle = query.toLowerCase();
-        values.removeIf(c -> c.prefLabel() == null || !c.prefLabel().toLowerCase().contains(needle));
-      }
-      values.sort(Comparator.comparing(c -> c.prefLabel() == null ? "" : c.prefLabel(),
-          String.CASE_INSENSITIVE_ORDER));
-      return pagedSearchResults(values, acronym, page, pageSize);
     }
     if (hasValueSets) {
       throw unsupported("integratedSearch (value sets: multi-source or mixed)");
@@ -512,7 +571,7 @@ public class SqliteTerminologyService implements ITerminologyService {
         SnapshotStore st = store(ont.getAcronym(), ont.getVersion());
         List<SnapshotStore.Concept> rows =
             query.isEmpty() ? st.allConceptsDetailed() : st.searchByLabel(query, false, 0);
-        return pagedSearchResults(rows, ont.getAcronym(), page, pageSize);
+        return pagedSearchResults(rows, ont.getAcronym(), page, pageSize, st, lang);
       } catch (SQLException e) {
         throw new IOException(e);
       }
@@ -524,9 +583,10 @@ public class SqliteTerminologyService implements ITerminologyService {
       BranchValueConstraint branch = branches.get(0);
       String query = q.map(String::trim).orElse("");
       try {
-        List<SnapshotStore.Concept> rows = store(branch.getAcronym(), branch.getVersion())
-            .searchByLabelUnderRoot(decodeIri(branch.getUri()), query, false, 0);
-        return pagedSearchResults(rows, branch.getAcronym(), page, pageSize);
+        SnapshotStore st = store(branch.getAcronym(), branch.getVersion());
+        List<SnapshotStore.Concept> rows =
+            st.searchByLabelUnderRoot(decodeIri(branch.getUri()), query, false, 0);
+        return pagedSearchResults(rows, branch.getAcronym(), page, pageSize, st, lang);
       } catch (SQLException e) {
         throw new IOException(e);
       }
@@ -574,11 +634,6 @@ public class SqliteTerminologyService implements ITerminologyService {
   }
 
   @Override
-  public OntologyClass createProvisionalClass(OntologyClass c, String apiKey) {
-    throw unsupported("createProvisionalClass");
-  }
-
-  @Override
   public OntologyClass findProvisionalClass(String id, String apiKey) {
     throw unsupported("findProvisionalClass");
   }
@@ -589,33 +644,8 @@ public class SqliteTerminologyService implements ITerminologyService {
   }
 
   @Override
-  public void updateProvisionalClass(OntologyClass c, String apiKey) {
-    throw unsupported("updateProvisionalClass");
-  }
-
-  @Override
-  public void deleteProvisionalClass(String id, String apiKey) {
-    throw unsupported("deleteProvisionalClass");
-  }
-
-  @Override
-  public Relation createProvisionalRelation(Relation relation, String apiKey) {
-    throw unsupported("createProvisionalRelation");
-  }
-
-  @Override
   public Relation findProvisionalRelation(String id, String apiKey) {
     throw unsupported("findProvisionalRelation");
-  }
-
-  @Override
-  public void deleteProvisionalRelation(String id, String apiKey) {
-    throw unsupported("deleteProvisionalRelation");
-  }
-
-  @Override
-  public ValueSet createProvisionalValueSet(ValueSet vs, String apiKey) {
-    throw unsupported("createProvisionalValueSet");
   }
 
   @Override
@@ -636,16 +666,6 @@ public class SqliteTerminologyService implements ITerminologyService {
   @Override
   public ValueSet findValueSetByValue(String id, String vsCollection, String apiKey) {
     throw unsupported("findValueSetByValue");
-  }
-
-  @Override
-  public void updateProvisionalValueSet(ValueSet vs, String apiKey) {
-    throw unsupported("updateProvisionalValueSet");
-  }
-
-  @Override
-  public void deleteProvisionalValueSet(String id, String apiKey) {
-    throw unsupported("deleteProvisionalValueSet");
   }
 
   @Override
@@ -670,23 +690,8 @@ public class SqliteTerminologyService implements ITerminologyService {
   }
 
   @Override
-  public Value createProvisionalValue(Value v, String apiKey) {
-    throw unsupported("createProvisionalValue");
-  }
-
-  @Override
   public Value findProvisionalValue(String id, String apiKey) {
     throw unsupported("findProvisionalValue");
-  }
-
-  @Override
-  public void updateProvisionalValue(Value v, String apiKey) {
-    throw unsupported("updateProvisionalValue");
-  }
-
-  @Override
-  public void deleteProvisionalValue(String id, String apiKey) {
-    throw unsupported("deleteProvisionalValue");
   }
 
   @Override

@@ -111,8 +111,9 @@ public class TerminologyService implements ITerminologyService {
    *  https://github.com/metadatacenter/cedar-project/issues/1160.
    *
    */
+  // lang is honored only on the local path; BioPortal returns labels in its own default language.
   public PagedResults<SearchResult> integratedSearch(Optional<String> q, ValueConstraints valueConstraints,
-                                                     int page, int pageSize, String apiKey) throws IOException {
+                                                     int page, int pageSize, String apiKey, String lang) throws IOException {
 
     PagedResults<SearchResult> results;
 
@@ -839,11 +840,6 @@ public class TerminologyService implements ITerminologyService {
    * Classes
    **/
 
-  public OntologyClass createProvisionalClass(OntologyClass c, String apiKey) throws IOException {
-    BpProvisionalClass pc = bpService.createBpProvisionalClass(ObjectConverter.toBpProvisionalClass(c), apiKey);
-    return ObjectConverter.toOntologyClass(pc);
-  }
-
   public OntologyClass findProvisionalClass(String id, String apiKey) throws IOException {
     BpProvisionalClass pc = bpService.findBpProvisionalClassById(id, apiKey);
     return ObjectConverter.toOntologyClass(pc);
@@ -854,7 +850,8 @@ public class TerminologyService implements ITerminologyService {
     return ObjectConverter.toOntologyClass(c);
   }
 
-  public OntologyClass findClass(String id, String ontology, String apiKey) throws IOException {
+  // lang is honored only on the local path; BioPortal returns its own default label here.
+  public OntologyClass findClass(String id, String ontology, String apiKey, String lang) throws IOException {
     OntologyClass c;
     try {
       c = findRegularClass(id, ontology, apiKey);
@@ -906,14 +903,6 @@ public class TerminologyService implements ITerminologyService {
   }
 
 
-  public void updateProvisionalClass(OntologyClass c, String apiKey) throws IOException {
-    bpService.updateProvisionalClass(ObjectConverter.toBpProvisionalClass(c), apiKey);
-  }
-
-  public void deleteProvisionalClass(String id, String apiKey) throws IOException {
-    bpService.deleteProvisionalClass(id, apiKey);
-  }
-
   public List<TreeNode> getClassTree(String id, String ontology, boolean isFlat, String apiKey) throws IOException {
     // If it is a flat ontology BioPortal will return a timeout. An empty list will be returned to avoid calling
     // BioPortal
@@ -962,41 +951,14 @@ public class TerminologyService implements ITerminologyService {
    * Relations
    **/
 
-  public Relation createProvisionalRelation(Relation r, String apiKey) throws IOException {
-    BpProvisionalRelation pr = bpService.createBpProvisionalRelation(ObjectConverter.toBpProvisionalRelation(r),
-        apiKey);
-    return ObjectConverter.toRelation(pr);
-  }
-
   public Relation findProvisionalRelation(String id, String apiKey) throws IOException {
     BpProvisionalRelation pr = bpService.findProvisionalRelationById(id, apiKey);
     return ObjectConverter.toRelation(pr);
   }
 
-//  public void updateProvisionalRelation(Relation r, String apiKey) throws IOException {
-//    bpService.updateProvisionalRelation(ObjectConverter.toBpProvisionalRelation(r), apiKey);
-//  }
-
-  public void deleteProvisionalRelation(String classId, String apiKey) throws IOException {
-    bpService.deleteProvisionalRelation(classId, apiKey);
-  }
-
   /**
    * Value Sets
    **/
-
-  public ValueSet createProvisionalValueSet(ValueSet vs, String apiKey) throws IOException {
-    // Creation of value sets is restricted to the CEDARVS value set collection
-    if (Util.validVsCollection(vs.getVsCollection(), true)) {
-      // Create value set
-      BpProvisionalClass pc = bpService.createBpProvisionalClass(ObjectConverter.toBpProvisionalClass(vs), apiKey);
-      ValueSet createdVs = ObjectConverter.toValueSet(pc);
-      return createdVs;
-    } else {
-      // Bad request
-      throw new HTTPException(CedarResponseStatus.BAD_REQUEST.getStatusCode());
-    }
-  }
 
   public ValueSet findProvisionalValueSet(String id, String apiKey) throws IOException {
     BpProvisionalClass pc = bpService.findBpProvisionalClassById(Util.encodeIfNeeded(id), apiKey);
@@ -1035,14 +997,6 @@ public class TerminologyService implements ITerminologyService {
       }
     }
     return vs;
-  }
-
-  public void updateProvisionalValueSet(ValueSet vs, String apiKey) throws IOException {
-    bpService.updateProvisionalClass(ObjectConverter.toBpProvisionalClass(vs), apiKey);
-  }
-
-  public void deleteProvisionalValueSet(String id, String apiKey) throws IOException {
-    bpService.deleteProvisionalClass(id, apiKey);
   }
 
   public PagedResults<ValueSet> findValueSetsByVsCollection(String vsCollection, int page, int pageSize, String
@@ -1139,17 +1093,6 @@ public class TerminologyService implements ITerminologyService {
    * Values
    */
 
-  public Value createProvisionalValue(Value v, String apiKey) throws IOException {
-    // Creation of value sets is restricted to the CEDARVS value set collection
-    if ((v.getVsId() != null) && (Util.validVsCollection(v.getVsCollection(), true))) {
-      BpProvisionalClass pc = bpService.createBpProvisionalClass(ObjectConverter.toBpProvisionalClass(v), apiKey);
-      return ObjectConverter.toValue(pc);
-    } else {
-      // Bad request
-      throw new HTTPException(CedarResponseStatus.BAD_REQUEST.getStatusCode());
-    }
-  }
-
   public Value findProvisionalValue(String id, String apiKey) throws IOException {
     BpProvisionalClass pc = bpService.findBpProvisionalClassById(id, apiKey);
     return ObjectConverter.toValue(pc);
@@ -1206,14 +1149,6 @@ public class TerminologyService implements ITerminologyService {
                                                             String apiKey) throws IOException {
     ValueSet vs = findValueSetByValue(id, vsCollection, apiKey);
     return findValuesByValueSet(Util.encodeIfNeeded(vs.getLdId()), vsCollection, page, pageSize, apiKey);
-  }
-
-  public void updateProvisionalValue(Value v, String apiKey) throws IOException {
-    bpService.updateProvisionalClass(ObjectConverter.toBpProvisionalClass(v), apiKey);
-  }
-
-  public void deleteProvisionalValue(String id, String apiKey) throws IOException {
-    bpService.deleteProvisionalClass(id, apiKey);
   }
 
   /**

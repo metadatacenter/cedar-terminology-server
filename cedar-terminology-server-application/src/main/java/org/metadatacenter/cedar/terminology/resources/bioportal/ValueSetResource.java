@@ -42,35 +42,6 @@ public class ValueSetResource extends AbstractTerminologyServerResource {
     super(cedarConfig);
   }
 
-  @POST
-  @Path("vs-collections/{vs_collection}/value-sets")
-  @Operation(summary = "Create a provisional value set", description = "Create a provisional value set in a particular value set collection.")
-  @ApiResponses({
-      @ApiResponse(responseCode = "204", description = "Successful operation (no content)"),
-      @ApiResponse(responseCode = "400", description = "Bad request"),
-      @ApiResponse(responseCode = "401", description = "Unauthorized"),
-      @ApiResponse(responseCode = "403", description = "Forbidden"),
-      @ApiResponse(responseCode = "404", description = "Not found"),
-      @ApiResponse(responseCode = "500", description = "Internal server error")
-  })
-  public Response createValueSet(
-      @Parameter(description = "Value set collection. Example: CEDARVS.", required = true)
-      @PathParam("vs_collection") String vsCollection) throws CedarException {
-    CedarRequestContext ctx = buildRequestContext();
-    ctx.must(ctx.user()).be(LoggedIn);
-    try {
-      ValueSet vs = JsonMapper.MAPPER.convertValue(ctx.request().getRequestBody().asJson(), ValueSet.class);
-      vs.setVsCollection(vsCollection);
-      ValueSet createdValueSet = terminologyService.createProvisionalValueSet(vs, apiKey);
-      JsonNode createdValueSetJson = JsonMapper.MAPPER.valueToTree(createdValueSet);
-      return Response.created(new URI(createdValueSet.getLdId())).entity(createdValueSetJson).build();
-    } catch (HTTPException e) {
-      return Response.status(e.getStatusCode()).build();
-    } catch (URISyntaxException | IOException e) {
-      throw new CedarProcessingException(e);
-    }
-  }
-
   @GET
   @Path("vs-collections/{vs_collection}/value-sets/{id}")
   @Operation(summary = "Find value set by id", description = "Find provisional value set by id (either provisional or " +
@@ -214,59 +185,6 @@ public class ValueSetResource extends AbstractTerminologyServerResource {
     } catch (HTTPException e) {
       return Response.status(e.getStatusCode()).build();
     } catch (ExecutionException e) {
-      throw new CedarAssertionException(e);
-    }
-  }
-
-  @PUT
-  @Path("value-sets/{id}")
-  @Operation(summary = "Update a provisional value set", description = "Update a provisional value set.")
-  @ApiResponses({
-      @ApiResponse(responseCode = "204", description = "Successful operation (no content)"),
-      @ApiResponse(responseCode = "400", description = "Bad request"),
-      @ApiResponse(responseCode = "401", description = "Unauthorized"),
-      @ApiResponse(responseCode = "403", description = "Forbidden"),
-      @ApiResponse(responseCode = "404", description = "Not found"),
-      @ApiResponse(responseCode = "500", description = "Internal server error")
-  })
-  public Response updateValueSet(
-      @Parameter(description = "Provisional value set short identifier. Example: af033050-b04b-0133-981f-005056010074", required = true)
-      @PathParam("id") String id) throws CedarException {
-    CedarRequestContext ctx = buildRequestContext();
-    ctx.must(ctx.user()).be(LoggedIn);
-    try {
-      ValueSet vs = JsonMapper.MAPPER.readValue(request.getInputStream(), ValueSet.class);
-      terminologyService.updateProvisionalValueSet(vs, apiKey);
-      return Response.noContent().build();
-    } catch (HTTPException e) {
-      return Response.status(e.getStatusCode()).build();
-    } catch (IOException e) {
-      throw new CedarAssertionException(e);
-    }
-  }
-
-  @DELETE
-  @Path("value-sets/{id}")
-  @Operation(summary = "Delete a provisional value set", description = "Update a provisional value set.")
-  @ApiResponses({
-      @ApiResponse(responseCode = "204", description = "Successful operation (no content)"),
-      @ApiResponse(responseCode = "400", description = "Bad request"),
-      @ApiResponse(responseCode = "401", description = "Unauthorized"),
-      @ApiResponse(responseCode = "403", description = "Forbidden"),
-      @ApiResponse(responseCode = "404", description = "Not found"),
-      @ApiResponse(responseCode = "500", description = "Internal server error")
-  })
-  public Response deleteValueSet(
-      @Parameter(description = "Provisional value set short identifier. Example: af033050-b04b-0133-981f-005056010074", required = true)
-      @PathParam("id") String id) throws CedarException {
-    CedarRequestContext ctx = buildRequestContext();
-    ctx.must(ctx.user()).be(LoggedIn);
-    try {
-      terminologyService.deleteProvisionalValueSet(id, apiKey);
-      return Response.noContent().build();
-    } catch (HTTPException e) {
-      return Response.status(e.getStatusCode()).build();
-    } catch (IOException e) {
       throw new CedarAssertionException(e);
     }
   }

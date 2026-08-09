@@ -60,6 +60,11 @@ public class OwlHierarchyExtractor implements HierarchyExtractor {
   /** OBO "term replaced by": links an obsolete term to its successor. */
   private static final IRI TERM_REPLACED_BY = IRI.create("http://purl.obolibrary.org/obo/IAO_0100001");
 
+  /** obo2owl renders an OBO {@code relationship: is_a X} clause (a non-standard way some ontologies write
+   *  subsumption, e.g. BSAO) as {@code is_a some X} on its TEMP# placeholder namespace rather than as
+   *  {@code rdfs:subClassOf}. It is still subsumption, so this property is always a hierarchy edge. */
+  private static final IRI OBO_RELATIONSHIP_IS_A = IRI.create("http://purl.obolibrary.org/obo/TEMP#is_a");
+
   /** SKOS preferred label: the label BioPortal serves for UMLS/TTL ontologies (e.g. ICD10CM, MESH,
    *  LOINC), which carry an OWL {@code rdfs:subClassOf} hierarchy but label concepts with
    *  {@code skos:prefLabel} rather than {@code rdfs:label}. */
@@ -97,14 +102,20 @@ public class OwlHierarchyExtractor implements HierarchyExtractor {
     OWLAnnotationProperty replacedBy = df.getOWLAnnotationProperty(TERM_REPLACED_BY);
 
     int classCount = 0;
+    List<SnapshotStore.LabelRow> labelRows = new ArrayList<>();
     for (OWLClass cls : ont.getClassesInSignature(Imports.INCLUDED)) {
       if (cls.isOWLThing() || cls.isOWLNothing()) {
         continue;
       }
       store.addConcept(cls.getIRI().toString(), label(cls, ont),
           isDeprecated(cls, ont, deprecated), replacedBy(cls, ont, replacedBy));
+      captureLabels(cls, ont, labelRows);
       classCount++;
     }
+    // Preserve every language variant of every name (labels + synonyms) alongside the single served
+    // pref_label. Additive: pref_label (and thus content identity) is unchanged; this only records what
+    // the single-label pick discards.
+    store.addLabels(labelRows);
 
     int edgeCount = 0;
     // Asserted rdfs:subClassOf. A named superclass is a parent; a named genus inside an
@@ -188,12 +199,17 @@ public class OwlHierarchyExtractor implements HierarchyExtractor {
       for (OWLClassExpression operand : intersection.getOperands()) {
         collectParents(operand, parents);
       }
-    } else if (expr instanceof OWLObjectSomeValuesFrom svf && !hierarchyProperties.isEmpty()
-        && !svf.getProperty().isAnonymous()
-        && hierarchyProperties.contains(svf.getProperty().asOWLObjectProperty().getIRI())
-        && !svf.getFiller().isAnonymous()) {
-      // e.g. BTO: "part_of some hematopoietic system" makes hematopoietic system a parent.
-      addNamed(parents, svf.getFiller());
+    } else if (expr instanceof OWLObjectSomeValuesFrom svf
+        && !svf.getProperty().isAnonymous() && !svf.getFiller().isAnonymous()) {
+      IRI prop = svf.getProperty().asOWLObjectProperty().getIRI();
+      // An OBO `relationship: is_a X` clause (as some ontologies write their subsumption — BSAO) is
+      // rendered by obo2owl as `is_a some X` on the TEMP# namespace, not rdfs:subClassOf. It is still
+      // subsumption, so treat it as a hierarchy edge everywhere. Plus, for a configured partonomy, the
+      // configured relations (e.g. BTO/EHDAA part_of some system) also make the filler a parent.
+      if (OBO_RELATIONSHIP_IS_A.equals(prop)
+          || (!hierarchyProperties.isEmpty() && hierarchyProperties.contains(prop))) {
+        addNamed(parents, svf.getFiller());
+      }
     }
   }
 
@@ -255,6 +271,29 @@ public class OwlHierarchyExtractor implements HierarchyExtractor {
       }
     }
     return rdfsLabel != null ? rdfsLabel : prefLabel;
+  }
+
+  /**
+   * Records every name literal of a class — labels and synonyms ({@link LabelProperties}) — with its
+   * language tag into {@code out}, for the snapshot's {@code label} table. Reads the class's own
+   * annotation-assertion axioms across the import closure, the same clean source {@link #label} uses
+   * (an OBO {@code xref} description exposed as an axiom-annotation label is not surfaced here). This
+   * preserves the multilingual names the single {@code pref_label} pick drops; it does not affect
+   * which literal that pick chooses.
+   */
+  private static void captureLabels(OWLClass cls, OWLOntology ont, List<SnapshotStore.LabelRow> out) {
+    String iri = cls.getIRI().toString();
+    for (OWLOntology o : ont.getImportsClosure()) {
+      for (OWLAnnotationAssertionAxiom ax : o.getAnnotationAssertionAxioms(cls.getIRI())) {
+        if (!(ax.getValue() instanceof OWLLiteral literal)) {
+          continue;
+        }
+        String curie = LabelProperties.curieFor(ax.getProperty().getIRI());
+        if (curie != null) {
+          out.add(new SnapshotStore.LabelRow(iri, curie, literal.getLang(), literal.getLiteral()));
+        }
+      }
+    }
   }
 
   /**

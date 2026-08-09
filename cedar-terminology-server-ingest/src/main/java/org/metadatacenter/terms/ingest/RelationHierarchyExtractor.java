@@ -67,6 +67,7 @@ public class RelationHierarchyExtractor implements HierarchyExtractor {
     Map<String, String> replacedBy = new HashMap<>();
     Set<String> edges = new LinkedHashSet<>(); // "child\tparent"
     List<String[]> relations = new ArrayList<>(); // [subject, predicate, object] when retainRelations
+    List<SnapshotStore.LabelRow> labelRows = new ArrayList<>(); // every name literal, all languages
 
     for (OWLAnnotationAssertionAxiom ax : ont.getAxioms(AxiomType.ANNOTATION_ASSERTION)) {
       if (!(ax.getSubject() instanceof IRI subject)) {
@@ -75,6 +76,16 @@ public class RelationHierarchyExtractor implements HierarchyExtractor {
       String s = subject.toString();
       IRI prop = ax.getProperty().getIRI();
       OWLAnnotationValue value = ax.getValue();
+
+      // Preserve every language variant of every name (labels + synonyms) alongside the single served
+      // pref_label the dispatch below picks from the configured label predicate. Additive; a row is
+      // kept below only if its subject turns out to be a concept.
+      if (value instanceof OWLLiteral nameLiteral) {
+        String curie = LabelProperties.curieFor(prop);
+        if (curie != null) {
+          labelRows.add(new SnapshotStore.LabelRow(s, curie, nameLiteral.getLang(), nameLiteral.getLiteral()));
+        }
+      }
 
       if (config.broaderPredicates().contains(prop)) {
         if (value instanceof IRI parent) {
@@ -135,6 +146,9 @@ public class RelationHierarchyExtractor implements HierarchyExtractor {
       store.addConcept(iri, label, deprecated.contains(iri), replacedBy.get(iri));
       classCount++;
     }
+    // Insert after the concepts exist; addLabels joins on concept IRI, so name literals of a subject
+    // that did not become a concept are dropped, exactly as its edges/relations would be.
+    store.addLabels(labelRows);
     int edgeCount = 0;
     for (String edge : edges) {
       int tab = edge.indexOf('\t');

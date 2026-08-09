@@ -14,6 +14,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class CatalogStoreTest {
@@ -56,6 +57,47 @@ public class CatalogStoreTest {
     assertEquals("hashV1", catalog.resolveLatest("DOID").orElseThrow().versionId());
     catalog.setTag("DOID", CatalogStore.TAG_LATEST, "hashV2");
     assertEquals("hashV2", catalog.resolveLatest("DOID").orElseThrow().versionId());
+  }
+
+  @Test
+  public void upsertOntology_doesNotDowngradeARealNameToTheAcronym() throws Exception {
+    // A re-ingest from a title-less source (name falls back to the acronym) must not wipe a real name.
+    catalog.upsertOntology(new OntologyInfo("DOID", "DOID", "http://purl.obolibrary.org/obo/doid.owl", "OWL"));
+    assertEquals("Human Disease Ontology", catalog.ontologyName("DOID"));
+
+    // A first ingest with only the acronym legitimately stores the acronym...
+    catalog.upsertOntology(new OntologyInfo("FOO", "FOO", "http://ex.org/foo", "OWL"));
+    assertEquals("FOO", catalog.ontologyName("FOO"));
+    // ...a later ingest that does carry a title sets it...
+    catalog.upsertOntology(new OntologyInfo("FOO", "The Foo Ontology", "http://ex.org/foo", "OWL"));
+    assertEquals("The Foo Ontology", catalog.ontologyName("FOO"));
+    // ...and a subsequent title-less re-ingest keeps it.
+    catalog.upsertOntology(new OntologyInfo("FOO", "FOO", "http://ex.org/foo", "OWL"));
+    assertEquals("The Foo Ontology", catalog.ontologyName("FOO"));
+  }
+
+  @Test
+  public void inTransaction_rollsBackEveryWriteOnFailure() throws Exception {
+    // The atomicity a crash mid-ingest relies on: a unit of work that writes and then fails must leave
+    // the catalog exactly as it was — the tag flip and the new snapshot are both rolled back.
+    assertThrows(java.sql.SQLException.class, () -> catalog.inTransaction(() -> {
+      catalog.setTag("DOID", CatalogStore.TAG_LATEST, "hashV1"); // would move latest off hashV2
+      catalog.addSnapshot(doidSnapshot("hashV3", "2025-09-01"));  // would register a third snapshot
+      throw new java.sql.SQLException("simulated crash mid-registration");
+    }));
+    assertEquals("hashV2", catalog.resolveLatest("DOID").orElseThrow().versionId());
+    assertTrue(catalog.getSnapshot("hashV3").isEmpty());
+    assertEquals(2, catalog.listSnapshots("DOID").size());
+  }
+
+  @Test
+  public void inTransaction_commitsEveryWriteOnSuccess() throws Exception {
+    catalog.inTransaction(() -> {
+      catalog.addSnapshot(doidSnapshot("hashV3", "2025-09-01"));
+      catalog.setTag("DOID", CatalogStore.TAG_LATEST, "hashV3");
+    });
+    assertEquals("hashV3", catalog.resolveLatest("DOID").orElseThrow().versionId());
+    assertEquals(3, catalog.listSnapshots("DOID").size());
   }
 
   @Test

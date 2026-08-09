@@ -17,51 +17,6 @@ import static org.metadatacenter.util.json.JsonMapper.MAPPER;
 
 public class ObjectConverter {
 
-  /**
-   * From Terminology Server objects to BioPortal objects
-   **/
-
-  public static BpProvisionalClass toBpProvisionalClass(OntologyClass c) {
-    List<BpProvisionalRelation> relations = new ArrayList<>();
-    if (c.getRelations() != null) {
-      for (Relation r : c.getRelations()) {
-        if (r.getCreator() == null) {
-          r.setCreator(c.getCreator());
-        }
-        relations.add(toBpProvisionalRelation(r));
-      }
-    }
-    return new BpProvisionalClass(c.getId(), null, c.getPrefLabel(), c.getCreator(), c.getOntology(), c.getDefinitions(),
-        c.getSynonyms(), c.getSubclassOf(), relations, true, c.getCreated());
-  }
-
-  public static BpProvisionalClass toBpProvisionalClass(ValueSet vs) {
-    List<BpProvisionalRelation> relations = new ArrayList<>();
-    if (vs.getRelations() != null) {
-      for (Relation r : vs.getRelations()) {
-        relations.add(toBpProvisionalRelation(r));
-      }
-    }
-    return new BpProvisionalClass(vs.getId(), null, vs.getPrefLabel(), vs.getCreator(), vs.getVsCollection(),
-        vs.getDefinitions(), vs.getSynonyms(), null, relations, true, vs.getCreated());
-  }
-
-  public static BpProvisionalClass toBpProvisionalClass(Value v) {
-    List<BpProvisionalRelation> relations = new ArrayList<>();
-    if (v.getRelations() != null) {
-      for (Relation r : v.getRelations()) {
-        relations.add(toBpProvisionalRelation(r));
-      }
-    }
-    return new BpProvisionalClass(v.getId(), null, v.getPrefLabel(), v.getCreator(), v.getVsCollection(),
-        v.getDefinitions(), v.getSynonyms(), v.getVsId(), relations, true, v.getCreated());
-  }
-
-  public static BpProvisionalRelation toBpProvisionalRelation(Relation r) {
-    return new BpProvisionalRelation(r.getId(), r.getSourceClassId(), r.getRelationType(), r.getTargetClassId(),
-        r.getTargetClassOntology(), r.getCreated(), r.getCreator());
-  }
-
   public static List<BpTreeNode> toBpTreeNodeList(JsonNode nodes) {
     List<BpTreeNode> treeNodes = new ArrayList<>();
     for (JsonNode node : nodes) {

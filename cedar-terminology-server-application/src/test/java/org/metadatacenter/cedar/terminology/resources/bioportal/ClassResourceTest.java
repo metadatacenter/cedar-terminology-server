@@ -59,69 +59,8 @@ public class ClassResourceTest extends AbstractTerminologyServerResourceTest {
   public void tearDown() {
   }
 
-  @Test
-  public void createClassTest() {
-    String url = baseUrlBpOntologies + "/" + Util.getShortIdentifier(class1.getOntology()) + "/" + BP_CLASSES;
-    // Service invocation
-    Response response =
-        clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(class1));
-    // Check HTTP response
-    Assertions.assertEquals(Status.CREATED.getStatusCode(), response.getStatus());
-    // Check Content-Type
-    Assertions.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
-    // Store class to delete the class after the test
-    OntologyClass created = response.readEntity(OntologyClass.class);
-    response.close();
-    createdClasses.add(created);
-    // Check fields
-    OntologyClass expected = class1;
-    Assertions.assertNotNull(created.getId());
-    Assertions.assertNotNull(created.getLdId());
-    Assertions.assertNotNull(created.getCreated());
-    Assertions.assertEquals(expected.getPrefLabel(), created.getPrefLabel());
-    Assertions.assertEquals(expected.getCreator(), created.getCreator());
-    Assertions.assertEquals(expected.getOntology(), created.getOntology());
-    Assertions.assertEquals(expected.getDefinitions(), created.getDefinitions());
-    Assertions.assertEquals(expected.getSynonyms(), created.getSynonyms());
-    Assertions.assertEquals(expected.getSubclassOf(), created.getSubclassOf());
-    Assertions.assertEquals(expected.getRelations(), created.getRelations());
-    Assertions.assertEquals(expected.isProvisional(), created.isProvisional());
-  }
 
-  // TODO: test regular classes
-  @Test
-  public void findClassTest() {
-    // Create a provisional class
-    OntologyClass created = createClass(class1);
-    // Find the provisional class by id
-    String classUrl = baseUrlBpOntologies + "/" + Util.getShortIdentifier(class1.getOntology()) + "/" + BP_CLASSES +
-        "/" + created.getId();
-    // Service invocation
-    Response findResponse = clientBuilder.build().target(classUrl).request().header(HTTP_HEADER_AUTHORIZATION,
-        authHeader).get();
-    // Check HTTP response
-    Assertions.assertEquals(Status.OK.getStatusCode(), findResponse.getStatus());
-    // Check Content-Type
-    Assertions.assertEquals(MediaType.APPLICATION_JSON, findResponse.getHeaderString(HttpHeaders.CONTENT_TYPE));
-    // Check the element retrieved
-    OntologyClass found = findResponse.readEntity(OntologyClass.class);
-    findResponse.close();
-    // Check fields
-    Assertions.assertEquals(created.getId(), found.getId());
-    Assertions.assertEquals(created.getLdId(), found.getLdId());
-    Assertions.assertEquals(created.getPrefLabel(), found.getPrefLabel());
-    Assertions.assertEquals(created.getCreator(), found.getCreator());
-    Assertions.assertEquals(created.getOntology(), found.getOntology());
-    // Convert list to set because order is irrelevant
-    Assertions.assertEquals(new HashSet<>(created.getDefinitions()), new HashSet<>(found.getDefinitions()));
-    Assertions.assertEquals(new HashSet<>(created.getSynonyms()), new HashSet<>(found.getSynonyms()));
-    Assertions.assertEquals(created.getSubclassOf(), found.getSubclassOf());
-    Assertions.assertEquals(new HashSet<>(created.getRelations()), new HashSet<>(found.getRelations()));
-    Assertions.assertEquals(created.isProvisional(), found.isProvisional());
-    Assertions.assertEquals(created.getCreated(), found.getCreated());
-  }
 
-  // TODO: check that provisional classes are returned too
   @Test
   public void findAllClassesForOntologyTest() {
     String ontology = "NCIT";
@@ -291,108 +230,8 @@ public class ClassResourceTest extends AbstractTerminologyServerResourceTest {
     Assertions.assertTrue( parentFound,"Parent " + parentClassId + " not found for the given class " + classId);
   }
 
-  @Test
-  public void findAllProvisionalClassesTest() {
-    String url = baseUrlBp + "/" + BP_PROVISIONAL_CLASSES;
-    // Service invocation
-    Response response = clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
-    // Check HTTP response
-    Assertions.assertEquals(Status.OK.getStatusCode(), response.getStatus());
-    // Check Content-Type
-    Assertions.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
-    // Check that the array returned is not empty
-    PagedResults<OntologyClass> results = response.readEntity(new GenericType<PagedResults<OntologyClass>>() {
-    });
-    response.close();
-    Assertions.assertTrue( !results.getCollection().isEmpty(),"Empty array returned");
-    // Check that the classes returned are provisional
-    for (OntologyClass pc : results.getCollection()) {
-      Assertions.assertTrue( pc.isProvisional(),"Provisional class expected, but non provisional class found");
-    }
-  }
 
-  @Test
-  public void findAllProvisionalClassesForOntologyTest() {
-    // Create a provisional class
-    OntologyClass createdClass = createClass(class1);
-    String url =
-        baseUrlBpOntologies + "/" + Util.getShortIdentifier(createdClass.getOntology()) + "/" + BP_PROVISIONAL_CLASSES;
-    // Service invocation
-    Response response = clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
-    // Check HTTP response
-    Assertions.assertEquals(Status.OK.getStatusCode(), response.getStatus());
-    // Check Content-Type
-    Assertions.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
-    // Check that the array returned is not empty
-    PagedResults<OntologyClass> results = response.readEntity(new GenericType<PagedResults<OntologyClass>>() {
-    });
-    response.close();
-    Assertions.assertTrue( !results.getCollection().isEmpty(),"Empty array returned");
-    // Check that the classes returned are provisional
-    for (OntologyClass pc : results.getCollection()) {
-      Assertions.assertTrue( pc.isProvisional(),"Provisional class expected, but non provisional class found");
-    }
-  }
 
-  @Test
-  public void updateClassTest() {
-    // Create a provisional class
-    OntologyClass createdClass = createClass(class1);
-    OntologyClass updatedClass = new OntologyClass(createdClass.getId(), createdClass.getLdId(), "new label",
-        createdClass.getCreator(), createdClass.getOntology(), createdClass.getDefinitions(),
-        createdClass.getSynonyms(),
-        createdClass.getSubclassOf(), createdClass.getRelations(), createdClass.isProvisional(),
-        createdClass.getCreated(),
-        createdClass.getHasChildren());
-    String url = baseUrlBp + "/" + BP_CLASSES + "/" + createdClass.getId();
-    // Service invocation
-    Response updateResponse = clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION,
-        authHeader).put(Entity.json
-        (updatedClass));
-    // Check HTTP response
-    Assertions.assertEquals(Status.NO_CONTENT.getStatusCode(), updateResponse.getStatus());
-    // Retrieve the class
-    String findUrl = baseUrlBpOntologies + "/" + Util.getShortIdentifier(createdClass.getOntology())
-        + "/" + BP_CLASSES + "/" + createdClass.getId();
-    Response findResponse = clientBuilder.build().target(findUrl).request().header(HTTP_HEADER_AUTHORIZATION,
-        authHeader).get();
-    OntologyClass found = findResponse.readEntity(OntologyClass.class);
-    findResponse.close();
-    // Check that the modifications have been done correctly
-    OntologyClass expected = updatedClass;
-    Assertions.assertEquals(expected.getId(), found.getId());
-    Assertions.assertEquals(expected.getLdId(), found.getLdId());
-    Assertions.assertEquals(expected.getPrefLabel(), found.getPrefLabel());
-    Assertions.assertEquals(expected.getCreator(), found.getCreator());
-    Assertions.assertEquals(expected.getOntology(), found.getOntology());
-    Assertions.assertTrue(expected.getDefinitions().containsAll(found.getDefinitions()) && found.getDefinitions().containsAll(expected.getDefinitions()));
-    Assertions.assertTrue(expected.getSynonyms().containsAll(found.getSynonyms()) && found.getSynonyms().containsAll(expected.getSynonyms()));
-    Assertions.assertEquals(expected.getSubclassOf(), found.getSubclassOf());
-    Assertions.assertEquals(expected.getRelations(), found.getRelations());
-    Assertions.assertEquals(expected.isProvisional(), found.isProvisional());
-    Assertions.assertEquals(expected.getCreated(), found.getCreated());
-    Assertions.assertEquals(expected.getHasChildren(), found.getHasChildren());
-  }
 
-  @Test
-  public void deleteClassTest() {
-    // Create a provisional class
-    OntologyClass createdClass = createClass(class1);
-    // Delete the class that has been created
-    String classUrl = baseUrlBp + "/" + BP_CLASSES + "/" + createdClass.getId();
-    Response deleteResponse = clientBuilder.build().target(classUrl).request().header(HTTP_HEADER_AUTHORIZATION,
-        authHeader).delete();
-    // Check HTTP response
-    Assertions.assertEquals(Status.NO_CONTENT.getStatusCode(), deleteResponse.getStatus());
-    // Remove class from the list of created classes
-    createdClasses.remove(createdClass);
-    // Try to retrieve the class to check that it has been deleted correctly
-    String findUrl =
-        baseUrlBpOntologies + "/" + Util.getShortIdentifier(createdClass.getOntology()) + "/" + BP_CLASSES + "/" + createdClass.getId();
-    Response findResponse = clientBuilder.build().target(findUrl).request().header(HTTP_HEADER_AUTHORIZATION,
-        authHeader).get();
-    // Check not found
-    Assertions.assertEquals(Status.NOT_FOUND.getStatusCode(), findResponse.getStatus());
-  }
 
 }

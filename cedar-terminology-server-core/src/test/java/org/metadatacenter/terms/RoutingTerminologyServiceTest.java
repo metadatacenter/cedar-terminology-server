@@ -19,6 +19,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
@@ -183,6 +184,77 @@ public class RoutingTerminologyServiceTest {
     PagedResults<SearchResult> r = router.integratedSearch(Optional.of("x"),
         vc("{\"ontologies\":[{\"acronym\":\"OTHER\"}]}"), 1, 50, null);
     assertEquals(REMOTE, r.getCollection().get(0).getPrefLabel());
+  }
+
+  /* version-pin routing — a pinned (frozen) read must never be silently downgraded to remote latest */
+
+  /**
+   * A local backend serving EX, but only at the pinned version "good"; any other explicit pin misses.
+   * The default {@code SnapshotProvider} ignores the version, so a version-aware one is built by hand.
+   */
+  private RoutingTerminologyService pinAwareRouter() {
+    SqliteTerminologyService local = new SqliteTerminologyService(new SqliteTerminologyService.SnapshotProvider() {
+      @Override
+      public Optional<SnapshotStore> forOntology(String ontology) {
+        return EX.equals(ontology) ? Optional.of(store) : Optional.empty();
+      }
+
+      @Override
+      public Optional<SnapshotStore> forOntology(String ontology, String version) {
+        if (!EX.equals(ontology)) {
+          return Optional.empty();
+        }
+        boolean unpinnedOrKnown =
+            version == null || version.isBlank() || "latest".equals(version) || "good".equals(version);
+        return unpinnedOrKnown ? Optional.of(store) : Optional.empty();
+      }
+    });
+    return new RoutingTerminologyService(sentinelRemote(), local, local::isAvailable);
+  }
+
+  @Test
+  public void integratedSearchWithResolvablePin_servedByLocal() throws Exception {
+    // A pin the local store can honor resolves locally (the three EX concepts), not the REMOTE sentinel.
+    PagedResults<SearchResult> r = pinAwareRouter().integratedSearch(Optional.empty(),
+        vc("{\"ontologies\":[{\"acronym\":\"" + EX + "\",\"version\":\"good\"}]}"), 1, 50, null);
+    assertEquals(Integer.valueOf(3), r.getTotalCount());
+  }
+
+  @Test
+  public void integratedSearchWithUnresolvablePin_failsLoud() {
+    // The reviewer's case: EX is served locally, but the pinned snapshot is absent. This must fail loud,
+    // NOT fall back to BioPortal (which serves latest and would silently break the frozen read).
+    assertThrows(PinnedVersionUnavailableException.class, () -> pinAwareRouter().integratedSearch(Optional.empty(),
+        vc("{\"ontologies\":[{\"acronym\":\"" + EX + "\",\"version\":\"absent-snapshot\"}]}"), 1, 50, null));
+  }
+
+  @Test
+  public void integratedSearchWithPinOnNonLocalOntology_failsLoud() {
+    // The pinned source is not served locally at all; remote would serve latest. Fail loud instead of
+    // returning the REMOTE sentinel.
+    assertThrows(PinnedVersionUnavailableException.class, () -> router.integratedSearch(Optional.empty(),
+        vc("{\"ontologies\":[{\"acronym\":\"OTHER\",\"version\":\"deadbeef\"}]}"), 1, 50, null));
+  }
+
+  /* sourceSystem routing — a non-BioPortal source is served locally or reported unavailable, never proxied */
+
+  @Test
+  public void integratedSearchNonBioPortalSourceNotLocal_unavailableNotRemote() throws Exception {
+    // OTHER names a non-BioPortal source and is not served locally: return no results rather than proxy
+    // BioPortal (which would answer with a different source's content).
+    PagedResults<SearchResult> r = router.integratedSearch(Optional.of("x"),
+        vc("{\"ontologies\":[{\"acronym\":\"OTHER\",\"sourceSystem\":\"agroportal\"}]}"), 1, 50, null);
+    assertEquals(Integer.valueOf(0), r.getTotalCount());
+    assertTrue(r.getCollection().isEmpty());
+  }
+
+  @Test
+  public void integratedSearchNonBioPortalSourceServedLocally_servedByLocal() throws Exception {
+    // A non-BioPortal source that IS served locally is answered from the local store — identity is
+    // source-independent, so sourceSystem does not change the result.
+    PagedResults<SearchResult> r = router.integratedSearch(Optional.empty(),
+        vc("{\"ontologies\":[{\"acronym\":\"" + EX + "\",\"sourceSystem\":\"agroportal\"}]}"), 1, 50, null);
+    assertEquals(Integer.valueOf(3), r.getTotalCount());
   }
 
   /* localOnly — the strict mode the equivalence harness runs under */

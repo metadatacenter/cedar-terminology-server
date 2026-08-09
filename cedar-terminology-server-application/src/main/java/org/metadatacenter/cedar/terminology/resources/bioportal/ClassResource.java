@@ -43,34 +43,6 @@ public class ClassResource extends AbstractTerminologyServerResource {
     super(cedarConfig);
   }
 
-  @POST
-  @Path("ontologies/{ontology}/classes")
-  @Operation(summary = "Create class", description = "Create a provisional class.")
-  @ApiResponses({
-      @ApiResponse(responseCode = "204", description = "Successful operation (no content)"),
-      @ApiResponse(responseCode = "400", description = "Bad request"),
-      @ApiResponse(responseCode = "401", description = "Unauthorized"),
-      @ApiResponse(responseCode = "403", description = "Forbidden"),
-      @ApiResponse(responseCode = "404", description = "Not found"),
-      @ApiResponse(responseCode = "500", description = "Internal server error")
-  })
-  public Response createClass(
-      @Parameter(description = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
-      @PathParam("ontology") String ontology) throws CedarException {
-    CedarRequestContext ctx = buildAnonymousRequestContext();
-    try {
-      OntologyClass c = JsonMapper.MAPPER.convertValue(ctx.request().getRequestBody().asJson(), OntologyClass.class);
-      c.setOntology(ontology);
-      OntologyClass createdClass = terminologyService.createProvisionalClass(c, apiKey);
-      JsonNode createdClassJson = JsonMapper.MAPPER.valueToTree(createdClass);
-      return Response.created(new URI(createdClass.getLdId())).entity(createdClassJson).build();
-    } catch (HTTPException e) {
-      return Response.status(e.getStatusCode()).build();
-    } catch (URISyntaxException | IOException e) {
-      throw new CedarProcessingException(e);
-    }
-  }
-
   @GET
   @Path("ontologies/{ontology}/classes/{id}")
   @Operation(summary = "Find class", description = "Find class (either regular or provisional) by ontology and class id.")
@@ -88,12 +60,15 @@ public class ClassResource extends AbstractTerminologyServerResource {
           "http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C3224 (regular class).", required = true)
       @PathParam("id") @Encoded String id,
       @Parameter(description = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
-      @PathParam("ontology") String ontology) throws
+      @PathParam("ontology") String ontology,
+      @Parameter(description = "Optional BCP-47 language for the returned label (e.g. fr). Honored for "
+          + "locally-served ontologies; ignored for BioPortal-proxied ones.")
+      @QueryParam("lang") String lang) throws
       CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
     try {
-      OntologyClass c = terminologyService.findClass(id, ontology, apiKey);
+      OntologyClass c = terminologyService.findClass(id, ontology, apiKey, lang);
       return Response.ok().entity(JsonMapper.MAPPER.valueToTree(c)).build();
     } catch (HTTPException e) {
       return Response.status(e.getStatusCode()).build();
@@ -341,62 +316,6 @@ public class ClassResource extends AbstractTerminologyServerResource {
       ObjectWriter writer = JsonMapper.MAPPER.writerFor(new TypeReference<PagedResults<OntologyClass>>() {
       });
       return Response.ok().entity(JsonMapper.MAPPER.readTree(writer.writeValueAsString(classes))).build();
-    } catch (HTTPException e) {
-      return Response.status(e.getStatusCode()).build();
-    } catch (IOException e) {
-      throw new CedarAssertionException(e);
-    }
-  }
-
-  @PUT
-  @Path("classes/{id}")
-  @Operation(summary = "Update a provisional class", description = "Update a provisional class.")
-  @ApiResponses({
-      @ApiResponse(responseCode = "204", description = "Successful operation (no content)"),
-      @ApiResponse(responseCode = "400", description = "Bad request"),
-      @ApiResponse(responseCode = "401", description = "Unauthorized"),
-      @ApiResponse(responseCode = "403", description = "Forbidden"),
-      @ApiResponse(responseCode = "404", description = "Not found"),
-      @ApiResponse(responseCode = "500", description = "Internal server error")
-  })
-  public Response updateClass(
-      @Parameter(description = "Provisional class identifier. Example: http://data.bioontology.org/provisional_classes/" +
-          "4f82a7f0-bbba-0133-b23e-005056010074.", required = true)
-      @PathParam("id") String id) throws CedarException {
-    CedarRequestContext ctx = buildRequestContext();
-    ctx.must(ctx.user()).be(LoggedIn);
-    try {
-      OntologyClass c = JsonMapper.MAPPER.readValue(request.getInputStream(), OntologyClass.class);
-      //c.setId(id);
-      terminologyService.updateProvisionalClass(c, apiKey);
-      return Response.noContent().build();
-    } catch (HTTPException e) {
-      return Response.status(e.getStatusCode()).build();
-    } catch (IOException e) {
-      throw new CedarAssertionException(e);
-    }
-  }
-
-  @DELETE
-  @Path("classes/{id}")
-  @Operation(summary = "Delete a provisional class", description = "Update a provisional class.")
-  @ApiResponses({
-      @ApiResponse(responseCode = "204", description = "Successful operation (no content)"),
-      @ApiResponse(responseCode = "400", description = "Bad request"),
-      @ApiResponse(responseCode = "401", description = "Unauthorized"),
-      @ApiResponse(responseCode = "403", description = "Forbidden"),
-      @ApiResponse(responseCode = "404", description = "Not found"),
-      @ApiResponse(responseCode = "500", description = "Internal server error")
-  })
-  public Response deleteClass(
-      @Parameter(description = "Provisional class identifier. Example: http://data.bioontology.org/provisional_classes/" +
-          "4f82a7f0-bbba-0133-b23e-005056010074.", required = true)
-      @PathParam("id") String id) throws CedarException {
-    CedarRequestContext ctx = buildRequestContext();
-    ctx.must(ctx.user()).be(LoggedIn);
-    try {
-      terminologyService.deleteProvisionalClass(id, apiKey);
-      return Response.noContent().build();
     } catch (HTTPException e) {
       return Response.status(e.getStatusCode()).build();
     } catch (IOException e) {

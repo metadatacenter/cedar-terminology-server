@@ -2,6 +2,7 @@ package org.metadatacenter.cedar.terminology.resources.bioportal;
 
 import com.codahale.metrics.annotation.Timed;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
@@ -15,12 +16,14 @@ import org.metadatacenter.cedar.terminology.validation.integratedsearch.Integrat
 import org.metadatacenter.config.CedarConfig;
 import org.metadatacenter.exception.CedarException;
 import org.metadatacenter.rest.exception.CedarAssertionException;
+import org.metadatacenter.terms.PinnedVersionUnavailableException;
 import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.util.json.JsonMapper;
 
 import jakarta.validation.Valid;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.POST;
+import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
@@ -64,9 +67,13 @@ public class IntegratedSearchResource extends AbstractTerminologyServerResource 
       @ApiResponse(responseCode = "401", description = "Unauthorized"),
       @ApiResponse(responseCode = "403", description = "Forbidden"),
       @ApiResponse(responseCode = "404", description = "Not found"),
+      @ApiResponse(responseCode = "422", description = "A constraint pins a vocabulary version that cannot be served"),
       @ApiResponse(responseCode = "500", description = "Internal server error")
   })
-  public Response cedarIntegratedSearch(@Valid IntegratedSearchBody body) throws CedarException {
+  public Response cedarIntegratedSearch(@Valid IntegratedSearchBody body,
+      @Parameter(description = "Optional BCP-47 language for result labels (e.g. fr). Honored for "
+          + "locally-served, single-source constraints; ignored for BioPortal-proxied ones.")
+      @QueryParam("lang") String lang) throws CedarException {
 
     // We have disabled authentication for this endpoint to simplify 3rd-party deployments of the CEDAR embeddable editor
     // CedarRequestContext c = buildRequestContext();
@@ -80,10 +87,20 @@ public class IntegratedSearchResource extends AbstractTerminologyServerResource 
 
       PagedResults results =
           terminologyService.integratedSearch(q, body.getParameterObject().getValueConstraints(),
-              page, pageSize, apiKey);
+              page, pageSize, apiKey, lang);
 
       return Response.ok().entity(JsonMapper.MAPPER.valueToTree(results)).build();
 
+    } catch (PinnedVersionUnavailableException e) {
+      // A frozen constraint pins a vocabulary version that cannot be served; the server fails the read
+      // rather than resolving against latest. 422 Unprocessable Entity: the request is well-formed but
+      // the pinned snapshot is unavailable.
+      return Response.status(422)
+          .entity(JsonMapper.MAPPER.createObjectNode()
+              .put("errorType", "PinnedVersionUnavailable")
+              .put("message", e.getMessage()))
+          .type(MediaType.APPLICATION_JSON)
+          .build();
     } catch (HTTPException e) {
       return Response.status(e.getStatusCode()).build();
     } catch (IOException /*| ExecutionException*/ e) {

@@ -120,6 +120,14 @@ public class CatalogStore implements AutoCloseable {
     return new CatalogStore(DriverManager.getConnection("jdbc:sqlite:" + path), parent);
   }
 
+  /** How long a write waits for a lock held by another connection (e.g. a live server reading the
+   *  catalog) before failing, instead of erroring immediately with SQLITE_BUSY. */
+  public void setBusyTimeoutMillis(int millis) throws SQLException {
+    try (Statement s = connection.createStatement()) {
+      s.execute("PRAGMA busy_timeout = " + millis);
+    }
+  }
+
   public static CatalogStore openInMemory() throws SQLException {
     return new CatalogStore(DriverManager.getConnection("jdbc:sqlite::memory:"), null);
   }
@@ -297,15 +305,37 @@ public class CatalogStore implements AutoCloseable {
   /** Registers or updates an ontology's per-source addressing row. Its canonical iri is linked later
    *  by {@link #setOntologyIri}, once derived from the ingested content. */
   public void upsertOntology(OntologyInfo o) throws SQLException {
+    // Never downgrade an existing human-readable name back to the bare acronym. A re-ingest of a source
+    // that offers no title (a direct URL or OBO Foundry, where the display name falls back to the
+    // acronym) would otherwise wipe a name captured earlier or set by hand. So when the incoming name is
+    // just the acronym, keep whatever richer name the row already holds; a real title still overwrites.
+    String name = o.name();
+    if (name == null || name.equals(o.acronym())) {
+      String existing = ontologyName(o.acronym());
+      if (existing != null && !existing.isBlank() && !existing.equals(o.acronym())) {
+        name = existing;
+      }
+    }
     try (PreparedStatement ps = connection.prepareStatement("""
         INSERT INTO ontology_source (acronym, name, source_iri, default_format) VALUES (?, ?, ?, ?)
         ON CONFLICT(acronym) DO UPDATE SET
           name = excluded.name, source_iri = excluded.source_iri, default_format = excluded.default_format""")) {
       ps.setString(1, o.acronym());
-      ps.setString(2, o.name());
+      ps.setString(2, name);
       ps.setString(3, o.sourceIri());
       ps.setString(4, o.defaultFormat());
       ps.executeUpdate();
+    }
+  }
+
+  /** The display name currently stored for {@code acronym}, or null if the ontology is not registered. */
+  public String ontologyName(String acronym) throws SQLException {
+    try (PreparedStatement ps =
+             connection.prepareStatement("SELECT name FROM ontology_source WHERE acronym = ?")) {
+      ps.setString(1, acronym);
+      try (ResultSet rs = ps.executeQuery()) {
+        return rs.next() ? rs.getString(1) : null;
+      }
     }
   }
 
@@ -621,6 +651,38 @@ public class CatalogStore implements AutoCloseable {
           upd.executeUpdate();
         }
       }
+      connection.commit();
+    } catch (SQLException e) {
+      connection.rollback();
+      throw e;
+    } finally {
+      connection.setAutoCommit(autoCommit);
+    }
+  }
+
+  /** A unit of catalog work run atomically inside one transaction. */
+  @FunctionalInterface
+  public interface TransactionalWork {
+    void run() throws SQLException;
+  }
+
+  /**
+   * Runs {@code work} inside a single transaction: every catalog write it performs commits together,
+   * or on failure rolls back together. Used to register a freshly-ingested snapshot atomically, so a
+   * crash mid-registration cannot leave the catalog exposing a half-registered snapshot — a snapshot
+   * row without its {@code latest} tag, or a served snapshot with no canonical iri. Each write is also
+   * an idempotent upsert, so re-running the work after an interruption heals any partial state; the
+   * transaction additionally guarantees no partial state is ever visible to a concurrent reader.
+   *
+   * Not reentrant: do not nest, and do not call from a method that manages its own transaction
+   * ({@link #cutoverToContentHash}). Foreign keys stay enforced, so the work must write in dependency
+   * order (ontology_source before snapshot before version_tag).
+   */
+  public void inTransaction(TransactionalWork work) throws SQLException {
+    boolean autoCommit = connection.getAutoCommit();
+    connection.setAutoCommit(false);
+    try {
+      work.run();
       connection.commit();
     } catch (SQLException e) {
       connection.rollback();

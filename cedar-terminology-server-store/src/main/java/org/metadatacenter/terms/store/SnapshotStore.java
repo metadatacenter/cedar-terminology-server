@@ -37,7 +37,18 @@ public class SnapshotStore implements AutoCloseable {
   /** A concept's cross-version identity metadata: IRI, obsolete flag, and replacement IRI if any. */
   public record ConceptMeta(String iri, boolean obsolete, String replacedBy) {}
 
+  /** Every concept field that participates in label-sensitive normalized content identity. */
+  public record ConceptState(String iri, String prefLabel, boolean obsolete, String replacedBy) {}
+
+  /** One captured name literal to insert: the concept it names, the property CURIE (e.g.
+   *  {@code skos:prefLabel}), the BCP-47 language tag ({@code ""} = untagged), and the value. */
+  public record LabelRow(String conceptIri, String property, String lang, String value) {}
+
+  /** One captured name literal read back, without the concept IRI (the caller keyed the query on it). */
+  public record LabelEntry(String property, String lang, String value) {}
+
   private final Connection connection;
+  private Boolean labelTablePresent; // cached: a snapshot ingested before label capture has no label table
 
   private SnapshotStore(Connection connection) {
     this.connection = connection;
@@ -89,6 +100,23 @@ public class SnapshotStore implements AutoCloseable {
             PRIMARY KEY (subject_id, predicate, object_id)
           ) WITHOUT ROWID""");
       s.executeUpdate("CREATE INDEX IF NOT EXISTS idx_relation_obj ON relation(predicate, object_id)");
+      // Every language variant of a concept's names — its labels and synonyms — with the BCP-47
+      // language tag ('' = untagged, BioPortal's "none"). The served pref_label keeps the single
+      // best-ranked label; this table preserves the rest so a multilingual ontology is not collapsed
+      // to one language. Outside content identity by construction: normalizedContentHash never reads
+      // it. CREATE ... IF NOT EXISTS, so opening a pre-existing snapshot migrates it to an empty table
+      // that the label backfill then fills.
+      s.executeUpdate("""
+          CREATE TABLE IF NOT EXISTS label (
+            concept_id INTEGER NOT NULL,
+            property   TEXT NOT NULL,
+            lang       TEXT NOT NULL DEFAULT '',
+            value      TEXT NOT NULL,
+            PRIMARY KEY (concept_id, property, lang, value)
+          ) WITHOUT ROWID""");
+      // Small key/value provenance for the snapshot itself (e.g. a marker that label backfill has run,
+      // so a resume skips a snapshot even when it legitimately has zero real labels). Outside identity.
+      s.executeUpdate("CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT)");
     }
   }
 
@@ -168,6 +196,175 @@ public class SnapshotStore implements AutoCloseable {
       connection.commit();
     } finally {
       connection.setAutoCommit(autoCommit);
+    }
+  }
+
+  /** How long a write waits for a lock held by another connection (e.g. a live server reading this
+   *  snapshot) before failing, instead of erroring immediately with SQLITE_BUSY. Lets a backfill write
+   *  labels into a snapshot the server is serving. */
+  public void setBusyTimeoutMillis(int millis) throws SQLException {
+    try (Statement s = connection.createStatement()) {
+      s.execute("PRAGMA busy_timeout = " + millis);
+    }
+  }
+
+  /**
+   * Bulk-adds captured name literals in a single transaction. Each row names an existing concept by
+   * IRI; a row whose concept IRI is not in the store is silently ignored (matches {@link #addEdge}).
+   * Idempotent — duplicate rows are dropped by the primary key. Outside content identity.
+   */
+  public void addLabels(List<LabelRow> rows) throws SQLException {
+    boolean autoCommit = connection.getAutoCommit();
+    connection.setAutoCommit(false);
+    try (PreparedStatement ps = connection.prepareStatement("""
+        INSERT OR IGNORE INTO label (concept_id, property, lang, value)
+        SELECT c.id, ?, ?, ? FROM concept c WHERE c.iri = ?""")) {
+      for (LabelRow r : rows) {
+        ps.setString(1, r.property());
+        ps.setString(2, r.lang() == null ? "" : r.lang());
+        ps.setString(3, r.value());
+        ps.setString(4, r.conceptIri());
+        ps.addBatch();
+      }
+      ps.executeBatch();
+      connection.commit();
+    } finally {
+      connection.setAutoCommit(autoCommit);
+    }
+  }
+
+  /** Every captured name literal for one concept, ordered by property then language. */
+  public List<LabelEntry> labels(String conceptIri) throws SQLException {
+    try (PreparedStatement ps = connection.prepareStatement(
+        "SELECT l.property, l.lang, l.value FROM label l JOIN concept c ON c.id = l.concept_id "
+            + "WHERE c.iri = ? ORDER BY l.property, l.lang, l.value")) {
+      ps.setString(1, conceptIri);
+      try (ResultSet rs = ps.executeQuery()) {
+        List<LabelEntry> out = new ArrayList<>();
+        while (rs.next()) {
+          out.add(new LabelEntry(rs.getString("property"), rs.getString("lang"), rs.getString("value")));
+        }
+        return out;
+      }
+    }
+  }
+
+  /** The synonym-scope property CURIEs — every captured name that is a synonym rather than the label
+   *  proper. Kept in sync with the ingest-side capture (LabelProperties); the label table stores CURIEs. */
+  private static final String SYNONYM_PROPERTY_LIST =
+      "'skos:altLabel','skos:hiddenLabel','oboInOwl:hasExactSynonym','oboInOwl:hasRelatedSynonym',"
+          + "'oboInOwl:hasBroadSynonym','oboInOwl:hasNarrowSynonym','oboInOwl:hasSynonym'";
+
+  /** Whether this snapshot has a {@code label} table. A snapshot ingested before multilingual capture
+   *  (and never backfilled) has none; the read paths that consult labels must tolerate its absence rather
+   *  than fail with "no such table: label". Cached per connection. */
+  private boolean hasLabelTable() throws SQLException {
+    if (labelTablePresent == null) {
+      try (Statement s = connection.createStatement();
+           ResultSet rs = s.executeQuery(
+               "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'label'")) {
+        labelTablePresent = rs.next();
+      }
+    }
+    return labelTablePresent;
+  }
+
+  /** The concept's label in a requested BCP-47 language, or empty if it has none in that language (the
+   *  caller falls back to the served {@code pref_label}). Matches the exact tag or a regional variant
+   *  ({@code fr} matches {@code fr-CA}), preferring an exact tag and {@code rdfs:label} over
+   *  {@code skos:prefLabel}. A null/blank language yields empty. */
+  public Optional<String> labelInLang(String conceptIri, String lang) throws SQLException {
+    if (lang == null || lang.isBlank() || !hasLabelTable()) {
+      return Optional.empty();
+    }
+    try (PreparedStatement ps = connection.prepareStatement(
+        "SELECT l.value FROM label l JOIN concept c ON c.id = l.concept_id "
+            + "WHERE c.iri = ? AND l.property IN ('rdfs:label','skos:prefLabel') "
+            + "AND (LOWER(l.lang) = LOWER(?) OR LOWER(l.lang) LIKE LOWER(?)) "
+            + "ORDER BY (CASE WHEN LOWER(l.lang) = LOWER(?) THEN 0 ELSE 1 END), "
+            + "(CASE l.property WHEN 'rdfs:label' THEN 0 ELSE 1 END), l.value LIMIT 1")) {
+      ps.setString(1, conceptIri);
+      ps.setString(2, lang);
+      ps.setString(3, lang + "-%");
+      ps.setString(4, lang);
+      try (ResultSet rs = ps.executeQuery()) {
+        return rs.next() ? Optional.of(rs.getString(1)) : Optional.empty();
+      }
+    }
+  }
+
+  /** A concept's synonyms — the captured altLabels and OBO synonym scopes, distinct values across all
+   *  languages, ordered. The label proper ({@code rdfs:label}/{@code skos:prefLabel}) is excluded. */
+  public List<String> synonyms(String conceptIri) throws SQLException {
+    if (!hasLabelTable()) {
+      return new ArrayList<>();
+    }
+    try (PreparedStatement ps = connection.prepareStatement(
+        "SELECT DISTINCT l.value FROM label l JOIN concept c ON c.id = l.concept_id "
+            + "WHERE c.iri = ? AND l.property IN (" + SYNONYM_PROPERTY_LIST + ") ORDER BY l.value")) {
+      ps.setString(1, conceptIri);
+      try (ResultSet rs = ps.executeQuery()) {
+        List<String> out = new ArrayList<>();
+        while (rs.next()) {
+          out.add(rs.getString(1));
+        }
+        return out;
+      }
+    }
+  }
+
+  /** Every captured name literal in the snapshot, as insertable rows (concept IRI carried). Used to
+   *  copy a freshly-extracted snapshot's labels into an existing snapshot file during backfill. */
+  public List<LabelRow> allLabels() throws SQLException {
+    try (Statement s = connection.createStatement();
+         ResultSet rs = s.executeQuery(
+             "SELECT c.iri, l.property, l.lang, l.value FROM label l "
+                 + "JOIN concept c ON c.id = l.concept_id")) {
+      List<LabelRow> out = new ArrayList<>();
+      while (rs.next()) {
+        out.add(new LabelRow(rs.getString("iri"), rs.getString("property"),
+            rs.getString("lang"), rs.getString("value")));
+      }
+      return out;
+    }
+  }
+
+  /** Total captured name literals. Zero means labels have not been captured for this snapshot yet
+   *  (the backfill skip check). */
+  public int labelCount() throws SQLException {
+    try (Statement s = connection.createStatement();
+         ResultSet rs = s.executeQuery("SELECT COUNT(*) FROM label")) {
+      return rs.next() ? rs.getInt(1) : 0;
+    }
+  }
+
+  /** Number of concepts in the snapshot. Queries the {@code concept} table directly (no schema
+   *  creation), so it throws on a malformed or truncated store whose table is absent — which the
+   *  integrity check treats as unreadable. */
+  public long conceptCount() throws SQLException {
+    try (Statement s = connection.createStatement();
+         ResultSet rs = s.executeQuery("SELECT COUNT(*) FROM concept")) {
+      return rs.next() ? rs.getLong(1) : 0;
+    }
+  }
+
+  /** Sets a snapshot-level provenance value (see the {@code meta} table). */
+  public void setMeta(String key, String value) throws SQLException {
+    try (PreparedStatement ps = connection.prepareStatement(
+        "INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value")) {
+      ps.setString(1, key);
+      ps.setString(2, value);
+      ps.executeUpdate();
+    }
+  }
+
+  /** A snapshot-level provenance value, or empty if unset. */
+  public java.util.Optional<String> getMeta(String key) throws SQLException {
+    try (PreparedStatement ps = connection.prepareStatement("SELECT value FROM meta WHERE key = ?")) {
+      ps.setString(1, key);
+      try (ResultSet rs = ps.executeQuery()) {
+        return rs.next() ? java.util.Optional.ofNullable(rs.getString(1)) : java.util.Optional.empty();
+      }
     }
   }
 
@@ -770,6 +967,15 @@ public class SnapshotStore implements AutoCloseable {
   private List<Concept> labelSearch(String rootIri, String query, boolean prefixOnly, int limit) throws SQLException {
     String escaped = escapeLike(query == null ? "" : query);
     String pattern = prefixOnly ? escaped + "%" : "%" + escaped + "%";
+    // A non-empty query also matches any captured name — a label in any language, or a synonym — so a
+    // French term or an exact synonym finds the concept, not only its served pref_label. An empty query
+    // is a browse: pref_label already matches every concept, so the label join is skipped (and its per-row
+    // cost avoided). The match column, factored so it is used identically in the rooted and unrooted forms.
+    boolean searchNames = query != null && !query.isEmpty() && hasLabelTable();
+    String match = searchNames
+        ? "(COALESCE(c.pref_label, '') LIKE ? ESCAPE '\\'"
+            + " OR EXISTS(SELECT 1 FROM label l WHERE l.concept_id = c.id AND l.value LIKE ? ESCAPE '\\'))"
+        : "COALESCE(c.pref_label, '') LIKE ? ESCAPE '\\'";
     StringBuilder sql = new StringBuilder(
         "SELECT c.iri, c.pref_label, c.obsolete,\n" +
         "       EXISTS(SELECT 1 FROM edge e2 WHERE e2.parent_id = c.id) AS has_children\n" +
@@ -789,9 +995,9 @@ public class SnapshotStore implements AutoCloseable {
                  "        SELECT cl.descendant_id FROM closure cl\n" +
                  "        JOIN concept a ON a.id = cl.ancestor_id WHERE a.iri = ?)\n" +
                  "  AND c.iri <> ?\n" +
-                 "  AND COALESCE(c.pref_label, '') LIKE ? ESCAPE '\\'\n");
+                 "  AND ").append(match).append('\n');
     } else {
-      sql.append("WHERE COALESCE(c.pref_label, '') LIKE ? ESCAPE '\\'\n");
+      sql.append("WHERE ").append(match).append('\n');
     }
     sql.append("ORDER BY length(c.pref_label), c.pref_label, c.iri");
     if (limit > 0) {
@@ -803,7 +1009,10 @@ public class SnapshotStore implements AutoCloseable {
         ps.setString(i++, rootIri);
         ps.setString(i++, rootIri);
       }
-      ps.setString(i, pattern);
+      ps.setString(i++, pattern);
+      if (searchNames) {
+        ps.setString(i, pattern); // the label-table match reuses the same pattern
+      }
       try (ResultSet rs = ps.executeQuery()) {
         List<Concept> out = new ArrayList<>();
         while (rs.next()) {
@@ -862,6 +1071,18 @@ public class SnapshotStore implements AutoCloseable {
     }
   }
 
+  /** Every concept's complete label-sensitive content state, for version comparison. */
+  public List<ConceptState> allConceptStates() throws SQLException {
+    try (Statement s = connection.createStatement();
+         ResultSet rs = s.executeQuery("SELECT iri, pref_label, obsolete, replaced_by FROM concept")) {
+      List<ConceptState> out = new ArrayList<>();
+      while (rs.next()) {
+        out.add(new ConceptState(rs.getString(1), rs.getString(2), rs.getInt(3) != 0, rs.getString(4)));
+      }
+      return out;
+    }
+  }
+
   /** Every direct edge as a {@code [childIri, parentIri]} pair. */
   public List<String[]> allEdges() throws SQLException {
     try (Statement s = connection.createStatement();
@@ -872,6 +1093,36 @@ public class SnapshotStore implements AutoCloseable {
       List<String[]> out = new ArrayList<>();
       while (rs.next()) {
         out.add(new String[]{rs.getString(1), rs.getString(2)});
+      }
+      return out;
+    }
+  }
+
+  /** Every direct edge as a {@code [childIri, parentIri, sourcePredicate]} triple. */
+  public List<String[]> allEdgesWithPredicates() throws SQLException {
+    try (Statement s = connection.createStatement();
+         ResultSet rs = s.executeQuery("""
+             SELECT c.iri, p.iri, e.source_pred FROM edge e
+             JOIN concept c ON c.id = e.child_id
+             JOIN concept p ON p.id = e.parent_id""")) {
+      List<String[]> out = new ArrayList<>();
+      while (rs.next()) {
+        out.add(new String[]{rs.getString(1), rs.getString(2), rs.getString(3)});
+      }
+      return out;
+    }
+  }
+
+  /** Every typed relation as a {@code [subjectIri, predicate, objectIri]} triple. */
+  public List<String[]> allRelations() throws SQLException {
+    try (Statement s = connection.createStatement();
+         ResultSet rs = s.executeQuery("""
+             SELECT subj.iri, r.predicate, obj.iri FROM relation r
+             JOIN concept subj ON subj.id = r.subject_id
+             JOIN concept obj ON obj.id = r.object_id""")) {
+      List<String[]> out = new ArrayList<>();
+      while (rs.next()) {
+        out.add(new String[]{rs.getString(1), rs.getString(2), rs.getString(3)});
       }
       return out;
     }

@@ -259,10 +259,6 @@ public class BioPortalService implements IBioPortalService {
     return bpClassDAO.getParents(id, ontology, apiKey);
   }
 
-  public BpProvisionalClass createBpProvisionalClass(BpProvisionalClass c, String apiKey) throws IOException {
-    return bpProvClassDAO.create(c, apiKey);
-  }
-
   public BpProvisionalClass findBpProvisionalClassById(String id, String apiKey) throws IOException {
     return bpProvClassDAO.find(id, apiKey);
   }
@@ -272,32 +268,12 @@ public class BioPortalService implements IBioPortalService {
     return bpProvClassDAO.findAll(ontology, page, pageSize, apiKey);
   }
 
-  public void updateProvisionalClass(BpProvisionalClass c, String apiKey) throws IOException {
-    bpProvClassDAO.update(c, apiKey);
-  }
-
-  public void deleteProvisionalClass(String id, String apiKey) throws IOException {
-    bpProvClassDAO.delete(id, apiKey);
-  }
-
   /**
    * Relations
    */
 
-  public BpProvisionalRelation createBpProvisionalRelation(BpProvisionalRelation pr, String apiKey) throws IOException {
-    return bpProvRelationDAO.create(pr, apiKey);
-  }
-
   public BpProvisionalRelation findProvisionalRelationById(String id, String apiKey) throws IOException {
     return bpProvRelationDAO.find(id, apiKey);
-  }
-
-//  public void updateProvisionalRelation(BpProvisionalRelation r, String apiKey) throws IOException {
-//    bpProvRelationDAO.update(r, apiKey);
-//  }
-
-  public void deleteProvisionalRelation(String id, String apiKey) throws IOException {
-    bpProvRelationDAO.delete(id, apiKey);
   }
 
   /**
