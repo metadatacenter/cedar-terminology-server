@@ -180,7 +180,7 @@ public class VersionAwareSearchServiceTest {
   @Test
   public void aPinThatTheStoreDoesNotHoldIsReportedWithoutFailingTheSearch() throws Exception {
     SearchResponse response = service.search(request("cat", List.of("class"),
-        List.of(ex("hash-v1"), new SourceSelector(null, "EX", new VersionSelector("no-such-hash")))));
+        List.of(ex("hash-v1"), new SourceSelector(null, "VSC", new VersionSelector("no-such-hash")))));
 
     SourceBlock missing = response.sources().get(1);
     assertEquals(SourceBlock.SERVED_UNAVAILABLE, missing.served());
@@ -189,6 +189,15 @@ public class VersionAwareSearchServiceTest {
     assertEquals("no-such-hash", missing.requestedVersion().id());
     // The other source still answered: a search across sources has a partial answer worth returning.
     assertEquals(1, response.results().get("class").totalCount());
+  }
+
+  @Test
+  public void aSourceMayBeNamedOnlyOnce() {
+    // Two versions of one acronym would leave every hit from it unable to say which it came from,
+    // because a hit carries the addressing pair and no version of its own.
+    assertThrows(VersionAwareSearchService.BadSearchRequestException.class,
+        () -> service.search(request("cat", List.of("class"),
+            List.of(ex("hash-v1"), ex("hash-v2")))));
   }
 
   @Test
@@ -275,6 +284,19 @@ public class VersionAwareSearchServiceTest {
 
     List<OntologyHit> byAcronym = hits(service.search(request("ex", List.of("ontology"), List.of())), "ontology");
     assertEquals(SearchResponse.MATCH_SOURCE_ACRONYM, byAcronym.get(0).matchType());
+  }
+
+  @Test
+  public void anOntologyHitBringsItsSourceBlockWithIt() throws Exception {
+    // The hit carries only the addressing pair, so without a block for it a caller that named no
+    // sources is handed an acronym and no way to learn the ontology's name, IRI or version.
+    SearchResponse response = service.search(request("mammal", List.of("ontology"), List.of()));
+    assertEquals(1, response.results().get("ontology").totalCount());
+    assertEquals(1, response.sources().size());
+    SourceBlock block = response.sources().get(0);
+    assertEquals("EX", block.sourceAcronym());
+    assertEquals("Example Mammal Ontology", block.sourceName());
+    assertEquals("hash-v2", block.version().id());
   }
 
   @Test

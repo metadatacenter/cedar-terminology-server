@@ -75,7 +75,12 @@ public class VersionAwareSearchService {
     int pageSize = clampPageSize(request.pageSize());
 
     List<Resolved> resolved = resolveSources(request.sourcesOrEmpty());
-    List<SourceBlock> blocks = resolved.stream().map(Resolved::block).toList();
+    // Keyed by acronym so an ontology hit can add the source it names without duplicating a block
+    // the request already asked for.
+    Map<String, SourceBlock> blocks = new LinkedHashMap<>();
+    for (Resolved r : resolved) {
+      blocks.putIfAbsent(r.acronym(), r.block());
+    }
     List<Resolved> searchable = resolved.stream().filter(Resolved::isLocal).toList();
 
     if (searchable.isEmpty() && needsASource(types)) {
@@ -96,9 +101,20 @@ public class VersionAwareSearchService {
         case SearchRequest.TYPE_VALUE_SET -> valueSetHits(query, searchable);
         default -> List.of();
       };
+      if (SearchRequest.TYPE_ONTOLOGY.equals(type)) {
+        // An ontology hit is thin because its source block carries the rest, so the block has to
+        // exist. Without this a client is handed an acronym and no way to learn its name or IRI —
+        // which is precisely what a request that named no sources gets.
+        for (Hit hit : all) {
+          if (!blocks.containsKey(hit.sourceAcronym())) {
+            blocks.put(hit.sourceAcronym(), resolveSource(
+                new SourceSelector(hit.sourceSystem(), hit.sourceAcronym(), null)).block());
+          }
+        }
+      }
       results.put(type, paged(all, page, pageSize));
     }
-    return new SearchResponse(query, blocks, results);
+    return new SearchResponse(query, List.copyOf(blocks.values()), results);
   }
 
   /* ----------------------------------------------------------------------------------------------
@@ -114,7 +130,17 @@ public class VersionAwareSearchService {
 
   private List<Resolved> resolveSources(List<SourceSelector> selectors) throws SQLException {
     List<Resolved> out = new ArrayList<>();
+    java.util.Set<String> seen = new java.util.LinkedHashSet<>();
     for (SourceSelector selector : selectors) {
+      // One version per source per request. A hit names its source with the system and acronym pair
+      // and nothing else, so the same acronym at two versions would leave every hit from it unable to
+      // say which of the two it came from. Refused rather than collapsed, because collapsing would
+      // quietly answer a different question than the one asked.
+      String key = selector.systemOrDefault() + "/" + selector.sourceAcronym();
+      if (!seen.add(key)) {
+        throw new BadSearchRequestException(
+            "Source " + key + " is named more than once. A search can ask a source for one version.");
+      }
       out.add(resolveSource(selector));
     }
     return out;
