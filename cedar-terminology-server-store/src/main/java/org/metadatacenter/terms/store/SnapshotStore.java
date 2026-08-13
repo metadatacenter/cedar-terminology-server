@@ -781,6 +781,57 @@ public class SnapshotStore implements AutoCloseable {
         WHERE a.iri = ? ORDER BY d.iri""", ancestorIri);
   }
 
+  /**
+   * How many descendants a concept has, counted in the closure rather than materialized.
+   *
+   * A branch constraint offers a class's subtypes, so this is the size of what constraining to it
+   * would capture — the number a picker shows beside a branch. Counting in SQL matters because the
+   * caller asks it once per row of a result page: {@link #descendants} would build and discard a
+   * list of IRIs, which for an upper-level class is tens of thousands of strings per row.
+   */
+  public int descendantCount(String ancestorIri) throws SQLException {
+    try (PreparedStatement ps = connection.prepareStatement("""
+        SELECT COUNT(*) FROM closure cl
+        JOIN concept a ON a.id = cl.ancestor_id
+        WHERE a.iri = ?""")) {
+      ps.setString(1, ancestorIri);
+      try (ResultSet rs = ps.executeQuery()) {
+        return rs.next() ? rs.getInt(1) : 0;
+      }
+    }
+  }
+
+  /**
+   * The captured labels of one concept that match {@code query}, with the property and language each
+   * was recorded under.
+   *
+   * {@link #searchByLabel} matches a concept through any captured name — a label in any language, a
+   * synonym — so a hit's served {@code pref_label} often has no visible relation to what was typed.
+   * This answers what did match, which is what lets a result say so rather than looking like a
+   * defect. Empty when the query matched the served preferred label itself, or when the snapshot
+   * carries no label table.
+   */
+  public List<LabelEntry> matchingLabels(String conceptIri, String query) throws SQLException {
+    if (query == null || query.isEmpty() || !hasLabelTable()) {
+      return List.of();
+    }
+    List<LabelEntry> out = new ArrayList<>();
+    try (PreparedStatement ps = connection.prepareStatement("""
+        SELECT l.property, l.lang, l.value FROM label l
+        JOIN concept c ON c.id = l.concept_id
+        WHERE c.iri = ? AND l.value LIKE ? ESCAPE '\\'
+        ORDER BY LENGTH(l.value), l.value""")) {
+      ps.setString(1, conceptIri);
+      ps.setString(2, "%" + escapeLike(query) + "%");
+      try (ResultSet rs = ps.executeQuery()) {
+        while (rs.next()) {
+          out.add(new LabelEntry(rs.getString(1), rs.getString(2), rs.getString(3)));
+        }
+      }
+    }
+    return out;
+  }
+
   /** All ancestors of a concept. */
   public List<String> ancestors(String descendantIri) throws SQLException {
     return queryIris("""

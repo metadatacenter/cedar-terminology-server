@@ -1,0 +1,460 @@
+package org.metadatacenter.terms.search;
+
+import org.metadatacenter.terms.CatalogSnapshotProvider;
+import org.metadatacenter.terms.search.SearchRequest.SourceSelector;
+import org.metadatacenter.terms.search.SearchResponse.BranchHit;
+import org.metadatacenter.terms.search.SearchResponse.ClassHit;
+import org.metadatacenter.terms.search.SearchResponse.Hit;
+import org.metadatacenter.terms.search.SearchResponse.MatchedLabel;
+import org.metadatacenter.terms.search.SearchResponse.OntologyHit;
+import org.metadatacenter.terms.search.SearchResponse.SourceBlock;
+import org.metadatacenter.terms.search.SearchResponse.TermRef;
+import org.metadatacenter.terms.search.SearchResponse.TypeResults;
+import org.metadatacenter.terms.search.SearchResponse.ValueSetHit;
+import org.metadatacenter.terms.search.SearchResponse.VersionInfo;
+import org.metadatacenter.terms.store.CatalogStore;
+import org.metadatacenter.terms.store.SnapshotStore;
+
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Optional;
+
+/**
+ * Searches the local terminology store at a named version or the current one, across the constraint
+ * types a controlled-term field can carry.
+ *
+ * The design, and why this is not a parameter on {@code /bioportal/search}, is in
+ * {@code cedar-development/ops/VERSION-AWARE-SEARCH.md}. In short: that route takes no version, so
+ * an author who pins a constraint to an older ontology and then searches is searching the current
+ * one, and can select a term the pinned version does not contain.
+ *
+ * <p>Two limits of this implementation, both reported rather than hidden:
+ * <ul>
+ *   <li>Only locally-served sources are searched. A source the store does not hold is reported
+ *       {@code unavailable}, never quietly omitted — proxying it to BioPortal is designed but not
+ *       built, and reporting it as {@code proxied} while returning none of its terms would be the
+ *       silent wrong answer this endpoint exists to prevent.</li>
+ *   <li>A search names its sources. Searching the whole served corpus would mean opening and
+ *       querying every snapshot in the catalog, one SQLite file at a time, so it needs a
+ *       cross-snapshot index rather than a loop.</li>
+ * </ul>
+ */
+public class VersionAwareSearchService {
+
+  /** How many matches of one type are counted before the count becomes a ceiling. */
+  static final int COUNT_CAP = 1000;
+
+  /** How many descendants a branch row illustrates. */
+  private static final int EXAMPLE_COUNT = 3;
+
+  private static final int DEFAULT_PAGE_SIZE = 20;
+  private static final int MAX_PAGE_SIZE = 200;
+
+  private final CatalogSnapshotProvider provider;
+
+  public VersionAwareSearchService(CatalogSnapshotProvider provider) {
+    this.provider = provider;
+  }
+
+  /** A request the server will not answer, as opposed to one whose answer is empty. */
+  public static class BadSearchRequestException extends RuntimeException {
+    public BadSearchRequestException(String message) {
+      super(message);
+    }
+  }
+
+  public SearchResponse search(SearchRequest request) throws SQLException {
+    List<String> types = validatedTypes(request.typesOrAll());
+    String query = request.queryOrEmpty();
+    int page = Math.max(1, request.page() == null ? 1 : request.page());
+    int pageSize = clampPageSize(request.pageSize());
+
+    List<Resolved> resolved = resolveSources(request.sourcesOrEmpty());
+    List<SourceBlock> blocks = resolved.stream().map(Resolved::block).toList();
+    List<Resolved> searchable = resolved.stream().filter(Resolved::isLocal).toList();
+
+    if (searchable.isEmpty() && needsASource(types)) {
+      throw new BadSearchRequestException(
+          "Searching for " + String.join(", ", types) + " needs at least one locally-served source. "
+              + "Corpus-wide search is not served: it would mean querying every snapshot in the catalog.");
+    }
+
+    Map<String, TypeResults> results = new LinkedHashMap<>();
+    for (String type : SearchRequest.ALL_TYPES) {
+      if (!types.contains(type)) {
+        continue;
+      }
+      List<? extends Hit> all = switch (type) {
+        case SearchRequest.TYPE_ONTOLOGY -> ontologyHits(query, resolved);
+        case SearchRequest.TYPE_CLASS -> classHits(query, searchable, request.lang());
+        case SearchRequest.TYPE_BRANCH -> branchHits(query, searchable, request.lang());
+        case SearchRequest.TYPE_VALUE_SET -> valueSetHits(query, searchable);
+        default -> List.of();
+      };
+      results.put(type, paged(all, page, pageSize));
+    }
+    return new SearchResponse(query, blocks, results);
+  }
+
+  /* ----------------------------------------------------------------------------------------------
+   * Sources
+   * ------------------------------------------------------------------------------------------- */
+
+  /** A requested source, resolved to what will answer for it — or to why nothing will. */
+  private record Resolved(SourceBlock block, String acronym, SnapshotStore store) {
+    boolean isLocal() {
+      return store != null;
+    }
+  }
+
+  private List<Resolved> resolveSources(List<SourceSelector> selectors) throws SQLException {
+    List<Resolved> out = new ArrayList<>();
+    for (SourceSelector selector : selectors) {
+      out.add(resolveSource(selector));
+    }
+    return out;
+  }
+
+  private Resolved resolveSource(SourceSelector selector) throws SQLException {
+    String system = selector.systemOrDefault();
+    String acronym = selector.sourceAcronym();
+    String pinned = selector.version() == null ? null : selector.version().id();
+
+    if (acronym == null || acronym.isBlank()) {
+      throw new BadSearchRequestException("A source needs a sourceAcronym.");
+    }
+
+    CatalogStore catalog = provider.catalog();
+    String name = catalog.ontologyName(acronym);
+    String iri = catalog.ontologyIri(acronym).orElse(null);
+
+    if (!provider.serves(acronym)) {
+      // Whether the catalog has never heard of it or simply does not serve it are different facts to
+      // an operator: one is a typo, the other an allowlist.
+      String reason = name == null && iri == null
+          ? SourceBlock.REASON_SOURCE_UNKNOWN
+          : SourceBlock.REASON_SOURCE_NOT_SERVED;
+      return unavailable(system, acronym, name, iri, reason, selector.version());
+    }
+
+    Optional<CatalogStore.SnapshotInfo> info = provider.snapshotInfo(acronym, pinned);
+    if (info.isEmpty()) {
+      // Served, but not at what was asked for. With a pin that is the pin's fault; without one the
+      // ontology has no snapshot at all, which is an allowlist that outran the catalog.
+      String reason = pinned == null
+          ? SourceBlock.REASON_SOURCE_NOT_SERVED
+          : SourceBlock.REASON_VERSION_NOT_HELD;
+      return unavailable(system, acronym, name, iri, reason, selector.version());
+    }
+
+    Optional<SnapshotStore> store = provider.forOntology(acronym, pinned);
+    if (store.isEmpty()) {
+      return unavailable(system, acronym, name, iri, SourceBlock.REASON_SOURCE_NOT_SERVED, selector.version());
+    }
+
+    CatalogStore.SnapshotInfo snapshot = info.get();
+    VersionInfo version = new VersionInfo(snapshot.versionId(), snapshot.releasedAt(), snapshot.declaredVersion());
+    SourceBlock block = new SourceBlock(system, acronym, name, iri,
+        SourceBlock.SERVED_LOCAL, true, version, null, null);
+    return new Resolved(block, acronym, store.get());
+  }
+
+  private static Resolved unavailable(String system, String acronym, String name, String iri, String reason,
+                                      SearchRequest.VersionSelector requested) {
+    SourceBlock block = new SourceBlock(system, acronym, name, iri,
+        SourceBlock.SERVED_UNAVAILABLE, false, null, reason, requested);
+    return new Resolved(block, acronym, null);
+  }
+
+  /* ----------------------------------------------------------------------------------------------
+   * Types
+   * ------------------------------------------------------------------------------------------- */
+
+  /**
+   * Ontologies whose acronym or name matches, over the catalog rather than over the class results.
+   * The tab is therefore empty for a query like "melanoma", where no vocabulary is named that —
+   * which is a true answer, and one a client has to render as such.
+   */
+  private List<OntologyHit> ontologyHits(String query, List<Resolved> resolved) throws SQLException {
+    if (query.isEmpty()) {
+      return List.of();
+    }
+    String needle = query.toLowerCase(Locale.ROOT);
+    List<OntologyHit> hits = new ArrayList<>();
+    for (CatalogStore.OntologyInfo ontology : provider.catalog().listOntologies()) {
+      if (!provider.serves(ontology.acronym())) {
+        continue;
+      }
+      if (!resolved.isEmpty() && resolved.stream().noneMatch(r -> r.acronym().equals(ontology.acronym()))) {
+        continue;
+      }
+      String acronym = ontology.acronym() == null ? "" : ontology.acronym();
+      String name = ontology.name() == null ? "" : ontology.name();
+      boolean byAcronym = acronym.toLowerCase(Locale.ROOT).contains(needle);
+      boolean byName = name.toLowerCase(Locale.ROOT).contains(needle);
+      if (!byAcronym && !byName) {
+        continue;
+      }
+      hits.add(new OntologyHit(SearchRequest.TYPE_ONTOLOGY, SearchRequest.BIOPORTAL, acronym, null,
+          byAcronym ? SearchResponse.MATCH_SOURCE_ACRONYM : SearchResponse.MATCH_SOURCE_NAME));
+    }
+    // Exactness first, then alphabetically: an exact acronym, then a name starting with the query,
+    // then one merely containing it. Deterministic, and it needs no signal anyone has to keep current.
+    hits.sort(Comparator
+        .comparingInt((OntologyHit h) -> nameRank(h.sourceAcronym(), needle))
+        .thenComparing(OntologyHit::sourceAcronym));
+    return hits;
+  }
+
+  private static int nameRank(String acronym, String needle) {
+    String lower = acronym.toLowerCase(Locale.ROOT);
+    if (lower.equals(needle)) {
+      return 0;
+    }
+    return lower.startsWith(needle) ? 1 : 2;
+  }
+
+  private List<ClassHit> classHits(String query, List<Resolved> sources, String lang) throws SQLException {
+    List<ClassHit> hits = new ArrayList<>();
+    for (Resolved source : sources) {
+      SnapshotStore store = source.store();
+      for (SnapshotStore.Concept concept : store.searchByLabel(query, false, COUNT_CAP)) {
+        String label = displayLabel(store, concept, lang);
+        List<MatchedLabel> matched = matchedLabels(store, concept, query, label);
+        hits.add(new ClassHit(SearchRequest.TYPE_CLASS, source.block().sourceSystem(), source.acronym(),
+            concept.iri(), SearchRequest.TYPE_CLASS, label,
+            matched.isEmpty() ? SearchResponse.MATCH_TERM_LABEL : SearchResponse.MATCH_SYNONYM,
+            matched.isEmpty() ? null : matched,
+            concept.obsolete(), replacedBy(store, concept),
+            concept.hasChildren(), store.descendantCount(concept.iri())));
+      }
+    }
+    hits.sort(hitOrder(query, ClassHit::termLabel, ClassHit::obsolete, ClassHit::termIri));
+    return hits;
+  }
+
+  /**
+   * The class results that have descendants, expressed as branch entries: what an author would be
+   * constraining to, rather than one term.
+   */
+  private List<BranchHit> branchHits(String query, List<Resolved> sources, String lang) throws SQLException {
+    List<BranchHit> hits = new ArrayList<>();
+    for (Resolved source : sources) {
+      SnapshotStore store = source.store();
+      for (SnapshotStore.Concept concept : store.searchByLabel(query, false, COUNT_CAP)) {
+        if (!concept.hasChildren()) {
+          continue;
+        }
+        String label = displayLabel(store, concept, lang);
+        List<MatchedLabel> matched = matchedLabels(store, concept, query, label);
+        hits.add(new BranchHit(SearchRequest.TYPE_BRANCH, source.block().sourceSystem(), source.acronym(),
+            concept.iri(), label, store.descendantCount(concept.iri()),
+            matched.isEmpty() ? SearchResponse.MATCH_TERM_LABEL : SearchResponse.MATCH_SYNONYM,
+            matched.isEmpty() ? null : matched,
+            concept.obsolete(), path(store, concept.iri()), examples(store, concept.iri())));
+      }
+    }
+    hits.sort(hitOrder(query, BranchHit::termBaseLabel, BranchHit::obsolete, BranchHit::termBaseIri));
+    return hits;
+  }
+
+  /**
+   * Value sets, from the collections among the named sources.
+   *
+   * A value-set collection is ingested exactly as an ontology and differs only in the catalog's kind
+   * discriminator, so inside a snapshot a value set is a concept with values beneath it and a value
+   * is a leaf. A match on a value therefore surfaces the value set that holds it, which is the thing
+   * a field can actually be constrained to.
+   */
+  private List<ValueSetHit> valueSetHits(String query, List<Resolved> sources) throws SQLException {
+    Map<String, ValueSetHit> byIri = new LinkedHashMap<>();
+    for (Resolved source : sources) {
+      if (!provider.catalog().isValueSetCollection(source.acronym())) {
+        continue;
+      }
+      SnapshotStore store = source.store();
+      for (SnapshotStore.Concept concept : store.searchByLabel(query, false, COUNT_CAP)) {
+        if (concept.hasChildren()) {
+          byIri.putIfAbsent(concept.iri(), new ValueSetHit(SearchRequest.TYPE_VALUE_SET,
+              source.block().sourceSystem(), source.acronym(), concept.iri(), concept.prefLabel(),
+              store.children(concept.iri()).size(), SearchResponse.MATCH_TERM_BASE_LABEL, null));
+          continue;
+        }
+        // A matched value, credited to each value set that holds it.
+        for (String parent : store.parents(concept.iri())) {
+          ValueSetHit existing = byIri.get(parent);
+          List<TermRef> matched = new ArrayList<>(
+              existing == null || existing.matchedTerms() == null ? List.of() : existing.matchedTerms());
+          matched.add(new TermRef(concept.iri(), concept.prefLabel()));
+          if (existing != null && SearchResponse.MATCH_TERM_BASE_LABEL.equals(existing.matchType())) {
+            byIri.put(parent, new ValueSetHit(existing.type(), existing.sourceSystem(), existing.sourceAcronym(),
+                existing.termBaseIri(), existing.termBaseLabel(), existing.termCount(),
+                existing.matchType(), matched));
+            continue;
+          }
+          byIri.put(parent, new ValueSetHit(SearchRequest.TYPE_VALUE_SET, source.block().sourceSystem(),
+              source.acronym(), parent, store.prefLabel(parent).orElse(null),
+              store.children(parent).size(), SearchResponse.MATCH_MEMBER, matched));
+        }
+      }
+    }
+    List<ValueSetHit> hits = new ArrayList<>(byIri.values());
+    hits.sort(hitOrder(query, ValueSetHit::termBaseLabel, h -> false, ValueSetHit::termBaseIri));
+    return hits;
+  }
+
+  /* ----------------------------------------------------------------------------------------------
+   * Hit detail
+   * ------------------------------------------------------------------------------------------- */
+
+  private static String displayLabel(SnapshotStore store, SnapshotStore.Concept concept, String lang)
+      throws SQLException {
+    if (lang == null || lang.isBlank()) {
+      return concept.prefLabel();
+    }
+    return store.labelInLang(concept.iri(), lang).orElse(concept.prefLabel());
+  }
+
+  /**
+   * What matched, when it was not the label on screen. A search reaches a concept through any
+   * captured name, so a row labelled "melanoma" can be a French or synonym hit; without this the
+   * result reads as a defect rather than as recall.
+   */
+  private static List<MatchedLabel> matchedLabels(SnapshotStore store, SnapshotStore.Concept concept,
+                                                  String query, String shown) throws SQLException {
+    if (query.isEmpty() || containsIgnoreCase(shown, query)) {
+      return List.of();
+    }
+    List<MatchedLabel> out = new ArrayList<>();
+    for (SnapshotStore.LabelEntry entry : store.matchingLabels(concept.iri(), query)) {
+      out.add(new MatchedLabel(entry.value(), entry.lang()));
+    }
+    return out;
+  }
+
+  private static TermRef replacedBy(SnapshotStore store, SnapshotStore.Concept concept) throws SQLException {
+    if (!concept.obsolete()) {
+      return null;
+    }
+    Optional<SnapshotStore.ConceptMeta> meta = store.conceptMeta(concept.iri());
+    if (meta.isEmpty() || meta.get().replacedBy() == null) {
+      return null;
+    }
+    String iri = meta.get().replacedBy();
+    return new TermRef(iri, store.prefLabel(iri).orElse(null));
+  }
+
+  /** The chain from a root down to the term, which is what separates one "disease" from another. */
+  private static List<TermRef> path(SnapshotStore store, String iri) throws SQLException {
+    List<TermRef> path = new ArrayList<>();
+    String current = iri;
+    // Bounded rather than recursive: a broader/narrower cycle, which some SKOS vocabularies carry,
+    // would otherwise walk forever.
+    for (int depth = 0; depth < 32; depth++) {
+      List<String> parents = store.parents(current);
+      if (parents.isEmpty()) {
+        break;
+      }
+      String parent = parents.get(0);
+      if (parent.equals(current) || path.stream().anyMatch(step -> step.termIri().equals(parent))) {
+        break;
+      }
+      path.add(0, new TermRef(parent, store.prefLabel(parent).orElse(null)));
+      current = parent;
+    }
+    return path.isEmpty() ? null : path;
+  }
+
+  /** A few of what lies beneath, so an author can see whether the subtree is the one they pictured. */
+  private static List<TermRef> examples(SnapshotStore store, String iri) throws SQLException {
+    List<TermRef> examples = new ArrayList<>();
+    for (String child : store.children(iri)) {
+      if (examples.size() == EXAMPLE_COUNT) {
+        break;
+      }
+      examples.add(new TermRef(child, store.prefLabel(child).orElse(null)));
+    }
+    return examples.isEmpty() ? null : examples;
+  }
+
+  /* ----------------------------------------------------------------------------------------------
+   * Ordering and paging
+   * ------------------------------------------------------------------------------------------- */
+
+  /**
+   * A deterministic order, and no more than that. An exact label first, then a label that starts
+   * with the query, then the shortest, with obsolete terms demoted and the IRI breaking every
+   * remaining tie so the same query never returns two different orders.
+   *
+   * This is not the ordering work the roadmap describes. That is a ranking problem — match reason,
+   * length normalisation, a total order over the whole corpus — and it lands here when it is done.
+   */
+  private static <H> Comparator<H> hitOrder(String query, java.util.function.Function<H, String> label,
+                                            java.util.function.Predicate<H> obsolete,
+                                            java.util.function.Function<H, String> iri) {
+    String needle = query.toLowerCase(Locale.ROOT);
+    return Comparator
+        .comparing((H h) -> obsolete.test(h))
+        .thenComparingInt(h -> labelRank(label.apply(h), needle))
+        .thenComparingInt(h -> label.apply(h) == null ? Integer.MAX_VALUE : label.apply(h).length())
+        .thenComparing(h -> label.apply(h) == null ? "" : label.apply(h))
+        .thenComparing(h -> iri.apply(h) == null ? "" : iri.apply(h));
+  }
+
+  private static int labelRank(String label, String needle) {
+    if (label == null || needle.isEmpty()) {
+      return 3;
+    }
+    String lower = label.toLowerCase(Locale.ROOT);
+    if (lower.equals(needle)) {
+      return 0;
+    }
+    if (lower.startsWith(needle)) {
+      return 1;
+    }
+    return 2;
+  }
+
+  private static TypeResults paged(List<? extends Hit> all, int page, int pageSize) {
+    int total = all.size();
+    boolean capped = total >= COUNT_CAP;
+    int from = Math.min((page - 1) * pageSize, total);
+    int to = Math.min(from + pageSize, total);
+    return new TypeResults(total, capped, page, pageSize, List.copyOf(all.subList(from, to)));
+  }
+
+  /* ----------------------------------------------------------------------------------------------
+   * Validation
+   * ------------------------------------------------------------------------------------------- */
+
+  private static List<String> validatedTypes(List<String> types) {
+    for (String type : types) {
+      if (!SearchRequest.ALL_TYPES.contains(type)) {
+        throw new BadSearchRequestException(
+            "Unknown type '" + type + "'. Accepted: " + String.join(", ", SearchRequest.ALL_TYPES) + ".");
+      }
+    }
+    return types;
+  }
+
+  /** Every type but {@code ontology}, which reads the catalog rather than a snapshot. */
+  private static boolean needsASource(List<String> types) {
+    return types.stream().anyMatch(t -> !SearchRequest.TYPE_ONTOLOGY.equals(t));
+  }
+
+  private static int clampPageSize(Integer requested) {
+    if (requested == null || requested <= 0) {
+      return DEFAULT_PAGE_SIZE;
+    }
+    return Math.min(requested, MAX_PAGE_SIZE);
+  }
+
+  private static boolean containsIgnoreCase(String haystack, String needle) {
+    return haystack != null && haystack.toLowerCase(Locale.ROOT).contains(needle.toLowerCase(Locale.ROOT));
+  }
+}

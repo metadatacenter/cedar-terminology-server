@@ -1,0 +1,98 @@
+package org.metadatacenter.cedar.terminology.resources;
+
+import com.codahale.metrics.annotation.Timed;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.POST;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
+import org.metadatacenter.config.CedarConfig;
+import org.metadatacenter.error.CedarErrorKey;
+import org.metadatacenter.exception.CedarException;
+import org.metadatacenter.http.CedarResponseStatus;
+import org.metadatacenter.rest.exception.CedarAssertionException;
+import org.metadatacenter.terms.search.SearchRequest;
+import org.metadatacenter.terms.search.SearchResponse;
+import org.metadatacenter.terms.search.VersionAwareSearchService;
+import org.metadatacenter.util.http.CedarResponse;
+import org.metadatacenter.util.json.JsonMapper;
+
+import java.sql.SQLException;
+
+/**
+ * Version-aware search, at a new root path rather than under {@code /bioportal}.
+ *
+ * That namespace exists because CEDAR proxied BioPortal, and this is not a BioPortal client: it
+ * searches the local versioned store at a named version or the current one, and reports per source
+ * which version answered and whether a constraint on it can be pinned. It replaces
+ * {@code /bioportal/search} once that route's consumers have moved.
+ *
+ * The request and response shapes are designed in
+ * {@code cedar-development/ops/VERSION-AWARE-SEARCH.md}.
+ */
+@Path("/search")
+@Produces(MediaType.APPLICATION_JSON)
+public class VersionAwareSearchResource extends AbstractTerminologyServerResource {
+
+  private static VersionAwareSearchService searchService;
+
+  public VersionAwareSearchResource(CedarConfig cedarConfig) {
+    super(cedarConfig);
+  }
+
+  /**
+   * The service, or null when no catalog is configured. Null is the whole point: this endpoint
+   * assumes the local store and reports that it is unavailable rather than answering from BioPortal,
+   * so a caller is never handed unpinnable results believing that pinning was available.
+   */
+  public static void injectSearchService(VersionAwareSearchService service) {
+    VersionAwareSearchResource.searchService = service;
+  }
+
+  @POST
+  @Timed
+  @Consumes(MediaType.APPLICATION_JSON)
+  @Operation(summary = "Version-aware search",
+      description = "Search the local terminology store at a named version or the current one, across the "
+          + "constraint types a controlled-term field can carry: ontology, branch, class and valueSet. "
+          + "Returns per-type counts and each type's first page, and describes every source it searched — "
+          + "the version that answered, and whether a constraint on it can be pinned.",
+      tags = {"Search"})
+  @ApiResponses({
+      @ApiResponse(responseCode = "200", description = "Results, and the sources that produced them"),
+      @ApiResponse(responseCode = "400", description = "A request the server will not answer"),
+      @ApiResponse(responseCode = "503", description = "No local terminology store is configured")
+  })
+  public Response search(SearchRequest request) throws CedarException {
+    // Deliberately not authenticated, matching integrated-search: both are read paths a CEDAR
+    // frontend calls directly, and requiring a credential here would be a third answer to a question
+    // the terminology server already gives two of.
+    if (searchService == null) {
+      return CedarResponse.status(CedarResponseStatus.SERVICE_UNAVAILABLE)
+          .errorKey(CedarErrorKey.INVALID_INPUT)
+          .errorMessage("Version-aware search needs the local terminology store, and no catalog is configured.")
+          .build();
+    }
+    if (request == null) {
+      return CedarResponse.badRequest()
+          .errorKey(CedarErrorKey.INVALID_INPUT)
+          .errorMessage("A search needs a JSON body.")
+          .build();
+    }
+    try {
+      SearchResponse response = searchService.search(request);
+      return Response.ok().entity(JsonMapper.MAPPER.valueToTree(response)).build();
+    } catch (VersionAwareSearchService.BadSearchRequestException e) {
+      return CedarResponse.badRequest()
+          .errorKey(CedarErrorKey.INVALID_INPUT)
+          .errorMessage(e.getMessage())
+          .build();
+    } catch (SQLException e) {
+      throw new CedarAssertionException(e);
+    }
+  }
+}
