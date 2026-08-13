@@ -13,6 +13,7 @@ import org.metadatacenter.terms.search.SearchResponse.TypeResults;
 import org.metadatacenter.terms.search.SearchResponse.ValueSetHit;
 import org.metadatacenter.terms.search.SearchResponse.VersionInfo;
 import org.metadatacenter.terms.store.CatalogStore;
+import org.metadatacenter.terms.store.SearchIndexStore;
 import org.metadatacenter.terms.store.SnapshotStore;
 
 import java.sql.SQLException;
@@ -56,9 +57,19 @@ public class VersionAwareSearchService {
   private static final int MAX_PAGE_SIZE = 200;
 
   private final CatalogSnapshotProvider provider;
+  private final SearchIndexStore index;
 
   public VersionAwareSearchService(CatalogSnapshotProvider provider) {
+    this(provider, null);
+  }
+
+  /**
+   * @param index the cross-snapshot index, or null when none is configured. Without it a search must
+   *              name its sources: the alternative is opening every snapshot in the catalog per query.
+   */
+  public VersionAwareSearchService(CatalogSnapshotProvider provider, SearchIndexStore index) {
     this.provider = provider;
+    this.index = index;
   }
 
   /** A request the server will not answer, as opposed to one whose answer is empty. */
@@ -83,10 +94,19 @@ public class VersionAwareSearchService {
     }
     List<Resolved> searchable = resolved.stream().filter(Resolved::isLocal).toList();
 
-    if (searchable.isEmpty() && needsASource(types)) {
+    // Corpus-wide: no source named, and the index is there to answer without opening every snapshot.
+    boolean corpusWide = request.sourcesOrEmpty().isEmpty() && index != null;
+    if (corpusWide && query.isEmpty()) {
+      throw new BadSearchRequestException("A corpus-wide search needs a query.");
+    }
+    if (!corpusWide && searchable.isEmpty() && needsASource(types)) {
+      throw new BadSearchRequestException(needsASourceMessage(types));
+    }
+    if (corpusWide && types.contains(SearchRequest.TYPE_VALUE_SET)) {
+      // A value set is found through the collection that holds it, which the index does not record.
       throw new BadSearchRequestException(
-          "Searching for " + String.join(", ", types) + " needs at least one locally-served source. "
-              + "Corpus-wide search is not served: it would mean querying every snapshot in the catalog.");
+          "Value sets are searched within a named collection; the corpus-wide index does not hold "
+              + "which value set a value belongs to.");
     }
 
     Map<String, TypeResults> results = new LinkedHashMap<>();
@@ -96,11 +116,23 @@ public class VersionAwareSearchService {
       }
       List<? extends Hit> all = switch (type) {
         case SearchRequest.TYPE_ONTOLOGY -> ontologyHits(query, resolved);
-        case SearchRequest.TYPE_CLASS -> classHits(query, searchable, request.lang());
-        case SearchRequest.TYPE_BRANCH -> branchHits(query, searchable, request.lang());
+        case SearchRequest.TYPE_CLASS -> corpusWide
+            ? corpusHits(query, false) : classHits(query, searchable, request.lang());
+        case SearchRequest.TYPE_BRANCH -> corpusWide
+            ? corpusHits(query, true) : branchHits(query, searchable, request.lang());
         case SearchRequest.TYPE_VALUE_SET -> valueSetHits(query, searchable);
         default -> List.of();
       };
+      if (corpusWide) {
+        // The block must report the version the index holds, not the catalog's current one: a
+        // re-ingested ontology the index has not caught up with was searched at the older snapshot,
+        // and saying otherwise would attribute results to a version that did not produce them.
+        for (Hit hit : all) {
+          if (!blocks.containsKey(hit.sourceAcronym())) {
+            blocks.put(hit.sourceAcronym(), indexedSourceBlock(hit.sourceAcronym()));
+          }
+        }
+      }
       if (SearchRequest.TYPE_ONTOLOGY.equals(type)) {
         // An ontology hit is thin because its source block carries the rest, so the block has to
         // exist. Without this a client is handed an acronym and no way to learn its name or IRI —
@@ -332,6 +364,70 @@ public class VersionAwareSearchService {
     List<ValueSetHit> hits = new ArrayList<>(byIri.values());
     hits.sort(hitOrder(query, ValueSetHit::termBaseLabel, h -> false, ValueSetHit::termBaseIri));
     return hits;
+  }
+
+  /**
+   * Class or branch results from the cross-snapshot index, across every ontology it holds.
+   *
+   * Two things a source-scoped search gives that this cannot, both because they need the snapshot
+   * rather than the index: a branch row carries no path or examples, and {@code lang} does not
+   * choose the label. Absent fields rather than wrong ones — a client can tell the difference, and
+   * an author who has narrowed to a source gets both back.
+   */
+  private List<? extends Hit> corpusHits(String query, boolean branchesOnly) throws SQLException {
+    List<Hit> hits = new ArrayList<>();
+    for (SearchIndexStore.IndexHit hit : index.search(query, List.of(), COUNT_CAP)) {
+      SearchIndexStore.IndexedTerm term = hit.term();
+      if (branchesOnly && !term.hasChildren()) {
+        continue;
+      }
+      List<MatchedLabel> matched = new ArrayList<>();
+      for (SearchIndexStore.IndexedName name : hit.matched()) {
+        if (!"prefLabel".equals(name.property()) || name.lang() != null) {
+          matched.add(new MatchedLabel(name.value(), blankToNull(name.lang())));
+        }
+      }
+      String matchType = matched.isEmpty() ? SearchResponse.MATCH_TERM_LABEL : SearchResponse.MATCH_SYNONYM;
+      if (branchesOnly) {
+        hits.add(new BranchHit(SearchRequest.TYPE_BRANCH, SearchRequest.BIOPORTAL, term.acronym(),
+            term.iri(), term.prefLabel(), term.descendantCount(), matchType,
+            matched.isEmpty() ? null : matched, term.obsolete(), null, null));
+      } else {
+        hits.add(new ClassHit(SearchRequest.TYPE_CLASS, SearchRequest.BIOPORTAL, term.acronym(),
+            term.iri(), SearchRequest.TYPE_CLASS, term.prefLabel(), matchType,
+            matched.isEmpty() ? null : matched, term.obsolete(),
+            term.replacedBy() == null ? null : new TermRef(term.replacedBy(), null),
+            term.hasChildren(), term.descendantCount()));
+      }
+    }
+    return hits;
+  }
+
+  /** The source block for an ontology the index answered for, at the version the index holds. */
+  private SourceBlock indexedSourceBlock(String acronym) throws SQLException {
+    CatalogStore catalog = provider.catalog();
+    String name = catalog.ontologyName(acronym);
+    String iri = catalog.ontologyIri(acronym).orElse(null);
+    String versionId = index.indexedVersion(acronym).orElse(null);
+    VersionInfo version = null;
+    if (versionId != null) {
+      Optional<CatalogStore.SnapshotInfo> snapshot = catalog.resolveVersion(acronym, versionId);
+      version = snapshot
+          .map(s -> new VersionInfo(s.versionId(), s.releasedAt(), s.declaredVersion()))
+          .orElseGet(() -> new VersionInfo(versionId, null, null));
+    }
+    return new SourceBlock(SearchRequest.BIOPORTAL, acronym, name, iri,
+        SourceBlock.SERVED_LOCAL, versionId != null, version, null, null);
+  }
+
+  private static String blankToNull(String s) {
+    return s == null || s.isBlank() ? null : s;
+  }
+
+  private static String needsASourceMessage(List<String> types) {
+    return "Searching for " + String.join(", ", types) + " needs at least one locally-served source, "
+        + "because no cross-snapshot index is configured. Without one, a corpus-wide search would "
+        + "have to open every snapshot in the catalog.";
   }
 
   /* ----------------------------------------------------------------------------------------------

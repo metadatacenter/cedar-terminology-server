@@ -13,6 +13,7 @@ import org.metadatacenter.terms.search.SearchResponse.SourceBlock;
 import org.metadatacenter.terms.search.SearchResponse.TypeResults;
 import org.metadatacenter.terms.search.SearchResponse.ValueSetHit;
 import org.metadatacenter.terms.store.CatalogStore;
+import org.metadatacenter.terms.store.SearchIndexStore;
 import org.metadatacenter.terms.store.SnapshotStore;
 
 import java.nio.file.Files;
@@ -329,6 +330,85 @@ public class VersionAwareSearchServiceTest {
     assertEquals(Set.of("branch", "class"), response.results().keySet());
     // Reported in the order the constraint spec lists the types, not the order they were asked for.
     assertEquals(List.of("branch", "class"), List.copyOf(response.results().keySet()));
+  }
+
+  /* ------------------------------------------------------------------------------------------------
+   * Corpus-wide search, through the cross-snapshot index.
+   * --------------------------------------------------------------------------------------------- */
+
+  private VersionAwareSearchService withIndex() throws Exception {
+    SearchIndexStore index = SearchIndexStore.openInMemory();
+    index.initSchema();
+    index.replaceOntology("EX", "hash-v2", "2026-08-13T00:00:00Z",
+        List.of(new SearchIndexStore.IndexedTerm("EX", BASE + "mammal", "Mammal", false, null, true, 3),
+            new SearchIndexStore.IndexedTerm("EX", BASE + "cat", "Cat", false, null, false, 0)),
+        java.util.Map.of(BASE + "cat",
+            List.of(new SearchIndexStore.IndexedName("rdfs:label", "fr", "chat domestique"))));
+    index.replaceOntology("OTHER", "hash-o1", "2026-08-13T00:00:00Z",
+        List.of(new SearchIndexStore.IndexedTerm("OTHER", "http://other/cat", "Cat", false, null, false, 0)),
+        java.util.Map.of());
+    index.rebuildFullText();
+    return new VersionAwareSearchService(provider, index);
+  }
+
+  @Test
+  public void withAnIndexASearchNeedsNoSource() throws Exception {
+    SearchResponse response = withIndex().search(request("cat", List.of("class"), List.of()));
+    assertEquals(2, response.results().get("class").totalCount(), "across every indexed ontology");
+    assertEquals(List.of("EX", "OTHER"),
+        response.sources().stream().map(SourceBlock::sourceAcronym).sorted().toList());
+  }
+
+  @Test
+  public void aCorpusWideResultReportsTheVersionTheIndexHolds() throws Exception {
+    // Not the catalog's latest. An ontology re-ingested since the index was built was searched at the
+    // older snapshot, and saying otherwise would credit results to a version that did not produce them.
+    SearchIndexStore stale = SearchIndexStore.openInMemory();
+    stale.initSchema();
+    stale.replaceOntology("EX", "hash-v1", "2026-08-13T00:00:00Z",
+        List.of(new SearchIndexStore.IndexedTerm("EX", BASE + "cat", "Cat", false, null, false, 0)),
+        java.util.Map.of());
+    stale.rebuildFullText();
+
+    SearchResponse response = new VersionAwareSearchService(provider, stale)
+        .search(request("cat", List.of("class"), List.of()));
+    assertEquals("hash-v1", response.sources().get(0).version().id());
+    assertEquals("1.0", response.sources().get(0).version().declaredVersion());
+  }
+
+  @Test
+  public void aCorpusWideBranchCarriesItsCountButNotItsPath() throws Exception {
+    List<BranchHit> branches = hits(withIndex().search(request("mammal", List.of("branch"), List.of())), "branch");
+    assertEquals(1, branches.size());
+    assertEquals(3, branches.get(0).descendantCount());
+    // Absent rather than wrong: the path needs the snapshot, and narrowing to the source returns it.
+    assertNull(branches.get(0).path());
+    assertNull(branches.get(0).examples());
+  }
+
+  @Test
+  public void aCorpusWideHitStillSaysWhatMatched() throws Exception {
+    List<ClassHit> hits = hits(withIndex().search(request("chat", List.of("class"), List.of())), "class");
+    assertEquals(1, hits.size());
+    assertEquals("Cat", hits.get(0).termLabel());
+    assertEquals(SearchResponse.MATCH_SYNONYM, hits.get(0).matchType());
+    assertEquals("fr", hits.get(0).matchedLabels().get(0).language());
+  }
+
+  @Test
+  public void valueSetsAreNotSearchedCorpusWide() throws Exception {
+    // The index does not record which value set holds a value, so a corpus-wide valueSet search would
+    // have to answer with nothing and call it an answer.
+    VersionAwareSearchService service = withIndex();
+    assertThrows(VersionAwareSearchService.BadSearchRequestException.class,
+        () -> service.search(request("analyte", List.of("valueSet"), List.of())));
+  }
+
+  @Test
+  public void aCorpusWideSearchNeedsSomethingToSearchFor() throws Exception {
+    VersionAwareSearchService service = withIndex();
+    assertThrows(VersionAwareSearchService.BadSearchRequestException.class,
+        () -> service.search(request("", List.of("class"), List.of())));
   }
 
   @Test

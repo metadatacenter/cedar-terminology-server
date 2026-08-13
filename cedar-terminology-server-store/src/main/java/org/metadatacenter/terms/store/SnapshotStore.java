@@ -7,7 +7,9 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -799,6 +801,28 @@ public class SnapshotStore implements AutoCloseable {
         return rs.next() ? rs.getInt(1) : 0;
       }
     }
+  }
+
+  /**
+   * The descendant count of every concept that has one, in a single pass.
+   *
+   * {@link #descendantCount} answers for one concept, which is what a page of results needs. Building
+   * an index needs the answer for all of them, and asking one at a time over a snapshot the size of
+   * NCBITaxon is millions of statements against a table that can produce the whole answer with one
+   * GROUP BY. Concepts with no descendants are absent rather than present with zero.
+   */
+  public Map<String, Integer> descendantCounts() throws SQLException {
+    Map<String, Integer> out = new HashMap<>();
+    try (Statement st = connection.createStatement();
+         ResultSet rs = st.executeQuery("""
+             SELECT a.iri, COUNT(*) FROM closure cl
+             JOIN concept a ON a.id = cl.ancestor_id
+             GROUP BY a.iri""")) {
+      while (rs.next()) {
+        out.put(rs.getString(1), rs.getInt(2));
+      }
+    }
+    return out;
   }
 
   /**
