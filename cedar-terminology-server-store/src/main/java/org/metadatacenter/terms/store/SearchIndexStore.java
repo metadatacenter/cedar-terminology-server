@@ -36,7 +36,15 @@ import java.util.Optional;
  */
 public class SearchIndexStore implements AutoCloseable {
 
-  /** A term as the index holds it, with the structural facts a result row needs. */
+  /**
+   * A term as the index holds it, with the structural facts a result row needs.
+   *
+   * {@code parentLabel} is the immediate parent's name, and it is here because a label does not
+   * always identify a class. IRAEO carries fifteen classes labelled "Disease", one under each body
+   * system, so a corpus-wide result listing them by label alone is fifteen rows nobody can choose
+   * between. The parent is what separates them. One step, not the whole chain: the chain needs a
+   * walk per term and the step is a join.
+   */
   public record IndexedTerm(
       String acronym,
       String iri,
@@ -44,7 +52,15 @@ public class SearchIndexStore implements AutoCloseable {
       boolean obsolete,
       String replacedBy,
       boolean hasChildren,
-      int descendantCount) {}
+      int descendantCount,
+      String parentIri,
+      String parentLabel) {
+
+    public IndexedTerm(String acronym, String iri, String prefLabel, boolean obsolete, String replacedBy,
+                       boolean hasChildren, int descendantCount) {
+      this(acronym, iri, prefLabel, obsolete, replacedBy, hasChildren, descendantCount, null, null);
+    }
+  }
 
   /** A searchable name of a term: its preferred label, a synonym, or a label in another language. */
   public record IndexedName(String property, String lang, String value) {}
@@ -84,7 +100,9 @@ public class SearchIndexStore implements AutoCloseable {
             obsolete         INTEGER NOT NULL DEFAULT 0,
             replaced_by      TEXT,
             has_children     INTEGER NOT NULL DEFAULT 0,
-            descendant_count INTEGER NOT NULL DEFAULT 0
+            descendant_count INTEGER NOT NULL DEFAULT 0,
+            parent_iri       TEXT,
+            parent_label     TEXT
           )""");
       st.executeUpdate("CREATE INDEX IF NOT EXISTS term_by_acronym ON term(acronym)");
       st.executeUpdate("""
@@ -174,8 +192,9 @@ public class SearchIndexStore implements AutoCloseable {
     try {
       deleteOntologyRows(acronym);
       try (PreparedStatement insertTerm = connection.prepareStatement(
-               "INSERT INTO term(acronym, iri, pref_label, obsolete, replaced_by, has_children, descendant_count) "
-                   + "VALUES (?,?,?,?,?,?,?)", Statement.RETURN_GENERATED_KEYS);
+               "INSERT INTO term(acronym, iri, pref_label, obsolete, replaced_by, has_children, "
+                   + "descendant_count, parent_iri, parent_label) VALUES (?,?,?,?,?,?,?,?,?)",
+               Statement.RETURN_GENERATED_KEYS);
            PreparedStatement insertName = connection.prepareStatement(
                "INSERT INTO name(term_id, property, lang, value) VALUES (?,?,?,?)")) {
         for (IndexedTerm t : terms) {
@@ -186,6 +205,8 @@ public class SearchIndexStore implements AutoCloseable {
           insertTerm.setString(5, t.replacedBy());
           insertTerm.setInt(6, t.hasChildren() ? 1 : 0);
           insertTerm.setInt(7, t.descendantCount());
+          insertTerm.setString(8, t.parentIri());
+          insertTerm.setString(9, t.parentLabel());
           insertTerm.executeUpdate();
           long termId;
           try (ResultSet keys = insertTerm.getGeneratedKeys()) {
@@ -286,7 +307,7 @@ public class SearchIndexStore implements AutoCloseable {
     String needle = query.trim().toLowerCase(Locale.ROOT);
     StringBuilder sql = new StringBuilder("""
         SELECT t.acronym, t.iri, t.pref_label, t.obsolete, t.replaced_by, t.has_children,
-               t.descendant_count, n.property, n.lang, n.value, t.term_id
+               t.descendant_count, n.property, n.lang, n.value, t.term_id, t.parent_iri, t.parent_label
         FROM name_fts f
         JOIN name n ON n.name_id = f.rowid
         JOIN term t ON t.term_id = n.term_id
@@ -341,7 +362,8 @@ public class SearchIndexStore implements AutoCloseable {
               continue;
             }
             hit = new IndexHit(new IndexedTerm(rs.getString(1), rs.getString(2), rs.getString(3),
-                rs.getInt(4) != 0, rs.getString(5), rs.getInt(6) != 0, rs.getInt(7)), new ArrayList<>());
+                rs.getInt(4) != 0, rs.getString(5), rs.getInt(6) != 0, rs.getInt(7),
+                rs.getString(12), rs.getString(13)), new ArrayList<>());
             byTerm.put(termId, hit);
           }
           hit.matched().add(new IndexedName(rs.getString(8), rs.getString(9), rs.getString(10)));

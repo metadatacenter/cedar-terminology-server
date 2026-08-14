@@ -83,6 +83,19 @@ public class SearchIndexJob {
     long nameCount = 0;
     try (SnapshotStore store = SnapshotStore.openFile(file.toString())) {
       Map<String, Integer> descendants = store.descendantCounts();
+      // One parent per concept, because a label does not always identify a class: IRAEO labels
+      // fifteen classes "Disease", one under each body system, and only the parent tells them apart.
+      Map<String, String[]> parents = new HashMap<>();
+      Map<String, String> labels = new HashMap<>();
+      for (SnapshotStore.Concept concept : store.allConceptsDetailed()) {
+        labels.put(concept.iri(), concept.prefLabel());
+      }
+      for (String[] edge : store.allEdges()) {
+        parents.putIfAbsent(edge[0], new String[] {edge[1], null});
+      }
+      for (String[] parent : parents.values()) {
+        parent[1] = labels.get(parent[0]);
+      }
       Map<String, String> replacements = new HashMap<>();
       for (SnapshotStore.ConceptMeta meta : store.allConceptMeta()) {
         if (meta.replacedBy() != null) {
@@ -90,9 +103,11 @@ public class SearchIndexJob {
         }
       }
       for (SnapshotStore.Concept concept : store.allConceptsDetailed()) {
+        String[] parent = parents.get(concept.iri());
         terms.add(new SearchIndexStore.IndexedTerm(acronym, concept.iri(), concept.prefLabel(),
             concept.obsolete(), replacements.get(concept.iri()), concept.hasChildren(),
-            descendants.getOrDefault(concept.iri(), 0)));
+            descendants.getOrDefault(concept.iri(), 0),
+            parent == null ? null : parent[0], parent == null ? null : parent[1]));
       }
       for (SnapshotStore.LabelRow row : store.allLabels()) {
         // The preferred label is added from the term itself, so skipping it here keeps one name from

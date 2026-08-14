@@ -481,9 +481,15 @@ public class VersionAwareSearchService {
       }
       String matchType = matched.isEmpty() ? SearchResponse.MATCH_TERM_LABEL : SearchResponse.MATCH_SYNONYM;
       if (branchesOnly) {
+        // A one-step path, which is what the index holds and what a label often needs: fifteen
+        // classes labelled "Disease" in one vocabulary are told apart by their parent and by nothing
+        // else on the row. The full chain still needs a named source.
+        List<TermRef> parent = term.parentLabel() == null
+            ? null
+            : List.of(new TermRef(term.parentIri(), term.parentLabel()));
         hits.add(new BranchHit(SearchRequest.TYPE_BRANCH, SearchRequest.BIOPORTAL, term.acronym(),
             term.iri(), term.prefLabel(), term.descendantCount(), matchType,
-            matched.isEmpty() ? null : matched, term.obsolete(), null, null));
+            matched.isEmpty() ? null : matched, term.obsolete(), parent, null));
       } else {
         hits.add(new ClassHit(SearchRequest.TYPE_CLASS, SearchRequest.BIOPORTAL, term.acronym(),
             term.iri(), SearchRequest.TYPE_CLASS, term.prefLabel(), matchType,
