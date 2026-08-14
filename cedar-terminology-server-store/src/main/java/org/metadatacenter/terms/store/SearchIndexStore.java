@@ -7,6 +7,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -371,6 +372,107 @@ public class SearchIndexStore implements AutoCloseable {
       }
     }
     return List.copyOf(byTerm.values());
+  }
+
+  /**
+   * A page of matches, paged by distinct label rather than by hit, with every hit of those labels.
+   *
+   * Paging by hit makes collapsing impossible to do honestly. A query for a common term returns the
+   * same string from a hundred vocabularies, so a page of twenty-five hits is one or two labels, and
+   * a client that folds them can only say "in 24 vocabularies on this page" — it has no way to know
+   * what the next page holds. Choosing the labels first and then returning all their hits makes the
+   * fold complete: the row can say how many vocabularies offer the label, full stop.
+   *
+   * The labels are ranked as {@link #search} ranks hits, so the first page holds the same terms it
+   * would have.
+   */
+  public List<IndexHit> searchByLabelPage(String query, Collection<String> acronyms, boolean branchesOnly,
+                                          int page, int pageSize) throws SQLException {
+    String match = toPrefixMatch(query);
+    if (match.isEmpty()) {
+      return List.of();
+    }
+    String needle = query.trim().toLowerCase(Locale.ROOT);
+    String acronymFilter = acronyms == null || acronyms.isEmpty() ? ""
+        : " AND t.acronym IN (" + String.join(",", java.util.Collections.nCopies(acronyms.size(), "?")) + ")";
+    String branchFilter = branchesOnly ? " AND t.has_children = 1" : "";
+
+    List<String> labels = new ArrayList<>();
+    String labelSql = "SELECT LOWER(t.pref_label) label, MIN(CASE"
+        + " WHEN LOWER(n.value) = ? THEN 0 WHEN LOWER(n.value) LIKE ? || '%' THEN 1 ELSE 2 END) rank,"
+        + " MIN(LENGTH(n.value)) len"
+        + " FROM name_fts f JOIN name n ON n.name_id = f.rowid JOIN term t ON t.term_id = n.term_id"
+        + " WHERE name_fts MATCH ?" + branchFilter + acronymFilter
+        + " GROUP BY LOWER(t.pref_label) ORDER BY rank, len, label LIMIT ? OFFSET ?";
+    try (PreparedStatement ps = connection.prepareStatement(labelSql)) {
+      int p = 1;
+      ps.setString(p++, needle);
+      ps.setString(p++, needle);
+      ps.setString(p++, match);
+      if (acronyms != null) {
+        for (String acronym : acronyms) {
+          ps.setString(p++, acronym);
+        }
+      }
+      ps.setInt(p++, Math.max(pageSize, 1));
+      ps.setInt(p, Math.max(page - 1, 0) * Math.max(pageSize, 1));
+      try (ResultSet rs = ps.executeQuery()) {
+        while (rs.next()) {
+          labels.add(rs.getString(1));
+        }
+      }
+    }
+    if (labels.isEmpty()) {
+      return List.of();
+    }
+
+    String hitSql = """
+        SELECT t.acronym, t.iri, t.pref_label, t.obsolete, t.replaced_by, t.has_children,
+               t.descendant_count, n.property, n.lang, n.value, t.term_id, t.parent_iri, t.parent_label
+        FROM name_fts f
+        JOIN name n ON n.name_id = f.rowid
+        JOIN term t ON t.term_id = n.term_id
+        WHERE name_fts MATCH ?"""
+        + branchFilter + acronymFilter
+        + " AND LOWER(t.pref_label) IN (" + String.join(",", java.util.Collections.nCopies(labels.size(), "?")) + ")";
+    Map<Long, IndexHit> byTerm = new LinkedHashMap<>();
+    try (PreparedStatement ps = connection.prepareStatement(hitSql)) {
+      int p = 1;
+      ps.setString(p++, match);
+      if (acronyms != null) {
+        for (String acronym : acronyms) {
+          ps.setString(p++, acronym);
+        }
+      }
+      for (String label : labels) {
+        ps.setString(p++, label);
+      }
+      try (ResultSet rs = ps.executeQuery()) {
+        while (rs.next()) {
+          long termId = rs.getLong(11);
+          IndexHit hit = byTerm.get(termId);
+          if (hit == null) {
+            hit = new IndexHit(new IndexedTerm(rs.getString(1), rs.getString(2), rs.getString(3),
+                rs.getInt(4) != 0, rs.getString(5), rs.getInt(6) != 0, rs.getInt(7),
+                rs.getString(12), rs.getString(13)), new ArrayList<>());
+            byTerm.put(termId, hit);
+          }
+          hit.matched().add(new IndexedName(rs.getString(8), rs.getString(9), rs.getString(10)));
+        }
+      }
+    }
+    // Returned in the label order the ranking chose, so a client folds contiguous runs.
+    Map<String, Integer> order = new LinkedHashMap<>();
+    for (int i = 0; i < labels.size(); i++) {
+      order.put(labels.get(i), i);
+    }
+    List<IndexHit> hits = new ArrayList<>(byTerm.values());
+    hits.sort(Comparator
+        .comparingInt((IndexHit h) -> order.getOrDefault(
+            h.term().prefLabel() == null ? "" : h.term().prefLabel().toLowerCase(Locale.ROOT), Integer.MAX_VALUE))
+        .thenComparing(h -> h.term().acronym())
+        .thenComparing(h -> h.term().iri()));
+    return List.copyOf(hits);
   }
 
   /** How many terms of one vocabulary a query matched. */

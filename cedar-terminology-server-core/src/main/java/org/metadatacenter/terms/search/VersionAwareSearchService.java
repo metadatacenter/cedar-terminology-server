@@ -466,8 +466,14 @@ public class VersionAwareSearchService {
     // Fetch the page, not a thousand rows to slice one page out of. Ranking a broad match is where
     // the time goes — "ce" cost 2.2 seconds fetching a thousand and 0.2 fetching twenty, measured
     // 2026-08-13 — and the counts come from the facets rather than from the length of this list.
+    // Terms are paged by distinct label, with every hit of the labels on the page, so a client that
+    // folds identical labels can say how many vocabularies offer one rather than how many happened to
+    // land on this page. Branches are paged by hit: their rows are already distinguished by parent.
     List<Hit> hits = new ArrayList<>();
-    for (SearchIndexStore.IndexHit hit : index.search(query, List.<String>of(), branchesOnly, page * pageSize)) {
+    List<SearchIndexStore.IndexHit> found = branchesOnly
+        ? index.search(query, List.<String>of(), true, page * pageSize)
+        : index.searchByLabelPage(query, List.<String>of(), false, page, pageSize);
+    for (SearchIndexStore.IndexHit hit : found) {
       SearchIndexStore.IndexedTerm term = hit.term();
       // Only names that differ from the one on screen. The index holds a term's preferred label and
       // its captured labels separately, so a concept whose English skos:prefLabel repeats its served
@@ -528,11 +534,19 @@ public class VersionAwareSearchService {
     // facet is a second pass over the match: computing one nobody reads doubles the cost of a broad
     // query for nothing.
     Integer labels = branchesOnly ? null : index.matchCount(query, List.of(), true, false, FACET_CAP);
-    int from = Math.min((page - 1) * pageSize, hits.size());
-    int to = Math.min(from + pageSize, hits.size());
+    // The terms list is already the page — it holds every hit of the page's labels, which is more
+    // rows than pageSize on purpose. Slicing it again would cut a label in half and leave a client
+    // folding a partial group.
+    List<? extends Hit> slice;
+    if (branchesOnly) {
+      int from = Math.min((page - 1) * pageSize, hits.size());
+      slice = hits.subList(from, Math.min(from + pageSize, hits.size()));
+    } else {
+      slice = hits;
+    }
     return new TypeResults(total, total >= FACET_CAP,
         labels, labels == null ? null : labels >= FACET_CAP,
-        page, pageSize, List.copyOf(hits.subList(from, to)));
+        page, pageSize, List.copyOf(slice));
   }
 
   /** The source block for an ontology the index answered for, at the version the index holds. */
