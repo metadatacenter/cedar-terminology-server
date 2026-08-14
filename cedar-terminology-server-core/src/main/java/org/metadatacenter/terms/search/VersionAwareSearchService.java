@@ -70,8 +70,14 @@ public class VersionAwareSearchService {
    */
   static final int MIN_CORPUS_QUERY_LENGTH = 2;
 
-  /** How many vocabularies the ontology results name when the query matched no vocabulary name. */
-  private static final int VOCABULARY_FACET_LIMIT = 50;
+  /**
+   * How many vocabularies the ontology results can name.
+   *
+   * Generous, because the facet is a group-by over the match either way and the limit only trims its
+   * output — and because every name match needs its count from the same map, however far down the
+   * ranking it sits.
+   */
+  private static final int VOCABULARY_FACET_LIMIT = 1000;
 
   /** How many descendants a branch row illustrates. */
   private static final int EXAMPLE_COUNT = 3;
@@ -277,6 +283,8 @@ public class VersionAwareSearchService {
     }
     String needle = query.toLowerCase(Locale.ROOT);
     List<OntologyHit> hits = new ArrayList<>();
+    // A name that begins with the query is a strong match; one that merely contains it is not.
+    java.util.Set<String> startsWithName = new java.util.LinkedHashSet<>();
     for (CatalogStore.OntologyInfo ontology : provider.catalog().listOntologies()) {
       if (!provider.serves(ontology.acronym())) {
         continue;
@@ -293,30 +301,59 @@ public class VersionAwareSearchService {
       }
       hits.add(new OntologyHit(SearchRequest.TYPE_ONTOLOGY, SearchRequest.BIOPORTAL, acronym, null,
           byAcronym ? SearchResponse.MATCH_SOURCE_ACRONYM : SearchResponse.MATCH_SOURCE_NAME, null));
-    }
-    // Exactness first, then alphabetically: an exact acronym, then a name starting with the query,
-    // then one merely containing it. Deterministic, and it needs no signal anyone has to keep current.
-    hits.sort(Comparator
-        .comparingInt((OntologyHit h) -> nameRank(h.sourceAcronym(), needle))
-        .thenComparing(OntologyHit::sourceAcronym));
-
-    // Then the vocabularies the query actually landed in, which is the other half of the question.
-    // "Is there a vocabulary about this" and "which vocabulary should this field draw from" are
-    // different questions, and measured on 2026-08-13 the first is unanswerable for most queries a
-    // picker sees: "blood pressure" and "aspirin" name no vocabulary while matching terms in 164 and
-    // 97 of them.
-    if (index != null && resolved.isEmpty()) {
-      java.util.Set<String> named = hits.stream().map(OntologyHit::sourceAcronym)
-          .collect(java.util.stream.Collectors.toCollection(java.util.LinkedHashSet::new));
-      for (SearchIndexStore.VocabularyMatch found : index.vocabularyFacet(query, VOCABULARY_FACET_LIMIT)) {
-        if (named.contains(found.acronym())) {
-          continue;
-        }
-        hits.add(new OntologyHit(SearchRequest.TYPE_ONTOLOGY, SearchRequest.BIOPORTAL, found.acronym(),
-            null, SearchResponse.MATCH_TERMS, found.matchCount()));
+      if (name.toLowerCase(Locale.ROOT).startsWith(needle)) {
+        startsWithName.add(acronym);
       }
     }
-    return hits;
+    // The two halves are ranked together rather than one after the other. Segregating them looks
+    // tidy and fails on the queries this tab exists for: "disease" appears in 39 vocabulary names,
+    // so a names-first list spends its whole first page alphabetically — ABD, AD-CDO, AD-DROP —
+    // and never reaches the vocabularies that actually hold disease terms.
+    //
+    // So a name match earns its place only when it is strong: an exact acronym, or a name that
+    // starts with the query. A name that merely contains the query ranks by how many of its terms
+    // matched, like every other vocabulary.
+    Map<String, Integer> matches = index == null || !resolved.isEmpty()
+        ? Map.of()
+        : index.vocabularyFacet(query, VOCABULARY_FACET_LIMIT).stream()
+            .collect(java.util.stream.Collectors.toMap(
+                SearchIndexStore.VocabularyMatch::acronym, SearchIndexStore.VocabularyMatch::matchCount,
+                (a, b) -> a, LinkedHashMap::new));
+
+    List<OntologyHit> withCounts = new ArrayList<>();
+    java.util.Set<String> named = new java.util.LinkedHashSet<>();
+    for (OntologyHit hit : hits) {
+      named.add(hit.sourceAcronym());
+      withCounts.add(new OntologyHit(hit.type(), hit.sourceSystem(), hit.sourceAcronym(),
+          hit.termCount(), hit.matchType(), matches.get(hit.sourceAcronym())));
+    }
+    for (Map.Entry<String, Integer> found : matches.entrySet()) {
+      if (!named.contains(found.getKey())) {
+        withCounts.add(new OntologyHit(SearchRequest.TYPE_ONTOLOGY, SearchRequest.BIOPORTAL,
+            found.getKey(), null, SearchResponse.MATCH_TERMS, found.getValue()));
+      }
+    }
+    withCounts.sort(Comparator
+        .comparingInt((OntologyHit h) -> strength(h, needle, startsWithName))
+        .thenComparing(Comparator.comparingInt((OntologyHit h) ->
+            h.matchCount() == null ? 0 : h.matchCount()).reversed())
+        .thenComparing(OntologyHit::sourceAcronym));
+    return withCounts;
+  }
+
+  /**
+   * How strongly an ontology answers the query: 0 for a name that is the query or begins with it,
+   * 1 for everything else. Two tiers rather than a gradient, because past "this vocabulary is named
+   * after what you typed" the useful ordering is how much of it matched.
+   */
+  private static int strength(OntologyHit hit, String needle, java.util.Set<String> strongNames) {
+    if (!SearchResponse.MATCH_TERMS.equals(hit.matchType())) {
+      String acronym = hit.sourceAcronym().toLowerCase(Locale.ROOT);
+      if (acronym.equals(needle) || acronym.startsWith(needle) || strongNames.contains(hit.sourceAcronym())) {
+        return 0;
+      }
+    }
+    return 1;
   }
 
   private static int nameRank(String acronym, String needle) {
@@ -430,11 +467,15 @@ public class VersionAwareSearchService {
     // the time goes — "ce" cost 2.2 seconds fetching a thousand and 0.2 fetching twenty, measured
     // 2026-08-13 — and the counts come from the facets rather than from the length of this list.
     List<Hit> hits = new ArrayList<>();
-    for (SearchIndexStore.IndexHit hit : index.search(query, List.of(), branchesOnly, page * pageSize)) {
+    for (SearchIndexStore.IndexHit hit : index.search(query, List.<String>of(), branchesOnly, page * pageSize)) {
       SearchIndexStore.IndexedTerm term = hit.term();
+      // Only names that differ from the one on screen. The index holds a term's preferred label and
+      // its captured labels separately, so a concept whose English skos:prefLabel repeats its served
+      // label matches through both — and reporting "matched synonym: Melanoma" beside a row reading
+      // Melanoma is noise in every row of a common query.
       List<MatchedLabel> matched = new ArrayList<>();
       for (SearchIndexStore.IndexedName name : hit.matched()) {
-        if (!"prefLabel".equals(name.property()) || name.lang() != null) {
+        if (name.value() != null && !name.value().equalsIgnoreCase(term.prefLabel())) {
           matched.add(new MatchedLabel(name.value(), blankToNull(name.lang())));
         }
       }
