@@ -28,6 +28,10 @@ public record SearchResponse(String query, List<SourceBlock> sources, Map<String
       String served,
       boolean pinnable,
       VersionInfo version,
+      /** How many versions the store holds, so a client knows whether stepping back is possible. */
+      Integer versionCount,
+      /** The versions themselves, newest first, when the request asked for them. */
+      List<VersionInfo> versions,
       String reason,
       SearchRequest.VersionSelector requestedVersion) {
 

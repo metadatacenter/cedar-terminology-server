@@ -21,7 +21,25 @@ public record SearchRequest(
     List<SourceSelector> sources,
     String lang,
     Integer page,
-    Integer pageSize) {
+    Integer pageSize,
+    Boolean includeVersions) {
+
+  /** A request that does not ask for version histories, which is most of them. */
+  public SearchRequest(String query, List<String> types, List<SourceSelector> sources, String lang,
+                       Integer page, Integer pageSize) {
+    this(query, types, sources, lang, page, pageSize, null);
+  }
+
+  /**
+   * Whether each source block should carry the versions it can be pinned to.
+   *
+   * Off by default, and deliberately: a corpus-wide query touches a hundred sources, and a client
+   * needs the list only for the one row an author is stepping through. The count is always there,
+   * which is what tells a row a stepper is worth showing at all.
+   */
+  public boolean wantsVersions() {
+    return Boolean.TRUE.equals(includeVersions);
+  }
 
   /** A source to search, and the version to search it at. */
   @JsonIgnoreProperties(ignoreUnknown = true)

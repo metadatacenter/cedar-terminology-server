@@ -114,7 +114,7 @@ public class VersionAwareSearchService {
     int page = Math.max(1, request.page() == null ? 1 : request.page());
     int pageSize = clampPageSize(request.pageSize());
 
-    List<Resolved> resolved = resolveSources(request.sourcesOrEmpty());
+    List<Resolved> resolved = resolveSources(request.sourcesOrEmpty(), request.wantsVersions());
     // Keyed by acronym so an ontology hit can add the source it names without duplicating a block
     // the request already asked for.
     Map<String, SourceBlock> blocks = new LinkedHashMap<>();
@@ -199,7 +199,8 @@ public class VersionAwareSearchService {
     }
   }
 
-  private List<Resolved> resolveSources(List<SourceSelector> selectors) throws SQLException {
+  private List<Resolved> resolveSources(List<SourceSelector> selectors, boolean withVersions)
+      throws SQLException {
     List<Resolved> out = new ArrayList<>();
     java.util.Set<String> seen = new java.util.LinkedHashSet<>();
     for (SourceSelector selector : selectors) {
@@ -212,12 +213,16 @@ public class VersionAwareSearchService {
         throw new BadSearchRequestException(
             "Source " + key + " is named more than once. A search can ask a source for one version.");
       }
-      out.add(resolveSource(selector));
+      out.add(resolveSource(selector, withVersions));
     }
     return out;
   }
 
   private Resolved resolveSource(SourceSelector selector) throws SQLException {
+    return resolveSource(selector, false);
+  }
+
+  private Resolved resolveSource(SourceSelector selector, boolean withVersions) throws SQLException {
     String system = selector.systemOrDefault();
     String acronym = selector.sourceAcronym();
     String pinned = selector.version() == null ? null : selector.version().id();
@@ -256,15 +261,17 @@ public class VersionAwareSearchService {
 
     CatalogStore.SnapshotInfo snapshot = info.get();
     VersionInfo version = new VersionInfo(snapshot.versionId(), snapshot.releasedAt(), snapshot.declaredVersion());
+    List<VersionInfo> history = versionsOf(acronym);
     SourceBlock block = new SourceBlock(system, acronym, name, iri,
-        SourceBlock.SERVED_LOCAL, true, version, null, null);
+        SourceBlock.SERVED_LOCAL, true, version, history.size(),
+        withVersions ? history : null, null, null);
     return new Resolved(block, acronym, store.get());
   }
 
   private static Resolved unavailable(String system, String acronym, String name, String iri, String reason,
                                       SearchRequest.VersionSelector requested) {
     SourceBlock block = new SourceBlock(system, acronym, name, iri,
-        SourceBlock.SERVED_UNAVAILABLE, false, null, reason, requested);
+        SourceBlock.SERVED_UNAVAILABLE, false, null, null, null, reason, requested);
     return new Resolved(block, acronym, null);
   }
 
@@ -507,6 +514,23 @@ public class VersionAwareSearchService {
     return hits;
   }
 
+  /**
+   * What an ontology can be pinned to, newest first.
+   *
+   * Ordered for stepping rather than for storage: an author steps back from what is current, so the
+   * list reads the way the walk does. Every entry carries the content hash that pins it and the
+   * dates that name it, because a hash is what makes a pin reproducible and never what an author
+   * recognises.
+   */
+  private List<VersionInfo> versionsOf(String acronym) throws SQLException {
+    List<VersionInfo> versions = new ArrayList<>();
+    for (CatalogStore.SnapshotInfo snapshot : provider.catalog().listSnapshots(acronym)) {
+      versions.add(new VersionInfo(snapshot.versionId(), snapshot.releasedAt(), snapshot.declaredVersion()));
+    }
+    java.util.Collections.reverse(versions);
+    return versions;
+  }
+
   /** Every value-set collection the catalog knows, resolved as if the request had named them. */
   private List<Resolved> valueSetCollections() throws SQLException {
     List<Resolved> out = new ArrayList<>();
@@ -563,7 +587,7 @@ public class VersionAwareSearchService {
           .orElseGet(() -> new VersionInfo(versionId, null, null));
     }
     return new SourceBlock(SearchRequest.BIOPORTAL, acronym, name, iri,
-        SourceBlock.SERVED_LOCAL, versionId != null, version, null, null);
+        SourceBlock.SERVED_LOCAL, versionId != null, version, versionsOf(acronym).size(), null, null, null);
   }
 
   private static String blankToNull(String s) {
