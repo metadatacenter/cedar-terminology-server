@@ -476,10 +476,13 @@ public class VersionAwareSearchService {
     // Terms are paged by distinct label, with every hit of the labels on the page, so a client that
     // folds identical labels can say how many vocabularies offer one rather than how many happened to
     // land on this page. Branches are paged by hit: their rows are already distinguished by parent.
+    // Both kinds page by distinct label, and for the same reason. A term's label repeats across
+    // ontologies; a branch's repeats within one, because a vocabulary can materialise a concept once
+    // per position in its hierarchy — RH-MESH does it 11,528 times. Either way a client folding the
+    // repetition needs the whole group, not the part that fitted on a page of hits.
     List<Hit> hits = new ArrayList<>();
-    List<SearchIndexStore.IndexHit> found = branchesOnly
-        ? index.search(query, List.<String>of(), true, page * pageSize)
-        : index.searchByLabelPage(query, List.<String>of(), false, page, pageSize);
+    List<SearchIndexStore.IndexHit> found =
+        index.searchByLabelPage(query, List.<String>of(), branchesOnly, page, pageSize);
     for (SearchIndexStore.IndexHit hit : found) {
       SearchIndexStore.IndexedTerm term = hit.term();
       // Only names that differ from the one on screen. The index holds a term's preferred label and
@@ -557,20 +560,15 @@ public class VersionAwareSearchService {
     // Only the terms results carry a collapsed count. It is what that tab's badge shows, and each
     // facet is a second pass over the match: computing one nobody reads doubles the cost of a broad
     // query for nothing.
-    Integer labels = branchesOnly ? null : index.matchCount(query, List.of(), true, false, FACET_CAP);
+    Integer labels = index.matchCount(query, List.of(), true, branchesOnly, FACET_CAP);
     // The terms list is already the page — it holds every hit of the page's labels, which is more
     // rows than pageSize on purpose. Slicing it again would cut a label in half and leave a client
     // folding a partial group.
-    List<? extends Hit> slice;
-    if (branchesOnly) {
-      int from = Math.min((page - 1) * pageSize, hits.size());
-      slice = hits.subList(from, Math.min(from + pageSize, hits.size()));
-    } else {
-      slice = hits;
-    }
+    // Already the page: it holds every hit of the page's labels, which is more rows than pageSize on
+    // purpose. Slicing again would cut a label in half and leave a client folding a partial group.
     return new TypeResults(total, total >= FACET_CAP,
         labels, labels == null ? null : labels >= FACET_CAP,
-        page, pageSize, List.copyOf(slice));
+        page, pageSize, List.copyOf(hits));
   }
 
   /** The source block for an ontology the index answered for, at the version the index holds. */
