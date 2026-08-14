@@ -321,24 +321,14 @@ public class SearchIndexStore implements AutoCloseable {
           .append(String.join(",", java.util.Collections.nCopies(acronyms.size(), "?")))
           .append(')');
     }
-    // Ranked on the name that matched, not on the term's preferred label, and ranked here rather
-    // than by the caller. The limit truncates before a caller can reorder, so ordering by label
-    // length alone fills the cap with the shortest labels in the corpus — the numeric codes of
-    // coded vocabularies — and drops the terms actually named after the query.
-    //
-    // Exact name, then a name starting with the query, then the rest; shortest first within each.
-    // Not the ranking the search-ordering work will bring, which weighs match type against a demand
-    // signal. Enough that the cap holds candidates worth ranking.
-    // Leading space, for the same reason as above: a text block drops the newline after its opening
-    // delimiter, so this would otherwise weld itself to whatever the last clause ended with.
-    sql.append(" ").append("""
-         ORDER BY CASE
-                    WHEN LOWER(n.value) = ? THEN 0
-                    WHEN LOWER(n.value) LIKE ? || '%' THEN 1
-                    ELSE 2
-                  END,
-                  LENGTH(n.value), n.value, t.iri
-         LIMIT ?""");
+    // Ranked here rather than by the caller: the limit truncates before a caller can reorder, so
+    // ordering by label length alone fills the cap with the shortest labels in the corpus — the
+    // numeric codes of coded vocabularies — and drops the terms actually named after the query.
+    // Obsolete after the match rank rather than before it: a deprecated term is shown and marked,
+    // and demoted below the live terms that answer as well — not below every live term that answers
+    // worse. It ranks second so an exact hit on a retired label still beats a distant live one.
+    sql.append(" ORDER BY ").append(MATCH_RANK)
+        .append(", t.obsolete, LENGTH(n.value), n.value, t.iri LIMIT ?");
 
     Map<Long, IndexHit> byTerm = new LinkedHashMap<>();
     try (PreparedStatement ps = connection.prepareStatement(sql.toString())) {
@@ -349,8 +339,9 @@ public class SearchIndexStore implements AutoCloseable {
           ps.setString(p++, acronym);
         }
       }
-      ps.setString(p++, needle);
-      ps.setString(p++, needle);
+      for (int i = 0; i < MATCH_RANK_PARAMS; i++) {
+        ps.setString(p++, needle);
+      }
       // Names, not terms: one term can match several of its names, so ask for enough rows to fill
       // the requested number of terms.
       ps.setInt(p, Math.max(limit, 1) * 4);
@@ -398,16 +389,18 @@ public class SearchIndexStore implements AutoCloseable {
     String branchFilter = branchesOnly ? " AND t.has_children = 1" : "";
 
     List<String> labels = new ArrayList<>();
-    String labelSql = "SELECT LOWER(t.pref_label) label, MIN(CASE"
-        + " WHEN LOWER(n.value) = ? THEN 0 WHEN LOWER(n.value) LIKE ? || '%' THEN 1 ELSE 2 END) rank,"
-        + " MIN(LENGTH(n.value)) len"
+    // A label ranks by the best of its names, so a term reached through an exact synonym is not
+    // pushed below one reached through a long label that merely contains the query.
+    String labelSql = "SELECT LOWER(t.pref_label) label, MIN(" + MATCH_RANK + ") rank,"
+        + " MIN(t.obsolete) obsolete, MIN(LENGTH(n.value)) len"
         + " FROM name_fts f JOIN name n ON n.name_id = f.rowid JOIN term t ON t.term_id = n.term_id"
         + " WHERE name_fts MATCH ?" + branchFilter + acronymFilter
-        + " GROUP BY LOWER(t.pref_label) ORDER BY rank, len, label LIMIT ? OFFSET ?";
+        + " GROUP BY LOWER(t.pref_label) ORDER BY rank, obsolete, len, label LIMIT ? OFFSET ?";
     try (PreparedStatement ps = connection.prepareStatement(labelSql)) {
       int p = 1;
-      ps.setString(p++, needle);
-      ps.setString(p++, needle);
+      for (int i = 0; i < MATCH_RANK_PARAMS; i++) {
+        ps.setString(p++, needle);
+      }
       ps.setString(p++, match);
       if (acronyms != null) {
         for (String acronym : acronyms) {
@@ -474,6 +467,38 @@ public class SearchIndexStore implements AutoCloseable {
         .thenComparing(h -> h.term().iri()));
     return List.copyOf(hits);
   }
+
+  /**
+   * How well one matched name answers the query, lower being better.
+   *
+   * The field half of BioPortal's model, which is the half that can be reproduced without a usage
+   * signal: what matched matters as much as how much of it matched. An exact hit on the served
+   * label beats an exact hit on a synonym, which beats a label that merely starts with the query,
+   * and a hidden label — a vocabulary's record of a misspelling — comes last among the names worth
+   * matching at all.
+   *
+   * Deliberately not the whole of it. The measurement behind the term-ordering item found that the
+   * field boosts settle the shape of a list and not its head: a common word has far more exact
+   * label matches than a page can hold, and BioPortal picks between them with a demand signal —
+   * page visits — that CEDAR does not have. This orders equally-good matches by length and then
+   * deterministically, and says nothing about which vocabulary deserves the top of the page.
+   *
+   * `?1` is the lower-cased query, bound twice.
+   */
+  private static final String MATCH_RANK = """
+      CASE
+        WHEN n.property = 'prefLabel' AND LOWER(n.value) = ?          THEN 0
+        WHEN LOWER(n.value) = ? AND n.property LIKE '%ExactSynonym'   THEN 1
+        WHEN LOWER(n.value) = ?                                       THEN 2
+        WHEN n.property = 'prefLabel' AND LOWER(n.value) LIKE ? || '%' THEN 3
+        WHEN LOWER(n.value) LIKE ? || '%'                             THEN 4
+        WHEN n.property = 'prefLabel'                                 THEN 5
+        WHEN n.property IN ('skos:hiddenLabel')                       THEN 7
+        ELSE 6
+      END""";
+
+  /** How many times {@link #MATCH_RANK} needs the query bound. */
+  private static final int MATCH_RANK_PARAMS = 5;
 
   /** How many terms of one vocabulary a query matched. */
   public record VocabularyMatch(String acronym, int matchCount) {}
