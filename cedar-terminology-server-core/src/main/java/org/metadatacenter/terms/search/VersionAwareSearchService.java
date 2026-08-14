@@ -123,15 +123,24 @@ public class VersionAwareSearchService {
     }
     List<Resolved> searchable = resolved.stream().filter(Resolved::isLocal).toList();
 
-    // Corpus-wide: no source named, and the index is there to answer without opening every snapshot.
-    boolean corpusWide = request.sourcesOrEmpty().isEmpty() && index != null;
+    // The index answers whenever nothing is pinned, whether or not sources are named. Narrowing to
+    // an ontology is not a different kind of search — it is the same search over less — so it keeps
+    // the index's matching, its label paging and its counts. Only a pinned version has to leave the
+    // index, because the index holds current versions and no others.
+    boolean pinned = request.sourcesOrEmpty().stream().anyMatch(s -> s.version() != null);
+    List<String> scope = request.sourcesOrEmpty().stream()
+        .map(SourceSelector::sourceAcronym)
+        .filter(java.util.Objects::nonNull)
+        .toList();
+    boolean useIndex = index != null && !pinned;
+    boolean corpusWide = useIndex && scope.isEmpty();
     if (corpusWide && query.length() < MIN_CORPUS_QUERY_LENGTH) {
       throw new BadSearchRequestException(query.isEmpty()
           ? "A corpus-wide search needs a query."
           : "A corpus-wide search needs at least " + MIN_CORPUS_QUERY_LENGTH
               + " characters. Name a source to search it with fewer.");
     }
-    if (!corpusWide && searchable.isEmpty() && needsASource(types)) {
+    if (!useIndex && searchable.isEmpty() && needsASource(types)) {
       throw new BadSearchRequestException(needsASourceMessage(types));
     }
     // A value set is reached through the collection that holds it, which the index does not record.
@@ -151,14 +160,14 @@ public class VersionAwareSearchService {
       }
       List<? extends Hit> all = switch (type) {
         case SearchRequest.TYPE_ONTOLOGY -> ontologyHits(query, resolved);
-        case SearchRequest.TYPE_CLASS -> corpusWide
-            ? corpusHits(query, false, page, pageSize) : classHits(query, searchable, request.lang());
-        case SearchRequest.TYPE_BRANCH -> corpusWide
-            ? corpusHits(query, true, page, pageSize) : branchHits(query, searchable, request.lang());
+        case SearchRequest.TYPE_CLASS -> useIndex
+            ? corpusHits(query, false, page, pageSize, scope) : classHits(query, searchable, request.lang());
+        case SearchRequest.TYPE_BRANCH -> useIndex
+            ? corpusHits(query, true, page, pageSize, scope) : branchHits(query, searchable, request.lang());
         case SearchRequest.TYPE_VALUE_SET -> valueSetHits(query, corpusWide ? collections : searchable);
         default -> List.of();
       };
-      if (corpusWide) {
+      if (useIndex) {
         // The block must report the version the index holds, not the catalog's current one: a
         // re-ingested ontology the index has not caught up with was searched at the older snapshot,
         // and saying otherwise would attribute results to a version that did not produce them.
@@ -179,10 +188,10 @@ public class VersionAwareSearchService {
           }
         }
       }
-      boolean facetable = corpusWide
+      boolean facetable = useIndex
           && (SearchRequest.TYPE_CLASS.equals(type) || SearchRequest.TYPE_BRANCH.equals(type));
       results.put(type, facetable
-          ? facetedPage(query, SearchRequest.TYPE_BRANCH.equals(type), all, page, pageSize)
+          ? facetedPage(query, SearchRequest.TYPE_BRANCH.equals(type), all, page, pageSize, scope)
           : paged(all, page, pageSize));
     }
     return new SearchResponse(query, List.copyOf(blocks.values()), results);
@@ -468,8 +477,8 @@ public class VersionAwareSearchService {
    * choose the label. Absent fields rather than wrong ones — a client can tell the difference, and
    * an author who has narrowed to a source gets both back.
    */
-  private List<? extends Hit> corpusHits(String query, boolean branchesOnly, int page, int pageSize)
-      throws SQLException {
+  private List<? extends Hit> corpusHits(String query, boolean branchesOnly, int page, int pageSize,
+                                         List<String> scope) throws SQLException {
     // Fetch the page, not a thousand rows to slice one page out of. Ranking a broad match is where
     // the time goes — "ce" cost 2.2 seconds fetching a thousand and 0.2 fetching twenty, measured
     // 2026-08-13 — and the counts come from the facets rather than from the length of this list.
@@ -482,7 +491,7 @@ public class VersionAwareSearchService {
     // repetition needs the whole group, not the part that fitted on a page of hits.
     List<Hit> hits = new ArrayList<>();
     List<SearchIndexStore.IndexHit> found =
-        index.searchByLabelPage(query, List.<String>of(), branchesOnly, page, pageSize);
+        index.searchByLabelPage(query, scope, branchesOnly, page, pageSize);
     for (SearchIndexStore.IndexHit hit : found) {
       SearchIndexStore.IndexedTerm term = hit.term();
       // Only names that differ from the one on screen. The index holds a term's preferred label and
@@ -555,12 +564,12 @@ public class VersionAwareSearchService {
    * will render — for "melanoma" that is 5,439 and 2,552.
    */
   private TypeResults facetedPage(String query, boolean branchesOnly, List<? extends Hit> hits,
-                                  int page, int pageSize) throws SQLException {
-    int total = index.matchCount(query, List.of(), false, branchesOnly, FACET_CAP);
+                                  int page, int pageSize, List<String> scope) throws SQLException {
+    int total = index.matchCount(query, scope, false, branchesOnly, FACET_CAP);
     // Only the terms results carry a collapsed count. It is what that tab's badge shows, and each
     // facet is a second pass over the match: computing one nobody reads doubles the cost of a broad
     // query for nothing.
-    Integer labels = index.matchCount(query, List.of(), true, branchesOnly, FACET_CAP);
+    Integer labels = index.matchCount(query, scope, true, branchesOnly, FACET_CAP);
     // The terms list is already the page — it holds every hit of the page's labels, which is more
     // rows than pageSize on purpose. Slicing it again would cut a label in half and leave a client
     // folding a partial group.

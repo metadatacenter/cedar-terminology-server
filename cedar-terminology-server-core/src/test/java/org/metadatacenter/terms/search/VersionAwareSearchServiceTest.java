@@ -407,6 +407,27 @@ public class VersionAwareSearchServiceTest {
   }
 
   @Test
+  public void narrowingToASourceKeepsTheIndexRatherThanChangingTheSearch() throws Exception {
+    // Narrowing is the same search over less. It keeps the index's matching and paging, so an author
+    // who names an ontology does not get subtly different results from the ones they just saw.
+    SearchResponse narrowed = withIndex().search(
+        request("cat", List.of("class"), List.of(new SourceSelector(null, "EX", null))));
+    assertEquals(1, narrowed.results().get("class").totalCount());
+    assertNotNull(narrowed.results().get("class").distinctLabelCount(),
+        "the collapsed count comes from the index, so narrowing keeps it");
+  }
+
+  @Test
+  public void pinningAVersionLeavesTheIndexForTheSnapshot() throws Exception {
+    // The index holds current versions and no others, so a pinned search has to read the snapshot.
+    SearchResponse pinned = withIndex().search(
+        request("wolf", List.of("class"), List.of(ex("hash-v1"))));
+    assertEquals(0, pinned.results().get("class").totalCount(), "v1 predates the wolf");
+    assertNull(pinned.results().get("class").distinctLabelCount(),
+        "the snapshot path counts hits, not labels");
+  }
+
+  @Test
   public void aCorpusWideSearchNeedsSomethingToSearchFor() throws Exception {
     VersionAwareSearchService service = withIndex();
     assertThrows(VersionAwareSearchService.BadSearchRequestException.class,
