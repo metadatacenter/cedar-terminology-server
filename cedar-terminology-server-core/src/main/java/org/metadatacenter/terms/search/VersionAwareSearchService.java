@@ -50,6 +50,29 @@ public class VersionAwareSearchService {
   /** How many matches of one type are counted before the count becomes a ceiling. */
   static final int COUNT_CAP = 1000;
 
+  /**
+   * Where counting a corpus-wide match stops.
+   *
+   * Exact below it, "more than" above. Counting every match of a broad query means deduplicating a
+   * large part of the corpus — "cell" takes 3.2 seconds unbounded and 40 milliseconds here, measured
+   * 2026-08-13 — and nobody acts on the difference between ten thousand rows and three hundred
+   * thousand.
+   */
+  static final int FACET_CAP = 10_000;
+
+  /**
+   * The shortest corpus-wide query the server will answer.
+   *
+   * A single character matches a large fraction of 24 million names, and the cost is in reaching the
+   * cap rather than in the cap itself: "a" took 18.6 seconds where "melanoma" takes 0.11, measured
+   * 2026-08-13. Two characters is not a filter on what an author can look for — it is the point at
+   * which a search of everything is a search rather than an enumeration.
+   */
+  static final int MIN_CORPUS_QUERY_LENGTH = 2;
+
+  /** How many vocabularies the ontology results name when the query matched no vocabulary name. */
+  private static final int VOCABULARY_FACET_LIMIT = 50;
+
   /** How many descendants a branch row illustrates. */
   private static final int EXAMPLE_COUNT = 3;
 
@@ -96,17 +119,23 @@ public class VersionAwareSearchService {
 
     // Corpus-wide: no source named, and the index is there to answer without opening every snapshot.
     boolean corpusWide = request.sourcesOrEmpty().isEmpty() && index != null;
-    if (corpusWide && query.isEmpty()) {
-      throw new BadSearchRequestException("A corpus-wide search needs a query.");
+    if (corpusWide && query.length() < MIN_CORPUS_QUERY_LENGTH) {
+      throw new BadSearchRequestException(query.isEmpty()
+          ? "A corpus-wide search needs a query."
+          : "A corpus-wide search needs at least " + MIN_CORPUS_QUERY_LENGTH
+              + " characters. Name a source to search it with fewer.");
     }
     if (!corpusWide && searchable.isEmpty() && needsASource(types)) {
       throw new BadSearchRequestException(needsASourceMessage(types));
     }
-    if (corpusWide && types.contains(SearchRequest.TYPE_VALUE_SET)) {
-      // A value set is found through the collection that holds it, which the index does not record.
-      throw new BadSearchRequestException(
-          "Value sets are searched within a named collection; the corpus-wide index does not hold "
-              + "which value set a value belongs to.");
+    // A value set is reached through the collection that holds it, which the index does not record.
+    // A corpus-wide request therefore searches every collection the catalog knows — a bounded set,
+    // and one the author should not have to name to be shown what is in it.
+    List<Resolved> collections = corpusWide && types.contains(SearchRequest.TYPE_VALUE_SET)
+        ? valueSetCollections()
+        : List.of();
+    for (Resolved collection : collections) {
+      blocks.putIfAbsent(collection.acronym(), collection.block());
     }
 
     Map<String, TypeResults> results = new LinkedHashMap<>();
@@ -117,10 +146,10 @@ public class VersionAwareSearchService {
       List<? extends Hit> all = switch (type) {
         case SearchRequest.TYPE_ONTOLOGY -> ontologyHits(query, resolved);
         case SearchRequest.TYPE_CLASS -> corpusWide
-            ? corpusHits(query, false) : classHits(query, searchable, request.lang());
+            ? corpusHits(query, false, page, pageSize) : classHits(query, searchable, request.lang());
         case SearchRequest.TYPE_BRANCH -> corpusWide
-            ? corpusHits(query, true) : branchHits(query, searchable, request.lang());
-        case SearchRequest.TYPE_VALUE_SET -> valueSetHits(query, searchable);
+            ? corpusHits(query, true, page, pageSize) : branchHits(query, searchable, request.lang());
+        case SearchRequest.TYPE_VALUE_SET -> valueSetHits(query, corpusWide ? collections : searchable);
         default -> List.of();
       };
       if (corpusWide) {
@@ -144,7 +173,11 @@ public class VersionAwareSearchService {
           }
         }
       }
-      results.put(type, paged(all, page, pageSize));
+      boolean facetable = corpusWide
+          && (SearchRequest.TYPE_CLASS.equals(type) || SearchRequest.TYPE_BRANCH.equals(type));
+      results.put(type, facetable
+          ? facetedPage(query, SearchRequest.TYPE_BRANCH.equals(type), all, page, pageSize)
+          : paged(all, page, pageSize));
     }
     return new SearchResponse(query, List.copyOf(blocks.values()), results);
   }
@@ -259,13 +292,30 @@ public class VersionAwareSearchService {
         continue;
       }
       hits.add(new OntologyHit(SearchRequest.TYPE_ONTOLOGY, SearchRequest.BIOPORTAL, acronym, null,
-          byAcronym ? SearchResponse.MATCH_SOURCE_ACRONYM : SearchResponse.MATCH_SOURCE_NAME));
+          byAcronym ? SearchResponse.MATCH_SOURCE_ACRONYM : SearchResponse.MATCH_SOURCE_NAME, null));
     }
     // Exactness first, then alphabetically: an exact acronym, then a name starting with the query,
     // then one merely containing it. Deterministic, and it needs no signal anyone has to keep current.
     hits.sort(Comparator
         .comparingInt((OntologyHit h) -> nameRank(h.sourceAcronym(), needle))
         .thenComparing(OntologyHit::sourceAcronym));
+
+    // Then the vocabularies the query actually landed in, which is the other half of the question.
+    // "Is there a vocabulary about this" and "which vocabulary should this field draw from" are
+    // different questions, and measured on 2026-08-13 the first is unanswerable for most queries a
+    // picker sees: "blood pressure" and "aspirin" name no vocabulary while matching terms in 164 and
+    // 97 of them.
+    if (index != null && resolved.isEmpty()) {
+      java.util.Set<String> named = hits.stream().map(OntologyHit::sourceAcronym)
+          .collect(java.util.stream.Collectors.toCollection(java.util.LinkedHashSet::new));
+      for (SearchIndexStore.VocabularyMatch found : index.vocabularyFacet(query, VOCABULARY_FACET_LIMIT)) {
+        if (named.contains(found.acronym())) {
+          continue;
+        }
+        hits.add(new OntologyHit(SearchRequest.TYPE_ONTOLOGY, SearchRequest.BIOPORTAL, found.acronym(),
+            null, SearchResponse.MATCH_TERMS, found.matchCount()));
+      }
+    }
     return hits;
   }
 
@@ -374,13 +424,14 @@ public class VersionAwareSearchService {
    * choose the label. Absent fields rather than wrong ones — a client can tell the difference, and
    * an author who has narrowed to a source gets both back.
    */
-  private List<? extends Hit> corpusHits(String query, boolean branchesOnly) throws SQLException {
+  private List<? extends Hit> corpusHits(String query, boolean branchesOnly, int page, int pageSize)
+      throws SQLException {
+    // Fetch the page, not a thousand rows to slice one page out of. Ranking a broad match is where
+    // the time goes — "ce" cost 2.2 seconds fetching a thousand and 0.2 fetching twenty, measured
+    // 2026-08-13 — and the counts come from the facets rather than from the length of this list.
     List<Hit> hits = new ArrayList<>();
-    for (SearchIndexStore.IndexHit hit : index.search(query, List.of(), COUNT_CAP)) {
+    for (SearchIndexStore.IndexHit hit : index.search(query, List.of(), branchesOnly, page * pageSize)) {
       SearchIndexStore.IndexedTerm term = hit.term();
-      if (branchesOnly && !term.hasChildren()) {
-        continue;
-      }
       List<MatchedLabel> matched = new ArrayList<>();
       for (SearchIndexStore.IndexedName name : hit.matched()) {
         if (!"prefLabel".equals(name.property()) || name.lang() != null) {
@@ -401,6 +452,40 @@ public class VersionAwareSearchService {
       }
     }
     return hits;
+  }
+
+  /** Every value-set collection the catalog knows, resolved as if the request had named them. */
+  private List<Resolved> valueSetCollections() throws SQLException {
+    List<Resolved> out = new ArrayList<>();
+    for (String acronym : provider.catalog().listValueSetCollections()) {
+      Resolved resolved = resolveSource(new SourceSelector(null, acronym, null));
+      if (resolved.isLocal()) {
+        out.add(resolved);
+      }
+    }
+    return out;
+  }
+
+  /**
+   * A page of corpus-wide results, counted by facet rather than by the size of the page's own list.
+   *
+   * The hits are capped before they are counted, so counting them would report the cap. The facet
+   * counts the match itself, which is both true and cheap. Two counts, because they answer different
+   * questions: how many terms matched, and how many rows a client that collapses identical labels
+   * will render — for "melanoma" that is 5,439 and 2,552.
+   */
+  private TypeResults facetedPage(String query, boolean branchesOnly, List<? extends Hit> hits,
+                                  int page, int pageSize) throws SQLException {
+    int total = index.matchCount(query, List.of(), false, branchesOnly, FACET_CAP);
+    // Only the terms results carry a collapsed count. It is what that tab's badge shows, and each
+    // facet is a second pass over the match: computing one nobody reads doubles the cost of a broad
+    // query for nothing.
+    Integer labels = branchesOnly ? null : index.matchCount(query, List.of(), true, false, FACET_CAP);
+    int from = Math.min((page - 1) * pageSize, hits.size());
+    int to = Math.min(from + pageSize, hits.size());
+    return new TypeResults(total, total >= FACET_CAP,
+        labels, labels == null ? null : labels >= FACET_CAP,
+        page, pageSize, List.copyOf(hits.subList(from, to)));
   }
 
   /** The source block for an ontology the index answered for, at the version the index holds. */

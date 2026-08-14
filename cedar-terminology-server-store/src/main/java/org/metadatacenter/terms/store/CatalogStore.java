@@ -454,6 +454,26 @@ public class CatalogStore implements AutoCloseable {
    * unknown). Gates value-set-collection version resolution so it never answers for an ontology of the
    * same acronym.
    */
+  /**
+   * Every acronym the catalog marks as a value-set collection.
+   *
+   * A value set is reached through the collection that holds it, so a search that names no source
+   * still has a bounded set to look in — one, as it happens, across the whole served catalog.
+   */
+  public List<String> listValueSetCollections() throws SQLException {
+    List<String> out = new ArrayList<>();
+    try (PreparedStatement ps = connection.prepareStatement(
+        "SELECT acronym FROM ontology_source WHERE kind = ? ORDER BY acronym")) {
+      ps.setString(1, KIND_VALUE_SET_COLLECTION);
+      try (ResultSet rs = ps.executeQuery()) {
+        while (rs.next()) {
+          out.add(rs.getString(1));
+        }
+      }
+    }
+    return out;
+  }
+
   public boolean isValueSetCollection(String acronym) throws SQLException {
     if (acronym == null) {
       return false;

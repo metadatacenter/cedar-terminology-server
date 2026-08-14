@@ -269,6 +269,16 @@ public class SearchIndexStore implements AutoCloseable {
    * returned once, carrying all of them, so a caller can say what matched without a second query.
    */
   public List<IndexHit> search(String query, Collection<String> acronyms, int limit) throws SQLException {
+    return search(query, acronyms, false, limit);
+  }
+
+  /**
+   * @param branchesOnly return only terms that have descendants. Filtered here rather than by the
+   *                     caller: filtering after the limit under-fills a page, since most terms are
+   *                     leaves.
+   */
+  public List<IndexHit> search(String query, Collection<String> acronyms, boolean branchesOnly, int limit)
+      throws SQLException {
     String match = toPrefixMatch(query);
     if (match.isEmpty()) {
       return List.of();
@@ -281,6 +291,9 @@ public class SearchIndexStore implements AutoCloseable {
         JOIN name n ON n.name_id = f.rowid
         JOIN term t ON t.term_id = n.term_id
         WHERE name_fts MATCH ?""");
+    if (branchesOnly) {
+      sql.append(" AND t.has_children = 1");
+    }
     if (acronyms != null && !acronyms.isEmpty()) {
       sql.append(" AND t.acronym IN (")
           .append(String.join(",", java.util.Collections.nCopies(acronyms.size(), "?")))
@@ -294,7 +307,9 @@ public class SearchIndexStore implements AutoCloseable {
     // Exact name, then a name starting with the query, then the rest; shortest first within each.
     // Not the ranking the search-ordering work will bring, which weighs match type against a demand
     // signal. Enough that the cap holds candidates worth ranking.
-    sql.append("""
+    // Leading space, for the same reason as above: a text block drops the newline after its opening
+    // delimiter, so this would otherwise weld itself to whatever the last clause ended with.
+    sql.append(" ").append("""
          ORDER BY CASE
                     WHEN LOWER(n.value) = ? THEN 0
                     WHEN LOWER(n.value) LIKE ? || '%' THEN 1
@@ -334,6 +349,103 @@ public class SearchIndexStore implements AutoCloseable {
       }
     }
     return List.copyOf(byTerm.values());
+  }
+
+  /** How many terms of one vocabulary a query matched. */
+  public record VocabularyMatch(String acronym, int matchCount) {}
+
+  /**
+   * How many matches a query has, counted rather than inferred from a page.
+   *
+   * Counting stops at {@code cap}, and the cap is what makes this affordable. Counting every match
+   * of a broad query is a full deduplication of the corpus: "cell" takes 3.2 seconds unbounded and
+   * 40 milliseconds at ten thousand, measured 2026-08-13. A caller shows the exact number below the
+   * cap and says "more than" above it, which is the honest reading either way — nobody scrolls ten
+   * thousand rows, so the difference between 10,000 and 300,000 is not a difference a badge can act
+   * on.
+   *
+   * @param distinctLabels count distinct preferred labels rather than terms — the rows a client that
+   *                       collapses identical labels will actually render
+   */
+  public int matchCount(String query, Collection<String> acronyms, boolean distinctLabels, int cap)
+      throws SQLException {
+    return matchCount(query, acronyms, distinctLabels, false, cap);
+  }
+
+  /**
+   * @param branchesOnly count only terms that have descendants — the branch results are the class
+   *                     results filtered that way, so their count has to be filtered the same way
+   */
+  public int matchCount(String query, Collection<String> acronyms, boolean distinctLabels,
+                        boolean branchesOnly, int cap) throws SQLException {
+    String match = toPrefixMatch(query);
+    if (match.isEmpty()) {
+      return 0;
+    }
+    String selected = distinctLabels ? "DISTINCT LOWER(t.pref_label)" : "DISTINCT t.term_id";
+    // The space matters: a text block drops the newline after its opening delimiter, so without it
+    // the column list runs straight into FROM.
+    StringBuilder inner = new StringBuilder("SELECT ").append(selected).append(" ").append("""
+         FROM name_fts f
+         JOIN name n ON n.name_id = f.rowid
+         JOIN term t ON t.term_id = n.term_id
+         WHERE name_fts MATCH ?""");
+    if (branchesOnly) {
+      inner.append(" AND t.has_children = 1");
+    }
+    if (acronyms != null && !acronyms.isEmpty()) {
+      inner.append(" AND t.acronym IN (")
+          .append(String.join(",", java.util.Collections.nCopies(acronyms.size(), "?")))
+          .append(')');
+    }
+    inner.append(" LIMIT ?");
+    try (PreparedStatement ps = connection.prepareStatement("SELECT COUNT(*) FROM (" + inner + ")")) {
+      int p = 1;
+      ps.setString(p++, match);
+      if (acronyms != null) {
+        for (String acronym : acronyms) {
+          ps.setString(p++, acronym);
+        }
+      }
+      ps.setInt(p, cap);
+      try (ResultSet rs = ps.executeQuery()) {
+        return rs.next() ? rs.getInt(1) : 0;
+      }
+    }
+  }
+
+  /**
+   * Which vocabularies a query landed in, and how many terms each matched, most first.
+   *
+   * This is the answer to "which vocabulary should this field draw from", and the query already has
+   * it: a group-by over the same match. Note it is not derivable from a page of results — a page is
+   * truncated and its sources are whichever happened to rank highest, which undercounts. Measured
+   * 2026-08-13, "melanoma" is in 113 vocabularies where the first thousand hits come from 88.
+   */
+  public List<VocabularyMatch> vocabularyFacet(String query, int limit) throws SQLException {
+    String match = toPrefixMatch(query);
+    if (match.isEmpty()) {
+      return List.of();
+    }
+    List<VocabularyMatch> out = new ArrayList<>();
+    try (PreparedStatement ps = connection.prepareStatement("""
+        SELECT t.acronym, COUNT(DISTINCT t.term_id) c
+        FROM name_fts f
+        JOIN name n ON n.name_id = f.rowid
+        JOIN term t ON t.term_id = n.term_id
+        WHERE name_fts MATCH ?
+        GROUP BY t.acronym
+        ORDER BY c DESC, t.acronym
+        LIMIT ?""")) {
+      ps.setString(1, match);
+      ps.setInt(2, limit);
+      try (ResultSet rs = ps.executeQuery()) {
+        while (rs.next()) {
+          out.add(new VocabularyMatch(rs.getString(1), rs.getInt(2)));
+        }
+      }
+    }
+    return out;
   }
 
   /**

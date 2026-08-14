@@ -58,8 +58,21 @@ public record SearchResponse(String query, List<SourceBlock> sources, Map<String
    * {@code totalCount} is where counting stopped rather than how many matched, and a client that
    * renders it as an exact figure is lying on the server's behalf.
    */
+  @JsonInclude(JsonInclude.Include.NON_NULL)
   public record TypeResults(
-      int totalCount, boolean countCapped, int page, int pageSize, List<? extends Hit> collection) {}
+      int totalCount,
+      boolean countCapped,
+      Integer distinctLabelCount,
+      Boolean distinctLabelCountCapped,
+      int page,
+      int pageSize,
+      List<? extends Hit> collection) {
+
+    public TypeResults(int totalCount, boolean countCapped, int page, int pageSize,
+                       List<? extends Hit> collection) {
+      this(totalCount, countCapped, null, null, page, pageSize, collection);
+    }
+  }
 
   /** A match. Every hit names its constraint type and the source it came from, and nothing more of it. */
   public interface Hit {
@@ -89,6 +102,8 @@ public record SearchResponse(String query, List<SourceBlock> sources, Map<String
   public static final String MATCH_TERM_BASE_LABEL = "termBaseLabel";
   /** A value set matched because one of its values did; {@code matchedTerms} says which. */
   public static final String MATCH_MEMBER = "member";
+  /** An ontology surfaced because the query matched terms in it, not because of its name. */
+  public static final String MATCH_TERMS = "terms";
 
   /** A specific term. */
   @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -121,14 +136,22 @@ public record SearchResponse(String query, List<SourceBlock> sources, Map<String
       List<TermRef> path,
       List<TermRef> examples) implements Hit {}
 
-  /** A whole vocabulary. Thin, because its source block already carries everything else. */
+  /**
+   * A whole vocabulary. Thin, because its source block already carries everything else.
+   *
+   * {@code termCount} is the vocabulary's size, as the constraint spec defines it. {@code matchCount}
+   * is how many of its terms this query matched, which is evidence rather than part of a constraint
+   * and is the difference between "is there a vocabulary named this" and "which vocabulary should
+   * this field draw from".
+   */
   @JsonInclude(JsonInclude.Include.NON_NULL)
   public record OntologyHit(
       String type,
       String sourceSystem,
       String sourceAcronym,
       Integer termCount,
-      String matchType) implements Hit {}
+      String matchType,
+      Integer matchCount) implements Hit {}
 
   /** A curated list. */
   @JsonInclude(JsonInclude.Include.NON_NULL)

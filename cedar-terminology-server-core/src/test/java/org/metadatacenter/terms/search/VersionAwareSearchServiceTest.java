@@ -396,12 +396,14 @@ public class VersionAwareSearchServiceTest {
   }
 
   @Test
-  public void valueSetsAreNotSearchedCorpusWide() throws Exception {
-    // The index does not record which value set holds a value, so a corpus-wide valueSet search would
-    // have to answer with nothing and call it an answer.
-    VersionAwareSearchService service = withIndex();
-    assertThrows(VersionAwareSearchService.BadSearchRequestException.class,
-        () -> service.search(request("analyte", List.of("valueSet"), List.of())));
+  public void valueSetsAreSearchedAcrossEveryCollectionTheCatalogKnows() throws Exception {
+    // The index does not record which value set holds a value, so a corpus-wide request searches the
+    // collections instead — a bounded set the author should not have to name.
+    SearchResponse response = withIndex().search(request("analyte", List.of("valueSet"), List.of()));
+    List<ValueSetHit> hits = hits(response, "valueSet");
+    assertEquals(1, hits.size());
+    assertEquals("Analyte class", hits.get(0).termBaseLabel());
+    assertEquals("VSC", hits.get(0).sourceAcronym());
   }
 
   @Test
