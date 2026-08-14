@@ -22,12 +22,29 @@ public record SearchRequest(
     String lang,
     Integer page,
     Integer pageSize,
-    Boolean includeVersions) {
+    Boolean includeVersions,
+    /**
+     * How to order the ontology results: {@code relevance} (the default) or {@code matches}.
+     *
+     * Two orders because there are two questions. Relevance leads with a vocabulary named after the
+     * query, which is what an author browsing for one wants. Matches ignores names entirely and
+     * ranks by how many terms each vocabulary matched, which is what an author narrowing a search
+     * wants — the useful thing to narrow to is where the terms are, and for "melanoma" that is NCIT
+     * with 950 rather than MELO with 38, however aptly MELO is named.
+     */
+    String ontologyOrder) {
 
   /** A request that does not ask for version histories, which is most of them. */
   public SearchRequest(String query, List<String> types, List<SourceSelector> sources, String lang,
                        Integer page, Integer pageSize) {
-    this(query, types, sources, lang, page, pageSize, null);
+    this(query, types, sources, lang, page, pageSize, null, null);
+  }
+
+  public static final String ORDER_BY_MATCHES = "matches";
+
+  /** Whether the ontology results should ignore names and rank purely by matching terms. */
+  public boolean ordersOntologiesByMatches() {
+    return ORDER_BY_MATCHES.equalsIgnoreCase(ontologyOrder);
   }
 
   /**

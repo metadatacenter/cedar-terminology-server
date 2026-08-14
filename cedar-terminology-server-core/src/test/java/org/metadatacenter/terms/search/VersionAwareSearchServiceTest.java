@@ -301,6 +301,18 @@ public class VersionAwareSearchServiceTest {
   }
 
   @Test
+  public void theOntologyResultsCanIgnoreNamesAndRankByMatchesInstead() throws Exception {
+    // Browsing and narrowing want different orders. A vocabulary named after the query leads when an
+    // author is looking for one, and is the wrong thing to narrow to when it holds few of the terms.
+    SearchRequest byMatches = new SearchRequest("mammal", List.of("ontology"), List.of(), null, 1, 20,
+        null, SearchRequest.ORDER_BY_MATCHES);
+    assertNotNull(withIndex().search(byMatches).results().get("ontology"));
+    assertTrue(new SearchRequest("x", null, null, null, null, null, null,
+        SearchRequest.ORDER_BY_MATCHES).ordersOntologiesByMatches());
+    assertFalse(new SearchRequest("x", null, null, null, null, null).ordersOntologiesByMatches());
+  }
+
+  @Test
   public void ontologySearchNeedsNoSourceButEveryOtherTypeDoes() throws Exception {
     assertNotNull(service.search(request("mammal", List.of("ontology"), List.of())));
     assertThrows(VersionAwareSearchService.BadSearchRequestException.class,

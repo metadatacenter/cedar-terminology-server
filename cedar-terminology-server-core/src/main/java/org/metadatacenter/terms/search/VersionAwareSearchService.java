@@ -159,7 +159,7 @@ public class VersionAwareSearchService {
         continue;
       }
       List<? extends Hit> all = switch (type) {
-        case SearchRequest.TYPE_ONTOLOGY -> ontologyHits(query, resolved);
+        case SearchRequest.TYPE_ONTOLOGY -> ontologyHits(query, resolved, request.ordersOntologiesByMatches());
         case SearchRequest.TYPE_CLASS -> useIndex
             ? corpusHits(query, false, page, pageSize, scope) : classHits(query, searchable, request.lang());
         case SearchRequest.TYPE_BRANCH -> useIndex
@@ -293,7 +293,8 @@ public class VersionAwareSearchService {
    * The tab is therefore empty for a query like "melanoma", where no vocabulary is named that —
    * which is a true answer, and one a client has to render as such.
    */
-  private List<OntologyHit> ontologyHits(String query, List<Resolved> resolved) throws SQLException {
+  private List<OntologyHit> ontologyHits(String query, List<Resolved> resolved, boolean byMatches)
+      throws SQLException {
     if (query.isEmpty()) {
       return List.of();
     }
@@ -349,11 +350,15 @@ public class VersionAwareSearchService {
             found.getKey(), null, SearchResponse.MATCH_TERMS, found.getValue()));
       }
     }
-    withCounts.sort(Comparator
-        .comparingInt((OntologyHit h) -> strength(h, needle, startsWithName))
-        .thenComparing(Comparator.comparingInt((OntologyHit h) ->
-            h.matchCount() == null ? 0 : h.matchCount()).reversed())
-        .thenComparing(OntologyHit::sourceAcronym));
+    Comparator<OntologyHit> byMatchCount = Comparator
+        .comparingInt((OntologyHit h) -> h.matchCount() == null ? 0 : h.matchCount()).reversed()
+        .thenComparing(OntologyHit::sourceAcronym);
+    // Ranking by name first is right for browsing and wrong for narrowing: a vocabulary aptly named
+    // after the query may hold almost none of its terms, and narrowing to it hides the answer.
+    withCounts.sort(byMatches
+        ? byMatchCount
+        : Comparator.comparingInt((OntologyHit h) -> strength(h, needle, startsWithName))
+            .thenComparing(byMatchCount));
     return withCounts;
   }
 
