@@ -124,7 +124,8 @@ public record SearchResponse(String query, List<SourceBlock> sources, Map<String
       TermRef replacedBy,
       boolean hasChildren,
       int descendantCount,
-      List<TermRef> path) implements Hit {}
+      List<TermRef> path,
+      List<MatchedLabel> names) implements Hit {}
 
   /** Everything at or below a term. */
   @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -139,7 +140,8 @@ public record SearchResponse(String query, List<SourceBlock> sources, Map<String
       List<MatchedLabel> matchedLabels,
       boolean obsolete,
       List<TermRef> path,
-      List<TermRef> examples) implements Hit {}
+      List<TermRef> examples,
+      List<MatchedLabel> names) implements Hit {}
 
   /**
    * A whole vocabulary. Thin, because its source block already carries everything else.

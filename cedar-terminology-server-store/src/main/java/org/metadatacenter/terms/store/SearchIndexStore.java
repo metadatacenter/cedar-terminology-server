@@ -7,9 +7,12 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -68,6 +71,42 @@ public class SearchIndexStore implements AutoCloseable {
 
   /** A hit: the term, and the names of it that matched. */
   public record IndexHit(IndexedTerm term, List<IndexedName> matched) {}
+
+  /**
+   * Every name a page of terms carries, keyed by acronym and IRI.
+   *
+   * One query for the page rather than one per row: a term's synonyms are what say whether it is
+   * the concept an author meant, and they are worth nothing if fetching them costs a round trip a
+   * row. An IRI can belong to more than one ontology — OBO terms are imported widely — so the key
+   * is the pair that addresses a term and not the IRI alone.
+   */
+  public Map<String, List<IndexedName>> namesOf(Collection<String> iris) throws SQLException {
+    Map<String, List<IndexedName>> out = new HashMap<>();
+    if (iris.isEmpty()) {
+      return out;
+    }
+    List<String> distinct = List.copyOf(new LinkedHashSet<>(iris));
+    String sql = "SELECT t.acronym, t.iri, n.property, n.lang, n.value FROM term t"
+        + " JOIN name n ON n.term_id = t.term_id WHERE t.iri IN ("
+        + String.join(",", Collections.nCopies(distinct.size(), "?")) + ")";
+    try (PreparedStatement ps = connection.prepareStatement(sql)) {
+      for (int i = 0; i < distinct.size(); i++) {
+        ps.setString(i + 1, distinct.get(i));
+      }
+      try (ResultSet rs = ps.executeQuery()) {
+        while (rs.next()) {
+          out.computeIfAbsent(nameKey(rs.getString(1), rs.getString(2)), key -> new ArrayList<>())
+              .add(new IndexedName(rs.getString(3), rs.getString(4), rs.getString(5)));
+        }
+      }
+    }
+    return out;
+  }
+
+  /** The pair that addresses a term, as one string, for keying a lookup. */
+  public static String nameKey(String acronym, String iri) {
+    return acronym + '\u0000' + iri;
+  }
 
   private final Connection connection;
 

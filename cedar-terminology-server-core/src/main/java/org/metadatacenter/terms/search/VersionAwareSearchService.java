@@ -397,7 +397,8 @@ public class VersionAwareSearchService {
             matched.isEmpty() ? SearchResponse.MATCH_TERM_LABEL : SearchResponse.MATCH_SYNONYM,
             matched.isEmpty() ? null : matched,
             concept.obsolete(), replacedBy(store, concept),
-            concept.hasChildren(), store.descendantCount(concept.iri()), path(store, concept.iri())));
+            concept.hasChildren(), store.descendantCount(concept.iri()), path(store, concept.iri()),
+            snapshotNames(store.labels(concept.iri()), label)));
       }
     }
     hits.sort(hitOrder(query, ClassHit::termLabel, ClassHit::obsolete, ClassHit::termIri));
@@ -422,7 +423,8 @@ public class VersionAwareSearchService {
             concept.iri(), label, store.descendantCount(concept.iri()),
             matched.isEmpty() ? SearchResponse.MATCH_TERM_LABEL : SearchResponse.MATCH_SYNONYM,
             matched.isEmpty() ? null : matched,
-            concept.obsolete(), path(store, concept.iri()), examples(store, concept.iri())));
+            concept.obsolete(), path(store, concept.iri()), examples(store, concept.iri()),
+            snapshotNames(store.labels(concept.iri()), label)));
       }
     }
     hits.sort(hitOrder(query, BranchHit::termBaseLabel, BranchHit::obsolete, BranchHit::termBaseIri));
@@ -497,6 +499,8 @@ public class VersionAwareSearchService {
     List<Hit> hits = new ArrayList<>();
     List<SearchIndexStore.IndexHit> found =
         index.searchByLabelPage(query, scope, branchesOnly, page, pageSize);
+    Map<String, List<SearchIndexStore.IndexedName>> namesByTerm =
+        index.namesOf(found.stream().map(hit -> hit.term().iri()).toList());
     for (SearchIndexStore.IndexHit hit : found) {
       SearchIndexStore.IndexedTerm term = hit.term();
       // What matched, and only when the label on screen does not already say it — the same rule the
@@ -522,16 +526,19 @@ public class VersionAwareSearchService {
       List<TermRef> parent = term.parentLabel() == null
           ? null
           : List.of(new TermRef(term.parentIri(), term.parentLabel()));
+      List<MatchedLabel> names = otherNames(
+          namesByTerm.get(SearchIndexStore.nameKey(term.acronym(), term.iri())), term.prefLabel());
       if (branchesOnly) {
         hits.add(new BranchHit(SearchRequest.TYPE_BRANCH, SearchRequest.BIOPORTAL, term.acronym(),
             term.iri(), term.prefLabel(), term.descendantCount(), matchType,
-            matched.isEmpty() ? null : matched, term.obsolete(), parent, null));
+            matched.isEmpty() ? null : matched, term.obsolete(), parent, null,
+            names.isEmpty() ? null : names));
       } else {
         hits.add(new ClassHit(SearchRequest.TYPE_CLASS, SearchRequest.BIOPORTAL, term.acronym(),
             term.iri(), SearchRequest.TYPE_CLASS, term.prefLabel(), matchType,
             matched.isEmpty() ? null : matched, term.obsolete(),
             term.replacedBy() == null ? null : new TermRef(term.replacedBy(), null),
-            term.hasChildren(), term.descendantCount(), parent));
+            term.hasChildren(), term.descendantCount(), parent, names.isEmpty() ? null : names));
       }
     }
     return hits;
@@ -629,6 +636,39 @@ public class VersionAwareSearchService {
     }
     return store.labelInLang(concept.iri(), lang).orElse(concept.prefLabel());
   }
+
+  /**
+   * Every name a term carries other than the one on screen.
+   *
+   * What tells an author whether a concept is the one they meant, when its preferred label is a
+   * word several vocabularies use differently. Deduplicated on the value: an ontology can record
+   * one string as both an exact and a related synonym, and that distinction is not one a picker
+   * can act on.
+   */
+  private static List<MatchedLabel> otherNames(List<SearchIndexStore.IndexedName> names, String shown) {
+    if (names == null) {
+      return List.of();
+    }
+    Map<String, MatchedLabel> byValue = new LinkedHashMap<>();
+    for (SearchIndexStore.IndexedName name : names) {
+      if (name.value() != null && !name.value().equalsIgnoreCase(shown)) {
+        byValue.putIfAbsent(name.value(), new MatchedLabel(name.value(), blankToNull(name.lang())));
+      }
+    }
+    return List.copyOf(byValue.values());
+  }
+
+  /** The same, over what a snapshot records. */
+  private static List<MatchedLabel> snapshotNames(List<SnapshotStore.LabelEntry> labels, String shown) {
+    Map<String, MatchedLabel> byValue = new LinkedHashMap<>();
+    for (SnapshotStore.LabelEntry entry : labels) {
+      if (entry.value() != null && !entry.value().equalsIgnoreCase(shown)) {
+        byValue.putIfAbsent(entry.value(), new MatchedLabel(entry.value(), entry.lang()));
+      }
+    }
+    return byValue.isEmpty() ? null : List.copyOf(byValue.values());
+  }
+
 
   /**
    * What matched, when it was not the label on screen. A search reaches a concept through any
