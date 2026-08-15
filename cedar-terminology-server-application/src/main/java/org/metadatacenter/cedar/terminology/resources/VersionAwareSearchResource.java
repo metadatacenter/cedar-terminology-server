@@ -106,7 +106,10 @@ public class VersionAwareSearchResource extends AbstractTerminologyServerResourc
   @Operation(summary = "Where a term sits in its ontology",
       description = "The chain of ancestors above a term, root first, and what hangs directly below it. "
           + "A search result names a term; whether it is the right term is a question about its "
-          + "neighbourhood, and two concepts with one label are told apart by nothing else.",
+          + "neighbourhood, and two concepts with one label are told apart by nothing else. "
+          + "With versionId, answered from that release's snapshot: a hierarchy belongs to a release, "
+          + "and a term's parent can move between two of them. Without it, from the cross-snapshot "
+          + "index, which holds each ontology's current version.",
       tags = {"Search"})
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "The term's ancestors and children"),
@@ -115,7 +118,8 @@ public class VersionAwareSearchResource extends AbstractTerminologyServerResourc
       @ApiResponse(responseCode = "503", description = "No local terminology store is configured")
   })
   public Response hierarchy(@QueryParam("sourceAcronym") String sourceAcronym,
-                            @QueryParam("termIri") String termIri) throws CedarException {
+                            @QueryParam("termIri") String termIri,
+                            @QueryParam("versionId") String versionId) throws CedarException {
     if (searchService == null) {
       return CedarResponse.status(CedarResponseStatus.SERVICE_UNAVAILABLE)
           .errorKey(CedarErrorKey.INVALID_INPUT)
@@ -129,7 +133,7 @@ public class VersionAwareSearchResource extends AbstractTerminologyServerResourc
           .build();
     }
     try {
-      Optional<HierarchyResponse> found = searchService.hierarchy(sourceAcronym, termIri);
+      Optional<HierarchyResponse> found = searchService.hierarchy(sourceAcronym, termIri, versionId);
       if (found.isEmpty()) {
         return CedarResponse.notFound()
             .errorKey(CedarErrorKey.INVALID_INPUT)

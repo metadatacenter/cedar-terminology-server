@@ -614,7 +614,27 @@ public class VersionAwareSearchService {
    * the index does not hold the term, which is the honest answer for a proxied or unheld source.
    */
   public Optional<HierarchyResponse> hierarchy(String acronym, String termIri) throws SQLException {
-    if (index == null || acronym == null || acronym.isBlank() || termIri == null || termIri.isBlank()) {
+    return hierarchy(acronym, termIri, null);
+  }
+
+  /**
+   * The same, at a named release.
+   *
+   * A hierarchy is a property of a release, not of an ontology: a term's parent can move between
+   * two of them, and answering from the index — which holds each ontology's current version and no
+   * other — would draw an author who pinned an older release the shape of today's. So a request
+   * naming a version is answered from that snapshot, and only an unpinned one takes the index,
+   * where the answer and the index agree by construction.
+   */
+  public Optional<HierarchyResponse> hierarchy(String acronym, String termIri, String versionId)
+      throws SQLException {
+    if (acronym == null || acronym.isBlank() || termIri == null || termIri.isBlank()) {
+      return Optional.empty();
+    }
+    if (versionId != null && !versionId.isBlank()) {
+      return snapshotHierarchy(acronym, termIri, versionId);
+    }
+    if (index == null) {
       return Optional.empty();
     }
     Optional<SearchIndexStore.IndexedTerm> found = index.term(acronym, termIri);
@@ -635,6 +655,35 @@ public class VersionAwareSearchService {
         indexedSourceBlock(acronym), path.isEmpty() ? null : path, term.iri(), term.prefLabel(),
         children.isEmpty() ? null : children, index.childCount(acronym, termIri),
         term.descendantCount()));
+  }
+
+  /** The hierarchy as one snapshot records it, for a request that named a release. */
+  private Optional<HierarchyResponse> snapshotHierarchy(String acronym, String termIri, String versionId)
+      throws SQLException {
+    Resolved resolved = resolveSource(
+        new SourceSelector(null, acronym, new SearchRequest.VersionSelector(versionId)));
+    if (!resolved.isLocal()) {
+      return Optional.empty();
+    }
+    SnapshotStore store = resolved.store();
+    Optional<String> label = store.prefLabel(termIri);
+    if (label.isEmpty() && !store.contains(termIri)) {
+      return Optional.empty();
+    }
+    List<String> childIris = store.children(termIri);
+    List<HierarchyResponse.Child> children = new ArrayList<>();
+    for (String child : childIris) {
+      if (children.size() == CHILD_LIMIT) {
+        break;
+      }
+      children.add(new HierarchyResponse.Child(child, store.prefLabel(child).orElse(null),
+          !store.children(child).isEmpty(), store.descendantCount(child)));
+    }
+    children.sort(Comparator.comparing(child -> child.termLabel() == null ? "" : child.termLabel()));
+    List<TermRef> path = path(store, termIri);
+    return Optional.of(new HierarchyResponse(SearchRequest.BIOPORTAL, acronym, resolved.block(),
+        path, termIri, label.orElse(null), children.isEmpty() ? null : children,
+        childIris.size(), store.descendantCount(termIri)));
   }
 
   private SourceBlock indexedSourceBlock(String acronym) throws SQLException {
