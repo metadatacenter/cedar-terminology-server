@@ -248,6 +248,10 @@ public class OwlHierarchyExtractor implements HierarchyExtractor {
     // best-ranked literal (English, then untagged, then any other) rather than the first encountered,
     // so a multilingual ontology (NANDO's Japanese, ONTOAD's French, ...) does not diverge from
     // BioPortal on which language it names the term in. rdfs:label wins over skos:prefLabel overall.
+    //
+    // A blank literal is not a label. ABD asserts rdfs:label "" alongside the real one on 61 of its
+    // classes, and taking the blank left the class unlabeled — which then drew the IRI-fragment
+    // fallback, so "White pine blister rust" was served as "?id=118".
     String rdfsLabel = null;
     int rdfsRank = -1;
     String prefLabel = null;
@@ -255,7 +259,7 @@ public class OwlHierarchyExtractor implements HierarchyExtractor {
     // Across the import closure: an imported class carries its label in the imported ontology.
     for (OWLOntology o : ont.getImportsClosure()) {
       for (OWLAnnotationAssertionAxiom ax : o.getAnnotationAssertionAxioms(cls.getIRI())) {
-        if (!(ax.getValue() instanceof OWLLiteral literal)) {
+        if (!(ax.getValue() instanceof OWLLiteral literal) || literal.getLiteral().isBlank()) {
           continue;
         }
         int rank = langRank(literal);

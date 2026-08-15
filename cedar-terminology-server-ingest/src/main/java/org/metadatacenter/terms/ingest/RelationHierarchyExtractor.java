@@ -192,6 +192,11 @@ public class RelationHierarchyExtractor implements HierarchyExtractor {
 
   private static void recordLabel(Map<String, String> prefEn, Map<String, String> prefAny,
                                   String concept, OWLLiteral literal) {
+    // A blank literal is not a label. Taking one leaves the concept unlabeled as far as everything
+    // downstream is concerned, and it then draws the IRI-fragment fallback.
+    if (literal.getLiteral().isBlank()) {
+      return;
+    }
     prefAny.putIfAbsent(concept, literal.getLiteral());
     if (literal.hasLang() && literal.getLang().toLowerCase().startsWith("en")) {
       prefEn.putIfAbsent(concept, literal.getLiteral());
