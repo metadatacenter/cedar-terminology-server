@@ -79,6 +79,12 @@ public class VersionAwareSearchService {
    */
   private static final int VOCABULARY_FACET_LIMIT = 1000;
 
+  /** Deep enough for any vocabulary the store holds, and a bound on a hierarchy that cycles. */
+  private static final int MAX_ANCESTOR_DEPTH = 32;
+
+  /** Children shown at once. A SNOMED node can have hundreds; the count says how many were left. */
+  private static final int CHILD_LIMIT = 50;
+
   /** How many descendants a branch row illustrates. */
   private static final int EXAMPLE_COUNT = 3;
 
@@ -599,6 +605,38 @@ public class VersionAwareSearchService {
   }
 
   /** The source block for an ontology the index answered for, at the version the index holds. */
+  /**
+   * Where a term sits in its ontology.
+   *
+   * Answered from the index rather than the snapshot: the index holds one parent a term, which is
+   * the step a row needs, and walking it in SQLite costs one query where opening a snapshot per
+   * lookup would cost a file open and a hierarchy the caller did not ask for. Returns empty when
+   * the index does not hold the term, which is the honest answer for a proxied or unheld source.
+   */
+  public Optional<HierarchyResponse> hierarchy(String acronym, String termIri) throws SQLException {
+    if (index == null || acronym == null || acronym.isBlank() || termIri == null || termIri.isBlank()) {
+      return Optional.empty();
+    }
+    Optional<SearchIndexStore.IndexedTerm> found = index.term(acronym, termIri);
+    if (found.isEmpty()) {
+      return Optional.empty();
+    }
+    SearchIndexStore.IndexedTerm term = found.get();
+    List<TermRef> path = new ArrayList<>();
+    for (SearchIndexStore.IndexedTerm step : index.ancestors(acronym, termIri, MAX_ANCESTOR_DEPTH)) {
+      path.add(new TermRef(step.iri(), step.prefLabel()));
+    }
+    List<HierarchyResponse.Child> children = new ArrayList<>();
+    for (SearchIndexStore.IndexedTerm child : index.children(acronym, termIri, CHILD_LIMIT)) {
+      children.add(new HierarchyResponse.Child(child.iri(), child.prefLabel(), child.hasChildren(),
+          child.descendantCount()));
+    }
+    return Optional.of(new HierarchyResponse(SearchRequest.BIOPORTAL, acronym,
+        indexedSourceBlock(acronym), path.isEmpty() ? null : path, term.iri(), term.prefLabel(),
+        children.isEmpty() ? null : children, index.childCount(acronym, termIri),
+        term.descendantCount()));
+  }
+
   private SourceBlock indexedSourceBlock(String acronym) throws SQLException {
     CatalogStore catalog = provider.catalog();
     String name = catalog.ontologyName(acronym);

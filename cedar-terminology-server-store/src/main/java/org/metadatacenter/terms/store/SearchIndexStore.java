@@ -103,6 +103,88 @@ public class SearchIndexStore implements AutoCloseable {
     return out;
   }
 
+  /**
+   * The chain above a term, root first.
+   *
+   * Walked in SQLite rather than a query a step, since a deep vocabulary is thirty steps and each
+   * would be a round trip. Bounded by depth rather than trusted to terminate: a broader/narrower
+   * cycle, which some SKOS vocabularies carry, would otherwise recurse until the process died.
+   */
+  public List<IndexedTerm> ancestors(String acronym, String iri, int maxDepth) throws SQLException {
+    String sql = """
+        WITH RECURSIVE up(iri, depth) AS (
+          SELECT parent_iri, 1 FROM term WHERE acronym = ? AND iri = ? AND parent_iri IS NOT NULL
+          UNION ALL
+          SELECT t.parent_iri, up.depth + 1 FROM term t JOIN up ON t.iri = up.iri
+            WHERE t.acronym = ? AND t.parent_iri IS NOT NULL AND up.depth < ?
+        )
+        SELECT t.acronym, t.iri, t.pref_label, t.obsolete, t.replaced_by, t.has_children,
+               t.descendant_count, t.parent_iri, t.parent_label, up.depth
+        FROM up JOIN term t ON t.iri = up.iri AND t.acronym = ?
+        ORDER BY up.depth DESC""";
+    List<IndexedTerm> chain = new ArrayList<>();
+    try (PreparedStatement ps = connection.prepareStatement(sql)) {
+      ps.setString(1, acronym);
+      ps.setString(2, iri);
+      ps.setString(3, acronym);
+      ps.setInt(4, maxDepth);
+      ps.setString(5, acronym);
+      try (ResultSet rs = ps.executeQuery()) {
+        while (rs.next()) {
+          chain.add(readTerm(rs));
+        }
+      }
+    }
+    return chain;
+  }
+
+  /** What sits directly under a term, and how many there are in all. */
+  public List<IndexedTerm> children(String acronym, String iri, int limit) throws SQLException {
+    String sql = "SELECT acronym, iri, pref_label, obsolete, replaced_by, has_children,"
+        + " descendant_count, parent_iri, parent_label FROM term"
+        + " WHERE acronym = ? AND parent_iri = ? ORDER BY pref_label LIMIT ?";
+    List<IndexedTerm> out = new ArrayList<>();
+    try (PreparedStatement ps = connection.prepareStatement(sql)) {
+      ps.setString(1, acronym);
+      ps.setString(2, iri);
+      ps.setInt(3, limit);
+      try (ResultSet rs = ps.executeQuery()) {
+        while (rs.next()) {
+          out.add(readTerm(rs));
+        }
+      }
+    }
+    return out;
+  }
+
+  public int childCount(String acronym, String iri) throws SQLException {
+    try (PreparedStatement ps = connection.prepareStatement(
+        "SELECT COUNT(*) FROM term WHERE acronym = ? AND parent_iri = ?")) {
+      ps.setString(1, acronym);
+      ps.setString(2, iri);
+      try (ResultSet rs = ps.executeQuery()) {
+        return rs.next() ? rs.getInt(1) : 0;
+      }
+    }
+  }
+
+  public Optional<IndexedTerm> term(String acronym, String iri) throws SQLException {
+    try (PreparedStatement ps = connection.prepareStatement(
+        "SELECT acronym, iri, pref_label, obsolete, replaced_by, has_children, descendant_count,"
+            + " parent_iri, parent_label FROM term WHERE acronym = ? AND iri = ?")) {
+      ps.setString(1, acronym);
+      ps.setString(2, iri);
+      try (ResultSet rs = ps.executeQuery()) {
+        return rs.next() ? Optional.of(readTerm(rs)) : Optional.empty();
+      }
+    }
+  }
+
+  private static IndexedTerm readTerm(ResultSet rs) throws SQLException {
+    return new IndexedTerm(rs.getString(1), rs.getString(2), rs.getString(3), rs.getInt(4) != 0,
+        rs.getString(5), rs.getInt(6) != 0, rs.getInt(7), rs.getString(8), rs.getString(9));
+  }
+
   /** The pair that addresses a term, as one string, for keying a lookup. */
   public static String nameKey(String acronym, String iri) {
     return acronym + '\u0000' + iri;

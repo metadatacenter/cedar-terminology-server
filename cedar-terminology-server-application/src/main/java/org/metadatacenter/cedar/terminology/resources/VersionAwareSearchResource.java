@@ -5,9 +5,11 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.metadatacenter.config.CedarConfig;
@@ -15,6 +17,7 @@ import org.metadatacenter.error.CedarErrorKey;
 import org.metadatacenter.exception.CedarException;
 import org.metadatacenter.http.CedarResponseStatus;
 import org.metadatacenter.rest.exception.CedarAssertionException;
+import org.metadatacenter.terms.search.HierarchyResponse;
 import org.metadatacenter.terms.search.SearchRequest;
 import org.metadatacenter.terms.search.SearchResponse;
 import org.metadatacenter.terms.search.VersionAwareSearchService;
@@ -22,6 +25,7 @@ import org.metadatacenter.util.http.CedarResponse;
 import org.metadatacenter.util.json.JsonMapper;
 
 import java.sql.SQLException;
+import java.util.Optional;
 
 /**
  * Version-aware search, at a new root path rather than under {@code /bioportal}.
@@ -91,6 +95,48 @@ public class VersionAwareSearchResource extends AbstractTerminologyServerResourc
           .errorKey(CedarErrorKey.INVALID_INPUT)
           .errorMessage(e.getMessage())
           .build();
+    } catch (SQLException e) {
+      throw new CedarAssertionException(e);
+    }
+  }
+
+  @GET
+  @Timed
+  @Path("/hierarchy")
+  @Operation(summary = "Where a term sits in its ontology",
+      description = "The chain of ancestors above a term, root first, and what hangs directly below it. "
+          + "A search result names a term; whether it is the right term is a question about its "
+          + "neighbourhood, and two concepts with one label are told apart by nothing else.",
+      tags = {"Search"})
+  @ApiResponses({
+      @ApiResponse(responseCode = "200", description = "The term's ancestors and children"),
+      @ApiResponse(responseCode = "400", description = "A request naming no term"),
+      @ApiResponse(responseCode = "404", description = "The store does not hold that term"),
+      @ApiResponse(responseCode = "503", description = "No local terminology store is configured")
+  })
+  public Response hierarchy(@QueryParam("sourceAcronym") String sourceAcronym,
+                            @QueryParam("termIri") String termIri) throws CedarException {
+    if (searchService == null) {
+      return CedarResponse.status(CedarResponseStatus.SERVICE_UNAVAILABLE)
+          .errorKey(CedarErrorKey.INVALID_INPUT)
+          .errorMessage("A hierarchy comes from the local terminology store, and no catalog is configured.")
+          .build();
+    }
+    if (sourceAcronym == null || sourceAcronym.isBlank() || termIri == null || termIri.isBlank()) {
+      return CedarResponse.badRequest()
+          .errorKey(CedarErrorKey.INVALID_INPUT)
+          .errorMessage("A hierarchy needs sourceAcronym and termIri. An IRI addresses a term only within a source.")
+          .build();
+    }
+    try {
+      Optional<HierarchyResponse> found = searchService.hierarchy(sourceAcronym, termIri);
+      if (found.isEmpty()) {
+        return CedarResponse.notFound()
+            .errorKey(CedarErrorKey.INVALID_INPUT)
+            .errorMessage("The store holds no term " + termIri + " in " + sourceAcronym + ".")
+            .build();
+      }
+      return Response.ok().entity(JsonMapper.MAPPER.valueToTree(found.get())).build();
     } catch (SQLException e) {
       throw new CedarAssertionException(e);
     }
