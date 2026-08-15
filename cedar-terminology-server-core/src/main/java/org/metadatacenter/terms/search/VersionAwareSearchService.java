@@ -499,14 +499,19 @@ public class VersionAwareSearchService {
         index.searchByLabelPage(query, scope, branchesOnly, page, pageSize);
     for (SearchIndexStore.IndexHit hit : found) {
       SearchIndexStore.IndexedTerm term = hit.term();
-      // Only names that differ from the one on screen. The index holds a term's preferred label and
-      // its captured labels separately, so a concept whose English skos:prefLabel repeats its served
-      // label matches through both — and reporting "matched synonym: Melanoma" beside a row reading
-      // Melanoma is noise in every row of a common query.
+      // What matched, and only when the label on screen does not already say it — the same rule the
+      // snapshot path applies, for the same reason. A search reaches a concept through every name it
+      // captured, so a term whose preferred label answers the query answers it through the synonyms
+      // too: reporting one of those beside a row that reads "melanoma" explains a row that needs no
+      // explaining, and picks an arbitrary synonym to do it with. The inner test is not covered by
+      // the outer one, because matching folds diacritics: `aquifere` reaches a term labelled
+      // `aquifère`, whose label does not contain the query but whose matched names include itself.
       List<MatchedLabel> matched = new ArrayList<>();
-      for (SearchIndexStore.IndexedName name : hit.matched()) {
-        if (name.value() != null && !name.value().equalsIgnoreCase(term.prefLabel())) {
-          matched.add(new MatchedLabel(name.value(), blankToNull(name.lang())));
+      if (!containsIgnoreCase(term.prefLabel(), query)) {
+        for (SearchIndexStore.IndexedName name : hit.matched()) {
+          if (name.value() != null && !name.value().equalsIgnoreCase(term.prefLabel())) {
+            matched.add(new MatchedLabel(name.value(), blankToNull(name.lang())));
+          }
         }
       }
       String matchType = matched.isEmpty() ? SearchResponse.MATCH_TERM_LABEL : SearchResponse.MATCH_SYNONYM;
