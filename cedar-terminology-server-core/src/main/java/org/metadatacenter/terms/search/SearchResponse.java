@@ -123,7 +123,8 @@ public record SearchResponse(String query, List<SourceBlock> sources, Map<String
       boolean obsolete,
       TermRef replacedBy,
       boolean hasChildren,
-      int descendantCount) implements Hit {}
+      int descendantCount,
+      List<TermRef> path) implements Hit {}
 
   /** Everything at or below a term. */
   @JsonInclude(JsonInclude.Include.NON_NULL)

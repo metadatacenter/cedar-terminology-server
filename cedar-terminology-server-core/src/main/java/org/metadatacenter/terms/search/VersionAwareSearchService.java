@@ -397,7 +397,7 @@ public class VersionAwareSearchService {
             matched.isEmpty() ? SearchResponse.MATCH_TERM_LABEL : SearchResponse.MATCH_SYNONYM,
             matched.isEmpty() ? null : matched,
             concept.obsolete(), replacedBy(store, concept),
-            concept.hasChildren(), store.descendantCount(concept.iri())));
+            concept.hasChildren(), store.descendantCount(concept.iri()), path(store, concept.iri())));
       }
     }
     hits.sort(hitOrder(query, ClassHit::termLabel, ClassHit::obsolete, ClassHit::termIri));
@@ -515,13 +515,14 @@ public class VersionAwareSearchService {
         }
       }
       String matchType = matched.isEmpty() ? SearchResponse.MATCH_TERM_LABEL : SearchResponse.MATCH_SYNONYM;
+      // A one-step path, which is what the index holds and what a label often needs: fifteen classes
+      // labelled "Disease" in one vocabulary are told apart by their parent and by nothing else on
+      // the row, and a vocabulary can label two of its own classes the same. Classes carry it for
+      // the same reason branches do. The full chain still needs a named source.
+      List<TermRef> parent = term.parentLabel() == null
+          ? null
+          : List.of(new TermRef(term.parentIri(), term.parentLabel()));
       if (branchesOnly) {
-        // A one-step path, which is what the index holds and what a label often needs: fifteen
-        // classes labelled "Disease" in one vocabulary are told apart by their parent and by nothing
-        // else on the row. The full chain still needs a named source.
-        List<TermRef> parent = term.parentLabel() == null
-            ? null
-            : List.of(new TermRef(term.parentIri(), term.parentLabel()));
         hits.add(new BranchHit(SearchRequest.TYPE_BRANCH, SearchRequest.BIOPORTAL, term.acronym(),
             term.iri(), term.prefLabel(), term.descendantCount(), matchType,
             matched.isEmpty() ? null : matched, term.obsolete(), parent, null));
@@ -530,7 +531,7 @@ public class VersionAwareSearchService {
             term.iri(), SearchRequest.TYPE_CLASS, term.prefLabel(), matchType,
             matched.isEmpty() ? null : matched, term.obsolete(),
             term.replacedBy() == null ? null : new TermRef(term.replacedBy(), null),
-            term.hasChildren(), term.descendantCount()));
+            term.hasChildren(), term.descendantCount(), parent));
       }
     }
     return hits;
