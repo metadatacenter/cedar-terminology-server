@@ -512,11 +512,19 @@ public class SearchIndexStore implements AutoCloseable {
     List<String> labels = new ArrayList<>();
     // A label ranks by the best of its names, so a term reached through an exact synonym is not
     // pushed below one reached through a long label that merely contains the query.
+    // Branches order by how much is under them, terms by how well they matched. A branch constraint
+    // is "everything under this", so what it holds is the thing being chosen between: for "disease",
+    // DOID's own disease with 12,220 beneath it is the branch an author means, and a "disease
+    // course" with three is not, however exactly it matched. Rank still breaks ties, so a broad
+    // branch that merely contains the query cannot displace an exact match of the same size.
+    String labelOrder = branchesOnly
+        ? "ORDER BY rank, beneath DESC, obsolete, label"
+        : "ORDER BY rank, obsolete, len, label";
     String labelSql = "SELECT LOWER(t.pref_label) label, MIN(" + MATCH_RANK + ") rank,"
-        + " MIN(t.obsolete) obsolete, MIN(LENGTH(n.value)) len"
+        + " MIN(t.obsolete) obsolete, MIN(LENGTH(n.value)) len, MAX(t.descendant_count) beneath"
         + " FROM name_fts f JOIN name n ON n.name_id = f.rowid JOIN term t ON t.term_id = n.term_id"
         + " WHERE name_fts MATCH ?" + branchFilter + acronymFilter
-        + " GROUP BY LOWER(t.pref_label) ORDER BY rank, obsolete, len, label LIMIT ? OFFSET ?";
+        + " GROUP BY LOWER(t.pref_label) " + labelOrder + " LIMIT ? OFFSET ?";
     try (PreparedStatement ps = connection.prepareStatement(labelSql)) {
       int p = 1;
       for (int i = 0; i < MATCH_RANK_PARAMS; i++) {
