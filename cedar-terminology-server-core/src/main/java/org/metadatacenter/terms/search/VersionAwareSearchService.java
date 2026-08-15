@@ -528,10 +528,17 @@ public class VersionAwareSearchService {
       // A one-step path, which is what the index holds and what a label often needs: fifteen classes
       // labelled "Disease" in one vocabulary are told apart by their parent and by nothing else on
       // the row, and a vocabulary can label two of its own classes the same. Classes carry it for
-      // the same reason branches do. The full chain still needs a named source.
-      List<TermRef> parent = term.parentLabel() == null
-          ? null
-          : List.of(new TermRef(term.parentIri(), term.parentLabel()));
+      // the same reason branches do.
+      //
+      // A search naming one source gets the whole chain instead. It costs a recursive query a hit
+      // and is affordable at a page of them, and it is what lets a client draw the page as the
+      // ontology's own tree: the union of the chains is rooted by construction, so no separate call
+      // for the roots and no walk down from them to find where the matches are.
+      List<TermRef> parent = scope.size() == 1
+          ? chainOf(term)
+          : (term.parentLabel() == null
+              ? null
+              : List.of(new TermRef(term.parentIri(), term.parentLabel())));
       List<MatchedLabel> names = otherNames(
           namesByTerm.get(SearchIndexStore.nameKey(term.acronym(), term.iri())), term.prefLabel());
       if (branchesOnly) {
@@ -684,6 +691,15 @@ public class VersionAwareSearchService {
     return Optional.of(new HierarchyResponse(SearchRequest.BIOPORTAL, acronym, resolved.block(),
         path, termIri, label.orElse(null), children.isEmpty() ? null : children,
         childIris.size(), store.descendantCount(termIri)));
+  }
+
+  /** The whole chain above an indexed term, root first, or null where it is a root itself. */
+  private List<TermRef> chainOf(SearchIndexStore.IndexedTerm term) throws SQLException {
+    List<TermRef> chain = new ArrayList<>();
+    for (SearchIndexStore.IndexedTerm step : index.ancestors(term.acronym(), term.iri(), MAX_ANCESTOR_DEPTH)) {
+      chain.add(new TermRef(step.iri(), step.prefLabel()));
+    }
+    return chain.isEmpty() ? null : chain;
   }
 
   private SourceBlock indexedSourceBlock(String acronym) throws SQLException {
