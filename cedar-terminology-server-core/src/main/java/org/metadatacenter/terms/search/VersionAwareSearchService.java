@@ -677,20 +677,20 @@ public class VersionAwareSearchService {
     if (label.isEmpty() && !store.contains(termIri)) {
       return Optional.empty();
     }
-    List<String> childIris = store.children(termIri);
+    // By label and limited in one query. Taking the first CHILD_LIMIT by IRI and sorting those for
+    // display gave an arbitrary subset of a large node's children, presented as though it were the
+    // alphabetical head of them: ABD's "Disease" has 280 children, and the 50 that came back skipped
+    // "African horse sickness" while showing "African swine fever" two rows on. It also matches how
+    // the index answers this for the current release, so pinning changes the release read, nothing else.
     List<HierarchyResponse.Child> children = new ArrayList<>();
-    for (String child : childIris) {
-      if (children.size() == CHILD_LIMIT) {
-        break;
-      }
-      children.add(new HierarchyResponse.Child(child, store.prefLabel(child).orElse(null),
-          !store.children(child).isEmpty(), store.descendantCount(child)));
+    for (SnapshotStore.LabelledConcept child : store.childrenByLabel(termIri, CHILD_LIMIT)) {
+      children.add(new HierarchyResponse.Child(child.iri(), child.prefLabel(),
+          !store.children(child.iri()).isEmpty(), store.descendantCount(child.iri())));
     }
-    children.sort(Comparator.comparing(child -> child.termLabel() == null ? "" : child.termLabel()));
     List<TermRef> path = path(store, termIri);
     return Optional.of(new HierarchyResponse(SearchRequest.BIOPORTAL, acronym, resolved.block(),
         path, termIri, label.orElse(null), children.isEmpty() ? null : children,
-        childIris.size(), store.descendantCount(termIri)));
+        store.childCount(termIri), store.descendantCount(termIri)));
   }
 
   /** The whole chain above an indexed term, root first, or null where it is a root itself. */

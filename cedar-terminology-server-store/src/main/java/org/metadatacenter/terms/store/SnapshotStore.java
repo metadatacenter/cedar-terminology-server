@@ -765,6 +765,50 @@ public class SnapshotStore implements AutoCloseable {
         WHERE p.iri = ? ORDER BY c.iri""", parentIri);
   }
 
+  /**
+   * Direct children of a concept, by label, at most {@code limit} of them.
+   *
+   * Ordering and limiting together, rather than a caller taking the first n of {@link #children} and
+   * sorting those: children come back by IRI, so taking the first n of that and then sorting them
+   * for display yields an arbitrary subset presented as an alphabetical list. It also matches how
+   * the search index serves the same question for the current release, so pinning a release changes
+   * which release is read and nothing else.
+   */
+  public List<LabelledConcept> childrenByLabel(String parentIri, int limit) throws SQLException {
+    List<LabelledConcept> out = new ArrayList<>();
+    try (PreparedStatement ps = connection.prepareStatement("""
+        SELECT c.iri, c.pref_label FROM edge e
+        JOIN concept c ON c.id = e.child_id
+        JOIN concept p ON p.id = e.parent_id
+        WHERE p.iri = ? ORDER BY c.pref_label, c.iri LIMIT ?""")) {
+      ps.setString(1, parentIri);
+      ps.setInt(2, limit);
+      try (ResultSet rs = ps.executeQuery()) {
+        while (rs.next()) {
+          out.add(new LabelledConcept(rs.getString(1), rs.getString(2)));
+        }
+      }
+    }
+    return out;
+  }
+
+  /** A concept's IRI with the label the snapshot records for it, which may be absent. */
+  public record LabelledConcept(String iri, String prefLabel) {
+  }
+
+  /** How many direct children a concept has, without reading them. */
+  public int childCount(String parentIri) throws SQLException {
+    try (PreparedStatement ps = connection.prepareStatement("""
+        SELECT COUNT(*) FROM edge e
+        JOIN concept p ON p.id = e.parent_id
+        WHERE p.iri = ?""")) {
+      ps.setString(1, parentIri);
+      try (ResultSet rs = ps.executeQuery()) {
+        return rs.next() ? rs.getInt(1) : 0;
+      }
+    }
+  }
+
   /** Direct parents of a concept. */
   public List<String> parents(String childIri) throws SQLException {
     return queryIris("""
