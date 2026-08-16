@@ -278,15 +278,17 @@ public class VersionAwareSearchService {
     VersionInfo version = new VersionInfo(snapshot.versionId(), snapshot.releasedAt(), snapshot.declaredVersion());
     List<VersionInfo> history = versionsOf(acronym);
     SourceBlock block = new SourceBlock(system, acronym, name, iri,
-        SourceBlock.SERVED_LOCAL, true, version, history.size(),
+        SourceBlock.SERVED_LOCAL, authorityOf(acronym, snapshot.versionId()), true, version, history.size(),
         withVersions ? history : null, null, null);
     return new Resolved(block, acronym, store.get());
   }
 
   private static Resolved unavailable(String system, String acronym, String name, String iri, String reason,
                                       SearchRequest.VersionSelector requested) {
+    // No authority on a source that was not served: it names where a release came from, and there
+    // is no release here.
     SourceBlock block = new SourceBlock(system, acronym, name, iri,
-        SourceBlock.SERVED_UNAVAILABLE, false, null, null, null, reason, requested);
+        SourceBlock.SERVED_UNAVAILABLE, null, false, null, null, null, reason, requested);
     return new Resolved(block, acronym, null);
   }
 
@@ -715,7 +717,24 @@ public class VersionAwareSearchService {
           .orElseGet(() -> new VersionInfo(versionId, null, null));
     }
     return new SourceBlock(SearchRequest.BIOPORTAL, acronym, name, iri,
-        SourceBlock.SERVED_LOCAL, versionId != null, version, versionsOf(acronym).size(), null, null, null);
+        SourceBlock.SERVED_LOCAL, authorityOf(acronym, versionId), versionId != null, version,
+        versionsOf(acronym).size(), null, null, null);
+  }
+
+  /**
+   * Which repository a release's bytes came from, or {@code null} where the catalog does not say.
+   *
+   * Recorded per snapshot rather than per ontology, because the same ontology can be harvested from
+   * more than one — the content hash makes those the same release, and this says which of them
+   * supplied the copy being served.
+   */
+  private String authorityOf(String acronym, String versionId) throws SQLException {
+    if (versionId == null) {
+      return null;
+    }
+    return provider.catalog().snapshotProvenance(versionId, acronym)
+        .map(CatalogStore.SnapshotProvenance::backend)
+        .orElse(null);
   }
 
   private static String blankToNull(String s) {

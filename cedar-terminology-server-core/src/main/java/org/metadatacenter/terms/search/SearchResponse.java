@@ -26,6 +26,16 @@ public record SearchResponse(String query, List<SourceBlock> sources, Map<String
       String sourceName,
       String sourceIri,
       String served,
+      /**
+       * Which repository the bytes were ingested from — {@code bioportal}, {@code obofoundry}, a
+       * named OntoPortal instance, or {@code url} for a direct download.
+       *
+       * Descriptive, and deliberately not {@code sourceSystem}: that one is part of the constraint
+       * and decides how a source is resolved, so an ontology harvested from OBO Foundry still
+       * resolves as it always did. This says where a release came from, which is a thing an author
+       * choosing between two vocabularies of the same name wants to see and could not.
+       */
+      String authority,
       boolean pinnable,
       VersionInfo version,
       /** How many versions the store holds, so a client knows whether stepping back is possible. */
