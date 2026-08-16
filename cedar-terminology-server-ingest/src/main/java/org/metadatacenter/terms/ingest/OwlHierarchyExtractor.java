@@ -252,6 +252,11 @@ public class OwlHierarchyExtractor implements HierarchyExtractor {
     // A blank literal is not a label. ABD asserts rdfs:label "" alongside the real one on 61 of its
     // classes, and taking the blank left the class unlabeled — which then drew the IRI-fragment
     // fallback, so "White pine blister rust" was served as "?id=118".
+    //
+    // Nor is a list one. Where a class asserts both a plain label and a list packed into a single
+    // literal, the plain one is the name the source meant, so language decides first and a literal
+    // holding no line break wins among equals — see {@link Names}. ABD's meningitis class asserts
+    // "Meningitis" and a six-line list of the kinds of meningitis, and the list was winning.
     String rdfsLabel = null;
     int rdfsRank = -1;
     String prefLabel = null;
@@ -259,18 +264,22 @@ public class OwlHierarchyExtractor implements HierarchyExtractor {
     // Across the import closure: an imported class carries its label in the imported ontology.
     for (OWLOntology o : ont.getImportsClosure()) {
       for (OWLAnnotationAssertionAxiom ax : o.getAnnotationAssertionAxioms(cls.getIRI())) {
-        if (!(ax.getValue() instanceof OWLLiteral literal) || literal.getLiteral().isBlank()) {
+        if (!(ax.getValue() instanceof OWLLiteral literal)) {
           continue;
         }
-        int rank = langRank(literal);
+        String name = Names.nameOf(literal.getLiteral());
+        if (name == null) {
+          continue;
+        }
+        int rank = rankOf(literal);
         if (ax.getProperty().isLabel()) {
           if (rank > rdfsRank) {
             rdfsRank = rank;
-            rdfsLabel = literal.getLiteral();
+            rdfsLabel = name;
           }
         } else if (ax.getProperty().getIRI().equals(SKOS_PREF_LABEL) && rank > prefRank) {
           prefRank = rank;
-          prefLabel = literal.getLiteral();
+          prefLabel = name;
         }
       }
     }
@@ -293,8 +302,19 @@ public class OwlHierarchyExtractor implements HierarchyExtractor {
           continue;
         }
         String curie = LabelProperties.curieFor(ax.getProperty().getIRI());
-        if (curie != null) {
-          out.add(new SnapshotStore.LabelRow(iri, curie, literal.getLang(), literal.getLiteral()));
+        if (curie == null) {
+          continue;
+        }
+        // A list packed into one literal becomes one name per entry, so each is findable on its own.
+        // Run together they could only be matched by a query spanning two of them, and the panel
+        // that shows a term's other names rendered the whole list as a single run-on line.
+        String name = Names.nameOf(literal.getLiteral());
+        if (name == null) {
+          continue;
+        }
+        out.add(new SnapshotStore.LabelRow(iri, curie, literal.getLang(), name));
+        for (String rest : Names.restOf(literal.getLiteral())) {
+          out.add(new SnapshotStore.LabelRow(iri, curie, literal.getLang(), rest));
         }
       }
     }
@@ -304,6 +324,18 @@ public class OwlHierarchyExtractor implements HierarchyExtractor {
    * Language preference for choosing among a class's labels: English best, then an untagged literal,
    * then any other language. Matches BioPortal, which serves the English label when several exist.
    */
+  /**
+   * How good a candidate a literal is: its language first, then whether it is a name or a list.
+   *
+   * Language dominates because BioPortal serves the English label and diverging on which language
+   * names a term is the larger error. Among literals of equally good language, one holding no line
+   * break is preferred: it is a name as asserted, where the other has to be reduced to its first
+   * line to become one.
+   */
+  private static int rankOf(OWLLiteral literal) {
+    return langRank(literal) * 2 + (Names.hasBreak(literal.getLiteral()) ? 0 : 1);
+  }
+
   private static int langRank(OWLLiteral literal) {
     String lang = literal.getLang();
     if (lang == null || lang.isEmpty()) {

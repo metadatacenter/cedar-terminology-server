@@ -61,8 +61,8 @@ public class RelationHierarchyExtractor implements HierarchyExtractor {
   @Override
   public Result extract(OWLOntology ont, SnapshotStore store) throws SQLException {
     Set<String> concepts = new LinkedHashSet<>();
-    Map<String, String> prefEn = new HashMap<>();
-    Map<String, String> prefAny = new HashMap<>();
+    Labels en = new Labels();
+    Labels any = new Labels();
     Set<String> deprecated = new HashSet<>();
     Map<String, String> replacedBy = new HashMap<>();
     Set<String> edges = new LinkedHashSet<>(); // "child\tparent"
@@ -82,8 +82,13 @@ public class RelationHierarchyExtractor implements HierarchyExtractor {
       // kept below only if its subject turns out to be a concept.
       if (value instanceof OWLLiteral nameLiteral) {
         String curie = LabelProperties.curieFor(prop);
-        if (curie != null) {
-          labelRows.add(new SnapshotStore.LabelRow(s, curie, nameLiteral.getLang(), nameLiteral.getLiteral()));
+        // A list packed into one literal becomes one name per entry, so each is findable on its own.
+        String name = curie == null ? null : Names.nameOf(nameLiteral.getLiteral());
+        if (name != null) {
+          labelRows.add(new SnapshotStore.LabelRow(s, curie, nameLiteral.getLang(), name));
+          for (String rest : Names.restOf(nameLiteral.getLiteral())) {
+            labelRows.add(new SnapshotStore.LabelRow(s, curie, nameLiteral.getLang(), rest));
+          }
         }
       }
 
@@ -98,7 +103,7 @@ public class RelationHierarchyExtractor implements HierarchyExtractor {
       } else if (prop.equals(config.labelPredicate())) {
         if (value instanceof OWLLiteral literal) {
           concepts.add(s);
-          recordLabel(prefEn, prefAny, s, literal);
+          recordLabel(any, en, s, literal);
         }
       } else if (prop.equals(DCT_IS_REPLACED_BY)) {
         if (value instanceof IRI r) {
@@ -142,7 +147,7 @@ public class RelationHierarchyExtractor implements HierarchyExtractor {
 
     int classCount = 0;
     for (String iri : concepts) {
-      String label = prefEn.getOrDefault(iri, prefAny.get(iri));
+      String label = en.getOrDefault(iri, any.get(iri));
       store.addConcept(iri, label, deprecated.contains(iri), replacedBy.get(iri));
       classCount++;
     }
@@ -190,16 +195,49 @@ public class RelationHierarchyExtractor implements HierarchyExtractor {
     concepts.add(parent);
   }
 
-  private static void recordLabel(Map<String, String> prefEn, Map<String, String> prefAny,
-                                  String concept, OWLLiteral literal) {
-    // A blank literal is not a label. Taking one leaves the concept unlabeled as far as everything
-    // downstream is concerned, and it then draws the IRI-fragment fallback.
-    if (literal.getLiteral().isBlank()) {
+  private static void recordLabel(Labels any, Labels en, String concept, OWLLiteral literal) {
+    // A blank literal is not a label, and neither is a list packed into one literal. Taking a blank
+    // leaves the concept unlabeled as far as everything downstream is concerned, and it then draws
+    // the IRI-fragment fallback; a list reaches a reader as its entries run together on one line.
+    String name = Names.nameOf(literal.getLiteral());
+    if (name == null) {
       return;
     }
-    prefAny.putIfAbsent(concept, literal.getLiteral());
+    boolean list = Names.hasBreak(literal.getLiteral());
+    any.offer(concept, name, list);
     if (literal.hasLang() && literal.getLang().toLowerCase().startsWith("en")) {
-      prefEn.putIfAbsent(concept, literal.getLiteral());
+      en.offer(concept, name, list);
+    }
+  }
+
+  /**
+   * The best label seen so far for each concept, under one language preference.
+   *
+   * First literal wins, except that a name displaces a list: where a concept asserts both a plain
+   * label and a list packed into one literal, the plain one is the name the source meant — whichever
+   * order the two are read in, which is not fixed.
+   */
+  private static final class Labels {
+    private final Map<String, String> held = new HashMap<>();
+    private final Set<String> fromList = new HashSet<>();
+
+    void offer(String concept, String name, boolean list) {
+      if (!held.containsKey(concept)) {
+        held.put(concept, name);
+        if (list) {
+          fromList.add(concept);
+        }
+      } else if (!list && fromList.remove(concept)) {
+        held.put(concept, name);
+      }
+    }
+
+    String get(String concept) {
+      return held.get(concept);
+    }
+
+    String getOrDefault(String concept, String fallback) {
+      return held.getOrDefault(concept, fallback);
     }
   }
 }
