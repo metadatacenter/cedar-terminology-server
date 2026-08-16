@@ -12,7 +12,7 @@ import java.util.List;
  * Proves (or refutes) that a snapshot's identity is source-independent: it ingests the same ontology
  * release from two different authorities — BioPortal and OBO Foundry — and compares the resulting
  * content-hash {@code version_id}. Identity is the normalized hash of the extracted model
- * (VERSIONING-DESIGN §4.3), so the same release drawn from a different distributor, in a different
+ * (VERSIONING-ROADMAP "The Model" §4.3), so the same release drawn from a different distributor, in a different
  * serialization, must produce the same id. This is the concrete test of that claim (roadmap D2).
  *
  * <p>It ingests BioPortal's latest submission first, reads the release date from it, then pulls that

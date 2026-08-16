@@ -36,7 +36,7 @@ import java.util.Optional;
  * {@code /bioportal/search} once that route's consumers have moved.
  *
  * The request and response shapes are designed in
- * {@code cedar-development/ops/VERSION-AWARE-SEARCH.md}.
+ * {@code cedar-development/ops/VERSIONING-ROADMAP.md}, "The Search API".
  */
 @Path("/search")
 @Produces(MediaType.APPLICATION_JSON)

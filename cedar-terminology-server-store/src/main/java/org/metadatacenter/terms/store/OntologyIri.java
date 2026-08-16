@@ -7,7 +7,7 @@ import java.util.regex.Pattern;
 
 /**
  * Normalizes a raw term-ID namespace to the canonical ontology IRI that identifies an ontology
- * across sources (VERSIONING-DESIGN §6.4).
+ * across sources (VERSIONING-ROADMAP "The Model" §6.4).
  *
  * The namespace derived from an ontology's own concepts is a term-ID prefix — {@code
  * http://purl.obolibrary.org/obo/DOID_} (trailing {@code _}) or {@code

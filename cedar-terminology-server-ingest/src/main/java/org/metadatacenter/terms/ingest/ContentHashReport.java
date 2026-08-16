@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Measurement for the hash-basis decision (VERSIONING-DESIGN §4.3), read-only: computes the
+ * Measurement for the hash-basis decision (VERSIONING-ROADMAP "The Model" §4.3), read-only: computes the
  * normalized content hash — both structure-only and structure+labels — alongside the raw-file
  * {@code version_id} for every snapshot of the chosen ontologies, and reports where they diverge.
  *

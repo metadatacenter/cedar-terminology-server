@@ -409,7 +409,7 @@ public class SnapshotStore implements AutoCloseable {
 
   /**
    * A content hash of the normalized extracted model, independent of the source file's bytes and
-   * serialization (VERSIONING-DESIGN §4.3). Two snapshots with the same served content hash to the
+   * serialization (VERSIONING-ROADMAP "The Model" §4.3). Two snapshots with the same served content hash to the
    * same value even when they came from different serializations (OBO vs OWL) or backends; a genuine
    * content change gives a different hash. This is the alternative to the raw-file hash that today's
    * {@code version_id} uses.

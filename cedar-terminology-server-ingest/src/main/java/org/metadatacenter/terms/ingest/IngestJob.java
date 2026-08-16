@@ -161,7 +161,7 @@ public class IngestJob {
     // file with the previous good data already deleted. Catch Throwable so such an Error becomes a
     // skippable failure rather than clobbering data or aborting a batch.
     //
-    // The version id is the normalized content hash (VERSIONING-DESIGN §4.3), so it can only be
+    // The version id is the normalized content hash (VERSIONING-ROADMAP "The Model" §4.3), so it can only be
     // computed after extraction. The temp file is therefore named by the raw hash (name-independent
     // of identity); the final file is named by the content-hash version id.
     Path tempFile = ontoDir.resolve(rawHash + ".sqlite.tmp");
@@ -220,7 +220,7 @@ public class IngestJob {
       if (setAsLatest) {
         catalog.setTag(acronym, CatalogStore.TAG_LATEST, versionId);
       }
-      // Derive and store the ontology's canonical iri (VERSIONING-DESIGN §6.4) at ingest — its
+      // Derive and store the ontology's canonical iri (VERSIONING-ROADMAP "The Model" §6.4) at ingest — its
       // content-derived, source-independent cross-source identity — rather than leaving it to the
       // derivation backfill, so a fresh ingest is iri-identified immediately and two sources of one
       // ontology can be joined by iri. Set on the first ingest and whenever this is the latest; the own

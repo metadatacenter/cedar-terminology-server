@@ -12,7 +12,7 @@ import java.util.List;
  *
  * Keys are the versioned value-constraint specification's, so a result can become a constraint
  * entry without translation. The design, including what a response carries, is in
- * {@code cedar-development/ops/VERSION-AWARE-SEARCH.md}.
+ * {@code cedar-development/ops/VERSIONING-ROADMAP.md}, "The Search API".
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record SearchRequest(

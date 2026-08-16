@@ -227,7 +227,7 @@ public class IngestJobTest {
 
   @Test
   public void versionIdIsNormalizedContentHash_rawHashKeptAsFileHash() throws Exception {
-    // Identity is the normalized content hash (VERSIONING-DESIGN §4.3), not the raw-file hash; the
+    // Identity is the normalized content hash (VERSIONING-ROADMAP "The Model" §4.3), not the raw-file hash; the
     // raw hash is retained as file_hash for provenance.
     String rawHash = IngestJob.sha256(sourceOwl);
     IngestJob job = new IngestJob(fakeSource());

@@ -30,7 +30,7 @@ import java.util.Optional;
  * types a controlled-term field can carry.
  *
  * The design, and why this is not a parameter on {@code /bioportal/search}, is in
- * {@code cedar-development/ops/VERSION-AWARE-SEARCH.md}. In short: that route takes no version, so
+ * {@code cedar-development/ops/VERSIONING-ROADMAP.md}, "The Search API". In short: that route takes no version, so
  * an author who pins a constraint to an older ontology and then searches is searching the current
  * one, and can select a term the pinned version does not contain.
  *
