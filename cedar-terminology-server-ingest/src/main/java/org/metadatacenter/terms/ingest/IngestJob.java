@@ -501,6 +501,88 @@ public class IngestJob {
     return new BackfillSummary(filled, already, 0, noRaw, drifted, failed, labelsAdded);
   }
 
+  /**
+   * Fills in definitions for snapshots already written, from the raw download each was built from.
+   *
+   * The same route the label backfill takes, for the same reason: the raw matched by file hash is
+   * the exact bytes the snapshot came from, so what is extracted from it is authentic even where
+   * today's extractor computes a different model hash than the one stored. Definitions attach by
+   * concept IRI, so a drift in the hierarchy does not misplace them.
+   *
+   * Additive throughout — the definition table is outside content identity, so no version id moves
+   * and no pin is disturbed. Resumable: a snapshot that already holds definitions is skipped.
+   */
+  /** Marks a snapshot whose definitions have been considered, so a resume skips it. */
+  private static final String DEFINED_MARKER = "definitionsBackfilled";
+
+  public BackfillSummary backfillDefinitionsFromRaw(CatalogStore catalog, Path snapshotDir, Set<String> only)
+      throws SQLException {
+    int filled = 0, already = 0, noRaw = 0, none = 0, failed = 0;
+    long added = 0;
+    List<String> acronyms = new ArrayList<>();
+    for (CatalogStore.OntologyInfo o : catalog.listOntologies()) {
+      if (only.isEmpty() || only.contains(o.acronym())) {
+        acronyms.add(o.acronym());
+      }
+    }
+    java.util.Optional<Path> base = catalog.baseDir();
+    int idx = 0;
+    for (String acronym : acronyms) {
+      idx++;
+      for (CatalogStore.SnapshotInfo snap : catalog.listSnapshots(acronym)) {
+        Path file = base.map(b -> b.resolve(snap.filePath())).orElse(Path.of(snap.filePath()));
+        try {
+          try (SnapshotStore existing = SnapshotStore.openFile(file.toString())) {
+            existing.initSchema();
+            if (existing.definitionCount() > 0 || existing.getMeta(DEFINED_MARKER).isPresent()) {
+              already++;
+              continue;
+            }
+          }
+          Path rawDir = snapshotDir.resolve(acronym).resolve("raw");
+          Path raw = findRawByHash(rawDir, snap.fileHash());
+          if (raw == null) {
+            noRaw++;
+            continue;
+          }
+          Path loadable = stripOboImports(decompress(raw));
+          Submission sub = new Submission(0, "", "", snap.format());
+          Path tempFile = rawDir.resolveSibling(snap.versionId() + ".defbackfill.tmp");
+          Files.deleteIfExists(tempFile);
+          List<SnapshotStore.DefinitionRow> definitions;
+          try (SnapshotStore tmp = SnapshotStore.openFile(tempFile.toString())) {
+            tmp.initSchema();
+            extractInto(tmp, acronym, sub, loadable);
+            definitions = tmp.allDefinitions();
+          } finally {
+            Files.deleteIfExists(tempFile);
+          }
+          try (SnapshotStore existing = SnapshotStore.openFile(file.toString())) {
+            existing.setBusyTimeoutMillis(60_000); // wait out the live server's brief read locks
+            existing.initSchema();
+            existing.addDefinitions(definitions);
+            // Marked either way, so an ontology that genuinely asserts none is not retried for ever.
+            existing.setMeta(DEFINED_MARKER, String.valueOf(definitions.size()));
+          }
+          if (definitions.isEmpty()) {
+            none++;
+          } else {
+            filled++;
+            added += definitions.size();
+          }
+          log.info("[{}/{}] {} {}: +{} definitions (from local raw)", idx, acronyms.size(), acronym,
+              snap.versionId(), definitions.size());
+        } catch (Throwable e) {
+          failed++;
+          log.warn("[{}/{}] {} {}: definition backfill failed: {}", idx, acronyms.size(), acronym,
+              snap.versionId(), e.toString());
+        }
+      }
+    }
+    // noSubmission carries no-matching-raw; mismatched carries the count that legitimately have none.
+    return new BackfillSummary(filled, already, 0, noRaw, none, failed, added);
+  }
+
   /** The file in {@code rawDir} whose SHA-256 equals {@code wantHash} (the exact download a snapshot was
    *  built from), or null. Located by content, so a later re-download left in the same dir can't fool it. */
   private static Path findRawByHash(Path rawDir, String wantHash) throws IOException {
@@ -943,6 +1025,7 @@ public class IngestJob {
     boolean valuesets = false;
     boolean backfillLabels = false;
     boolean backfillLabelsFromRaw = false;
+    boolean backfillDefinitionsFromRaw = false;
     boolean backfillHeaderIri = false;
     boolean verify = false;
     boolean deep = false;
@@ -965,6 +1048,8 @@ public class IngestJob {
         backfillLabels = true;
       } else if ("--backfill-labels-from-raw".equals(args[i])) {
         backfillLabelsFromRaw = true;
+      } else if ("--backfill-definitions-from-raw".equals(args[i])) {
+        backfillDefinitionsFromRaw = true;
       } else if ("--verify".equals(args[i])) {
         verify = true;
       } else if ("--deep".equals(args[i])) {
@@ -1019,6 +1104,16 @@ public class IngestJob {
             "backfill-labels-from-raw: %d filled (+%d labels; %d of them despite extractor-drift), "
                 + "%d already labeled, %d no-matching-raw, %d failed%n",
             sum.filled(), sum.labelsAdded(), sum.mismatched(), sum.alreadyLabeled(),
+            sum.noSubmission(), sum.failed());
+        return;
+      }
+      if (backfillDefinitionsFromRaw) {
+        IngestJob.BackfillSummary sum =
+            job.backfillDefinitionsFromRaw(catalog, snapshotDir, new java.util.HashSet<>(acronyms));
+        System.out.printf(
+            "backfill-definitions-from-raw: %d filled (+%d definitions), %d already done, "
+                + "%d assert none, %d no-matching-raw, %d failed%n",
+            sum.filled(), sum.labelsAdded(), sum.alreadyLabeled(), sum.mismatched(),
             sum.noSubmission(), sum.failed());
         return;
       }

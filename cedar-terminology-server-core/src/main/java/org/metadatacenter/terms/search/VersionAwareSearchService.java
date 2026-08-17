@@ -411,7 +411,8 @@ public class VersionAwareSearchService {
             matched.isEmpty() ? null : matched,
             concept.obsolete(), replacedBy(store, concept),
             concept.hasChildren(), store.descendantCount(concept.iri()), path(store, concept.iri()),
-            snapshotNames(store.labels(concept.iri()), label)));
+            snapshotNames(store.labels(concept.iri()), label),
+            SnapshotStore.servedDefinition(store.definitions(concept.iri()))));
       }
     }
     hits.sort(hitOrder(query, ClassHit::termLabel, ClassHit::obsolete, ClassHit::termIri));
@@ -558,7 +559,8 @@ public class VersionAwareSearchService {
             term.iri(), SearchRequest.TYPE_CLASS, term.prefLabel(), matchType,
             matched.isEmpty() ? null : matched, term.obsolete(),
             term.replacedBy() == null ? null : new TermRef(term.replacedBy(), null),
-            term.hasChildren(), term.descendantCount(), parent, names.isEmpty() ? null : names));
+            term.hasChildren(), term.descendantCount(), parent, names.isEmpty() ? null : names,
+            term.definition()));
       }
     }
     return hits;

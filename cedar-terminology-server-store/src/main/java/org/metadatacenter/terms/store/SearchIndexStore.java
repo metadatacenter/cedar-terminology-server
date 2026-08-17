@@ -58,11 +58,12 @@ public class SearchIndexStore implements AutoCloseable {
       boolean hasChildren,
       int descendantCount,
       String parentIri,
-      String parentLabel) {
+      String parentLabel,
+      String definition) {
 
     public IndexedTerm(String acronym, String iri, String prefLabel, boolean obsolete, String replacedBy,
                        boolean hasChildren, int descendantCount) {
-      this(acronym, iri, prefLabel, obsolete, replacedBy, hasChildren, descendantCount, null, null);
+      this(acronym, iri, prefLabel, obsolete, replacedBy, hasChildren, descendantCount, null, null, null);
     }
   }
 
@@ -119,7 +120,7 @@ public class SearchIndexStore implements AutoCloseable {
             WHERE t.acronym = ? AND t.parent_iri IS NOT NULL AND up.depth < ?
         )
         SELECT t.acronym, t.iri, t.pref_label, t.obsolete, t.replaced_by, t.has_children,
-               t.descendant_count, t.parent_iri, t.parent_label, up.depth
+               t.descendant_count, t.parent_iri, t.parent_label, t.definition, up.depth
         FROM up JOIN term t ON t.iri = up.iri AND t.acronym = ?
         ORDER BY up.depth DESC""";
     List<IndexedTerm> chain = new ArrayList<>();
@@ -142,7 +143,7 @@ public class SearchIndexStore implements AutoCloseable {
   public List<IndexedTerm> children(String acronym, String iri, int offset, int limit)
       throws SQLException {
     String sql = "SELECT acronym, iri, pref_label, obsolete, replaced_by, has_children,"
-        + " descendant_count, parent_iri, parent_label FROM term"
+        + " descendant_count, parent_iri, parent_label, definition FROM term"
         + " WHERE acronym = ? AND parent_iri = ? ORDER BY pref_label, iri LIMIT ? OFFSET ?";
     List<IndexedTerm> out = new ArrayList<>();
     try (PreparedStatement ps = connection.prepareStatement(sql)) {
@@ -174,7 +175,7 @@ public class SearchIndexStore implements AutoCloseable {
   public Optional<IndexedTerm> term(String acronym, String iri) throws SQLException {
     try (PreparedStatement ps = connection.prepareStatement(
         "SELECT acronym, iri, pref_label, obsolete, replaced_by, has_children, descendant_count,"
-            + " parent_iri, parent_label FROM term WHERE acronym = ? AND iri = ?")) {
+            + " parent_iri, parent_label, definition FROM term WHERE acronym = ? AND iri = ?")) {
       ps.setString(1, acronym);
       ps.setString(2, iri);
       try (ResultSet rs = ps.executeQuery()) {
@@ -185,7 +186,20 @@ public class SearchIndexStore implements AutoCloseable {
 
   private static IndexedTerm readTerm(ResultSet rs) throws SQLException {
     return new IndexedTerm(rs.getString(1), rs.getString(2), rs.getString(3), rs.getInt(4) != 0,
-        rs.getString(5), rs.getInt(6) != 0, rs.getInt(7), rs.getString(8), rs.getString(9));
+        rs.getString(5), rs.getInt(6) != 0, rs.getInt(7), rs.getString(8), rs.getString(9),
+        rs.getString(10));
+  }
+
+  /** Whether a table already has a column, so a migration runs once rather than failing twice. */
+  private static boolean hasColumn(Statement st, String table, String column) throws SQLException {
+    try (ResultSet rs = st.executeQuery("PRAGMA table_info(" + table + ")")) {
+      while (rs.next()) {
+        if (column.equals(rs.getString("name"))) {
+          return true;
+        }
+      }
+      return false;
+    }
   }
 
   /** The pair that addresses a term, as one string, for keying a lookup. */
@@ -227,9 +241,15 @@ public class SearchIndexStore implements AutoCloseable {
             has_children     INTEGER NOT NULL DEFAULT 0,
             descendant_count INTEGER NOT NULL DEFAULT 0,
             parent_iri       TEXT,
-            parent_label     TEXT
+            parent_label     TEXT,
+            definition       TEXT
           )""");
       st.executeUpdate("CREATE INDEX IF NOT EXISTS term_by_acronym ON term(acronym)");
+      // An index built before definitions were captured has no such column; adding it here means an
+      // existing index keeps working and fills as ontologies are rebuilt, rather than all at once.
+      if (!hasColumn(st, "term", "definition")) {
+        st.executeUpdate("ALTER TABLE term ADD COLUMN definition TEXT");
+      }
       st.executeUpdate("""
           CREATE TABLE IF NOT EXISTS name (
             name_id  INTEGER PRIMARY KEY,
@@ -318,7 +338,8 @@ public class SearchIndexStore implements AutoCloseable {
       deleteOntologyRows(acronym);
       try (PreparedStatement insertTerm = connection.prepareStatement(
                "INSERT INTO term(acronym, iri, pref_label, obsolete, replaced_by, has_children, "
-                   + "descendant_count, parent_iri, parent_label) VALUES (?,?,?,?,?,?,?,?,?)",
+                   + "descendant_count, parent_iri, parent_label, definition) "
+                   + "VALUES (?,?,?,?,?,?,?,?,?,?)",
                Statement.RETURN_GENERATED_KEYS);
            PreparedStatement insertName = connection.prepareStatement(
                "INSERT INTO name(term_id, property, lang, value) VALUES (?,?,?,?)")) {
@@ -332,6 +353,7 @@ public class SearchIndexStore implements AutoCloseable {
           insertTerm.setInt(7, t.descendantCount());
           insertTerm.setString(8, t.parentIri());
           insertTerm.setString(9, t.parentLabel());
+          insertTerm.setString(10, t.definition());
           insertTerm.executeUpdate();
           long termId;
           try (ResultSet keys = insertTerm.getGeneratedKeys()) {
@@ -432,7 +454,8 @@ public class SearchIndexStore implements AutoCloseable {
     String needle = query.trim().toLowerCase(Locale.ROOT);
     StringBuilder sql = new StringBuilder("""
         SELECT t.acronym, t.iri, t.pref_label, t.obsolete, t.replaced_by, t.has_children,
-               t.descendant_count, n.property, n.lang, n.value, t.term_id, t.parent_iri, t.parent_label
+               t.descendant_count, n.property, n.lang, n.value, t.term_id, t.parent_iri, t.parent_label,
+               t.definition
         FROM name_fts f
         JOIN name n ON n.name_id = f.rowid
         JOIN term t ON t.term_id = n.term_id
@@ -479,7 +502,7 @@ public class SearchIndexStore implements AutoCloseable {
             }
             hit = new IndexHit(new IndexedTerm(rs.getString(1), rs.getString(2), rs.getString(3),
                 rs.getInt(4) != 0, rs.getString(5), rs.getInt(6) != 0, rs.getInt(7),
-                rs.getString(12), rs.getString(13)), new ArrayList<>());
+                rs.getString(12), rs.getString(13), rs.getString(14)), new ArrayList<>());
             byTerm.put(termId, hit);
           }
           hit.matched().add(new IndexedName(rs.getString(8), rs.getString(9), rs.getString(10)));
@@ -553,7 +576,8 @@ public class SearchIndexStore implements AutoCloseable {
 
     String hitSql = """
         SELECT t.acronym, t.iri, t.pref_label, t.obsolete, t.replaced_by, t.has_children,
-               t.descendant_count, n.property, n.lang, n.value, t.term_id, t.parent_iri, t.parent_label
+               t.descendant_count, n.property, n.lang, n.value, t.term_id, t.parent_iri, t.parent_label,
+               t.definition
         FROM name_fts f
         JOIN name n ON n.name_id = f.rowid
         JOIN term t ON t.term_id = n.term_id
@@ -579,7 +603,7 @@ public class SearchIndexStore implements AutoCloseable {
           if (hit == null) {
             hit = new IndexHit(new IndexedTerm(rs.getString(1), rs.getString(2), rs.getString(3),
                 rs.getInt(4) != 0, rs.getString(5), rs.getInt(6) != 0, rs.getInt(7),
-                rs.getString(12), rs.getString(13)), new ArrayList<>());
+                rs.getString(12), rs.getString(13), rs.getString(14)), new ArrayList<>());
             byTerm.put(termId, hit);
           }
           hit.matched().add(new IndexedName(rs.getString(8), rs.getString(9), rs.getString(10)));

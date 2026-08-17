@@ -102,12 +102,21 @@ public class SearchIndexJob {
           replacements.put(meta.iri(), meta.replacedBy());
         }
       }
+      // One definition a concept, chosen once here rather than at every read: the snapshot keeps
+      // every one it captured, and a row has space for the one an author reads.
+      Map<String, List<SnapshotStore.DefinitionEntry>> defs = new HashMap<>();
+      for (SnapshotStore.DefinitionRow row : store.allDefinitions()) {
+        defs.computeIfAbsent(row.conceptIri(), k -> new ArrayList<>())
+            .add(new SnapshotStore.DefinitionEntry(row.property(), row.lang(), row.value()));
+      }
       for (SnapshotStore.Concept concept : store.allConceptsDetailed()) {
         String[] parent = parents.get(concept.iri());
+        List<SnapshotStore.DefinitionEntry> held = defs.get(concept.iri());
         terms.add(new SearchIndexStore.IndexedTerm(acronym, concept.iri(), concept.prefLabel(),
             concept.obsolete(), replacements.get(concept.iri()), concept.hasChildren(),
             descendants.getOrDefault(concept.iri(), 0),
-            parent == null ? null : parent[0], parent == null ? null : parent[1]));
+            parent == null ? null : parent[0], parent == null ? null : parent[1],
+            held == null ? null : SnapshotStore.servedDefinition(held)));
       }
       for (SnapshotStore.LabelRow row : store.allLabels()) {
         // The preferred label is added from the term itself, so skipping it here keeps one name from

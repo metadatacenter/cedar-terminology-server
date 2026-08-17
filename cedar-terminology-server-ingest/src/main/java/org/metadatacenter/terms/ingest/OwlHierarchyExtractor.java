@@ -103,6 +103,7 @@ public class OwlHierarchyExtractor implements HierarchyExtractor {
 
     int classCount = 0;
     List<SnapshotStore.LabelRow> labelRows = new ArrayList<>();
+    List<SnapshotStore.DefinitionRow> definitionRows = new ArrayList<>();
     for (OWLClass cls : ont.getClassesInSignature(Imports.INCLUDED)) {
       if (cls.isOWLThing() || cls.isOWLNothing()) {
         continue;
@@ -110,12 +111,17 @@ public class OwlHierarchyExtractor implements HierarchyExtractor {
       store.addConcept(cls.getIRI().toString(), label(cls, ont),
           isDeprecated(cls, ont, deprecated), replacedBy(cls, ont, replacedBy));
       captureLabels(cls, ont, labelRows);
+      captureDefinitions(cls, ont, definitionRows);
       classCount++;
     }
     // Preserve every language variant of every name (labels + synonyms) alongside the single served
     // pref_label. Additive: pref_label (and thus content identity) is unchanged; this only records what
     // the single-label pick discards.
     store.addLabels(labelRows);
+    // What each concept means, beside what it is called. Additive like the labels: content identity
+    // is a hash over concepts, labels and edges, and admitting definitions to it would change the
+    // identity of every snapshot already written.
+    store.addDefinitions(definitionRows);
 
     int edgeCount = 0;
     // Asserted rdfs:subClassOf. A named superclass is a parent; a named genus inside an
@@ -315,6 +321,32 @@ public class OwlHierarchyExtractor implements HierarchyExtractor {
         out.add(new SnapshotStore.LabelRow(iri, curie, literal.getLang(), name));
         for (String rest : Names.restOf(literal.getLiteral())) {
           out.add(new SnapshotStore.LabelRow(iri, curie, literal.getLang(), rest));
+        }
+      }
+    }
+  }
+
+  /**
+   * Records every definition literal of a class, with its language, into {@code out}.
+   *
+   * Read from the class's own annotation-assertion axioms across the import closure, the same clean
+   * source the labels use, so a definition attached as an axiom annotation on some other assertion
+   * is not mistaken for the class's own.
+   */
+  private static void captureDefinitions(OWLClass cls, OWLOntology ont,
+                                         List<SnapshotStore.DefinitionRow> out) {
+    String iri = cls.getIRI().toString();
+    for (OWLOntology o : ont.getImportsClosure()) {
+      for (OWLAnnotationAssertionAxiom ax : o.getAnnotationAssertionAxioms(cls.getIRI())) {
+        if (!(ax.getValue() instanceof OWLLiteral literal)) {
+          continue;
+        }
+        String curie = DefinitionProperties.curieFor(ax.getProperty().getIRI());
+        // Whitespace-only is no definition, the same rule a label is held to. A definition runs to
+        // several lines legitimately, though, so it is trimmed rather than cut at the first break.
+        String text = curie == null ? null : literal.getLiteral().trim();
+        if (text != null && !text.isEmpty()) {
+          out.add(new SnapshotStore.DefinitionRow(iri, curie, literal.getLang(), text));
         }
       }
     }

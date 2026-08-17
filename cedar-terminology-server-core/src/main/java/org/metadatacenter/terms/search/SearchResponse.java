@@ -150,7 +150,15 @@ public record SearchResponse(String query, List<SourceBlock> sources, Map<String
       boolean hasChildren,
       int descendantCount,
       List<TermRef> path,
-      List<MatchedLabel> names) implements Hit {}
+      List<MatchedLabel> names,
+      /**
+       * What the source says the term means, where it says anything.
+       *
+       * The one piece of evidence that settles a choice between terms of one name: GENEPIO offers
+       * "disease" from three upstream vocabularies and a label cannot tell them apart. Absent for
+       * roughly half the corpus, which asserts no definition at all.
+       */
+      String definition) implements Hit {}
 
   /** Everything at or below a term. */
   @JsonInclude(JsonInclude.Include.NON_NULL)

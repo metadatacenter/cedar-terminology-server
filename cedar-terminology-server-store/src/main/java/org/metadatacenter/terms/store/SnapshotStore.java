@@ -49,6 +49,12 @@ public class SnapshotStore implements AutoCloseable {
   /** One captured name literal read back, without the concept IRI (the caller keyed the query on it). */
   public record LabelEntry(String property, String lang, String value) {}
 
+  /** A definition literal to capture, addressed by the concept's IRI. */
+  public record DefinitionRow(String conceptIri, String property, String lang, String value) {}
+
+  /** One captured definition read back, without the concept IRI. */
+  public record DefinitionEntry(String property, String lang, String value) {}
+
   private final Connection connection;
   private Boolean labelTablePresent; // cached: a snapshot ingested before label capture has no label table
 
@@ -110,6 +116,21 @@ public class SnapshotStore implements AutoCloseable {
       // that the label backfill then fills.
       s.executeUpdate("""
           CREATE TABLE IF NOT EXISTS label (
+            concept_id INTEGER NOT NULL,
+            property   TEXT NOT NULL,
+            lang       TEXT NOT NULL DEFAULT '',
+            value      TEXT NOT NULL,
+            PRIMARY KEY (concept_id, property, lang, value)
+          ) WITHOUT ROWID""");
+      // What a source says a concept means, with the property it was asserted under and its language
+      // tag. Several are allowed: a term can carry a definition and an alternative one, and which
+      // property it came from is the difference between a definition and an editor's note.
+      //
+      // Outside content identity, exactly as the label table is and for the same reason: a snapshot
+      // is identified by a hash over its concepts, labels and edges, so admitting definitions to it
+      // would change the identity of every snapshot already written and break every pin with it.
+      s.executeUpdate("""
+          CREATE TABLE IF NOT EXISTS definition (
             concept_id INTEGER NOT NULL,
             property   TEXT NOT NULL,
             lang       TEXT NOT NULL DEFAULT '',
@@ -251,6 +272,72 @@ public class SnapshotStore implements AutoCloseable {
     }
   }
 
+  /**
+   * Captures definitions, ignoring any whose concept is not in this snapshot.
+   *
+   * Insert-or-ignore on the whole row, so a definition asserted twice under one property collapses
+   * and a backfill can be run again without duplicating what it already wrote.
+   */
+  public void addDefinitions(List<DefinitionRow> rows) throws SQLException {
+    boolean autoCommit = connection.getAutoCommit();
+    connection.setAutoCommit(false);
+    try (PreparedStatement ps = connection.prepareStatement("""
+        INSERT OR IGNORE INTO definition (concept_id, property, lang, value)
+        SELECT c.id, ?, ?, ? FROM concept c WHERE c.iri = ?""")) {
+      for (DefinitionRow r : rows) {
+        ps.setString(1, r.property());
+        ps.setString(2, r.lang() == null ? "" : r.lang());
+        ps.setString(3, r.value());
+        ps.setString(4, r.conceptIri());
+        ps.addBatch();
+      }
+      ps.executeBatch();
+      connection.commit();
+    } finally {
+      connection.setAutoCommit(autoCommit);
+    }
+  }
+
+  /** Every definition a concept carries, or empty where the snapshot predates the capture. */
+  public List<DefinitionEntry> definitions(String conceptIri) throws SQLException {
+    if (!hasTable("definition")) {
+      return List.of();
+    }
+    try (PreparedStatement ps = connection.prepareStatement(
+        "SELECT d.property, d.lang, d.value FROM definition d JOIN concept c ON c.id = d.concept_id "
+            + "WHERE c.iri = ? ORDER BY d.property, d.lang, d.value")) {
+      ps.setString(1, conceptIri);
+      try (ResultSet rs = ps.executeQuery()) {
+        List<DefinitionEntry> out = new ArrayList<>();
+        while (rs.next()) {
+          out.add(new DefinitionEntry(rs.getString("property"), rs.getString("lang"), rs.getString("value")));
+        }
+        return out;
+      }
+    }
+  }
+
+  /** How many definitions this snapshot holds, for a backfill to report and to resume by. */
+  public int definitionCount() throws SQLException {
+    if (!hasTable("definition")) {
+      return 0;
+    }
+    try (Statement s = connection.createStatement();
+         ResultSet rs = s.executeQuery("SELECT COUNT(*) FROM definition")) {
+      return rs.next() ? rs.getInt(1) : 0;
+    }
+  }
+
+  private boolean hasTable(String name) throws SQLException {
+    try (PreparedStatement ps = connection.prepareStatement(
+        "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?")) {
+      ps.setString(1, name);
+      try (ResultSet rs = ps.executeQuery()) {
+        return rs.next();
+      }
+    }
+  }
+
   /** The synonym-scope property CURIEs — every captured name that is a synonym rather than the label
    *  proper. Kept in sync with the ingest-side capture (LabelProperties); the label table stores CURIEs. */
   private static final String SYNONYM_PROPERTY_LIST =
@@ -329,6 +416,60 @@ public class SnapshotStore implements AutoCloseable {
       }
       return out;
     }
+  }
+
+  /** Every captured definition in the snapshot, for a bulk pass such as building the index. */
+  public List<DefinitionRow> allDefinitions() throws SQLException {
+    if (!hasTable("definition")) {
+      return List.of();
+    }
+    try (Statement s = connection.createStatement();
+         ResultSet rs = s.executeQuery(
+             "SELECT c.iri, d.property, d.lang, d.value FROM definition d "
+                 + "JOIN concept c ON c.id = d.concept_id")) {
+      List<DefinitionRow> out = new ArrayList<>();
+      while (rs.next()) {
+        out.add(new DefinitionRow(rs.getString("iri"), rs.getString("property"),
+            rs.getString("lang"), rs.getString("value")));
+      }
+      return out;
+    }
+  }
+
+  /**
+   * Which of a concept's definitions to serve, where it has more than one.
+   *
+   * A term can carry a definition under several properties and in several languages, and a row has
+   * room for one. English first, because that is the language the rest of the picker serves; then
+   * the property, a definition proper ahead of an alternative one — NCIT's ALT_DEFINITION is a
+   * second reading for a different audience, not the primary sense.
+   */
+  public static String servedDefinition(List<DefinitionEntry> entries) {
+    return entries.stream()
+        .min(java.util.Comparator
+            .comparingInt((DefinitionEntry e) -> languageRank(e.lang()))
+            .thenComparingInt(e -> propertyRank(e.property()))
+            .thenComparing(DefinitionEntry::value))
+        .map(DefinitionEntry::value)
+        .orElse(null);
+  }
+
+  private static int languageRank(String lang) {
+    if (lang == null || lang.isEmpty()) {
+      return 1;
+    }
+    return lang.toLowerCase().startsWith("en") ? 0 : 2;
+  }
+
+  private static int propertyRank(String property) {
+    return switch (property) {
+      case "IAO:0000115" -> 0;
+      case "skos:definition" -> 1;
+      case "NCIT:DEFINITION" -> 2;
+      case "dcterms:description" -> 3;
+      case "dc:description" -> 4;
+      default -> 5;
+    };
   }
 
   /** Total captured name literals. Zero means labels have not been captured for this snapshot yet
