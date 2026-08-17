@@ -236,7 +236,10 @@ public class CatalogSnapshotProvider implements SqliteTerminologyService.Snapsho
     try {
       String latest = catalog.resolveLatest(ontology).map(CatalogStore.SnapshotInfo::versionId).orElse(null);
       List<OntologyVersion> out = new ArrayList<>();
-      for (CatalogStore.SnapshotInfo s : catalog.listSnapshots(ontology)) {
+      // Releases rather than snapshots, as the search response's list is: a re-extraction is a
+      // second version id for bytes that did not change, and listing both says the ontology was
+      // released twice. Superseded ones stay resolvable, they are only not listed.
+      for (CatalogStore.SnapshotInfo s : catalog.listCurrentSnapshots(ontology)) {
         out.add(new OntologyVersion(
             s.versionId(), s.declaredVersion(), s.releasedAt(), effectiveDate(s), s.versionId().equals(latest)));
       }

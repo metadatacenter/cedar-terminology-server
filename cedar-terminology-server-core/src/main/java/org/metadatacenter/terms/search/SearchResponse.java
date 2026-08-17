@@ -65,7 +65,22 @@ public record SearchResponse(String query, List<SourceBlock> sources, Map<String
    * reproducible; the other two are human-facing labels and identify nothing.
    */
   @JsonInclude(JsonInclude.Include.NON_NULL)
-  public record VersionInfo(String id, String effectiveDate, String declaredVersion) {}
+  public record VersionInfo(String id, String effectiveDate, String declaredVersion,
+                            /**
+                             * Set when a later extraction of the same source bytes exists.
+                             *
+                             * Only ever on a version a request pinned: the offered list holds the
+                             * current extraction of each release, so nothing in it is superseded.
+                             * A pin written before one was superseded still resolves — it has to,
+                             * or a published template would stop meaning what it meant — and this
+                             * is how a client says so rather than leaving it to be inferred.
+                             */
+                            Boolean superseded) {
+
+    public VersionInfo(String id, String effectiveDate, String declaredVersion) {
+      this(id, effectiveDate, declaredVersion, null);
+    }
+  }
 
   /**
    * One type's results. {@code countCapped} distinguishes a count from a ceiling: when it is true,

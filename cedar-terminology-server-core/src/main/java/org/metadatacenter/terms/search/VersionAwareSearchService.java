@@ -275,7 +275,12 @@ public class VersionAwareSearchService {
     }
 
     CatalogStore.SnapshotInfo snapshot = info.get();
-    VersionInfo version = new VersionInfo(snapshot.versionId(), snapshot.releasedAt(), snapshot.declaredVersion());
+    // Only asked of a pinned version: without a pin the answer is the current extraction by
+    // construction, and asking would be a query a search runs once an ontology.
+    Boolean superseded = pinned == null || !provider.catalog().isSuperseded(snapshot.versionId(), acronym)
+        ? null : Boolean.TRUE;
+    VersionInfo version = new VersionInfo(snapshot.versionId(), snapshot.releasedAt(),
+        snapshot.declaredVersion(), superseded);
     List<VersionInfo> history = versionsOf(acronym);
     SourceBlock block = new SourceBlock(system, acronym, name, iri,
         SourceBlock.SERVED_LOCAL, authorityOf(acronym, snapshot.versionId()), true, version, history.size(),
@@ -568,8 +573,12 @@ public class VersionAwareSearchService {
    * recognises.
    */
   private List<VersionInfo> versionsOf(String acronym) throws SQLException {
+    // Releases, not snapshots: re-extracting a release mints a second version id for bytes that did
+    // not change, and offering both says the ontology was released twice. The superseded ones stay
+    // in the catalog and stay resolvable — a pin written before one was superseded has to keep
+    // meaning what it meant — they are only not offered.
     List<VersionInfo> versions = new ArrayList<>();
-    for (CatalogStore.SnapshotInfo snapshot : provider.catalog().listSnapshots(acronym)) {
+    for (CatalogStore.SnapshotInfo snapshot : provider.catalog().listCurrentSnapshots(acronym)) {
       versions.add(new VersionInfo(snapshot.versionId(), snapshot.releasedAt(), snapshot.declaredVersion()));
     }
     java.util.Collections.reverse(versions);

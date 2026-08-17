@@ -109,6 +109,35 @@ public class CatalogStoreTest {
   }
 
   @Test
+  public void listCurrentSnapshots_keepsOneReleasePerBytesAndTheNewestExtractionOfIt() throws Exception {
+    // Two extractions of one release: same file hash, different version id, ingested a day apart.
+    // That is what changing an extractor produces — the bytes did not change, what we read out of
+    // them did — and listing both says the ontology was released twice.
+    SnapshotInfo older = new SnapshotInfo("extractV1", "DOID", "release/2025-06-01", "2025-06-01",
+        "2026-08-15T00:00:00Z", "OWL", "subsumption", 14000, 20000, "/p/1.sqlite", "sameBytes", "open");
+    SnapshotInfo newer = new SnapshotInfo("extractV2", "DOID", "release/2025-06-01", "2025-06-01",
+        "2026-08-16T00:00:00Z", "OWL", "subsumption", 14000, 20000, "/p/2.sqlite", "sameBytes", "open");
+    catalog.addSnapshot(older);
+    catalog.addSnapshot(newer);
+
+    // Every snapshot is still there — nothing is deleted, and the audit trail is the catalog.
+    assertEquals(4, catalog.listSnapshots("DOID").size());
+    // Three releases, and the newest extraction is the one that stands for the third.
+    List<SnapshotInfo> current = catalog.listCurrentSnapshots("DOID");
+    assertEquals(List.of("hashV1", "hashV2", "extractV2"),
+        current.stream().map(SnapshotInfo::versionId).toList());
+
+    assertTrue(catalog.isSuperseded("extractV1", "DOID"));
+    assertFalse(catalog.isSuperseded("extractV2", "DOID"));
+    // Two genuine releases are not supersessions of each other, whatever their ingest order.
+    assertFalse(catalog.isSuperseded("hashV1", "DOID"));
+
+    // The guarantee a published template rests on: a pin written before a supersession still
+    // resolves to exactly the snapshot it named.
+    assertEquals("/p/1.sqlite", catalog.getSnapshot("extractV1").orElseThrow().filePath());
+  }
+
+  @Test
   public void listSnapshots_orderedByRelease() throws Exception {
     List<SnapshotInfo> snaps = catalog.listSnapshots("DOID");
     assertEquals(2, snaps.size());

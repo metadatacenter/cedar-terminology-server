@@ -873,6 +873,63 @@ public class CatalogStore implements AutoCloseable {
     }
   }
 
+  /**
+   * An ontology's releases, one a release, each at its newest extraction.
+   *
+   * A version id hashes what was extracted from a release's bytes, so re-extracting one — which is
+   * how a fix to an extractor reaches data already written — mints a second version id for a
+   * release that did not change. {@code file_hash} is the bytes as the source served them, so
+   * identical bytes under a different version id is exactly a re-extraction and nothing else.
+   *
+   * Superseded snapshots stay in the catalog and stay resolvable: a template published before one
+   * was superseded records its version id, and that pin has to keep meaning what it meant. They are
+   * simply not offered, so an author cannot newly pin to an extraction a later one has corrected.
+   */
+  public List<SnapshotInfo> listCurrentSnapshots(String acronym) throws SQLException {
+    // Newest ingest of each file hash, with the version id breaking a tie so the choice is
+    // deterministic rather than whatever the scan happened to reach first.
+    try (PreparedStatement ps = connection.prepareStatement("""
+        SELECT * FROM snapshot s
+        WHERE s.acronym = ?
+          AND NOT EXISTS (
+            SELECT 1 FROM snapshot o
+            WHERE o.acronym = s.acronym AND o.file_hash = s.file_hash
+              AND (o.ingested_at > s.ingested_at
+                OR (o.ingested_at = s.ingested_at AND o.version_id > s.version_id)))
+        ORDER BY s.released_at""")) {
+      ps.setString(1, acronym);
+      try (ResultSet rs = ps.executeQuery()) {
+        List<SnapshotInfo> out = new ArrayList<>();
+        while (rs.next()) {
+          out.add(readSnapshot(rs));
+        }
+        return out;
+      }
+    }
+  }
+
+  /**
+   * Whether a snapshot has been superseded by a later extraction of the same bytes.
+   *
+   * Asked of a pinned version so a client can say that what it is pinned to has been corrected,
+   * rather than leaving an author to compare ingest dates by hand.
+   */
+  public boolean isSuperseded(String versionId, String acronym) throws SQLException {
+    try (PreparedStatement ps = connection.prepareStatement("""
+        SELECT EXISTS (
+          SELECT 1 FROM snapshot s JOIN snapshot o
+            ON o.acronym = s.acronym AND o.file_hash = s.file_hash
+          WHERE s.version_id = ? AND s.acronym = ?
+            AND (o.ingested_at > s.ingested_at
+              OR (o.ingested_at = s.ingested_at AND o.version_id > s.version_id)))""")) {
+      ps.setString(1, versionId);
+      ps.setString(2, acronym);
+      try (ResultSet rs = ps.executeQuery()) {
+        return rs.next() && rs.getInt(1) == 1;
+      }
+    }
+  }
+
   /* --------------------------------------------------------------------------------------------
    * Helpers
    * ------------------------------------------------------------------------------------------ */
