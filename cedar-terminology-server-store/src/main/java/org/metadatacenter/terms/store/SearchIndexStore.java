@@ -139,17 +139,17 @@ public class SearchIndexStore implements AutoCloseable {
   }
 
   /** What sits directly under a term, and how many there are in all. */
-  public List<IndexedTerm> children(String acronym, String iri, String filter, int offset, int limit)
+  public List<IndexedTerm> children(String acronym, String iri, int offset, int limit)
       throws SQLException {
     String sql = "SELECT acronym, iri, pref_label, obsolete, replaced_by, has_children,"
         + " descendant_count, parent_iri, parent_label FROM term"
-        + " WHERE acronym = ? AND parent_iri = ?" + childMatchClause(filter)
-        + " ORDER BY pref_label, iri LIMIT ? OFFSET ?";
+        + " WHERE acronym = ? AND parent_iri = ? ORDER BY pref_label, iri LIMIT ? OFFSET ?";
     List<IndexedTerm> out = new ArrayList<>();
     try (PreparedStatement ps = connection.prepareStatement(sql)) {
-      int at = bindChildQuery(ps, acronym, iri, filter);
-      ps.setInt(at++, limit);
-      ps.setInt(at, offset);
+      ps.setString(1, acronym);
+      ps.setString(2, iri);
+      ps.setInt(3, limit);
+      ps.setInt(4, offset);
       try (ResultSet rs = ps.executeQuery()) {
         while (rs.next()) {
           out.add(readTerm(rs));
@@ -159,41 +159,16 @@ public class SearchIndexStore implements AutoCloseable {
     return out;
   }
 
-  /**
-   * How many children a term has; with a filter, how many of them the filter keeps.
-   */
-  public int childCount(String acronym, String iri, String filter) throws SQLException {
-    String sql = "SELECT COUNT(*) FROM term WHERE acronym = ? AND parent_iri = ?"
-        + childMatchClause(filter);
-    try (PreparedStatement ps = connection.prepareStatement(sql)) {
-      bindChildQuery(ps, acronym, iri, filter);
+  /** How many children a term has, without reading them. */
+  public int childCount(String acronym, String iri) throws SQLException {
+    try (PreparedStatement ps = connection.prepareStatement(
+        "SELECT COUNT(*) FROM term WHERE acronym = ? AND parent_iri = ?")) {
+      ps.setString(1, acronym);
+      ps.setString(2, iri);
       try (ResultSet rs = ps.executeQuery()) {
         return rs.next() ? rs.getInt(1) : 0;
       }
     }
-  }
-
-  /**
-   * The label condition a filter adds, or nothing where there is no filter.
-   *
-   * Matched anywhere in the label rather than from its start: the word an author remembers of a
-   * name is as often in the middle of it as at the front.
-   */
-  private static String childMatchClause(String filter) {
-    return filter == null || filter.isBlank() ? "" : " AND pref_label LIKE ? ESCAPE '\\'";
-  }
-
-  private static int bindChildQuery(PreparedStatement ps, String acronym, String iri, String filter)
-      throws SQLException {
-    ps.setString(1, acronym);
-    ps.setString(2, iri);
-    if (filter == null || filter.isBlank()) {
-      return 3;
-    }
-    // A filter is a word an author typed, not a pattern, so LIKE's wildcards are literal here.
-    String escaped = filter.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
-    ps.setString(3, "%" + escaped + "%");
-    return 4;
   }
 
   public Optional<IndexedTerm> term(String acronym, String iri) throws SQLException {

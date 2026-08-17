@@ -71,53 +71,19 @@ public class SnapshotStoreTest {
       }
       s.materialize();
 
-      List<SnapshotStore.LabelledConcept> first = s.childrenByLabel("http://ex/parent", null, 0, 3);
+      List<SnapshotStore.LabelledConcept> first = s.childrenByLabel("http://ex/parent", 0, 3);
       assertEquals(List.of("term 00", "term 01", "term 02"),
           first.stream().map(SnapshotStore.LabelledConcept::prefLabel).toList());
       // The count is of every child, not of the ones handed over, so a caller can say what it is
       // holding back rather than presenting a subset as the whole.
-      assertEquals(30, s.childCount("http://ex/parent", null));
-      assertEquals(30, s.childrenByLabel("http://ex/parent", null, 0, 100).size());
+      assertEquals(30, s.childCount("http://ex/parent"));
+      assertEquals(30, s.childrenByLabel("http://ex/parent", 0, 100).size());
 
       // Paging continues the same order rather than restarting it.
       assertEquals(List.of("term 03", "term 04"),
-          s.childrenByLabel("http://ex/parent", null, 3, 2).stream()
+          s.childrenByLabel("http://ex/parent", 3, 2).stream()
               .map(SnapshotStore.LabelledConcept::prefLabel).toList());
-      assertTrue(s.childrenByLabel("http://ex/parent", null, 30, 10).isEmpty());
-    }
-  }
-
-  @Test
-  public void childrenByLabel_narrowsToAFilterAndCountsWhatItKept() throws Exception {
-    try (SnapshotStore s = SnapshotStore.openInMemory()) {
-      s.initSchema();
-      s.addConcept("http://ex/parent", "Parent");
-      for (String[] c : new String[][]{
-          {"http://ex/a", "Asian soybean rust"}, {"http://ex/b", "Black rust"},
-          {"http://ex/c", "White pine blister rust"}, {"http://ex/d", "Anthrax"},
-          {"http://ex/e", "100% cover_age"}}) {
-        s.addConcept(c[0], c[1]);
-        s.addEdge(c[0], "http://ex/parent", "rdfs:subClassOf");
-      }
-      s.materialize();
-
-      // Matched anywhere in the label, not from its start: the word an author remembers of a name
-      // is as often in the middle of it as at the front.
-      assertEquals(List.of("Asian soybean rust", "Black rust", "White pine blister rust"),
-          s.childrenByLabel("http://ex/parent", "rust", 0, 50).stream()
-              .map(SnapshotStore.LabelledConcept::prefLabel).toList());
-      // Both counts, because a narrowed list has to say how many matched and how many there were.
-      assertEquals(3, s.childCount("http://ex/parent", "rust"));
-      assertEquals(5, s.childCount("http://ex/parent", null));
-      // Case is not something an author should have to get right.
-      assertEquals(3, s.childCount("http://ex/parent", "RUST"));
-      // A filter is a word that was typed, not a pattern: LIKE's wildcards match themselves.
-      assertEquals(0, s.childCount("http://ex/parent", "%rust"));
-      assertEquals(1, s.childCount("http://ex/parent", "100%"));
-      assertEquals(1, s.childCount("http://ex/parent", "cover_age"));
-      assertEquals(0, s.childCount("http://ex/parent", "coverXage"));
-      // Blank is no filter at all, rather than a filter that matches nothing.
-      assertEquals(5, s.childCount("http://ex/parent", "   "));
+      assertTrue(s.childrenByLabel("http://ex/parent", 30, 10).isEmpty());
     }
   }
 

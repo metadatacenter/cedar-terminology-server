@@ -111,8 +111,7 @@ public class VersionAwareSearchResource extends AbstractTerminologyServerResourc
           + "With versionId, answered from that release's snapshot: a hierarchy belongs to a release, "
           + "and a term's parent can move between two of them. Without it, from the cross-snapshot "
           + "index, which holds each ontology's current version. "
-          + "Children are alphabetical and capped; filter narrows them to labels containing a word, "
-          + "and offset asks for the next page of whichever list is in force.",
+          + "Children are alphabetical and capped; offset asks for the next page of them.",
       tags = {"Search"})
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "The term's ancestors and children"),
@@ -123,7 +122,6 @@ public class VersionAwareSearchResource extends AbstractTerminologyServerResourc
   public Response hierarchy(@QueryParam("sourceAcronym") String sourceAcronym,
                             @QueryParam("termIri") String termIri,
                             @QueryParam("versionId") String versionId,
-                            @QueryParam("filter") String filter,
                             @QueryParam("offset") @DefaultValue("0") int offset) throws CedarException {
     if (searchService == null) {
       return CedarResponse.status(CedarResponseStatus.SERVICE_UNAVAILABLE)
@@ -139,7 +137,7 @@ public class VersionAwareSearchResource extends AbstractTerminologyServerResourc
     }
     try {
       Optional<HierarchyResponse> found =
-          searchService.hierarchy(sourceAcronym, termIri, versionId, filter, offset);
+          searchService.hierarchy(sourceAcronym, termIri, versionId, offset);
       if (found.isEmpty()) {
         return CedarResponse.notFound()
             .errorKey(CedarErrorKey.INVALID_INPUT)
