@@ -623,7 +623,13 @@ public class VersionAwareSearchService {
    * the index does not hold the term, which is the honest answer for a proxied or unheld source.
    */
   public Optional<HierarchyResponse> hierarchy(String acronym, String termIri) throws SQLException {
-    return hierarchy(acronym, termIri, null);
+    return hierarchy(acronym, termIri, null, null, 0);
+  }
+
+  /** The same, at a named release, unfiltered and from the first child. */
+  public Optional<HierarchyResponse> hierarchy(String acronym, String termIri, String versionId)
+      throws SQLException {
+    return hierarchy(acronym, termIri, versionId, null, 0);
   }
 
   /**
@@ -635,13 +641,14 @@ public class VersionAwareSearchService {
    * naming a version is answered from that snapshot, and only an unpinned one takes the index,
    * where the answer and the index agree by construction.
    */
-  public Optional<HierarchyResponse> hierarchy(String acronym, String termIri, String versionId)
-      throws SQLException {
+  public Optional<HierarchyResponse> hierarchy(String acronym, String termIri, String versionId,
+                                               String filter, int offset) throws SQLException {
     if (acronym == null || acronym.isBlank() || termIri == null || termIri.isBlank()) {
       return Optional.empty();
     }
+    int from = Math.max(0, offset);
     if (versionId != null && !versionId.isBlank()) {
-      return snapshotHierarchy(acronym, termIri, versionId);
+      return snapshotHierarchy(acronym, termIri, versionId, filter, from);
     }
     if (index == null) {
       return Optional.empty();
@@ -656,19 +663,21 @@ public class VersionAwareSearchService {
       path.add(new TermRef(step.iri(), step.prefLabel()));
     }
     List<HierarchyResponse.Child> children = new ArrayList<>();
-    for (SearchIndexStore.IndexedTerm child : index.children(acronym, termIri, CHILD_LIMIT)) {
+    for (SearchIndexStore.IndexedTerm child : index.children(acronym, termIri, filter, from, CHILD_LIMIT)) {
       children.add(new HierarchyResponse.Child(child.iri(), child.prefLabel(), child.hasChildren(),
           child.descendantCount()));
     }
+    // The unfiltered count always, so a node says how big it is whether or not it is being narrowed.
     return Optional.of(new HierarchyResponse(SearchRequest.BIOPORTAL, acronym,
         indexedSourceBlock(acronym), path.isEmpty() ? null : path, term.iri(), term.prefLabel(),
-        children.isEmpty() ? null : children, index.childCount(acronym, termIri),
+        children.isEmpty() ? null : children, index.childCount(acronym, termIri, null),
+        filtered(filter) ? index.childCount(acronym, termIri, filter) : null, from,
         term.descendantCount()));
   }
 
   /** The hierarchy as one snapshot records it, for a request that named a release. */
-  private Optional<HierarchyResponse> snapshotHierarchy(String acronym, String termIri, String versionId)
-      throws SQLException {
+  private Optional<HierarchyResponse> snapshotHierarchy(String acronym, String termIri, String versionId,
+                                                        String filter, int offset) throws SQLException {
     Resolved resolved = resolveSource(
         new SourceSelector(null, acronym, new SearchRequest.VersionSelector(versionId)));
     if (!resolved.isLocal()) {
@@ -685,14 +694,20 @@ public class VersionAwareSearchService {
     // "African horse sickness" while showing "African swine fever" two rows on. It also matches how
     // the index answers this for the current release, so pinning changes the release read, nothing else.
     List<HierarchyResponse.Child> children = new ArrayList<>();
-    for (SnapshotStore.LabelledConcept child : store.childrenByLabel(termIri, CHILD_LIMIT)) {
+    for (SnapshotStore.LabelledConcept child : store.childrenByLabel(termIri, filter, offset, CHILD_LIMIT)) {
       children.add(new HierarchyResponse.Child(child.iri(), child.prefLabel(),
           !store.children(child.iri()).isEmpty(), store.descendantCount(child.iri())));
     }
     List<TermRef> path = path(store, termIri);
     return Optional.of(new HierarchyResponse(SearchRequest.BIOPORTAL, acronym, resolved.block(),
         path, termIri, label.orElse(null), children.isEmpty() ? null : children,
-        store.childCount(termIri), store.descendantCount(termIri)));
+        store.childCount(termIri, null),
+        filtered(filter) ? store.childCount(termIri, filter) : null, offset,
+        store.descendantCount(termIri)));
+  }
+
+  private static boolean filtered(String filter) {
+    return filter != null && !filter.isBlank();
   }
 
   /** The whole chain above an indexed term, root first, or null where it is a root itself. */

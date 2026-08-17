@@ -5,6 +5,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
@@ -109,7 +110,9 @@ public class VersionAwareSearchResource extends AbstractTerminologyServerResourc
           + "neighbourhood, and two concepts with one label are told apart by nothing else. "
           + "With versionId, answered from that release's snapshot: a hierarchy belongs to a release, "
           + "and a term's parent can move between two of them. Without it, from the cross-snapshot "
-          + "index, which holds each ontology's current version.",
+          + "index, which holds each ontology's current version. "
+          + "Children are alphabetical and capped; filter narrows them to labels containing a word, "
+          + "and offset asks for the next page of whichever list is in force.",
       tags = {"Search"})
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "The term's ancestors and children"),
@@ -119,7 +122,9 @@ public class VersionAwareSearchResource extends AbstractTerminologyServerResourc
   })
   public Response hierarchy(@QueryParam("sourceAcronym") String sourceAcronym,
                             @QueryParam("termIri") String termIri,
-                            @QueryParam("versionId") String versionId) throws CedarException {
+                            @QueryParam("versionId") String versionId,
+                            @QueryParam("filter") String filter,
+                            @QueryParam("offset") @DefaultValue("0") int offset) throws CedarException {
     if (searchService == null) {
       return CedarResponse.status(CedarResponseStatus.SERVICE_UNAVAILABLE)
           .errorKey(CedarErrorKey.INVALID_INPUT)
@@ -133,7 +138,8 @@ public class VersionAwareSearchResource extends AbstractTerminologyServerResourc
           .build();
     }
     try {
-      Optional<HierarchyResponse> found = searchService.hierarchy(sourceAcronym, termIri, versionId);
+      Optional<HierarchyResponse> found =
+          searchService.hierarchy(sourceAcronym, termIri, versionId, filter, offset);
       if (found.isEmpty()) {
         return CedarResponse.notFound()
             .errorKey(CedarErrorKey.INVALID_INPUT)

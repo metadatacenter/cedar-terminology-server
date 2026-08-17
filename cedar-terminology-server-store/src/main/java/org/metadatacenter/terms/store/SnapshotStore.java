@@ -774,15 +774,19 @@ public class SnapshotStore implements AutoCloseable {
    * the search index serves the same question for the current release, so pinning a release changes
    * which release is read and nothing else.
    */
-  public List<LabelledConcept> childrenByLabel(String parentIri, int limit) throws SQLException {
+  public List<LabelledConcept> childrenByLabel(String parentIri, String filter, int offset, int limit)
+      throws SQLException {
     List<LabelledConcept> out = new ArrayList<>();
-    try (PreparedStatement ps = connection.prepareStatement("""
+    String sql = """
         SELECT c.iri, c.pref_label FROM edge e
         JOIN concept c ON c.id = e.child_id
         JOIN concept p ON p.id = e.parent_id
-        WHERE p.iri = ? ORDER BY c.pref_label, c.iri LIMIT ?""")) {
-      ps.setString(1, parentIri);
-      ps.setInt(2, limit);
+        WHERE p.iri = ?""" + matchClause(filter)
+        + " ORDER BY c.pref_label, c.iri LIMIT ? OFFSET ?";
+    try (PreparedStatement ps = connection.prepareStatement(sql)) {
+      int at = bindParent(ps, parentIri, filter);
+      ps.setInt(at++, limit);
+      ps.setInt(at, offset);
       try (ResultSet rs = ps.executeQuery()) {
         while (rs.next()) {
           out.add(new LabelledConcept(rs.getString(1), rs.getString(2)));
@@ -796,17 +800,46 @@ public class SnapshotStore implements AutoCloseable {
   public record LabelledConcept(String iri, String prefLabel) {
   }
 
-  /** How many direct children a concept has, without reading them. */
-  public int childCount(String parentIri) throws SQLException {
-    try (PreparedStatement ps = connection.prepareStatement("""
+  /**
+   * How many direct children a concept has, without reading them; with a filter, how many of them
+   * the filter keeps.
+   */
+  public int childCount(String parentIri, String filter) throws SQLException {
+    String sql = """
         SELECT COUNT(*) FROM edge e
+        JOIN concept c ON c.id = e.child_id
         JOIN concept p ON p.id = e.parent_id
-        WHERE p.iri = ?""")) {
-      ps.setString(1, parentIri);
+        WHERE p.iri = ?""" + matchClause(filter);
+    try (PreparedStatement ps = connection.prepareStatement(sql)) {
+      bindParent(ps, parentIri, filter);
       try (ResultSet rs = ps.executeQuery()) {
         return rs.next() ? rs.getInt(1) : 0;
       }
     }
+  }
+
+  /**
+   * The label condition a filter adds, or nothing where there is no filter.
+   *
+   * Matched anywhere in the label rather than from its start: a filter is what an author types when
+   * a node holds more children than they will read, and the word they remember is as often in the
+   * middle of the name as at the front.
+   */
+  private static String matchClause(String filter) {
+    return isBlank(filter) ? "" : " AND c.pref_label LIKE ? ESCAPE '\\'";
+  }
+
+  private static int bindParent(PreparedStatement ps, String parentIri, String filter) throws SQLException {
+    ps.setString(1, parentIri);
+    if (isBlank(filter)) {
+      return 2;
+    }
+    ps.setString(2, "%" + escapeLike(filter) + "%");
+    return 3;
+  }
+
+  private static boolean isBlank(String s) {
+    return s == null || s.isBlank();
   }
 
   /** Direct parents of a concept. */

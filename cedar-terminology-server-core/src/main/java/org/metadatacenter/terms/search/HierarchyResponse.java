@@ -25,6 +25,16 @@ public record HierarchyResponse(
     /** Directly below, alphabetical, capped — {@code childCount} says how many there are in all. */
     List<Child> children,
     int childCount,
+    /**
+     * How many children a filter kept, absent when the request set no filter.
+     *
+     * Separate from {@code childCount}, which stays the count of every child: a node says how big
+     * it is whether or not the list is being narrowed, and a filtered list needs to say both — how
+     * many matched, and how many there were to match against.
+     */
+    Integer matchCount,
+    /** Where the returned children start, so a client can ask for the rest. */
+    int offset,
     int descendantCount) {
 
   /** A step below the term, carrying enough to say whether it is worth opening in turn. */
