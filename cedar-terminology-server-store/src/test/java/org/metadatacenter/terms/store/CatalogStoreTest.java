@@ -113,9 +113,11 @@ public class CatalogStoreTest {
     // Two extractions of one release: same file hash, different version id, ingested a day apart.
     // That is what changing an extractor produces — the bytes did not change, what we read out of
     // them did — and listing both says the ontology was released twice.
-    SnapshotInfo older = new SnapshotInfo("extractV1", "DOID", "release/2025-06-01", "2025-06-01",
+    // A release of its own, rather than sharing a date with the fixture's: this is about supersession,
+    // and a tie would make it depend on how ties are broken too.
+    SnapshotInfo older = new SnapshotInfo("extractV1", "DOID", "release/2025-09-01", "2025-09-01",
         "2026-08-15T00:00:00Z", "OWL", "subsumption", 14000, 20000, "/p/1.sqlite", "sameBytes", "open");
-    SnapshotInfo newer = new SnapshotInfo("extractV2", "DOID", "release/2025-06-01", "2025-06-01",
+    SnapshotInfo newer = new SnapshotInfo("extractV2", "DOID", "release/2025-09-01", "2025-09-01",
         "2026-08-16T00:00:00Z", "OWL", "subsumption", 14000, 20000, "/p/2.sqlite", "sameBytes", "open");
     catalog.addSnapshot(older);
     catalog.addSnapshot(newer);
@@ -135,6 +137,28 @@ public class CatalogStoreTest {
     // The guarantee a published template rests on: a pin written before a supersession still
     // resolves to exactly the snapshot it named.
     assertEquals("/p/1.sqlite", catalog.getSnapshot("extractV1").orElseThrow().filePath());
+  }
+
+  @Test
+  public void listCurrentSnapshots_ordersTwoReleasesOfOneDayByTheSourcesOwnUploadOrder() throws Exception {
+    // EXMO published 1.2 and 2025-04-29 both as released 2025-03-12. Ordering on the date alone left
+    // whichever the scan reached first on top, so a list that says newest first showed the older of
+    // the two above the newer.
+    SnapshotInfo earlier = new SnapshotInfo("subFour", "DOID", "1.2", "2025-03-12",
+        "2026-08-16T00:00:00Z", "OWL", "subsumption", 1, 1, "/p/4.sqlite", "bytesFour", "open");
+    SnapshotInfo later = new SnapshotInfo("subFive", "DOID", "2025-04-29", "2025-03-12",
+        "2026-08-16T00:00:00Z", "OWL", "subsumption", 1, 1, "/p/5.sqlite", "bytesFive", "open");
+    catalog.addSnapshot(later);   // added out of order on purpose
+    catalog.addSnapshot(earlier);
+    catalog.setSnapshotProvenance("subFour", "DOID", 4, null);
+    catalog.setSnapshotProvenance("subFive", "DOID", 5, null);
+
+    List<String> sameDay = catalog.listCurrentSnapshots("DOID").stream()
+        .filter(s -> "2025-03-12".equals(s.releasedAt()))
+        .map(SnapshotInfo::versionId)
+        .toList();
+    // Oldest first here; the release list reverses it, so submission 5 ends up above submission 4.
+    assertEquals(List.of("subFour", "subFive"), sameDay);
   }
 
   @Test

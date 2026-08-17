@@ -896,7 +896,11 @@ public class CatalogStore implements AutoCloseable {
             WHERE o.acronym = s.acronym AND o.file_hash = s.file_hash
               AND (o.ingested_at > s.ingested_at
                 OR (o.ingested_at = s.ingested_at AND o.version_id > s.version_id)))
-        ORDER BY s.released_at""")) {
+        -- Two releases can share a date: EXMO published 1.2 and 2025-04-29 both as 2025-03-12, and
+        -- ordering on the date alone left the older of them above the newer in a list that says it
+        -- is newest first. The submission id is the source's own upload order and breaks the tie;
+        -- the version id keeps it deterministic where even that is absent.
+        ORDER BY s.released_at, s.submission_id, s.version_id""")) {
       ps.setString(1, acronym);
       try (ResultSet rs = ps.executeQuery()) {
         List<SnapshotInfo> out = new ArrayList<>();
