@@ -275,6 +275,7 @@ public class IngestJob {
     }
     Path raw = source.download(acronym, sub.submissionId(), ontoDir.resolve("raw"));
     String rawHash = sha256(raw);
+    raw = retainByHash(raw, rawHash);     // keep every download, named by what it is
     Path loadable = decompress(raw);      // .zip/.gz submissions must be expanded before parsing
     loadable = stripOboImports(loadable); // OBO import: declarations must be dropped before parsing
     return new Prepared(loadable, rawHash, access);
@@ -583,11 +584,73 @@ public class IngestJob {
     return new BackfillSummary(filled, already, 0, noRaw, none, failed, added);
   }
 
-  /** The file in {@code rawDir} whose SHA-256 equals {@code wantHash} (the exact download a snapshot was
-   *  built from), or null. Located by content, so a later re-download left in the same dir can't fool it. */
+  /**
+   * Stores a download under the hash of its own bytes, compressed.
+   *
+   * The name was the source's — {@code doid.owl} — and BioPortal reuses a filename across releases,
+   * so each download landed on the one before it. Nothing was deleted on purpose; DOID has fifteen
+   * snapshots and six surviving files, and about a quarter of the store's snapshots have lost the
+   * bytes they were built from. A content hash cannot collide with a different download, and it is
+   * also what a lookup asks for, so finding one no longer means hashing a directory.
+   *
+   * Compressed on the way in, because these are XML and OBO text: measured on the store's own files,
+   * gzip takes them to a tenth to a fifteenth of their size. What arrives already compressed is
+   * stored as it came. Either way {@link #decompress} reads it back by its magic bytes.
+   */
+  static Path retainByHash(Path raw, String hash) throws IOException {
+    if (hash == null || hash.isBlank()) {
+      return raw;
+    }
+    boolean compressed = isCompressed(raw);
+    Path kept = raw.resolveSibling(hash + (compressed ? ".raw" : ".gz"));
+    if (Files.exists(kept)) {
+      // The same bytes are already held: this is a re-download of a release we have.
+      Files.deleteIfExists(raw);
+      return kept;
+    }
+    if (compressed) {
+      Files.move(raw, kept, StandardCopyOption.REPLACE_EXISTING);
+      return kept;
+    }
+    Path temp = raw.resolveSibling(hash + ".gz.tmp");
+    try (InputStream in = Files.newInputStream(raw);
+         java.util.zip.GZIPOutputStream out =
+             new java.util.zip.GZIPOutputStream(Files.newOutputStream(temp))) {
+      in.transferTo(out);
+    }
+    Files.move(temp, kept, StandardCopyOption.REPLACE_EXISTING);
+    Files.deleteIfExists(raw);
+    return kept;
+  }
+
+  private static boolean isCompressed(Path file) throws IOException {
+    byte[] magic = new byte[4];
+    try (InputStream in = Files.newInputStream(file)) {
+      if (in.read(magic) < 4) {
+        return false;
+      }
+    }
+    boolean gz = (magic[0] & 0xff) == 0x1f && (magic[1] & 0xff) == 0x8b;
+    boolean zip = magic[0] == 'P' && magic[1] == 'K' && magic[2] == 3 && magic[3] == 4;
+    return gz || zip;
+  }
+
+  /**
+   * The retained download a snapshot was built from, or null.
+   *
+   * By name first, which is the hash itself and so costs a stat. Falling back to hashing the
+   * directory for downloads retained before that was the rule — those keep working, and the
+   * migration renames them.
+   */
   private static Path findRawByHash(Path rawDir, String wantHash) throws IOException {
     if (wantHash == null || wantHash.isBlank() || !Files.isDirectory(rawDir)) {
       return null;
+    }
+    for (String suffix : new String[]{".gz", ".raw"}) {
+      Path named = rawDir.resolve(wantHash + suffix);
+      if (Files.isRegularFile(named)) {
+        return named;
+      }
     }
     try (java.util.stream.Stream<Path> entries = Files.list(rawDir)) {
       for (Path p : (Iterable<Path>) entries.sorted()::iterator) {
@@ -598,6 +661,53 @@ public class IngestJob {
     }
     return null;
   }
+
+  /**
+   * Renames every retained download to the hash of its bytes and compresses it.
+   *
+   * One pass over what is already on disk, so the collision that lost a quarter of the store's
+   * sources cannot happen again and the space they take drops by an order of magnitude. Hashes once
+   * per file — the name is the answer from then on. A file already named for its hash is left alone,
+   * so this can be run again.
+   */
+  public RetainSummary retainRawByHash(Path snapshotDir) throws IOException {
+    int renamed = 0, already = 0, failed = 0;
+    long before = 0, after = 0;
+    try (java.util.stream.Stream<Path> dirs = Files.list(snapshotDir)) {
+      for (Path ontoDir : (Iterable<Path>) dirs.sorted()::iterator) {
+        Path rawDir = ontoDir.resolve("raw");
+        if (!Files.isDirectory(rawDir)) {
+          continue;
+        }
+        List<Path> files;
+        try (java.util.stream.Stream<Path> s = Files.list(rawDir)) {
+          files = s.filter(Files::isRegularFile).sorted().toList();
+        }
+        for (Path file : files) {
+          String name = file.getFileName().toString();
+          if (name.matches("[0-9a-f]{64}\\.(gz|raw)")) {
+            already++;
+            after += Files.size(file);
+            continue;
+          }
+          try {
+            long was = Files.size(file);
+            Path kept = retainByHash(file, sha256(file));
+            renamed++;
+            before += was;
+            after += Files.size(kept);
+          } catch (Exception e) {
+            failed++;
+            log.warn("{}: could not retain {}: {}", ontoDir.getFileName(), name, e.toString());
+          }
+        }
+      }
+    }
+    return new RetainSummary(renamed, already, failed, before, after);
+  }
+
+  /** What the retention pass did, and what it saved. */
+  public record RetainSummary(int renamed, int alreadyNamed, int failed, long bytesBefore, long bytesAfter) {}
 
   /** Tally of a store integrity check. */
   public record VerifySummary(int snapshots, int ok, int missingFile, int unreadable, int emptyConcepts,
@@ -1026,6 +1136,7 @@ public class IngestJob {
     boolean backfillLabels = false;
     boolean backfillLabelsFromRaw = false;
     boolean backfillDefinitionsFromRaw = false;
+    boolean retainRawByHash = false;
     boolean backfillHeaderIri = false;
     boolean verify = false;
     boolean deep = false;
@@ -1050,6 +1161,8 @@ public class IngestJob {
         backfillLabelsFromRaw = true;
       } else if ("--backfill-definitions-from-raw".equals(args[i])) {
         backfillDefinitionsFromRaw = true;
+      } else if ("--retain-raw-by-hash".equals(args[i])) {
+        retainRawByHash = true;
       } else if ("--verify".equals(args[i])) {
         verify = true;
       } else if ("--deep".equals(args[i])) {
@@ -1115,6 +1228,13 @@ public class IngestJob {
                 + "%d assert none, %d no-matching-raw, %d failed%n",
             sum.filled(), sum.labelsAdded(), sum.alreadyLabeled(), sum.mismatched(),
             sum.noSubmission(), sum.failed());
+        return;
+      }
+      if (retainRawByHash) {
+        IngestJob.RetainSummary sum = job.retainRawByHash(snapshotDir);
+        System.out.printf("retain-raw-by-hash: %d renamed, %d already named, %d failed; %.1f GB -> %.1f GB%n",
+            sum.renamed(), sum.alreadyNamed(), sum.failed(),
+            sum.bytesBefore() / 1073741824.0, sum.bytesAfter() / 1073741824.0);
         return;
       }
       if (verify) {

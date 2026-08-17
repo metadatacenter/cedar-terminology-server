@@ -423,4 +423,36 @@ public class IngestJobTest {
     assertThrows(IOException.class, () -> job.ingestLatest(catalog, "EX", tempDir.resolve("snapshots")));
     assertTrue(catalog.resolveLatest("EX").isEmpty());
   }
+
+  @Test
+  public void retainByHash_namesADownloadForItsBytesAndCompressesIt() throws Exception {
+    Path dir = tempDir;
+    // Two releases of one ontology, served under the same filename — the collision that lost about a
+    // quarter of the store's sources, since the second landed on the first.
+    Path raw = dir.resolve("doid.owl");
+    String first = "<owl>first release, which is long enough to be worth compressing. "
+        + "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa</owl>";
+    Files.writeString(raw, first);
+    String firstHash = IngestJob.sha256(raw);
+    Path keptFirst = IngestJob.retainByHash(raw, firstHash);
+
+    Files.writeString(raw, "<owl>second release</owl>");
+    String secondHash = IngestJob.sha256(raw);
+    Path keptSecond = IngestJob.retainByHash(raw, secondHash);
+
+    // Both survive, named for what they are.
+    assertTrue(Files.exists(keptFirst));
+    assertTrue(Files.exists(keptSecond));
+    assertEquals(firstHash + ".gz", keptFirst.getFileName().toString());
+    assertNotEquals(keptFirst, keptSecond);
+    // Smaller on disk than the text it holds, and readable back to exactly those bytes.
+    assertTrue(Files.size(keptFirst) < first.length());
+    assertEquals(first, Files.readString(IngestJob.decompress(keptFirst)));
+
+    // Re-downloading a release we already hold keeps the one copy rather than adding a second.
+    Files.writeString(raw, first);
+    Path again = IngestJob.retainByHash(raw, firstHash);
+    assertEquals(keptFirst, again);
+    assertFalse(Files.exists(raw));
+  }
 }
