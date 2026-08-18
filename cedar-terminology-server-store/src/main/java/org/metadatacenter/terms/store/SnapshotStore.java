@@ -7,7 +7,9 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -46,6 +48,12 @@ public class SnapshotStore implements AutoCloseable {
 
   /** One captured name literal read back, without the concept IRI (the caller keyed the query on it). */
   public record LabelEntry(String property, String lang, String value) {}
+
+  /** A definition literal to capture, addressed by the concept's IRI. */
+  public record DefinitionRow(String conceptIri, String property, String lang, String value) {}
+
+  /** One captured definition read back, without the concept IRI. */
+  public record DefinitionEntry(String property, String lang, String value) {}
 
   private final Connection connection;
   private Boolean labelTablePresent; // cached: a snapshot ingested before label capture has no label table
@@ -108,6 +116,21 @@ public class SnapshotStore implements AutoCloseable {
       // that the label backfill then fills.
       s.executeUpdate("""
           CREATE TABLE IF NOT EXISTS label (
+            concept_id INTEGER NOT NULL,
+            property   TEXT NOT NULL,
+            lang       TEXT NOT NULL DEFAULT '',
+            value      TEXT NOT NULL,
+            PRIMARY KEY (concept_id, property, lang, value)
+          ) WITHOUT ROWID""");
+      // What a source says a concept means, with the property it was asserted under and its language
+      // tag. Several are allowed: a term can carry a definition and an alternative one, and which
+      // property it came from is the difference between a definition and an editor's note.
+      //
+      // Outside content identity, exactly as the label table is and for the same reason: a snapshot
+      // is identified by a hash over its concepts, labels and edges, so admitting definitions to it
+      // would change the identity of every snapshot already written and break every pin with it.
+      s.executeUpdate("""
+          CREATE TABLE IF NOT EXISTS definition (
             concept_id INTEGER NOT NULL,
             property   TEXT NOT NULL,
             lang       TEXT NOT NULL DEFAULT '',
@@ -249,6 +272,72 @@ public class SnapshotStore implements AutoCloseable {
     }
   }
 
+  /**
+   * Captures definitions, ignoring any whose concept is not in this snapshot.
+   *
+   * Insert-or-ignore on the whole row, so a definition asserted twice under one property collapses
+   * and a backfill can be run again without duplicating what it already wrote.
+   */
+  public void addDefinitions(List<DefinitionRow> rows) throws SQLException {
+    boolean autoCommit = connection.getAutoCommit();
+    connection.setAutoCommit(false);
+    try (PreparedStatement ps = connection.prepareStatement("""
+        INSERT OR IGNORE INTO definition (concept_id, property, lang, value)
+        SELECT c.id, ?, ?, ? FROM concept c WHERE c.iri = ?""")) {
+      for (DefinitionRow r : rows) {
+        ps.setString(1, r.property());
+        ps.setString(2, r.lang() == null ? "" : r.lang());
+        ps.setString(3, r.value());
+        ps.setString(4, r.conceptIri());
+        ps.addBatch();
+      }
+      ps.executeBatch();
+      connection.commit();
+    } finally {
+      connection.setAutoCommit(autoCommit);
+    }
+  }
+
+  /** Every definition a concept carries, or empty where the snapshot predates the capture. */
+  public List<DefinitionEntry> definitions(String conceptIri) throws SQLException {
+    if (!hasTable("definition")) {
+      return List.of();
+    }
+    try (PreparedStatement ps = connection.prepareStatement(
+        "SELECT d.property, d.lang, d.value FROM definition d JOIN concept c ON c.id = d.concept_id "
+            + "WHERE c.iri = ? ORDER BY d.property, d.lang, d.value")) {
+      ps.setString(1, conceptIri);
+      try (ResultSet rs = ps.executeQuery()) {
+        List<DefinitionEntry> out = new ArrayList<>();
+        while (rs.next()) {
+          out.add(new DefinitionEntry(rs.getString("property"), rs.getString("lang"), rs.getString("value")));
+        }
+        return out;
+      }
+    }
+  }
+
+  /** How many definitions this snapshot holds, for a backfill to report and to resume by. */
+  public int definitionCount() throws SQLException {
+    if (!hasTable("definition")) {
+      return 0;
+    }
+    try (Statement s = connection.createStatement();
+         ResultSet rs = s.executeQuery("SELECT COUNT(*) FROM definition")) {
+      return rs.next() ? rs.getInt(1) : 0;
+    }
+  }
+
+  private boolean hasTable(String name) throws SQLException {
+    try (PreparedStatement ps = connection.prepareStatement(
+        "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?")) {
+      ps.setString(1, name);
+      try (ResultSet rs = ps.executeQuery()) {
+        return rs.next();
+      }
+    }
+  }
+
   /** The synonym-scope property CURIEs — every captured name that is a synonym rather than the label
    *  proper. Kept in sync with the ingest-side capture (LabelProperties); the label table stores CURIEs. */
   private static final String SYNONYM_PROPERTY_LIST =
@@ -329,6 +418,60 @@ public class SnapshotStore implements AutoCloseable {
     }
   }
 
+  /** Every captured definition in the snapshot, for a bulk pass such as building the index. */
+  public List<DefinitionRow> allDefinitions() throws SQLException {
+    if (!hasTable("definition")) {
+      return List.of();
+    }
+    try (Statement s = connection.createStatement();
+         ResultSet rs = s.executeQuery(
+             "SELECT c.iri, d.property, d.lang, d.value FROM definition d "
+                 + "JOIN concept c ON c.id = d.concept_id")) {
+      List<DefinitionRow> out = new ArrayList<>();
+      while (rs.next()) {
+        out.add(new DefinitionRow(rs.getString("iri"), rs.getString("property"),
+            rs.getString("lang"), rs.getString("value")));
+      }
+      return out;
+    }
+  }
+
+  /**
+   * Which of a concept's definitions to serve, where it has more than one.
+   *
+   * A term can carry a definition under several properties and in several languages, and a row has
+   * room for one. English first, because that is the language the rest of the picker serves; then
+   * the property, a definition proper ahead of an alternative one — NCIT's ALT_DEFINITION is a
+   * second reading for a different audience, not the primary sense.
+   */
+  public static String servedDefinition(List<DefinitionEntry> entries) {
+    return entries.stream()
+        .min(java.util.Comparator
+            .comparingInt((DefinitionEntry e) -> languageRank(e.lang()))
+            .thenComparingInt(e -> propertyRank(e.property()))
+            .thenComparing(DefinitionEntry::value))
+        .map(DefinitionEntry::value)
+        .orElse(null);
+  }
+
+  private static int languageRank(String lang) {
+    if (lang == null || lang.isEmpty()) {
+      return 1;
+    }
+    return lang.toLowerCase().startsWith("en") ? 0 : 2;
+  }
+
+  private static int propertyRank(String property) {
+    return switch (property) {
+      case "IAO:0000115" -> 0;
+      case "skos:definition" -> 1;
+      case "NCIT:DEFINITION" -> 2;
+      case "dcterms:description" -> 3;
+      case "dc:description" -> 4;
+      default -> 5;
+    };
+  }
+
   /** Total captured name literals. Zero means labels have not been captured for this snapshot yet
    *  (the backfill skip check). */
   public int labelCount() throws SQLException {
@@ -407,7 +550,7 @@ public class SnapshotStore implements AutoCloseable {
 
   /**
    * A content hash of the normalized extracted model, independent of the source file's bytes and
-   * serialization (VERSIONING-DESIGN §4.3). Two snapshots with the same served content hash to the
+   * serialization (VERSIONING-ROADMAP "The Model" §4.3). Two snapshots with the same served content hash to the
    * same value even when they came from different serializations (OBO vs OWL) or backends; a genuine
    * content change gives a different hash. This is the alternative to the raw-file hash that today's
    * {@code version_id} uses.
@@ -763,6 +906,52 @@ public class SnapshotStore implements AutoCloseable {
         WHERE p.iri = ? ORDER BY c.iri""", parentIri);
   }
 
+  /**
+   * Direct children of a concept, by label, at most {@code limit} of them.
+   *
+   * Ordering and limiting together, rather than a caller taking the first n of {@link #children} and
+   * sorting those: children come back by IRI, so taking the first n of that and then sorting them
+   * for display yields an arbitrary subset presented as an alphabetical list. It also matches how
+   * the search index serves the same question for the current release, so pinning a release changes
+   * which release is read and nothing else.
+   */
+  public List<LabelledConcept> childrenByLabel(String parentIri, int offset, int limit)
+      throws SQLException {
+    List<LabelledConcept> out = new ArrayList<>();
+    try (PreparedStatement ps = connection.prepareStatement("""
+        SELECT c.iri, c.pref_label FROM edge e
+        JOIN concept c ON c.id = e.child_id
+        JOIN concept p ON p.id = e.parent_id
+        WHERE p.iri = ? ORDER BY c.pref_label, c.iri LIMIT ? OFFSET ?""")) {
+      ps.setString(1, parentIri);
+      ps.setInt(2, limit);
+      ps.setInt(3, offset);
+      try (ResultSet rs = ps.executeQuery()) {
+        while (rs.next()) {
+          out.add(new LabelledConcept(rs.getString(1), rs.getString(2)));
+        }
+      }
+    }
+    return out;
+  }
+
+  /** A concept's IRI with the label the snapshot records for it, which may be absent. */
+  public record LabelledConcept(String iri, String prefLabel) {
+  }
+
+  /** How many direct children a concept has, without reading them. */
+  public int childCount(String parentIri) throws SQLException {
+    try (PreparedStatement ps = connection.prepareStatement("""
+        SELECT COUNT(*) FROM edge e
+        JOIN concept p ON p.id = e.parent_id
+        WHERE p.iri = ?""")) {
+      ps.setString(1, parentIri);
+      try (ResultSet rs = ps.executeQuery()) {
+        return rs.next() ? rs.getInt(1) : 0;
+      }
+    }
+  }
+
   /** Direct parents of a concept. */
   public List<String> parents(String childIri) throws SQLException {
     return queryIris("""
@@ -779,6 +968,79 @@ public class SnapshotStore implements AutoCloseable {
         JOIN concept a ON a.id = cl.ancestor_id
         JOIN concept d ON d.id = cl.descendant_id
         WHERE a.iri = ? ORDER BY d.iri""", ancestorIri);
+  }
+
+  /**
+   * How many descendants a concept has, counted in the closure rather than materialized.
+   *
+   * A branch constraint offers a class's subtypes, so this is the size of what constraining to it
+   * would capture — the number a picker shows beside a branch. Counting in SQL matters because the
+   * caller asks it once per row of a result page: {@link #descendants} would build and discard a
+   * list of IRIs, which for an upper-level class is tens of thousands of strings per row.
+   */
+  public int descendantCount(String ancestorIri) throws SQLException {
+    try (PreparedStatement ps = connection.prepareStatement("""
+        SELECT COUNT(*) FROM closure cl
+        JOIN concept a ON a.id = cl.ancestor_id
+        WHERE a.iri = ?""")) {
+      ps.setString(1, ancestorIri);
+      try (ResultSet rs = ps.executeQuery()) {
+        return rs.next() ? rs.getInt(1) : 0;
+      }
+    }
+  }
+
+  /**
+   * The descendant count of every concept that has one, in a single pass.
+   *
+   * {@link #descendantCount} answers for one concept, which is what a page of results needs. Building
+   * an index needs the answer for all of them, and asking one at a time over a snapshot the size of
+   * NCBITaxon is millions of statements against a table that can produce the whole answer with one
+   * GROUP BY. Concepts with no descendants are absent rather than present with zero.
+   */
+  public Map<String, Integer> descendantCounts() throws SQLException {
+    Map<String, Integer> out = new HashMap<>();
+    try (Statement st = connection.createStatement();
+         ResultSet rs = st.executeQuery("""
+             SELECT a.iri, COUNT(*) FROM closure cl
+             JOIN concept a ON a.id = cl.ancestor_id
+             GROUP BY a.iri""")) {
+      while (rs.next()) {
+        out.put(rs.getString(1), rs.getInt(2));
+      }
+    }
+    return out;
+  }
+
+  /**
+   * The captured labels of one concept that match {@code query}, with the property and language each
+   * was recorded under.
+   *
+   * {@link #searchByLabel} matches a concept through any captured name — a label in any language, a
+   * synonym — so a hit's served {@code pref_label} often has no visible relation to what was typed.
+   * This answers what did match, which is what lets a result say so rather than looking like a
+   * defect. Empty when the query matched the served preferred label itself, or when the snapshot
+   * carries no label table.
+   */
+  public List<LabelEntry> matchingLabels(String conceptIri, String query) throws SQLException {
+    if (query == null || query.isEmpty() || !hasLabelTable()) {
+      return List.of();
+    }
+    List<LabelEntry> out = new ArrayList<>();
+    try (PreparedStatement ps = connection.prepareStatement("""
+        SELECT l.property, l.lang, l.value FROM label l
+        JOIN concept c ON c.id = l.concept_id
+        WHERE c.iri = ? AND l.value LIKE ? ESCAPE '\\'
+        ORDER BY LENGTH(l.value), l.value""")) {
+      ps.setString(1, conceptIri);
+      ps.setString(2, "%" + escapeLike(query) + "%");
+      try (ResultSet rs = ps.executeQuery()) {
+        while (rs.next()) {
+          out.add(new LabelEntry(rs.getString(1), rs.getString(2), rs.getString(3)));
+        }
+      }
+    }
+    return out;
   }
 
   /** All ancestors of a concept. */

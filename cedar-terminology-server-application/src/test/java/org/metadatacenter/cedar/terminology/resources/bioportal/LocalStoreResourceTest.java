@@ -1,5 +1,6 @@
 package org.metadatacenter.cedar.terminology.resources.bioportal;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import io.dropwizard.testing.DropwizardTestSupport;
 import io.dropwizard.testing.ResourceHelpers;
 import jakarta.ws.rs.client.ClientBuilder;
@@ -422,5 +423,105 @@ public class LocalStoreResourceTest {
         response.readEntity(new GenericType<PagedResults<SearchResult>>() {});
     response.close();
     return results.getTotalCount();
+  }
+
+  /* ------------------------------------------------------------------------------------------------
+   * POST /search — version-aware search, at its own root path rather than under /bioportal.
+   *
+   * These exercise the wiring and the JSON contract over the real HTTP stack; what the service does
+   * with a snapshot is covered by VersionAwareSearchServiceTest in the core module.
+   * --------------------------------------------------------------------------------------------- */
+
+  private static JsonNode postSearch(String body, Status expected) {
+    String url = "http://localhost:" + RULE.getLocalPort() + "/search";
+    // No Authorization header: this endpoint is unauthenticated, like integrated-search.
+    Response response = clientBuilder.build().target(url).request().post(Entity.json(body));
+    Assertions.assertEquals(expected.getStatusCode(), response.getStatus());
+    JsonNode json = response.readEntity(JsonNode.class);
+    response.close();
+    return json;
+  }
+
+  @Test
+  public void versionAwareSearchIsServedFromTheLocalStore() {
+    JsonNode json = postSearch("{\"query\":\"melanoma\",\"types\":[\"class\"],"
+        + "\"sources\":[{\"sourceAcronym\":\"" + ONT + "\"}]}", Status.OK);
+
+    JsonNode classes = json.get("results").get("class");
+    Assertions.assertEquals(1, classes.get("totalCount").asInt());
+    JsonNode hit = classes.get("collection").get(0);
+    Assertions.assertEquals("class", hit.get("type").asText());
+    Assertions.assertEquals(BASE + "melanoma", hit.get("termIri").asText());
+    Assertions.assertEquals("Melanoma", hit.get("termLabel").asText());
+    // The addressing pair is on the hit; everything else about the source is in the envelope.
+    Assertions.assertEquals("bioportal", hit.get("sourceSystem").asText());
+    Assertions.assertEquals(ONT, hit.get("sourceAcronym").asText());
+    Assertions.assertFalse(hit.has("sourceIri"));
+
+    JsonNode source = json.get("sources").get(0);
+    Assertions.assertEquals("local", source.get("served").asText());
+    Assertions.assertTrue(source.get("pinnable").asBoolean());
+    Assertions.assertEquals("v2", source.get("version").get("id").asText(), "latest, with no pin asked for");
+  }
+
+  @Test
+  public void versionAwareSearchHonoursAPin() {
+    // v2 adds "infection"; v1 predates it. Searching latest while pinned to v1 is exactly the bug
+    // this endpoint exists to prevent, so the pinned search must not see it.
+    JsonNode latest = postSearch("{\"query\":\"infection\",\"types\":[\"class\"],"
+        + "\"sources\":[{\"sourceAcronym\":\"" + ONT + "\"}]}", Status.OK);
+    Assertions.assertEquals(1, latest.get("results").get("class").get("totalCount").asInt());
+
+    JsonNode pinned = postSearch("{\"query\":\"infection\",\"types\":[\"class\"],"
+        + "\"sources\":[{\"sourceAcronym\":\"" + ONT + "\",\"version\":{\"id\":\"v1\"}}]}", Status.OK);
+    Assertions.assertEquals(0, pinned.get("results").get("class").get("totalCount").asInt());
+    Assertions.assertEquals("v1", pinned.get("sources").get(0).get("version").get("id").asText());
+  }
+
+  @Test
+  public void versionAwareSearchAcceptsLatestAsAVersion() {
+    JsonNode json = postSearch("{\"query\":\"infection\",\"types\":[\"class\"],"
+        + "\"sources\":[{\"sourceAcronym\":\"" + ONT + "\",\"version\":\"latest\"}]}", Status.OK);
+    Assertions.assertEquals(1, json.get("results").get("class").get("totalCount").asInt(),
+        "\"latest\" is the constraint spec's spelling of unpinned");
+  }
+
+  @Test
+  public void versionAwareSearchReportsASourceItCouldNotSearch() {
+    JsonNode json = postSearch("{\"query\":\"melanoma\",\"types\":[\"class\"],"
+        + "\"sources\":[{\"sourceAcronym\":\"" + ONT + "\"},"
+        + "{\"sourceSystem\":\"agroportal\",\"sourceAcronym\":\"NOSUCH\"}]}", Status.OK);
+
+    JsonNode absent = json.get("sources").get(1);
+    Assertions.assertEquals("unavailable", absent.get("served").asText());
+    Assertions.assertEquals("sourceUnknown", absent.get("reason").asText());
+    Assertions.assertEquals("agroportal", absent.get("sourceSystem").asText());
+    // The rest of the results still came back: a search across sources has a partial answer.
+    Assertions.assertEquals(1, json.get("results").get("class").get("totalCount").asInt());
+  }
+
+  @Test
+  public void versionAwareSearchRefusesWhatItWillNotAnswer() {
+    postSearch("{\"query\":\"melanoma\",\"types\":[\"nonsense\"],"
+        + "\"sources\":[{\"sourceAcronym\":\"" + ONT + "\"}]}", Status.BAD_REQUEST);
+    // Every type but ontology needs a source: corpus-wide search would mean querying every snapshot.
+    postSearch("{\"query\":\"melanoma\",\"types\":[\"class\"],\"sources\":[]}", Status.BAD_REQUEST);
+  }
+
+  @Test
+  public void versionAwareSearchAnswersEveryTypeAtOnce() {
+    JsonNode json = postSearch("{\"query\":\"disease\","
+        + "\"sources\":[{\"sourceAcronym\":\"" + ONT + "\"}]}", Status.OK);
+
+    JsonNode results = json.get("results");
+    Assertions.assertTrue(results.has("ontology"));
+    Assertions.assertTrue(results.has("branch"));
+    Assertions.assertTrue(results.has("class"));
+    Assertions.assertTrue(results.has("valueSet"));
+    // "Disease" has something beneath it, so it is a branch as well as a class. Three descendants,
+    // not two: this searches latest, which is v2, and v2 adds "infection" under "disease".
+    JsonNode branch = results.get("branch").get("collection").get(0);
+    Assertions.assertEquals(BASE + "disease", branch.get("termBaseIri").asText());
+    Assertions.assertEquals(3, branch.get("descendantCount").asInt());
   }
 }

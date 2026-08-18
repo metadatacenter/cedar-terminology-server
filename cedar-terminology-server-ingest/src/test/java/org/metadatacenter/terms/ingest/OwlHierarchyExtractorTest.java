@@ -173,6 +173,131 @@ public class OwlHierarchyExtractorTest {
   }
 
   @Test
+  public void aListPackedIntoOneLiteralDoesNotBecomeTheName() throws Exception {
+    OWLOntologyManager m = OWLManager.createOWLOntologyManager();
+    OWLDataFactory df = m.getOWLDataFactory();
+    OWLOntology o = m.createOntology(IRI.create(BASE + "lists"));
+    OWLClass meningitis = df.getOWLClass(iri("meningitis"));
+    OWLClass lcm = df.getOWLClass(iri("lcm"));
+    m.addAxiom(o, df.getOWLDeclarationAxiom(meningitis));
+    m.addAxiom(o, df.getOWLDeclarationAxiom(lcm));
+    // ABD's shape: one class asserts its name and, as a second rdfs:label, a list of the kinds of
+    // it — separated by line breaks, which a display collapses into one run-on line. The list was
+    // winning the pick, and the padding on the real label was being served as part of the name.
+    m.addAxiom(o, df.getOWLAnnotationAssertionAxiom(df.getRDFSLabel(), meningitis.getIRI(),
+        df.getOWLLiteral("Bacterial meningitis \nViral meningitis\nFungal meningitis")));
+    m.addAxiom(o, df.getOWLAnnotationAssertionAxiom(df.getRDFSLabel(), meningitis.getIRI(),
+        df.getOWLLiteral("Meningitis ")));
+    // The other shape: no plain label to fall back on, so the first line is the name and the rest
+    // become names of their own rather than being lost or run together.
+    m.addAxiom(o, df.getOWLAnnotationAssertionAxiom(df.getRDFSLabel(), lcm.getIRI(),
+        df.getOWLLiteral("Lymphocytic choriomeningitis\nLCM \nArmstrong's disease")));
+
+    try (SnapshotStore s = SnapshotStore.openInMemory()) {
+      s.initSchema();
+      new OwlHierarchyExtractor().extract(o, s);
+      assertEquals("Meningitis", s.prefLabel(BASE + "meningitis").orElseThrow());
+      assertEquals("Lymphocytic choriomeningitis", s.prefLabel(BASE + "lcm").orElseThrow());
+
+      List<SnapshotStore.LabelEntry> names = s.labels(BASE + "lcm");
+      assertEquals(3, names.size());
+      assertTrue(names.contains(new SnapshotStore.LabelEntry("rdfs:label", "", "Lymphocytic choriomeningitis")));
+      assertTrue(names.contains(new SnapshotStore.LabelEntry("rdfs:label", "", "LCM")));
+      assertTrue(names.contains(new SnapshotStore.LabelEntry("rdfs:label", "", "Armstrong's disease")));
+      // Each entry stands on its own, so none of them is stored as the run-on line.
+      assertFalse(names.stream().anyMatch(n -> n.value().contains("\n")));
+    }
+  }
+
+  @Test
+  public void anEnglishListStillBeatsAPlainLabelInAnotherLanguage() throws Exception {
+    OWLOntologyManager m = OWLManager.createOWLOntologyManager();
+    OWLDataFactory df = m.getOWLDataFactory();
+    OWLOntology o = m.createOntology(IRI.create(BASE + "langfirst"));
+    OWLClass disease = df.getOWLClass(iri("disease"));
+    m.addAxiom(o, df.getOWLDeclarationAxiom(disease));
+    // Language decides before shape: BioPortal serves the English label, and diverging on which
+    // language names a term is the larger error. The English list still reduces to its first line.
+    m.addAxiom(o, df.getOWLAnnotationAssertionAxiom(df.getRDFSLabel(), disease.getIRI(),
+        df.getOWLLiteral("grippe", "fr")));
+    m.addAxiom(o, df.getOWLAnnotationAssertionAxiom(df.getRDFSLabel(), disease.getIRI(),
+        df.getOWLLiteral("Influenza\nFlu", "en")));
+    try (SnapshotStore s = SnapshotStore.openInMemory()) {
+      s.initSchema();
+      new OwlHierarchyExtractor().extract(o, s);
+      assertEquals("Influenza", s.prefLabel(BASE + "disease").orElseThrow());
+    }
+  }
+
+  @Test
+  public void definitionsAreCapturedAndLeaveContentIdentityAlone() throws Exception {
+    OWLOntologyManager m = OWLManager.createOWLOntologyManager();
+    OWLDataFactory df = m.getOWLDataFactory();
+    OWLOntology o = m.createOntology(IRI.create(BASE + "defs"));
+    OWLClass disease = df.getOWLClass(iri("disease"));
+    OWLClass plain = df.getOWLClass(iri("plain"));
+    m.addAxiom(o, df.getOWLDeclarationAxiom(disease));
+    m.addAxiom(o, df.getOWLDeclarationAxiom(plain));
+    m.addAxiom(o, df.getOWLAnnotationAssertionAxiom(df.getRDFSLabel(), disease.getIRI(),
+        df.getOWLLiteral("disease")));
+    OWLAnnotationProperty iao = df.getOWLAnnotationProperty(
+        IRI.create("http://purl.obolibrary.org/obo/IAO_0000115"));
+    OWLAnnotationProperty skosDef = df.getOWLAnnotationProperty(
+        IRI.create("http://www.w3.org/2004/02/skos/core#definition"));
+    OWLAnnotationProperty comment = df.getOWLAnnotationProperty(df.getRDFSComment().getIRI());
+    m.addAxiom(o, df.getOWLAnnotationAssertionAxiom(iao, disease.getIRI(),
+        df.getOWLLiteral("A disposition to undergo pathological processes.", "en")));
+    m.addAxiom(o, df.getOWLAnnotationAssertionAxiom(skosDef, disease.getIRI(),
+        df.getOWLLiteral("Une maladie.", "fr")));
+    // An editorial note, not a definition — far commoner than either of the above, and addressed to
+    // curators rather than to an author choosing a term.
+    m.addAxiom(o, df.getOWLAnnotationAssertionAxiom(comment, disease.getIRI(),
+        df.getOWLLiteral("TODO: check with the editors.")));
+
+    try (SnapshotStore s = SnapshotStore.openInMemory()) {
+      s.initSchema();
+      new OwlHierarchyExtractor().extract(o, s);
+      s.materialize();
+
+      List<SnapshotStore.DefinitionEntry> held = s.definitions(BASE + "disease");
+      assertEquals(2, held.size());
+      assertTrue(held.contains(new SnapshotStore.DefinitionEntry(
+          "IAO:0000115", "en", "A disposition to undergo pathological processes.")));
+      assertTrue(held.contains(new SnapshotStore.DefinitionEntry(
+          "skos:definition", "fr", "Une maladie.")));
+      // English first, and the OBO definition ahead of the rest, so a row shows one and the right one.
+      assertEquals("A disposition to undergo pathological processes.",
+          SnapshotStore.servedDefinition(held));
+      // A concept that asserts none has none, rather than borrowing a neighbour's.
+      assertTrue(s.definitions(BASE + "plain").isEmpty());
+    }
+
+    // The point of the whole design: a snapshot with definitions and one without hash identically,
+    // so capturing them cannot change the identity of anything already in the store.
+    try (SnapshotStore withDefs = SnapshotStore.openInMemory();
+         SnapshotStore without = SnapshotStore.openInMemory()) {
+      withDefs.initSchema();
+      new OwlHierarchyExtractor().extract(o, withDefs);
+      withDefs.materialize();
+
+      OWLOntologyManager m2 = OWLManager.createOWLOntologyManager();
+      OWLDataFactory df2 = m2.getOWLDataFactory();
+      OWLOntology bare = m2.createOntology(IRI.create(BASE + "defs"));
+      OWLClass d2 = df2.getOWLClass(iri("disease"));
+      OWLClass p2 = df2.getOWLClass(iri("plain"));
+      m2.addAxiom(bare, df2.getOWLDeclarationAxiom(d2));
+      m2.addAxiom(bare, df2.getOWLDeclarationAxiom(p2));
+      m2.addAxiom(bare, df2.getOWLAnnotationAssertionAxiom(df2.getRDFSLabel(), d2.getIRI(),
+          df2.getOWLLiteral("disease")));
+      without.initSchema();
+      new OwlHierarchyExtractor().extract(bare, without);
+      without.materialize();
+
+      assertEquals(without.normalizedContentHash(true), withDefs.normalizedContentHash(true));
+    }
+  }
+
+  @Test
   public void oboRelationshipIsAIsAlwaysAHierarchyEdge() throws Exception {
     // Some OBO ontologies (BSAO) write subsumption as `relationship: is_a X`, which obo2owl renders as
     // `is_a some X` on its TEMP# namespace rather than rdfs:subClassOf. The default extractor must still

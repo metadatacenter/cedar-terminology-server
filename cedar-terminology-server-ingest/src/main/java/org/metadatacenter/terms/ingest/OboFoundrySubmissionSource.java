@@ -18,7 +18,7 @@ import java.util.Locale;
  * community's canonical distribution — a different authority than BioPortal and often a different
  * serialization of the same release.
  *
- * Its reason to exist is the source-independence proof (VERSIONING-DESIGN §4.3, roadmap D2): identity
+ * Its reason to exist is the source-independence proof (VERSIONING-ROADMAP "The Model" §4.3, roadmap D2): identity
  * is the normalized content hash of the extracted model, so the <i>same release</i> pulled from OBO
  * Foundry and from BioPortal must produce the <i>same</i> {@code version_id} even though the bytes and
  * serialization differ. This source lets an ingest draw from OBO Foundry so that claim can be tested

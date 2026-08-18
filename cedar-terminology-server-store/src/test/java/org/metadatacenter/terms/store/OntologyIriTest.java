@@ -8,7 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Canonical-IRI normalization (VERSIONING-DESIGN §6.4). Cases mirror the design's worked table:
+ * Canonical-IRI normalization (VERSIONING-ROADMAP "The Model" §6.4). Cases mirror the design's worked table:
  * DOID, OBI, MESH, EFO, NIFDYS.
  */
 public class OntologyIriTest {

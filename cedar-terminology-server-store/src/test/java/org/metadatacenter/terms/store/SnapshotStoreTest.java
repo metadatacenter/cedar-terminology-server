@@ -55,6 +55,39 @@ public class SnapshotStoreTest {
   }
 
   @Test
+  public void childrenByLabel_ordersBeforeItLimits() throws Exception {
+    // A parent with more children than a caller will ask for. The IRIs run counter to the labels, so
+    // a query that limited by IRI order and left the caller to sort what came back would return the
+    // wrong set: ABD's "Disease" has 280 children, and the 50 that came back skipped "African horse
+    // sickness" while showing "African swine fever" two rows on, which reads as a term the release
+    // does not have.
+    try (SnapshotStore s = SnapshotStore.openInMemory()) {
+      s.initSchema();
+      s.addConcept("http://ex/parent", "Parent");
+      for (int i = 0; i < 30; i++) {
+        String iri = String.format("http://ex/c%02d", i);
+        s.addConcept(iri, String.format("term %02d", 29 - i));
+        s.addEdge(iri, "http://ex/parent", "rdfs:subClassOf");
+      }
+      s.materialize();
+
+      List<SnapshotStore.LabelledConcept> first = s.childrenByLabel("http://ex/parent", 0, 3);
+      assertEquals(List.of("term 00", "term 01", "term 02"),
+          first.stream().map(SnapshotStore.LabelledConcept::prefLabel).toList());
+      // The count is of every child, not of the ones handed over, so a caller can say what it is
+      // holding back rather than presenting a subset as the whole.
+      assertEquals(30, s.childCount("http://ex/parent"));
+      assertEquals(30, s.childrenByLabel("http://ex/parent", 0, 100).size());
+
+      // Paging continues the same order rather than restarting it.
+      assertEquals(List.of("term 03", "term 04"),
+          s.childrenByLabel("http://ex/parent", 3, 2).stream()
+              .map(SnapshotStore.LabelledConcept::prefLabel).toList());
+      assertTrue(s.childrenByLabel("http://ex/parent", 30, 10).isEmpty());
+    }
+  }
+
+  @Test
   public void roots_areConceptsWithNoParent() throws Exception {
     assertEquals(List.of("thing"), store.roots());
   }

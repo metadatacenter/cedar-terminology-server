@@ -161,7 +161,7 @@ public class IngestJob {
     // file with the previous good data already deleted. Catch Throwable so such an Error becomes a
     // skippable failure rather than clobbering data or aborting a batch.
     //
-    // The version id is the normalized content hash (VERSIONING-DESIGN §4.3), so it can only be
+    // The version id is the normalized content hash (VERSIONING-ROADMAP "The Model" §4.3), so it can only be
     // computed after extraction. The temp file is therefore named by the raw hash (name-independent
     // of identity); the final file is named by the content-hash version id.
     Path tempFile = ontoDir.resolve(rawHash + ".sqlite.tmp");
@@ -220,7 +220,7 @@ public class IngestJob {
       if (setAsLatest) {
         catalog.setTag(acronym, CatalogStore.TAG_LATEST, versionId);
       }
-      // Derive and store the ontology's canonical iri (VERSIONING-DESIGN §6.4) at ingest — its
+      // Derive and store the ontology's canonical iri (VERSIONING-ROADMAP "The Model" §6.4) at ingest — its
       // content-derived, source-independent cross-source identity — rather than leaving it to the
       // derivation backfill, so a fresh ingest is iri-identified immediately and two sources of one
       // ontology can be joined by iri. Set on the first ingest and whenever this is the latest; the own
@@ -275,6 +275,7 @@ public class IngestJob {
     }
     Path raw = source.download(acronym, sub.submissionId(), ontoDir.resolve("raw"));
     String rawHash = sha256(raw);
+    raw = retainByHash(raw, rawHash);     // keep every download, named by what it is
     Path loadable = decompress(raw);      // .zip/.gz submissions must be expanded before parsing
     loadable = stripOboImports(loadable); // OBO import: declarations must be dropped before parsing
     return new Prepared(loadable, rawHash, access);
@@ -501,11 +502,155 @@ public class IngestJob {
     return new BackfillSummary(filled, already, 0, noRaw, drifted, failed, labelsAdded);
   }
 
-  /** The file in {@code rawDir} whose SHA-256 equals {@code wantHash} (the exact download a snapshot was
-   *  built from), or null. Located by content, so a later re-download left in the same dir can't fool it. */
+  /**
+   * Fills in definitions for snapshots already written, from the raw download each was built from.
+   *
+   * The same route the label backfill takes, for the same reason: the raw matched by file hash is
+   * the exact bytes the snapshot came from, so what is extracted from it is authentic even where
+   * today's extractor computes a different model hash than the one stored. Definitions attach by
+   * concept IRI, so a drift in the hierarchy does not misplace them.
+   *
+   * Additive throughout — the definition table is outside content identity, so no version id moves
+   * and no pin is disturbed. Resumable: a snapshot that already holds definitions is skipped.
+   */
+  /** Marks a snapshot whose definitions have been considered, so a resume skips it. */
+  private static final String DEFINED_MARKER = "definitionsBackfilled";
+
+  public BackfillSummary backfillDefinitionsFromRaw(CatalogStore catalog, Path snapshotDir, Set<String> only)
+      throws SQLException {
+    int filled = 0, already = 0, noRaw = 0, none = 0, failed = 0;
+    long added = 0;
+    List<String> acronyms = new ArrayList<>();
+    for (CatalogStore.OntologyInfo o : catalog.listOntologies()) {
+      if (only.isEmpty() || only.contains(o.acronym())) {
+        acronyms.add(o.acronym());
+      }
+    }
+    java.util.Optional<Path> base = catalog.baseDir();
+    int idx = 0;
+    for (String acronym : acronyms) {
+      idx++;
+      for (CatalogStore.SnapshotInfo snap : catalog.listSnapshots(acronym)) {
+        Path file = base.map(b -> b.resolve(snap.filePath())).orElse(Path.of(snap.filePath()));
+        try {
+          try (SnapshotStore existing = SnapshotStore.openFile(file.toString())) {
+            existing.initSchema();
+            if (existing.definitionCount() > 0 || existing.getMeta(DEFINED_MARKER).isPresent()) {
+              already++;
+              continue;
+            }
+          }
+          Path rawDir = snapshotDir.resolve(acronym).resolve("raw");
+          Path raw = findRawByHash(rawDir, snap.fileHash());
+          if (raw == null) {
+            noRaw++;
+            continue;
+          }
+          Path loadable = stripOboImports(decompress(raw));
+          Submission sub = new Submission(0, "", "", snap.format());
+          Path tempFile = rawDir.resolveSibling(snap.versionId() + ".defbackfill.tmp");
+          Files.deleteIfExists(tempFile);
+          List<SnapshotStore.DefinitionRow> definitions;
+          try (SnapshotStore tmp = SnapshotStore.openFile(tempFile.toString())) {
+            tmp.initSchema();
+            extractInto(tmp, acronym, sub, loadable);
+            definitions = tmp.allDefinitions();
+          } finally {
+            Files.deleteIfExists(tempFile);
+          }
+          try (SnapshotStore existing = SnapshotStore.openFile(file.toString())) {
+            existing.setBusyTimeoutMillis(60_000); // wait out the live server's brief read locks
+            existing.initSchema();
+            existing.addDefinitions(definitions);
+            // Marked either way, so an ontology that genuinely asserts none is not retried for ever.
+            existing.setMeta(DEFINED_MARKER, String.valueOf(definitions.size()));
+          }
+          if (definitions.isEmpty()) {
+            none++;
+          } else {
+            filled++;
+            added += definitions.size();
+          }
+          log.info("[{}/{}] {} {}: +{} definitions (from local raw)", idx, acronyms.size(), acronym,
+              snap.versionId(), definitions.size());
+        } catch (Throwable e) {
+          failed++;
+          log.warn("[{}/{}] {} {}: definition backfill failed: {}", idx, acronyms.size(), acronym,
+              snap.versionId(), e.toString());
+        }
+      }
+    }
+    // noSubmission carries no-matching-raw; mismatched carries the count that legitimately have none.
+    return new BackfillSummary(filled, already, 0, noRaw, none, failed, added);
+  }
+
+  /**
+   * Stores a download under the hash of its own bytes, compressed.
+   *
+   * The name was the source's — {@code doid.owl} — and BioPortal reuses a filename across releases,
+   * so each download landed on the one before it. Nothing was deleted on purpose; DOID has fifteen
+   * snapshots and six surviving files, and about a quarter of the store's snapshots have lost the
+   * bytes they were built from. A content hash cannot collide with a different download, and it is
+   * also what a lookup asks for, so finding one no longer means hashing a directory.
+   *
+   * Compressed on the way in, because these are XML and OBO text: measured on the store's own files,
+   * gzip takes them to a tenth to a fifteenth of their size. What arrives already compressed is
+   * stored as it came. Either way {@link #decompress} reads it back by its magic bytes.
+   */
+  static Path retainByHash(Path raw, String hash) throws IOException {
+    if (hash == null || hash.isBlank()) {
+      return raw;
+    }
+    boolean compressed = isCompressed(raw);
+    Path kept = raw.resolveSibling(hash + (compressed ? ".raw" : ".gz"));
+    if (Files.exists(kept)) {
+      // The same bytes are already held: this is a re-download of a release we have.
+      Files.deleteIfExists(raw);
+      return kept;
+    }
+    if (compressed) {
+      Files.move(raw, kept, StandardCopyOption.REPLACE_EXISTING);
+      return kept;
+    }
+    Path temp = raw.resolveSibling(hash + ".gz.tmp");
+    try (InputStream in = Files.newInputStream(raw);
+         java.util.zip.GZIPOutputStream out =
+             new java.util.zip.GZIPOutputStream(Files.newOutputStream(temp))) {
+      in.transferTo(out);
+    }
+    Files.move(temp, kept, StandardCopyOption.REPLACE_EXISTING);
+    Files.deleteIfExists(raw);
+    return kept;
+  }
+
+  private static boolean isCompressed(Path file) throws IOException {
+    byte[] magic = new byte[4];
+    try (InputStream in = Files.newInputStream(file)) {
+      if (in.read(magic) < 4) {
+        return false;
+      }
+    }
+    boolean gz = (magic[0] & 0xff) == 0x1f && (magic[1] & 0xff) == 0x8b;
+    boolean zip = magic[0] == 'P' && magic[1] == 'K' && magic[2] == 3 && magic[3] == 4;
+    return gz || zip;
+  }
+
+  /**
+   * The retained download a snapshot was built from, or null.
+   *
+   * By name first, which is the hash itself and so costs a stat. Falling back to hashing the
+   * directory for downloads retained before that was the rule — those keep working, and the
+   * migration renames them.
+   */
   private static Path findRawByHash(Path rawDir, String wantHash) throws IOException {
     if (wantHash == null || wantHash.isBlank() || !Files.isDirectory(rawDir)) {
       return null;
+    }
+    for (String suffix : new String[]{".gz", ".raw"}) {
+      Path named = rawDir.resolve(wantHash + suffix);
+      if (Files.isRegularFile(named)) {
+        return named;
+      }
     }
     try (java.util.stream.Stream<Path> entries = Files.list(rawDir)) {
       for (Path p : (Iterable<Path>) entries.sorted()::iterator) {
@@ -516,6 +661,163 @@ public class IngestJob {
     }
     return null;
   }
+
+  /**
+   * Fills in definitions by fetching the source again, where the download was not retained.
+   *
+   * The raw-file pass is the cheap route and covers most of the corpus; it cannot help a snapshot
+   * whose bytes are gone, and 284 of the 1,215 releases the index serves are in that position —
+   * downloads lost to the filename collision that content-hash naming has since closed.
+   *
+   * Gated on identity, as the label refetch is. A source that has moved on hands back a different
+   * release, and a definition is a property of the release that asserts it: attaching next year's
+   * wording to this year's snapshot would put words in its mouth. So the fetch is re-extracted, its
+   * version id compared with the snapshot's, and anything that does not match is left alone and
+   * counted.
+   *
+   * What it fetches is retained on the way past, which is the lasting half of this: the next
+   * extractor fix will find the bytes where this run could not.
+   */
+  public BackfillSummary refetchDefinitions(CatalogStore catalog, Path snapshotDir, Set<String> only,
+                                            boolean currentOnly) throws SQLException {
+    int filled = 0, already = 0, otherBackend = 0, noSub = 0, drifted = 0, failed = 0;
+    long added = 0;
+    String myBackend = source.backendId();
+    List<String> acronyms = new ArrayList<>();
+    for (CatalogStore.OntologyInfo o : catalog.listOntologies()) {
+      if (only.isEmpty() || only.contains(o.acronym())) {
+        acronyms.add(o.acronym());
+      }
+    }
+    java.util.Optional<Path> base = catalog.baseDir();
+    int idx = 0;
+    for (String acronym : acronyms) {
+      idx++;
+      // The releases the index serves are what an author sees; an older one only matters to a pin.
+      List<CatalogStore.SnapshotInfo> snapshots = currentOnly
+          ? catalog.resolveLatest(acronym).map(List::of).orElse(List.of())
+          : catalog.listSnapshots(acronym);
+      for (CatalogStore.SnapshotInfo snap : snapshots) {
+        Path file = base.map(b -> b.resolve(snap.filePath())).orElse(Path.of(snap.filePath()));
+        try {
+          try (SnapshotStore existing = SnapshotStore.openFile(file.toString())) {
+            existing.initSchema();
+            if (existing.definitionCount() > 0) {
+              already++;
+              continue;
+            }
+          }
+          // Only where the raw is genuinely gone. Anything still held was handled by the raw pass,
+          // and a snapshot that asserts no definitions must not be re-downloaded for ever.
+          Path rawDir = snapshotDir.resolve(acronym).resolve("raw");
+          if (findRawByHash(rawDir, snap.fileHash()) != null) {
+            already++;
+            continue;
+          }
+          java.util.Optional<CatalogStore.SnapshotProvenance> prov =
+              catalog.snapshotProvenance(snap.versionId(), acronym);
+          String backend = prov.map(CatalogStore.SnapshotProvenance::backend).orElse("bioportal");
+          if (!myBackend.equals(backend)) {
+            otherBackend++;
+            continue;
+          }
+          Integer submissionId = prov.map(CatalogStore.SnapshotProvenance::submissionId).orElse(null);
+          Submission sub;
+          if (submissionId != null) {
+            sub = source.listSubmissions(acronym).stream()
+                .filter(s -> s.submissionId() == submissionId).findFirst().orElse(null);
+          } else {
+            sub = source.latestSubmission(acronym);
+          }
+          if (sub == null) {
+            noSub++;
+            continue;
+          }
+          // prepareSubmission retains the download by hash on the way past.
+          Prepared prep = prepareSubmission(acronym, sub, snapshotDir.resolve(acronym));
+          Path tempFile = snapshotDir.resolve(acronym).resolve(prep.rawHash() + ".refetch.tmp");
+          Files.deleteIfExists(tempFile);
+          List<SnapshotStore.DefinitionRow> definitions;
+          String recomputed;
+          try (SnapshotStore tmp = SnapshotStore.openFile(tempFile.toString())) {
+            tmp.initSchema();
+            recomputed = extractInto(tmp, acronym, sub, prep.loadable()).versionId();
+            definitions = tmp.allDefinitions();
+          } finally {
+            Files.deleteIfExists(tempFile);
+          }
+          if (!recomputed.equals(snap.versionId())) {
+            drifted++;
+            log.info("[{}/{}] {}: source has moved on (hashed {} not {}); left alone",
+                idx, acronyms.size(), acronym, recomputed.substring(0, 12),
+                snap.versionId().substring(0, 12));
+            continue;
+          }
+          try (SnapshotStore existing = SnapshotStore.openFile(file.toString())) {
+            existing.setBusyTimeoutMillis(60_000);
+            existing.initSchema();
+            existing.addDefinitions(definitions);
+            existing.setMeta(DEFINED_MARKER, String.valueOf(definitions.size()));
+          }
+          filled++;
+          added += definitions.size();
+          log.info("[{}/{}] {} {}: +{} definitions (refetched)", idx, acronyms.size(), acronym,
+              snap.versionId().substring(0, 12), definitions.size());
+        } catch (Throwable e) {
+          failed++;
+          log.warn("[{}/{}] {}: refetch failed: {}", idx, acronyms.size(), acronym, e.toString());
+        }
+      }
+    }
+    return new BackfillSummary(filled, already, otherBackend, noSub, drifted, failed, added);
+  }
+
+  /**
+   * Renames every retained download to the hash of its bytes and compresses it.
+   *
+   * One pass over what is already on disk, so the collision that lost a quarter of the store's
+   * sources cannot happen again and the space they take drops by an order of magnitude. Hashes once
+   * per file — the name is the answer from then on. A file already named for its hash is left alone,
+   * so this can be run again.
+   */
+  public RetainSummary retainRawByHash(Path snapshotDir) throws IOException {
+    int renamed = 0, already = 0, failed = 0;
+    long before = 0, after = 0;
+    try (java.util.stream.Stream<Path> dirs = Files.list(snapshotDir)) {
+      for (Path ontoDir : (Iterable<Path>) dirs.sorted()::iterator) {
+        Path rawDir = ontoDir.resolve("raw");
+        if (!Files.isDirectory(rawDir)) {
+          continue;
+        }
+        List<Path> files;
+        try (java.util.stream.Stream<Path> s = Files.list(rawDir)) {
+          files = s.filter(Files::isRegularFile).sorted().toList();
+        }
+        for (Path file : files) {
+          String name = file.getFileName().toString();
+          if (name.matches("[0-9a-f]{64}\\.(gz|raw)")) {
+            already++;
+            after += Files.size(file);
+            continue;
+          }
+          try {
+            long was = Files.size(file);
+            Path kept = retainByHash(file, sha256(file));
+            renamed++;
+            before += was;
+            after += Files.size(kept);
+          } catch (Exception e) {
+            failed++;
+            log.warn("{}: could not retain {}: {}", ontoDir.getFileName(), name, e.toString());
+          }
+        }
+      }
+    }
+    return new RetainSummary(renamed, already, failed, before, after);
+  }
+
+  /** What the retention pass did, and what it saved. */
+  public record RetainSummary(int renamed, int alreadyNamed, int failed, long bytesBefore, long bytesAfter) {}
 
   /** Tally of a store integrity check. */
   public record VerifySummary(int snapshots, int ok, int missingFile, int unreadable, int emptyConcepts,
@@ -943,6 +1245,10 @@ public class IngestJob {
     boolean valuesets = false;
     boolean backfillLabels = false;
     boolean backfillLabelsFromRaw = false;
+    boolean backfillDefinitionsFromRaw = false;
+    boolean retainRawByHash = false;
+    boolean refetchDefinitions = false;
+    boolean currentOnly = false;
     boolean backfillHeaderIri = false;
     boolean verify = false;
     boolean deep = false;
@@ -965,6 +1271,14 @@ public class IngestJob {
         backfillLabels = true;
       } else if ("--backfill-labels-from-raw".equals(args[i])) {
         backfillLabelsFromRaw = true;
+      } else if ("--backfill-definitions-from-raw".equals(args[i])) {
+        backfillDefinitionsFromRaw = true;
+      } else if ("--retain-raw-by-hash".equals(args[i])) {
+        retainRawByHash = true;
+      } else if ("--refetch-definitions".equals(args[i])) {
+        refetchDefinitions = true;
+      } else if ("--current-only".equals(args[i])) {
+        currentOnly = true;
       } else if ("--verify".equals(args[i])) {
         verify = true;
       } else if ("--deep".equals(args[i])) {
@@ -1020,6 +1334,33 @@ public class IngestJob {
                 + "%d already labeled, %d no-matching-raw, %d failed%n",
             sum.filled(), sum.labelsAdded(), sum.mismatched(), sum.alreadyLabeled(),
             sum.noSubmission(), sum.failed());
+        return;
+      }
+      if (backfillDefinitionsFromRaw) {
+        IngestJob.BackfillSummary sum =
+            job.backfillDefinitionsFromRaw(catalog, snapshotDir, new java.util.HashSet<>(acronyms));
+        System.out.printf(
+            "backfill-definitions-from-raw: %d filled (+%d definitions), %d already done, "
+                + "%d assert none, %d no-matching-raw, %d failed%n",
+            sum.filled(), sum.labelsAdded(), sum.alreadyLabeled(), sum.mismatched(),
+            sum.noSubmission(), sum.failed());
+        return;
+      }
+      if (refetchDefinitions) {
+        IngestJob.BackfillSummary sum = job.refetchDefinitions(
+            catalog, snapshotDir, new java.util.HashSet<>(acronyms), currentOnly);
+        System.out.printf(
+            "refetch-definitions: %d filled (+%d definitions), %d already held or still have raw, "
+                + "%d other-backend, %d no-submission, %d source moved on, %d failed%n",
+            sum.filled(), sum.labelsAdded(), sum.alreadyLabeled(), sum.otherBackend(),
+            sum.noSubmission(), sum.mismatched(), sum.failed());
+        return;
+      }
+      if (retainRawByHash) {
+        IngestJob.RetainSummary sum = job.retainRawByHash(snapshotDir);
+        System.out.printf("retain-raw-by-hash: %d renamed, %d already named, %d failed; %.1f GB -> %.1f GB%n",
+            sum.renamed(), sum.alreadyNamed(), sum.failed(),
+            sum.bytesBefore() / 1073741824.0, sum.bytesAfter() / 1073741824.0);
         return;
       }
       if (verify) {

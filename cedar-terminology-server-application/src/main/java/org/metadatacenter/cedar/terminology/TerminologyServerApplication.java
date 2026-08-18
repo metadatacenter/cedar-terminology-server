@@ -6,6 +6,7 @@ import org.metadatacenter.cedar.cache.Cache;
 import org.metadatacenter.cedar.terminology.health.TerminologyServerHealthCheck;
 import org.metadatacenter.cedar.terminology.resources.AbstractTerminologyServerResource;
 import org.metadatacenter.cedar.terminology.resources.IndexResource;
+import org.metadatacenter.cedar.terminology.resources.VersionAwareSearchResource;
 import org.metadatacenter.cedar.terminology.resources.bioportal.*;
 import org.metadatacenter.cedar.terminology.utils.logging.LogResponseFilter;
 import org.metadatacenter.cedar.util.dw.CedarMicroserviceApplication;
@@ -17,7 +18,9 @@ import org.metadatacenter.terms.ITerminologyService;
 import org.metadatacenter.terms.RoutingTerminologyService;
 import org.metadatacenter.terms.SqliteTerminologyService;
 import org.metadatacenter.terms.TerminologyService;
+import org.metadatacenter.terms.search.VersionAwareSearchService;
 import org.metadatacenter.terms.store.CatalogStore;
+import org.metadatacenter.terms.store.SearchIndexStore;
 import org.metadatacenter.terms.util.HttpClientFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,8 +49,15 @@ public class TerminologyServerApplication extends CedarMicroserviceApplication<T
   // Strict mode: locally-served ontologies never fall back to BioPortal (used by the equivalence
   // harness so a local gap fails loudly instead of being masked by a BioPortal answer).
   static final String PROP_LOCAL_ONLY = "terminologyStore.localOnly";
+  // The cross-snapshot index, built by SearchIndexJob. Optional: without it a version-aware search
+  // must name its sources, because the alternative is opening every snapshot in the catalog.
+  static final String PROP_SEARCH_INDEX_PATH = "terminologyStore.searchIndexPath";
 
   protected static ITerminologyService terminologyService;
+  // Version-aware search needs the store itself rather than the routed service: it assumes the local
+  // catalog and reports unavailable without one, so it cannot be expressed as a route to BioPortal.
+  // Null when no catalog is configured, which is what the endpoint reports.
+  protected static VersionAwareSearchService versionAwareSearchService;
 
   public static void main(String[] args) throws Exception {
     new TerminologyServerApplication().run(args);
@@ -80,6 +90,7 @@ public class TerminologyServerApplication extends CedarMicroserviceApplication<T
     // allowlist are configured; otherwise every request is served by BioPortal (behavior unchanged).
     terminologyService = buildTerminologyService(bioPortalService);
     AbstractTerminologyServerResource.injectTerminologyService(terminologyService);
+    VersionAwareSearchResource.injectSearchService(versionAwareSearchService);
     // Initialize cache (note that this must be done after initializing the terminologyService)
     // When running the application on testing mode, the cache is loaded from the files stored into the test
     // resources folder
@@ -122,6 +133,9 @@ public class TerminologyServerApplication extends CedarMicroserviceApplication<T
       served.addAll(rootsOntologies);
       CatalogSnapshotProvider provider = new CatalogSnapshotProvider(catalog, served);
       SqliteTerminologyService local = new SqliteTerminologyService(provider);
+      // Over the union of the search and browse sets, like the provider: version-aware search has no
+      // reason to refuse an ontology whose tree is served but whose search allowlist entry is absent.
+      versionAwareSearchService = new VersionAwareSearchService(provider, openSearchIndex());
       boolean localOnly = Boolean.parseBoolean(System.getProperty(PROP_LOCAL_ONLY, "false"));
       RoutingTerminologyService.LocalAvailability search =
           ontology -> localOntologies.contains(ontology) && local.isAvailable(ontology);
@@ -136,6 +150,31 @@ public class TerminologyServerApplication extends CedarMicroserviceApplication<T
       log.error("Failed to enable local terminology store from {}; serving via BioPortal only",
           catalogPath, e);
       return new RoutingTerminologyService(bioPortalService);
+    }
+  }
+
+  /**
+   * Opens the cross-snapshot index, or returns null when none is configured or it cannot be read.
+   *
+   * Null is a working state rather than a failure: a search that names its sources is served from
+   * the snapshots either way, and only a corpus-wide query needs this. It is logged either way, so
+   * "why does a corpus-wide search say it needs a source" has an answer in the startup log.
+   */
+  private SearchIndexStore openSearchIndex() {
+    String path = System.getProperty(PROP_SEARCH_INDEX_PATH);
+    if (path == null || path.isBlank()) {
+      log.info("No cross-snapshot search index configured; a version-aware search must name its sources");
+      return null;
+    }
+    try {
+      SearchIndexStore index = SearchIndexStore.openFile(path);
+      index.initSchema();
+      log.info("Cross-snapshot search index opened from {}: {} ontologies, {} terms",
+          path, index.indexedOntologyCount(), index.termCount());
+      return index;
+    } catch (Exception e) {
+      log.error("Failed to open the cross-snapshot search index at {}; corpus-wide search is off", path, e);
+      return null;
     }
   }
 
@@ -164,6 +203,7 @@ public class TerminologyServerApplication extends CedarMicroserviceApplication<T
     environment.jersey().register(index);
     // Register resources
     environment.jersey().register(new SearchResource(cedarConfig));
+    environment.jersey().register(new VersionAwareSearchResource(cedarConfig));
     environment.jersey().register(new IntegratedSearchResource(cedarConfig));
     environment.jersey().register(new IntegratedRetrieveResource(cedarConfig));
     environment.jersey().register(new ClassResource(cedarConfig));

@@ -9,7 +9,7 @@ import java.util.Optional;
 
 /**
  * One-off backfill: derive and store each ontology's canonical {@code iri} (its cross-source
- * identity, VERSIONING-DESIGN §6.4) from concepts already on disk — no re-ingest, no re-download.
+ * identity, VERSIONING-ROADMAP "The Model" §6.4) from concepts already on disk — no re-ingest, no re-download.
  *
  * For every ontology in the catalog, opens its {@code latest} snapshot, takes the acronym-keyed
  * dominant own ID-space ({@link SnapshotStore#dominantOwnIdspace} — the roots-prune logic, which

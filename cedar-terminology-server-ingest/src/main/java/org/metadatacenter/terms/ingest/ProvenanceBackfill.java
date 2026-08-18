@@ -10,7 +10,7 @@ import java.nio.file.Path;
  *
  * {@code backend} needs no work — its column default sets every existing row to {@code bioportal}.
  * {@code source_date} is derived here from each snapshot's declared-version string (the version's
- * self-claimed date, VERSIONING-DESIGN §2), which is already in the catalog. {@code submission_id}
+ * self-claimed date, VERSIONING-ROADMAP "The Model" §2), which is already in the catalog. {@code submission_id}
  * is left untouched: BioPortal's per-upload id is not reconstructable from anything on disk, so it is
  * captured at ingest going forward and stays null for snapshots ingested before that capture existed
  * (recoverable later only from live BioPortal submission metadata, which this offline backfill

@@ -67,6 +67,30 @@ public class CatalogSnapshotProvider implements SqliteTerminologyService.Snapsho
     }
   }
 
+  /** Whether this provider is allowed to serve an ontology at all, before any version is resolved. */
+  public boolean serves(String ontology) {
+    return ontology != null && allowed.contains(ontology);
+  }
+
+  /**
+   * The snapshot a version request resolves to, without opening it.
+   *
+   * {@link #forOntology} answers with a store and so cannot distinguish "not served" from "served,
+   * but not at that version" — both are an empty Optional. A caller that has to report which of the
+   * two happened needs the resolution itself, which is what this returns.
+   */
+  public Optional<CatalogStore.SnapshotInfo> snapshotInfo(String ontology, String version) throws SQLException {
+    if (!serves(ontology)) {
+      return Optional.empty();
+    }
+    return resolveInfo(ontology, version);
+  }
+
+  /** The catalog behind this provider, for metadata a snapshot does not carry. */
+  public CatalogStore catalog() {
+    return catalog;
+  }
+
   /**
    * Resolves the snapshot a version request names. Precedence: {@code null}/blank/{@code "latest"} →
    * current; then, for a specific request, {@code content hash → tag → as-of date → declared
@@ -212,7 +236,10 @@ public class CatalogSnapshotProvider implements SqliteTerminologyService.Snapsho
     try {
       String latest = catalog.resolveLatest(ontology).map(CatalogStore.SnapshotInfo::versionId).orElse(null);
       List<OntologyVersion> out = new ArrayList<>();
-      for (CatalogStore.SnapshotInfo s : catalog.listSnapshots(ontology)) {
+      // Releases rather than snapshots, as the search response's list is: a re-extraction is a
+      // second version id for bytes that did not change, and listing both says the ontology was
+      // released twice. Superseded ones stay resolvable, they are only not listed.
+      for (CatalogStore.SnapshotInfo s : catalog.listCurrentSnapshots(ontology)) {
         out.add(new OntologyVersion(
             s.versionId(), s.declaredVersion(), s.releasedAt(), effectiveDate(s), s.versionId().equals(latest)));
       }

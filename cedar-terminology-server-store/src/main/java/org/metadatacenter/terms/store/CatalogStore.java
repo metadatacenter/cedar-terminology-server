@@ -22,7 +22,7 @@ import java.util.Optional;
  * {@code version_id}. Request resolution is: look up {@code (acronym, tag)} here to get a
  * {@link SnapshotInfo}, open that snapshot file, then serve the read from it.
  *
- * <b>Ontology identity is the canonical {@code iri}</b> (VERSIONING-DESIGN §6.4, decision 2), held in
+ * <b>Ontology identity is the canonical {@code iri}</b> (VERSIONING-ROADMAP "The Model" §6.4, decision 2), held in
  * the iri-keyed {@code ontology} table. {@code acronym} is a per-source addressing label in
  * {@code ontology_source} — still the public handle every caller uses (REST paths, freeze pins,
  * template constraints), but no longer the identity, so the same ontology reached from two authorities
@@ -70,7 +70,7 @@ public class CatalogStore implements AutoCloseable {
      * BioPortal version string is often a date or contains one ({@code "2026-06-08"},
      * {@code "releases/2021-10-26"}); this extracts the first valid ISO calendar date. Free-text or
      * non-date labels ({@code "Light"}, {@code "English 051319"}, {@code "10-2024"}) yield null. This
-     * is the version-string's self-date (VERSIONING-DESIGN §2), not the BioPortal upload date.
+     * is the version-string's self-date (VERSIONING-ROADMAP "The Model" §2), not the BioPortal upload date.
      */
     public static String sourceDateFromDeclaredVersion(String declaredVersion) {
       if (declaredVersion == null) {
@@ -159,7 +159,7 @@ public class CatalogStore implements AutoCloseable {
   }
 
   public void initSchema() throws SQLException {
-    // The ontology key is its canonical iri (VERSIONING-DESIGN §6.4, decision 2): iri is the
+    // The ontology key is its canonical iri (VERSIONING-ROADMAP "The Model" §6.4, decision 2): iri is the
     // content-derived, source-independent identity, so the same ontology reached from two authorities
     // is one identity. acronym is demoted to a per-source addressing label in `ontology_source` — it
     // stays the public handle (REST paths, freeze pins, template constraints all address by acronym),
@@ -454,6 +454,26 @@ public class CatalogStore implements AutoCloseable {
    * unknown). Gates value-set-collection version resolution so it never answers for an ontology of the
    * same acronym.
    */
+  /**
+   * Every acronym the catalog marks as a value-set collection.
+   *
+   * A value set is reached through the collection that holds it, so a search that names no source
+   * still has a bounded set to look in — one, as it happens, across the whole served catalog.
+   */
+  public List<String> listValueSetCollections() throws SQLException {
+    List<String> out = new ArrayList<>();
+    try (PreparedStatement ps = connection.prepareStatement(
+        "SELECT acronym FROM ontology_source WHERE kind = ? ORDER BY acronym")) {
+      ps.setString(1, KIND_VALUE_SET_COLLECTION);
+      try (ResultSet rs = ps.executeQuery()) {
+        while (rs.next()) {
+          out.add(rs.getString(1));
+        }
+      }
+    }
+    return out;
+  }
+
   public boolean isValueSetCollection(String acronym) throws SQLException {
     if (acronym == null) {
       return false;
@@ -505,7 +525,7 @@ public class CatalogStore implements AutoCloseable {
 
   /**
    * Every ontology whose canonical {@code iri} equals the given one, by acronym (ascending). The
-   * cross-source identity query (VERSIONING-DESIGN §6.4): the canonical iri is content-derived and
+   * cross-source identity query (VERSIONING-ROADMAP "The Model" §6.4): the canonical iri is content-derived and
    * source-independent, so the same ontology ingested from two authorities under two acronyms shares
    * one iri and this returns both — the join that {@code acronym} alone cannot make. Normally a single
    * acronym; more than one means the same ontology is held under several labels. Empty for an unknown
@@ -605,7 +625,7 @@ public class CatalogStore implements AutoCloseable {
 
   /**
    * Rewrites {@code version_id}s from the raw-file hash to the normalized content hash in a single
-   * transaction (VERSIONING-DESIGN §4.3 cutover). Tags are repointed to the surviving content hash,
+   * transaction (VERSIONING-ROADMAP "The Model" §4.3 cutover). Tags are repointed to the surviving content hash,
    * merged-away duplicate rows are deleted, and surviving rows take their new id. {@code file_path}
    * and {@code file_hash} are left untouched: {@code file_hash} already holds the raw hash (now
    * provenance), and existing snapshot files keep their names ({@code file_path} stays authoritative).
@@ -849,6 +869,67 @@ public class CatalogStore implements AutoCloseable {
           out.add(readSnapshot(rs));
         }
         return out;
+      }
+    }
+  }
+
+  /**
+   * An ontology's releases, one a release, each at its newest extraction.
+   *
+   * A version id hashes what was extracted from a release's bytes, so re-extracting one — which is
+   * how a fix to an extractor reaches data already written — mints a second version id for a
+   * release that did not change. {@code file_hash} is the bytes as the source served them, so
+   * identical bytes under a different version id is exactly a re-extraction and nothing else.
+   *
+   * Superseded snapshots stay in the catalog and stay resolvable: a template published before one
+   * was superseded records its version id, and that pin has to keep meaning what it meant. They are
+   * simply not offered, so an author cannot newly pin to an extraction a later one has corrected.
+   */
+  public List<SnapshotInfo> listCurrentSnapshots(String acronym) throws SQLException {
+    // Newest ingest of each file hash, with the version id breaking a tie so the choice is
+    // deterministic rather than whatever the scan happened to reach first.
+    try (PreparedStatement ps = connection.prepareStatement("""
+        SELECT * FROM snapshot s
+        WHERE s.acronym = ?
+          AND NOT EXISTS (
+            SELECT 1 FROM snapshot o
+            WHERE o.acronym = s.acronym AND o.file_hash = s.file_hash
+              AND (o.ingested_at > s.ingested_at
+                OR (o.ingested_at = s.ingested_at AND o.version_id > s.version_id)))
+        -- Two releases can share a date: EXMO published 1.2 and 2025-04-29 both as 2025-03-12, and
+        -- ordering on the date alone left the older of them above the newer in a list that says it
+        -- is newest first. The submission id is the source's own upload order and breaks the tie;
+        -- the version id keeps it deterministic where even that is absent.
+        ORDER BY s.released_at, s.submission_id, s.version_id""")) {
+      ps.setString(1, acronym);
+      try (ResultSet rs = ps.executeQuery()) {
+        List<SnapshotInfo> out = new ArrayList<>();
+        while (rs.next()) {
+          out.add(readSnapshot(rs));
+        }
+        return out;
+      }
+    }
+  }
+
+  /**
+   * Whether a snapshot has been superseded by a later extraction of the same bytes.
+   *
+   * Asked of a pinned version so a client can say that what it is pinned to has been corrected,
+   * rather than leaving an author to compare ingest dates by hand.
+   */
+  public boolean isSuperseded(String versionId, String acronym) throws SQLException {
+    try (PreparedStatement ps = connection.prepareStatement("""
+        SELECT EXISTS (
+          SELECT 1 FROM snapshot s JOIN snapshot o
+            ON o.acronym = s.acronym AND o.file_hash = s.file_hash
+          WHERE s.version_id = ? AND s.acronym = ?
+            AND (o.ingested_at > s.ingested_at
+              OR (o.ingested_at = s.ingested_at AND o.version_id > s.version_id)))""")) {
+      ps.setString(1, versionId);
+      ps.setString(2, acronym);
+      try (ResultSet rs = ps.executeQuery()) {
+        return rs.next() && rs.getInt(1) == 1;
       }
     }
   }
