@@ -31,5 +31,7 @@ public record HierarchyResponse(
 
   /** A step below the term, carrying enough to say whether it is worth opening in turn. */
   @JsonInclude(JsonInclude.Include.NON_NULL)
-  public record Child(String termIri, String termLabel, boolean hasChildren, int descendantCount) {}
+  public record Child(String termIri, String termLabel, boolean hasChildren, int descendantCount,
+                      /** What the source says it means, so a tree says which term it is offering. */
+                      String definition) {}
 }

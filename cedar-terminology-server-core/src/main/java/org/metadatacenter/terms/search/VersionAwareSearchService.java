@@ -676,7 +676,7 @@ public class VersionAwareSearchService {
     List<HierarchyResponse.Child> children = new ArrayList<>();
     for (SearchIndexStore.IndexedTerm child : index.children(acronym, termIri, from, CHILD_LIMIT)) {
       children.add(new HierarchyResponse.Child(child.iri(), child.prefLabel(), child.hasChildren(),
-          child.descendantCount()));
+          child.descendantCount(), child.definition()));
     }
     return Optional.of(new HierarchyResponse(SearchRequest.BIOPORTAL, acronym,
         indexedSourceBlock(acronym), path.isEmpty() ? null : path, term.iri(), term.prefLabel(),
@@ -705,7 +705,8 @@ public class VersionAwareSearchService {
     List<HierarchyResponse.Child> children = new ArrayList<>();
     for (SnapshotStore.LabelledConcept child : store.childrenByLabel(termIri, offset, CHILD_LIMIT)) {
       children.add(new HierarchyResponse.Child(child.iri(), child.prefLabel(),
-          !store.children(child.iri()).isEmpty(), store.descendantCount(child.iri())));
+          !store.children(child.iri()).isEmpty(), store.descendantCount(child.iri()),
+          SnapshotStore.servedDefinition(store.definitions(child.iri()))));
     }
     List<TermRef> path = path(store, termIri);
     return Optional.of(new HierarchyResponse(SearchRequest.BIOPORTAL, acronym, resolved.block(),
