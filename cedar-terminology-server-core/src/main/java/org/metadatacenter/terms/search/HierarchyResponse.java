@@ -27,7 +27,14 @@ public record HierarchyResponse(
     int childCount,
     /** Where the returned children start, so a client can ask for the rest. */
     int offset,
-    int descendantCount) {
+    int descendantCount,
+    /**
+     * What the source says the term itself means, where it says anything.
+     *
+     * The children carry theirs, and without this the one term the response is about was the one
+     * term in the tree with nothing said about it.
+     */
+    String definition) {
 
   /** A step below the term, carrying enough to say whether it is worth opening in turn. */
   @JsonInclude(JsonInclude.Include.NON_NULL)

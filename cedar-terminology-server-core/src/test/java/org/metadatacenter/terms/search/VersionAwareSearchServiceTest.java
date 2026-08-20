@@ -68,6 +68,9 @@ public class VersionAwareSearchServiceTest {
       store.addLabels(List.of(
           new SnapshotStore.LabelRow(BASE + "cat", "rdfs:label", "fr", "chat domestique"),
           new SnapshotStore.LabelRow(BASE + "cat", "oboInOwl:hasExactSynonym", "en", "housecat")));
+      store.addDefinitions(List.of(
+          new SnapshotStore.DefinitionRow(BASE + "mammal", "IAO:0000115", "en", "A warm-blooded animal."),
+          new SnapshotStore.DefinitionRow(BASE + "cat", "IAO:0000115", "en", "A small domesticated feline.")));
       store.materialize();
     }
 
@@ -352,8 +355,10 @@ public class VersionAwareSearchServiceTest {
     SearchIndexStore index = SearchIndexStore.openInMemory();
     index.initSchema();
     index.replaceOntology("EX", "hash-v2", "2026-08-13T00:00:00Z",
-        List.of(new SearchIndexStore.IndexedTerm("EX", BASE + "mammal", "Mammal", false, null, true, 3),
-            new SearchIndexStore.IndexedTerm("EX", BASE + "cat", "Cat", false, null, false, 0)),
+        List.of(new SearchIndexStore.IndexedTerm("EX", BASE + "mammal", "Mammal", false, null, true, 3,
+                null, null, "A warm-blooded animal."),
+            new SearchIndexStore.IndexedTerm("EX", BASE + "cat", "Cat", false, null, false, 0, null, null,
+                "A small domesticated feline.")),
         java.util.Map.of(BASE + "cat",
             List.of(new SearchIndexStore.IndexedName("rdfs:label", "fr", "chat domestique"))));
     index.replaceOntology("OTHER", "hash-o1", "2026-08-13T00:00:00Z",
@@ -471,5 +476,23 @@ public class VersionAwareSearchServiceTest {
     assertNull(VersionSelector.of(new com.fasterxml.jackson.databind.ObjectMapper().valueToTree("")));
     assertEquals("abc", VersionSelector.of(
         new com.fasterxml.jackson.databind.ObjectMapper().valueToTree(java.util.Map.of("id", "abc"))).id());
+  }
+
+  /* ---------------------------------------------------------------------------------------------
+   * Where a term sits, and what it means.
+   * --------------------------------------------------------------------------------------------- */
+
+  @Test
+  public void aHierarchySaysWhatTheTermItselfMeansAndNotOnlyItsChildren() throws Exception {
+    HierarchyResponse tree = withIndex().hierarchy("EX", BASE + "mammal", null, 0).orElseThrow();
+    assertEquals("A warm-blooded animal.", tree.definition(),
+        "the one term the response is about had nothing said about it");
+  }
+
+  @Test
+  public void aPinnedHierarchySaysWhatTheTermMeantInThatRelease() throws Exception {
+    HierarchyResponse tree = service.hierarchy("EX", BASE + "mammal", "hash-v1", 0).orElseThrow();
+    assertEquals("A warm-blooded animal.", tree.definition());
+    assertEquals("A small domesticated feline.", tree.children().get(0).definition());
   }
 }

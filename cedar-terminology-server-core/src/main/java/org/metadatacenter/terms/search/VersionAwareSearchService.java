@@ -681,7 +681,7 @@ public class VersionAwareSearchService {
     return Optional.of(new HierarchyResponse(SearchRequest.BIOPORTAL, acronym,
         indexedSourceBlock(acronym), path.isEmpty() ? null : path, term.iri(), term.prefLabel(),
         children.isEmpty() ? null : children, index.childCount(acronym, termIri), from,
-        term.descendantCount()));
+        term.descendantCount(), term.definition()));
   }
 
   /** The hierarchy as one snapshot records it, for a request that named a release. */
@@ -711,7 +711,8 @@ public class VersionAwareSearchService {
     List<TermRef> path = path(store, termIri);
     return Optional.of(new HierarchyResponse(SearchRequest.BIOPORTAL, acronym, resolved.block(),
         path, termIri, label.orElse(null), children.isEmpty() ? null : children,
-        store.childCount(termIri), offset, store.descendantCount(termIri)));
+        store.childCount(termIri), offset, store.descendantCount(termIri),
+        SnapshotStore.servedDefinition(store.definitions(termIri))));
   }
 
   /** The whole chain above an indexed term, root first, or null where it is a root itself. */
