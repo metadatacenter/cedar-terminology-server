@@ -427,4 +427,42 @@ public class OwlHierarchyExtractorTest {
       assertFalse(neu.obsolete());
     }
   }
+
+  @Test
+  public void severalReplacementsPickTheSameOneEveryTime() throws Exception {
+    // A split taxon is replaced by each of the taxa it split into, so a class can assert several
+    // successors — 19 of ICTV's retired virus names do. Taking whichever the axiom iteration yielded
+    // first made the choice depend on visit order, and the same bytes extracted twice then produced
+    // two content identities for one release.
+    OWLOntologyManager m = OWLManager.createOWLOntologyManager();
+    OWLDataFactory df = m.getOWLDataFactory();
+    OWLOntology o = m.createOntology(IRI.create(BASE + "split"));
+    OWLClass oldTerm = df.getOWLClass(iri("oldterm"));
+    OWLAnnotationProperty replacedBy =
+        df.getOWLAnnotationProperty(IRI.create("http://purl.obolibrary.org/obo/IAO_0100001"));
+    m.addAxiom(o, df.getOWLDeclarationAxiom(oldTerm));
+    m.addAxiom(o, df.getOWLAnnotationAssertionAxiom(df.getOWLDeprecated(), oldTerm.getIRI(),
+        df.getOWLLiteral(true)));
+    for (String successor : List.of("zeta", "alpha", "mu")) {
+      m.addAxiom(o, df.getOWLDeclarationAxiom(df.getOWLClass(iri(successor))));
+      m.addAxiom(o, df.getOWLAnnotationAssertionAxiom(replacedBy, oldTerm.getIRI(), iri(successor)));
+    }
+
+    String first = null;
+    for (int run = 0; run < 4; run++) {
+      try (SnapshotStore s = SnapshotStore.openInMemory()) {
+        s.initSchema();
+        new OwlHierarchyExtractor().extract(o, s);
+        String chosen = s.allConceptMeta().stream()
+            .filter(c -> c.iri().equals(BASE + "oldterm")).findFirst().orElseThrow().replacedBy();
+        assertEquals(BASE + "alpha", chosen, "the smallest of the asserted successors");
+        if (first == null) {
+          first = s.normalizedContentHash(true);
+        } else {
+          assertEquals(first, s.normalizedContentHash(true),
+              "one release extracted twice must have one content identity");
+        }
+      }
+    }
+  }
 }

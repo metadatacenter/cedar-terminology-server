@@ -389,21 +389,40 @@ public class OwlHierarchyExtractor implements HierarchyExtractor {
     return false;
   }
 
+  /**
+   * The IRI a deprecated class was replaced by, or null.
+   *
+   * A class may assert several. ICTV's retired virus names do: 19 of them name more than one
+   * successor, because a split taxon is replaced by each of the taxa it split into. Taking whichever
+   * the axiom iteration yielded first made the choice depend on iteration order, which OWLAPI does
+   * not fix — so the same bytes extracted twice produced two different {@code replaced_by} values,
+   * and with them two different content identities for one release. That defeats the property the
+   * whole version model rests on: a release is identified by its content, so extracting it again has
+   * to yield the same identity. The smallest value wins, being the one choice that does not depend on
+   * how the axioms happen to be visited.
+   *
+   * Which of several successors is "the" replacement is not a question the annotation answers, and
+   * this does not pretend to answer it either. It picks reproducibly.
+   */
   private static String replacedBy(OWLClass cls, OWLOntology ont, OWLAnnotationProperty replacedBy) {
+    String smallest = null;
     for (OWLOntology o : ont.getImportsClosure()) {
       for (OWLAnnotationAssertionAxiom ax : o.getAnnotationAssertionAxioms(cls.getIRI())) {
         if (!ax.getProperty().equals(replacedBy)) {
           continue;
         }
         OWLAnnotationValue value = ax.getValue();
+        String candidate = null;
         if (value instanceof IRI iri) {
-          return iri.toString();
+          candidate = iri.toString();
+        } else if (value instanceof OWLLiteral literal) {
+          candidate = literal.getLiteral();
         }
-        if (value instanceof OWLLiteral literal) {
-          return literal.getLiteral();
+        if (candidate != null && (smallest == null || candidate.compareTo(smallest) < 0)) {
+          smallest = candidate;
         }
       }
     }
-    return null;
+    return smallest;
   }
 }
