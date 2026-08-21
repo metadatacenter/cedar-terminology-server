@@ -88,6 +88,38 @@ public class SnapshotStoreTest {
   }
 
   @Test
+  public void childrenByLabel_ordersAsAReaderWouldNotAsBytesDo() throws Exception {
+    // The order is read by a person, and SQLite's default collation compares bytes: every capital
+    // sorts before every lowercase letter. DOID's "disease" listed "Y-linked monogenic disease"
+    // above "abducens nerve palsy", and with 50 of its 194 children shown, a reader scanning for
+    // "anemia" concluded the release did not have it.
+    try (SnapshotStore s = SnapshotStore.openInMemory()) {
+      s.initSchema();
+      s.addConcept("http://ex/parent", "disease");
+      for (String label : List.of("Y-linked monogenic disease", "abducens nerve palsy", "Brody myopathy",
+          "adrenal cortex disease", "anemia")) {
+        String iri = "http://ex/" + label.replace(' ', '_');
+        s.addConcept(iri, label);
+        s.addEdge(iri, "http://ex/parent", "rdfs:subClassOf");
+      }
+      s.materialize();
+
+      assertEquals(
+          List.of("abducens nerve palsy", "adrenal cortex disease", "anemia", "Brody myopathy",
+              "Y-linked monogenic disease"),
+          s.childrenByLabel("http://ex/parent", 0, 10).stream()
+              .map(SnapshotStore.LabelledConcept::prefLabel).toList(),
+          "children are ordered by bytes rather than as a reader would read them");
+
+      // And the cap takes the head of that order, so the first page is the first page alphabetically
+      // rather than every capitalised label there happens to be.
+      assertEquals(List.of("abducens nerve palsy", "adrenal cortex disease"),
+          s.childrenByLabel("http://ex/parent", 0, 2).stream()
+              .map(SnapshotStore.LabelledConcept::prefLabel).toList());
+    }
+  }
+
+  @Test
   public void roots_areConceptsWithNoParent() throws Exception {
     assertEquals(List.of("thing"), store.roots());
   }

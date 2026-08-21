@@ -914,6 +914,13 @@ public class SnapshotStore implements AutoCloseable {
    * for display yields an arbitrary subset presented as an alphabetical list. It also matches how
    * the search index serves the same question for the current release, so pinning a release changes
    * which release is read and nothing else.
+   *
+   * Case-insensitively, because the order is read by a person. SQLite's default collation compares
+   * bytes, which puts every capitalised label before every lowercase one: DOID's "disease" listed
+   * "Y-linked monogenic disease" above "abducens nerve palsy", and a reader looking for a term among
+   * 194 children of which 50 are shown reasonably concluded it was absent. The label is still the
+   * tiebreak after the case-folded comparison, so two labels differing only in case keep a stable
+   * order rather than depending on which row the query reached first.
    */
   public List<LabelledConcept> childrenByLabel(String parentIri, int offset, int limit)
       throws SQLException {
@@ -922,7 +929,7 @@ public class SnapshotStore implements AutoCloseable {
         SELECT c.iri, c.pref_label FROM edge e
         JOIN concept c ON c.id = e.child_id
         JOIN concept p ON p.id = e.parent_id
-        WHERE p.iri = ? ORDER BY c.pref_label, c.iri LIMIT ? OFFSET ?""")) {
+        WHERE p.iri = ? ORDER BY c.pref_label COLLATE NOCASE, c.pref_label, c.iri LIMIT ? OFFSET ?""")) {
       ps.setString(1, parentIri);
       ps.setInt(2, limit);
       ps.setInt(3, offset);
