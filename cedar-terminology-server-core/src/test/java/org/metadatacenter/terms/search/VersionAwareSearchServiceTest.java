@@ -24,6 +24,7 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -482,17 +483,64 @@ public class VersionAwareSearchServiceTest {
    * Where a term sits, and what it means.
    * --------------------------------------------------------------------------------------------- */
 
+  /** The tree, or a failure the assertion names rather than an unhelpful empty. */
+  private static HierarchyResponse treeOf(HierarchyLookup lookup) {
+    if (lookup instanceof HierarchyLookup.Found found) {
+      return found.hierarchy();
+    }
+    throw new AssertionError("expected a hierarchy, got " + lookup);
+  }
+
   @Test
   public void aHierarchySaysWhatTheTermItselfMeansAndNotOnlyItsChildren() throws Exception {
-    HierarchyResponse tree = withIndex().hierarchy("EX", BASE + "mammal", null, 0).orElseThrow();
+    HierarchyResponse tree = treeOf(withIndex().hierarchy("EX", BASE + "mammal", null, 0));
     assertEquals("A warm-blooded animal.", tree.definition(),
         "the one term the response is about had nothing said about it");
   }
 
   @Test
   public void aPinnedHierarchySaysWhatTheTermMeantInThatRelease() throws Exception {
-    HierarchyResponse tree = service.hierarchy("EX", BASE + "mammal", "hash-v1", 0).orElseThrow();
+    HierarchyResponse tree = treeOf(service.hierarchy("EX", BASE + "mammal", "hash-v1", 0));
     assertEquals("A warm-blooded animal.", tree.definition());
     assertEquals("A small domesticated feline.", tree.children().get(0).definition());
+  }
+
+  /*
+   * The three ways there is no tree, told apart.
+   *
+   * They were one empty answer, so a caller reported whichever it guessed at — and the picker
+   * reported the store as holding no hierarchy for a term even when the release named did not
+   * exist, a case in which no term had been looked at. ICO is the real example behind these: its
+   * 2020 release predates its import of MONDO, so a term present in the three later releases is
+   * genuinely absent from that one, which is a different thing to tell an author than either a
+   * misspelled release or a term the store does not hold at all.
+   */
+
+  @Test
+  public void aReleaseNothingAnswersToIsNotReportedAsAMissingTerm() throws Exception {
+    HierarchyLookup lookup = service.hierarchy("EX", BASE + "mammal", "hash-nonesuch", 0);
+    assertInstanceOf(HierarchyLookup.ReleaseNotHeld.class, lookup,
+        "an unresolvable release was reported as something about the term");
+  }
+
+  @Test
+  public void anAbbreviatedReleaseIdIsNotAReleaseTheStoreHolds() throws Exception {
+    HierarchyLookup lookup = service.hierarchy("EX", BASE + "mammal", "hash", 0);
+    assertInstanceOf(HierarchyLookup.ReleaseNotHeld.class, lookup,
+        "a prefix of a release identifier resolved to a release, or was blamed on the term");
+  }
+
+  @Test
+  public void aTermAbsentFromThePinnedReleaseSaysSoAndNamesTheRelease() throws Exception {
+    HierarchyLookup lookup = service.hierarchy("EX", BASE + "nosuchterm", "hash-v1", 0);
+    HierarchyLookup.TermNotInRelease absent = assertInstanceOf(HierarchyLookup.TermNotInRelease.class, lookup,
+        "a term absent from a release the store holds was not reported as such");
+    assertEquals("hash-v1", absent.versionId(), "the answer did not say which release was read");
+  }
+
+  @Test
+  public void aTermTheIndexDoesNotHoldIsItsOwnAnswer() throws Exception {
+    HierarchyLookup lookup = withIndex().hierarchy("EX", BASE + "nosuchterm", null, 0);
+    assertInstanceOf(HierarchyLookup.TermNotInIndex.class, lookup);
   }
 }

@@ -18,7 +18,7 @@ import org.metadatacenter.error.CedarErrorKey;
 import org.metadatacenter.exception.CedarException;
 import org.metadatacenter.http.CedarResponseStatus;
 import org.metadatacenter.rest.exception.CedarAssertionException;
-import org.metadatacenter.terms.search.HierarchyResponse;
+import org.metadatacenter.terms.search.HierarchyLookup;
 import org.metadatacenter.terms.search.SearchRequest;
 import org.metadatacenter.terms.search.SearchResponse;
 import org.metadatacenter.terms.search.VersionAwareSearchService;
@@ -26,7 +26,6 @@ import org.metadatacenter.util.http.CedarResponse;
 import org.metadatacenter.util.json.JsonMapper;
 
 import java.sql.SQLException;
-import java.util.Optional;
 
 /**
  * Version-aware search, at a new root path rather than under {@code /bioportal}.
@@ -116,7 +115,7 @@ public class VersionAwareSearchResource extends AbstractTerminologyServerResourc
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "The term's ancestors and children"),
       @ApiResponse(responseCode = "400", description = "A request naming no term"),
-      @ApiResponse(responseCode = "404", description = "The store does not hold that term"),
+      @ApiResponse(responseCode = "404", description = "No such release, a release without that term, or a term the index does not hold"),
       @ApiResponse(responseCode = "503", description = "No local terminology store is configured")
   })
   public Response hierarchy(@QueryParam("sourceAcronym") String sourceAcronym,
@@ -136,15 +135,47 @@ public class VersionAwareSearchResource extends AbstractTerminologyServerResourc
           .build();
     }
     try {
-      Optional<HierarchyResponse> found =
-          searchService.hierarchy(sourceAcronym, termIri, versionId, offset);
-      if (found.isEmpty()) {
+      // Each way of having no tree is reported as itself. One message covered all three, and it
+      // named the term in the case that had not looked at any term: a release identifier nothing
+      // matches was reported as the store holding no such term, which sent a reader looking for a
+      // missing ingest instead of a bad request.
+      //
+      // An `instanceof` chain rather than a switch over the sealed type: patterns in switch are a
+      // preview feature on the Java this stack is pinned to, and a preview flag is not worth one
+      // conditional. The chain covers every permitted case, and the compiler would not tell us if a
+      // fifth were added — the sealed declaration is where to look for the full list.
+      HierarchyLookup lookup = searchService.hierarchy(sourceAcronym, termIri, versionId, offset);
+      if (lookup instanceof HierarchyLookup.Found found) {
+        return Response.ok().entity(JsonMapper.MAPPER.valueToTree(found.hierarchy())).build();
+      }
+      if (lookup instanceof HierarchyLookup.ReleaseNotHeld unheld) {
         return CedarResponse.notFound()
             .errorKey(CedarErrorKey.INVALID_INPUT)
-            .errorMessage("The store holds no term " + termIri + " in " + sourceAcronym + ".")
+            .errorMessage("No release of " + unheld.acronym() + " held locally answers to "
+                + unheld.versionId() + ", so nothing was read. A release is named by the whole "
+                + "content hash the catalog reports, not an abbreviation of it.")
             .build();
       }
-      return Response.ok().entity(JsonMapper.MAPPER.valueToTree(found.get())).build();
+      if (lookup instanceof HierarchyLookup.TermNotInRelease absent) {
+        return CedarResponse.notFound()
+            .errorKey(CedarErrorKey.INVALID_INPUT)
+            .errorMessage("Release " + absent.versionId() + " of " + absent.acronym()
+                + " does not contain " + absent.termIri()
+                + ". Another release of the same source may contain it.")
+            .build();
+      }
+      if (lookup instanceof HierarchyLookup.TermNotInIndex absent) {
+        return CedarResponse.notFound()
+            .errorKey(CedarErrorKey.INVALID_INPUT)
+            .errorMessage("The store holds no term " + absent.termIri() + " in "
+                + absent.acronym() + ".")
+            .build();
+      }
+      // Every permitted case is handled above, so this is a case added to the sealed type without a
+      // message of its own. A guard for each rather than a cast for the last: the cast would compile
+      // for exactly as long as the assumption held and then fail here at runtime instead.
+      throw new CedarAssertionException(
+          new IllegalStateException("unhandled hierarchy lookup: " + lookup));
     } catch (SQLException e) {
       throw new CedarAssertionException(e);
     }

@@ -624,49 +624,38 @@ public class VersionAwareSearchService {
         page, pageSize, List.copyOf(hits));
   }
 
-  /** The source block for an ontology the index answered for, at the version the index holds. */
   /**
    * Where a term sits in its ontology.
    *
    * Answered from the index rather than the snapshot: the index holds one parent a term, which is
    * the step a row needs, and walking it in SQLite costs one query where opening a snapshot per
-   * lookup would cost a file open and a hierarchy the caller did not ask for. Returns empty when
-   * the index does not hold the term, which is the honest answer for a proxied or unheld source.
-   */
-  public Optional<HierarchyResponse> hierarchy(String acronym, String termIri) throws SQLException {
-    return hierarchy(acronym, termIri, null, 0);
-  }
-
-  /** The same, at a named release, from the first child. */
-  public Optional<HierarchyResponse> hierarchy(String acronym, String termIri, String versionId)
-      throws SQLException {
-    return hierarchy(acronym, termIri, versionId, 0);
-  }
-
-  /**
-   * The same, at a named release.
+   * lookup would cost a file open and a hierarchy the caller did not ask for.
    *
    * A hierarchy is a property of a release, not of an ontology: a term's parent can move between
    * two of them, and answering from the index — which holds each ontology's current version and no
    * other — would draw an author who pinned an older release the shape of today's. So a request
    * naming a version is answered from that snapshot, and only an unpinned one takes the index,
    * where the answer and the index agree by construction.
+   *
+   * The three ways this can fail to produce a tree are told apart in the answer, because they are
+   * different things to tell an author and one of them is not about the term at all. See
+   * {@link HierarchyLookup}.
    */
-  public Optional<HierarchyResponse> hierarchy(String acronym, String termIri, String versionId,
-                                               int offset) throws SQLException {
+  public HierarchyLookup hierarchy(String acronym, String termIri, String versionId,
+                                   int offset) throws SQLException {
     if (acronym == null || acronym.isBlank() || termIri == null || termIri.isBlank()) {
-      return Optional.empty();
+      return new HierarchyLookup.TermNotInIndex(acronym, termIri);
     }
     int from = Math.max(0, offset);
     if (versionId != null && !versionId.isBlank()) {
       return snapshotHierarchy(acronym, termIri, versionId, from);
     }
     if (index == null) {
-      return Optional.empty();
+      return new HierarchyLookup.TermNotInIndex(acronym, termIri);
     }
     Optional<SearchIndexStore.IndexedTerm> found = index.term(acronym, termIri);
     if (found.isEmpty()) {
-      return Optional.empty();
+      return new HierarchyLookup.TermNotInIndex(acronym, termIri);
     }
     SearchIndexStore.IndexedTerm term = found.get();
     List<TermRef> path = new ArrayList<>();
@@ -678,24 +667,29 @@ public class VersionAwareSearchService {
       children.add(new HierarchyResponse.Child(child.iri(), child.prefLabel(), child.hasChildren(),
           child.descendantCount(), child.definition()));
     }
-    return Optional.of(new HierarchyResponse(SearchRequest.BIOPORTAL, acronym,
+    return new HierarchyLookup.Found(new HierarchyResponse(SearchRequest.BIOPORTAL, acronym,
         indexedSourceBlock(acronym), path.isEmpty() ? null : path, term.iri(), term.prefLabel(),
         children.isEmpty() ? null : children, index.childCount(acronym, termIri), from,
         term.descendantCount(), term.definition()));
   }
 
   /** The hierarchy as one snapshot records it, for a request that named a release. */
-  private Optional<HierarchyResponse> snapshotHierarchy(String acronym, String termIri, String versionId,
-                                                        int offset) throws SQLException {
+  private HierarchyLookup snapshotHierarchy(String acronym, String termIri, String versionId,
+                                            int offset) throws SQLException {
     Resolved resolved = resolveSource(
         new SourceSelector(null, acronym, new SearchRequest.VersionSelector(versionId)));
     if (!resolved.isLocal()) {
-      return Optional.empty();
+      // Either no release answers to this identifier or the source is proxied. Nothing was read,
+      // so nothing is known here about whether the term exists.
+      return new HierarchyLookup.ReleaseNotHeld(acronym, versionId);
     }
     SnapshotStore store = resolved.store();
     Optional<String> label = store.prefLabel(termIri);
     if (label.isEmpty() && !store.contains(termIri)) {
-      return Optional.empty();
+      // The release was read and does not contain the term. A newer one may: ICO's 2020 release
+      // predates its import of MONDO, so `MONDO_0000001` is absent there and present in the three
+      // releases after it.
+      return new HierarchyLookup.TermNotInRelease(acronym, termIri, versionId);
     }
     // By label and limited in one query. Taking the first CHILD_LIMIT by IRI and sorting those for
     // display gave an arbitrary subset of a large node's children, presented as though it were the
@@ -709,8 +703,8 @@ public class VersionAwareSearchService {
           SnapshotStore.servedDefinition(store.definitions(child.iri()))));
     }
     List<TermRef> path = path(store, termIri);
-    return Optional.of(new HierarchyResponse(SearchRequest.BIOPORTAL, acronym, resolved.block(),
-        path, termIri, label.orElse(null), children.isEmpty() ? null : children,
+    return new HierarchyLookup.Found(new HierarchyResponse(SearchRequest.BIOPORTAL, acronym,
+        resolved.block(), path, termIri, label.orElse(null), children.isEmpty() ? null : children,
         store.childCount(termIri), offset, store.descendantCount(termIri),
         SnapshotStore.servedDefinition(store.definitions(termIri))));
   }
