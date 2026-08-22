@@ -38,39 +38,6 @@ public class ValueResource extends AbstractTerminologyServerResource {
     super(cedarConfig);
   }
 
-  @POST
-  @Path("vs-collections/{vs_collection}/value-sets/{vs}/values")
-  @Operation(summary = "Create a provisional value", description = "Create a provisional value in a given value set.")
-  @ApiResponses({
-      @ApiResponse(responseCode = "204", description = "Successful operation (no content)"),
-      @ApiResponse(responseCode = "400", description = "Bad request"),
-      @ApiResponse(responseCode = "401", description = "Unauthorized"),
-      @ApiResponse(responseCode = "403", description = "Forbidden"),
-      @ApiResponse(responseCode = "404", description = "Not found"),
-      @ApiResponse(responseCode = "500", description = "Internal server error")
-  })
-  public Response createValue(
-      @Parameter(description = "Value set collection. Example: CEDARVS.", required = true)
-      @PathParam("vs_collection") String vsCollection,
-      @Parameter(description = "Value set identifier. Example: http://www.semanticweb.org/jgraybeal/ontologies/2015/7/" +
-          "cedarvaluesets#Study_File_Type", required = true)
-      @PathParam("vs") String vs)
-      throws CedarException {
-    CedarRequestContext ctx = buildAnonymousRequestContext();
-    try {
-      Value v = JsonMapper.MAPPER.convertValue(ctx.request().getRequestBody().asJson(), Value.class);
-      v.setVsCollection(vsCollection);
-      v.setVsId(vs);
-      Value createdValue = terminologyService.createProvisionalValue(v, apiKey);
-      JsonNode createdValueJson = JsonMapper.MAPPER.valueToTree(createdValue);
-      return Response.created(new URI(createdValue.getLdId())).entity(createdValueJson).build();
-    } catch (HTTPException e) {
-      return Response.status(e.getStatusCode()).build();
-    } catch (URISyntaxException | IOException e) {
-      throw new CedarProcessingException(e);
-    }
-  }
-
   @GET
   @Path("vs-collections/{vs_collection}/values/{id}")
   @Operation(summary = "Find value by id", description = "Find value by id.")
@@ -203,57 +170,5 @@ public class ValueResource extends AbstractTerminologyServerResource {
     }
   }
 
-  @PUT
-  @Path("values/{id}")
-  @Operation(summary = "Update a provisional value", description = "Update a provisional value.")
-  @ApiResponses({
-      @ApiResponse(responseCode = "204", description = "Successful operation (no content)"),
-      @ApiResponse(responseCode = "400", description = "Bad request"),
-      @ApiResponse(responseCode = "401", description = "Unauthorized"),
-      @ApiResponse(responseCode = "403", description = "Forbidden"),
-      @ApiResponse(responseCode = "404", description = "Not found"),
-      @ApiResponse(responseCode = "500", description = "Internal server error")
-  })
-  public Response updateValue(
-      @Parameter(description = "Value identifier. Example: 42f22880-b04b-0133-848f-005056010073", required = true)
-      @PathParam("id") String id) throws CedarException {
-    CedarRequestContext ctx = buildRequestContext();
-    ctx.must(ctx.user()).be(LoggedIn);
-    try {
-      Value v = JsonMapper.MAPPER.readValue(request.getInputStream(), Value.class);
-      terminologyService.updateProvisionalValue(v, apiKey);
-      return Response.noContent().build();
-    } catch (HTTPException e) {
-      return Response.status(e.getStatusCode()).build();
-    } catch (IOException e) {
-      throw new CedarAssertionException(e);
-    }
-  }
-
-  @DELETE
-  @Path("values/{id}")
-  @Operation(summary = "Delete a provisional value", description = "Delete a provisional value.")
-  @ApiResponses({
-      @ApiResponse(responseCode = "204", description = "Successful operation (no content)"),
-      @ApiResponse(responseCode = "400", description = "Bad request"),
-      @ApiResponse(responseCode = "401", description = "Unauthorized"),
-      @ApiResponse(responseCode = "403", description = "Forbidden"),
-      @ApiResponse(responseCode = "404", description = "Not found"),
-      @ApiResponse(responseCode = "500", description = "Internal server error")
-  })
-  public Response deleteValue(
-      @Parameter(description = "Value identifier. Example: 42f22880-b04b-0133-848f-005056010073", required = true)
-      @PathParam("id") String id) throws CedarException {
-    CedarRequestContext ctx = buildRequestContext();
-    ctx.must(ctx.user()).be(LoggedIn);
-    try {
-      terminologyService.deleteProvisionalValue(id, apiKey);
-      return Response.noContent().build();
-    } catch (HTTPException e) {
-      return Response.status(e.getStatusCode()).build();
-    } catch (IOException e) {
-      throw new CedarAssertionException(e);
-    }
-  }
 
 }

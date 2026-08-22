@@ -1,6 +1,7 @@
 package org.metadatacenter.terms.store;
 
 import org.metadatacenter.terms.store.SnapshotStore.ConceptMeta;
+import org.metadatacenter.terms.store.SnapshotStore.ConceptState;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -12,33 +13,39 @@ import java.util.Set;
 import java.util.TreeSet;
 
 /**
- * Compares two snapshots of the same ontology (two versions) by concept IRI and by hierarchy edge.
+ * Compares two snapshots of the same ontology across every field used by normalized content identity.
  *
- * This is the mechanical basis for the "show the vocabulary diff, then re-pin" workflow: given the
- * snapshot a template is pinned to and a newer snapshot, it reports which concepts and which
- * subsumption edges were added or removed. Identity is the concept IRI, which is stable across
- * versions for IRI-based ontologies (e.g. OBO PURLs), so the diff is meaningful even across a
- * format change (OBO to OWL).
+ * This is the mechanical basis for the "show the vocabulary diff, then re-pin" workflow. Identity is
+ * the concept IRI, which is stable across versions for IRI-based ontologies (e.g. OBO PURLs), so the
+ * diff is meaningful even across a format change (OBO to OWL).
  */
 public class SnapshotDiff {
 
-  /** Concept- and edge-level differences from a base snapshot to a target snapshot. */
+  /** Content differences from a base snapshot to a target snapshot. */
   public record Diff(
       int fromConcepts,
       int toConcepts,
       List<String> addedConcepts,
       List<String> removedConcepts,
+      List<String> changedConcepts,
       int fromEdges,
       int toEdges,
       List<String> addedEdges,
       List<String> removedEdges,
+      int fromRelations,
+      int toRelations,
+      List<String> addedRelations,
+      List<String> removedRelations,
       List<String> newlyObsoleted) {
 
     public String summary() {
       return String.format(
-          "concepts: %d -> %d (+%d -%d); edges: %d -> %d (+%d -%d); newly obsoleted: %d",
+          "concepts: %d -> %d (+%d -%d ~%d); edges: %d -> %d (+%d -%d); "
+              + "relations: %d -> %d (+%d -%d); newly obsoleted: %d",
           fromConcepts, toConcepts, addedConcepts.size(), removedConcepts.size(),
-          fromEdges, toEdges, addedEdges.size(), removedEdges.size(), newlyObsoleted.size());
+          changedConcepts.size(), fromEdges, toEdges, addedEdges.size(), removedEdges.size(),
+          fromRelations, toRelations, addedRelations.size(), removedRelations.size(),
+          newlyObsoleted.size());
     }
   }
 
@@ -47,14 +54,41 @@ public class SnapshotDiff {
     Set<String> toConcepts = new HashSet<>(to.allConceptIris());
     Set<String> fromEdges = edgeSet(from);
     Set<String> toEdges = edgeSet(to);
+    Set<String> fromRelations = relationSet(from);
+    Set<String> toRelations = relationSet(to);
     return new Diff(
         fromConcepts.size(), toConcepts.size(),
         sortedDifference(toConcepts, fromConcepts),
         sortedDifference(fromConcepts, toConcepts),
+        changedConcepts(from, to),
         fromEdges.size(), toEdges.size(),
         sortedDifference(toEdges, fromEdges),
         sortedDifference(fromEdges, toEdges),
+        fromRelations.size(), toRelations.size(),
+        sortedDifference(toRelations, fromRelations),
+        sortedDifference(fromRelations, toRelations),
         newlyObsoleted(from, to));
+  }
+
+  private static List<String> changedConcepts(SnapshotStore from, SnapshotStore to) throws SQLException {
+    Map<String, ConceptState> fromStates = stateIndex(from.allConceptStates());
+    List<String> changed = new ArrayList<>();
+    for (ConceptState state : to.allConceptStates()) {
+      ConceptState previous = fromStates.get(state.iri());
+      if (previous != null && !previous.equals(state)) {
+        changed.add(state.iri());
+      }
+    }
+    changed.sort(null);
+    return changed;
+  }
+
+  private static Map<String, ConceptState> stateIndex(List<ConceptState> states) {
+    Map<String, ConceptState> map = new HashMap<>();
+    for (ConceptState state : states) {
+      map.put(state.iri(), state);
+    }
+    return map;
   }
 
   /**
@@ -86,10 +120,22 @@ public class SnapshotDiff {
 
   private static Set<String> edgeSet(SnapshotStore store) throws SQLException {
     Set<String> out = new HashSet<>();
-    for (String[] e : store.allEdges()) {
-      out.add(e[0] + " -> " + e[1]);
+    for (String[] e : store.allEdgesWithPredicates()) {
+      out.add(e[0] + " -[" + display(e[2]) + "]-> " + e[1]);
     }
     return out;
+  }
+
+  private static Set<String> relationSet(SnapshotStore store) throws SQLException {
+    Set<String> out = new HashSet<>();
+    for (String[] relation : store.allRelations()) {
+      out.add(relation[0] + " -[" + display(relation[1]) + "]-> " + relation[2]);
+    }
+    return out;
+  }
+
+  private static String display(String value) {
+    return value == null ? "<null>" : value;
   }
 
   private static List<String> sortedDifference(Set<String> a, Set<String> b) {
@@ -110,8 +156,11 @@ public class SnapshotDiff {
       System.out.println(d.summary());
       printSample("added concepts", d.addedConcepts());
       printSample("removed concepts", d.removedConcepts());
+      printSample("changed concepts", d.changedConcepts());
       printSample("added edges", d.addedEdges());
       printSample("removed edges", d.removedEdges());
+      printSample("added relations", d.addedRelations());
+      printSample("removed relations", d.removedRelations());
       printSample("newly obsoleted", d.newlyObsoleted());
     }
   }

@@ -15,6 +15,7 @@ import org.metadatacenter.rest.exception.CedarAssertionException;
 import org.metadatacenter.terms.domainObjects.Ontology;
 import org.metadatacenter.terms.domainObjects.OntologyClass;
 import org.metadatacenter.terms.domainObjects.OntologyVersion;
+import org.metadatacenter.terms.domainObjects.VersionTriple;
 import org.metadatacenter.terms.domainObjects.OntologyProperty;
 import org.metadatacenter.util.http.CedarResponse;
 import org.metadatacenter.util.json.JsonMapper;
@@ -100,8 +101,9 @@ public class OntologyResource extends AbstractTerminologyServerResource {
   @Path("ontologies/{id}/versions")
   @Operation(summary = "List local versions of an ontology",
       description = "Versions of an ontology available in the local, version-pinned store, each with "
-          + "its content-hash id, self-declared version, release date, and whether it is the current "
-          + "one. Empty when the ontology is served from BioPortal (which has no equivalent).",
+          + "its content-hash id, self-declared version, release timestamp, effectiveDate (the "
+          + "release day, or ingest day when the source records no release), and whether it is the "
+          + "current one. Empty when the ontology is served from BioPortal (which has no equivalent).",
       tags = {"Ontologies"})
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "Successful operation"),
@@ -116,6 +118,69 @@ public class OntologyResource extends AbstractTerminologyServerResource {
     try {
       List<OntologyVersion> versions = terminologyService.getVersions(id);
       return Response.ok().entity(JsonMapper.MAPPER.valueToTree(versions)).build();
+    } catch (IOException e) {
+      throw new CedarAssertionException(e);
+    }
+  }
+
+  @GET
+  @Path("ontologies/{id}/versions/current")
+  @Operation(summary = "Resolve the current version triple of an ontology",
+      description = "The version triple {id (content hash), effectiveDate, declaredVersion} of the "
+          + "ontology's current (latest) local snapshot. This is the publish-time 'resolve current' "
+          + "capability: a publish pipeline calls it per value-constraint entry to freeze the entry "
+          + "against its ontology's current state. 404 when the ontology is not served locally "
+          + "(BioPortal has no content-hash triple to freeze).",
+      tags = {"Ontologies"})
+  @ApiResponses({
+      @ApiResponse(responseCode = "200", description = "Successful operation"),
+      @ApiResponse(responseCode = "401", description = "Unauthorized"),
+      @ApiResponse(responseCode = "404", description = "Ontology not served locally"),
+      @ApiResponse(responseCode = "500", description = "Internal server error")
+  })
+  public Response resolveCurrentVersion(
+      @Parameter(description = "Ontology acronym. Examples: DOID, INCENTIVE.", required = true)
+      @PathParam("id") String id) throws CedarException {
+    CedarRequestContext ctx = buildRequestContext();
+    ctx.must(ctx.user()).be(LoggedIn);
+    try {
+      VersionTriple triple = terminologyService.resolveCurrentVersion(id);
+      if (triple == null) {
+        return CedarResponse.notFound().build();
+      }
+      return Response.ok().entity(JsonMapper.MAPPER.valueToTree(triple)).build();
+    } catch (IOException e) {
+      throw new CedarAssertionException(e);
+    }
+  }
+
+  @GET
+  @Path("classes/version-current")
+  @Operation(summary = "Resolve the current version triple for a class IRI",
+      description = "The version triple of the ontology that owns the given class/term IRI — the "
+          + "freeze-on-publish capability for a class-valued constraint, which names a term but not "
+          + "its ontology. The IRI's namespace is mapped to its ontology, then that ontology's current "
+          + "triple is returned. 404 when the ontology cannot be determined unambiguously or is not "
+          + "served locally.",
+      tags = {"Classes"})
+  @ApiResponses({
+      @ApiResponse(responseCode = "200", description = "Successful operation"),
+      @ApiResponse(responseCode = "401", description = "Unauthorized"),
+      @ApiResponse(responseCode = "404", description = "Ontology for the class not resolvable locally"),
+      @ApiResponse(responseCode = "500", description = "Internal server error")
+  })
+  public Response resolveCurrentVersionForClass(
+      @Parameter(description = "Class/term IRI. Example: http://purl.obolibrary.org/obo/DOID_9351.",
+          required = true)
+      @jakarta.ws.rs.QueryParam("uri") String uri) throws CedarException {
+    CedarRequestContext ctx = buildRequestContext();
+    ctx.must(ctx.user()).be(LoggedIn);
+    try {
+      VersionTriple triple = terminologyService.resolveCurrentVersionForClass(uri);
+      if (triple == null) {
+        return CedarResponse.notFound().build();
+      }
+      return Response.ok().entity(JsonMapper.MAPPER.valueToTree(triple)).build();
     } catch (IOException e) {
       throw new CedarAssertionException(e);
     }

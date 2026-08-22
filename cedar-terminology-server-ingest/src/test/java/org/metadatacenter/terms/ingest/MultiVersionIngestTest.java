@@ -118,9 +118,61 @@ public class MultiVersionIngestTest {
       SnapshotDiff.Diff d = new SnapshotDiff().diff(from, to);
       assertTrue(d.addedConcepts().contains(BASE + "carcinoma"));
       assertTrue(d.removedConcepts().contains(BASE + "melanoma"));
-      assertTrue(d.addedEdges().contains(BASE + "carcinoma -> " + BASE + "cancer"));
-      assertTrue(d.removedEdges().contains(BASE + "melanoma -> " + BASE + "cancer"));
+      // Edge strings now carry the source predicate ("child -[pred]-> parent"); assert the subsumption
+      // edge by its endpoints, regardless of the predicate token.
+      assertTrue(d.addedEdges().stream()
+          .anyMatch(e -> e.startsWith(BASE + "carcinoma") && e.endsWith("-> " + BASE + "cancer")));
+      assertTrue(d.removedEdges().stream()
+          .anyMatch(e -> e.startsWith(BASE + "melanoma") && e.endsWith("-> " + BASE + "cancer")));
     }
+  }
+
+  @Test
+  public void reIngestingIsIdempotent_soAnInterruptedRunHealsOnRerun() throws Exception {
+    // A crash mid-registration can leave a partial catalog state; the operator's remedy is to re-run
+    // the ingest. Because every registration step is an idempotent upsert inside one transaction, a
+    // full re-run converges to the same single, correct state — no duplicate snapshots, same latest,
+    // same canonical identity.
+    IngestJob job = new IngestJob(twoVersionSource());
+    job.ingestAll(catalog, ONT, tempDir.resolve("snapshots"));
+
+    int snapshotsAfterFirst = catalog.listSnapshots(ONT).size();
+    String latestAfterFirst = catalog.resolveLatest(ONT).orElseThrow().versionId();
+    java.util.Optional<String> iriAfterFirst = catalog.ontologyIri(ONT);
+
+    job.ingestAll(catalog, ONT, tempDir.resolve("snapshots")); // re-run, as recovery after interruption
+
+    assertEquals(snapshotsAfterFirst, catalog.listSnapshots(ONT).size());
+    assertEquals(latestAfterFirst, catalog.resolveLatest(ONT).orElseThrow().versionId());
+    assertEquals(iriAfterFirst, catalog.ontologyIri(ONT));
+  }
+
+  @Test
+  public void versionIdIsTheContentHash_soIdenticalContentMergesAndDiffersFromRawHash() throws Exception {
+    // Two submissions with byte-different files but the SAME extracted content (v1 saved twice)
+    // share a content-hash version id, so ingestAll registers one snapshot, not two -- the merge the
+    // §4.3 cutover does for existing data now happens at ingest time.
+    SubmissionSource sameContentTwice = new SubmissionSource() {
+      @Override public OntologyAccess accessInfo(String acronym) { return new OntologyAccess("public", null); }
+      @Override public List<Submission> listSubmissions(String acronym) {
+        return List.of(new Submission(1, "a", "2024-01-01", "OWL"), new Submission(2, "b", "2025-01-01", "OWL"));
+      }
+      @Override public Submission latestSubmission(String acronym) { return new Submission(2, "b", "2025-01-01", "OWL"); }
+      @Override public Path download(String acronym, int submissionId, Path targetDir) throws IOException {
+        Files.createDirectories(targetDir);
+        Path dest = targetDir.resolve("sub" + submissionId + ".owl");
+        Files.copy(owlV1, dest, StandardCopyOption.REPLACE_EXISTING); // same content for both submissions
+        return dest;
+      }
+    };
+    List<IngestJob.IngestResult> results = new IngestJob(sameContentTwice)
+        .ingestAll(catalog, ONT, tempDir.resolve("snapshots"));
+
+    assertEquals(1, catalog.listSnapshots(ONT).size(), "identical content collapses to one snapshot");
+    // The version id is a content hash (64 hex chars), not the raw-file hash recorded as file_hash.
+    CatalogStore.SnapshotInfo snap = catalog.listSnapshots(ONT).get(0);
+    assertEquals(64, snap.versionId().length());
+    assertTrue(results.stream().allMatch(r -> r.versionId().equals(snap.versionId())));
   }
 
   private static void buildOntology(Path file, String leaf) throws Exception {

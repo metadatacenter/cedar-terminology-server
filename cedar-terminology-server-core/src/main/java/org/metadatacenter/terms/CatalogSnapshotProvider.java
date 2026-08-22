@@ -2,6 +2,7 @@ package org.metadatacenter.terms;
 
 import org.metadatacenter.terms.domainObjects.Ontology;
 import org.metadatacenter.terms.domainObjects.OntologyVersion;
+import org.metadatacenter.terms.domainObjects.VersionTriple;
 import org.metadatacenter.terms.store.CatalogStore;
 import org.metadatacenter.terms.store.SnapshotStore;
 import org.slf4j.Logger;
@@ -66,14 +67,165 @@ public class CatalogSnapshotProvider implements SqliteTerminologyService.Snapsho
     }
   }
 
-  /** Resolves the snapshot for a version: null/blank/"latest" -> current; a known tag -> its target;
-   *  otherwise a version_id, scoped to the acronym. */
+  /** Whether this provider is allowed to serve an ontology at all, before any version is resolved. */
+  public boolean serves(String ontology) {
+    return ontology != null && allowed.contains(ontology);
+  }
+
+  /**
+   * The snapshot a version request resolves to, without opening it.
+   *
+   * {@link #forOntology} answers with a store and so cannot distinguish "not served" from "served,
+   * but not at that version" — both are an empty Optional. A caller that has to report which of the
+   * two happened needs the resolution itself, which is what this returns.
+   */
+  public Optional<CatalogStore.SnapshotInfo> snapshotInfo(String ontology, String version) throws SQLException {
+    if (!serves(ontology)) {
+      return Optional.empty();
+    }
+    return resolveInfo(ontology, version);
+  }
+
+  /** The catalog behind this provider, for metadata a snapshot does not carry. */
+  public CatalogStore catalog() {
+    return catalog;
+  }
+
+  /**
+   * Resolves the snapshot a version request names. Precedence: {@code null}/blank/{@code "latest"} →
+   * current; then, for a specific request, {@code content hash → tag → as-of date → declared
+   * version}. These are distinct namespaces (a hash is 64 hex chars, a tag a short name, a date
+   * ISO {@code YYYY-MM-DD}, a declared version a free-form label), and the first interpretation that
+   * matches wins.
+   *
+   * A request that matches none resolves to empty. The caller then distinguishes by whether a version
+   * was explicitly pinned: an unpinned (latest) miss may route to the remote adapter, but an explicit
+   * pin fails loud ({@link PinnedVersionUnavailableException}) rather than silently serving {@code
+   * latest} from remote — a pin that cannot be honored must not resolve to the wrong content. A
+   * date-shaped request that finds no snapshot on or before it falls
+   * through to the declared-version match, in case the string was a label that merely looks like a
+   * date; when the label is genuinely a date, the earlier as-of resolution has already answered.
+   */
   private Optional<CatalogStore.SnapshotInfo> resolveInfo(String ontology, String version) throws SQLException {
-    if (version == null || version.isBlank() || CatalogStore.TAG_LATEST.equals(version)) {
+    if (version == null || version.isBlank() || CatalogStore.TAG_LATEST.equalsIgnoreCase(version)) {
       return catalog.resolveLatest(ontology);
     }
+    Optional<CatalogStore.SnapshotInfo> byHash = catalog.resolveVersion(ontology, version);
+    if (byHash.isPresent()) {
+      return byHash;
+    }
     Optional<CatalogStore.SnapshotInfo> byTag = catalog.resolve(ontology, version);
-    return byTag.isPresent() ? byTag : catalog.resolveVersion(ontology, version);
+    if (byTag.isPresent()) {
+      return byTag;
+    }
+    Optional<String> asOf = asOfDate(version);
+    if (asOf.isPresent()) {
+      Optional<CatalogStore.SnapshotInfo> byDate = catalog.resolveAsOfDate(ontology, asOf.get());
+      if (byDate.isPresent()) {
+        return byDate;
+      }
+      // Fall through: nothing was published on or before this date, but the string may still be a
+      // declared-version label that happens to look like a date.
+    }
+    List<CatalogStore.SnapshotInfo> byDeclared = catalog.resolveByDeclaredVersion(ontology, version);
+    if (byDeclared.isEmpty()) {
+      return Optional.empty();
+    }
+    if (byDeclared.size() > 1) {
+      CatalogStore.SnapshotInfo chosen = byDeclared.get(0);
+      log.warn("Declared version '{}' of ontology {} is ambiguous: {} snapshots carry it; serving the "
+              + "newest ({}, released {}). Pin a content hash for a reproducible reference.",
+          version, ontology, byDeclared.size(), chosen.versionId(), chosen.releasedAt());
+    }
+    return Optional.of(byDeclared.get(0));
+  }
+
+  /**
+   * If {@code version} begins with an ISO calendar date ({@code YYYY-MM-DD}, optionally followed by a
+   * time or anything else), returns that date; otherwise empty. This decides whether a version
+   * request is interpreted as an "as of" date. A content-hash id can never match: hex has no
+   * {@code -} at the date separator positions.
+   */
+  static Optional<String> asOfDate(String version) {
+    if (version == null || version.length() < 10) {
+      return Optional.empty();
+    }
+    String head = version.substring(0, 10);
+    try {
+      java.time.LocalDate.parse(head); // validates the calendar date, rejecting e.g. 2024-13-40
+      return Optional.of(head);
+    } catch (java.time.format.DateTimeParseException notADate) {
+      return Optional.empty();
+    }
+  }
+
+  @Override
+  public Optional<String> ontologyForConceptIri(String conceptIri) {
+    if (conceptIri == null) {
+      return Optional.empty();
+    }
+    try {
+      // The concept's ID-space (SnapshotStore.idspace) is the ontology's raw namespace; reverse-look
+      // it up in the catalog, then keep it only if we actually serve that ontology.
+      return catalog.acronymForNamespace(SnapshotStore.idspace(conceptIri)).filter(allowed::contains);
+    } catch (SQLException e) {
+      log.warn("Catalog namespace lookup failed for concept {}", conceptIri, e);
+      return Optional.empty();
+    }
+  }
+
+  @Override
+  public Optional<VersionTriple> currentVersion(String ontology) {
+    if (ontology == null || !allowed.contains(ontology)) {
+      return Optional.empty();
+    }
+    try {
+      return catalog.resolveLatest(ontology).map(CatalogSnapshotProvider::toTriple);
+    } catch (SQLException e) {
+      log.warn("Catalog current-version lookup failed for ontology {}", ontology, e);
+      return Optional.empty();
+    }
+  }
+
+  @Override
+  public Optional<VersionTriple> currentVersionForValueSetCollection(String vsCollection) {
+    if (vsCollection == null) {
+      return Optional.empty();
+    }
+    try {
+      // Gate on the catalog's artifact-kind, not the ontology serving allowlist: a value-set
+      // collection is not served for search/browse, so it is never allowlisted. It resolves purely on
+      // being ingested and marked a value-set collection (with the whole local store off in prod, this
+      // answers nothing there). The kind check also stops an ontology of the same acronym answering.
+      if (!catalog.isValueSetCollection(vsCollection)) {
+        return Optional.empty();
+      }
+      return catalog.resolveLatest(vsCollection).map(CatalogSnapshotProvider::toTriple);
+    } catch (SQLException e) {
+      log.warn("Catalog current-version lookup failed for value-set collection {}", vsCollection, e);
+      return Optional.empty();
+    }
+  }
+
+  /**
+   * Builds the {@link VersionTriple} for a snapshot: content-hash id, effective date (the source's
+   * release date, or the ingest date when the source records none), and the declared-version label
+   * as-is (may be null).
+   */
+  static VersionTriple toTriple(CatalogStore.SnapshotInfo s) {
+    return new VersionTriple(s.versionId(), effectiveDate(s), s.declaredVersion());
+  }
+
+  /**
+   * The date this snapshot's state entered circulation: the calendar-date component of the source's
+   * release timestamp, or of the ingest timestamp when the source records no release. BioPortal's
+   * timestamps are day-granular, so the time-of-day and UTC offset carry no information; truncating
+   * to the day is both faithful and offset-independent. Shared by the triple and the versions list
+   * so the two never disagree.
+   */
+  private static String effectiveDate(CatalogStore.SnapshotInfo s) {
+    String source = s.releasedAt() != null ? s.releasedAt() : s.ingestedAt();
+    return source != null && source.length() >= 10 ? source.substring(0, 10) : source;
   }
 
   @Override
@@ -84,9 +236,12 @@ public class CatalogSnapshotProvider implements SqliteTerminologyService.Snapsho
     try {
       String latest = catalog.resolveLatest(ontology).map(CatalogStore.SnapshotInfo::versionId).orElse(null);
       List<OntologyVersion> out = new ArrayList<>();
-      for (CatalogStore.SnapshotInfo s : catalog.listSnapshots(ontology)) {
+      // Releases rather than snapshots, as the search response's list is: a re-extraction is a
+      // second version id for bytes that did not change, and listing both says the ontology was
+      // released twice. Superseded ones stay resolvable, they are only not listed.
+      for (CatalogStore.SnapshotInfo s : catalog.listCurrentSnapshots(ontology)) {
         out.add(new OntologyVersion(
-            s.versionId(), s.declaredVersion(), s.releasedAt(), s.versionId().equals(latest)));
+            s.versionId(), s.declaredVersion(), s.releasedAt(), effectiveDate(s), s.versionId().equals(latest)));
       }
       return out;
     } catch (SQLException e) {

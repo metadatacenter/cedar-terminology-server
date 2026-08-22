@@ -5,7 +5,7 @@
   <parent>
     <groupId>org.metadatacenter</groupId>
     <artifactId>cedar-terminology-server</artifactId>
-    <version>2.9.1</version>
+    <version>2.9.2</version>
   </parent>
 
   <groupId>org.metadatacenter</groupId>
@@ -35,7 +35,6 @@
     <dependency>
       <groupId>org.apache.httpcomponents</groupId>
       <artifactId>httpclient-cache</artifactId>
-      <version>4.5.14</version>
     </dependency>
 
     <!-- OWLAPI 4.5.9 uses JAXB (javax.xml.bind — e.g. HexBinaryAdapter), removed from the JDK in 11+.
@@ -44,17 +43,14 @@
     <dependency>
       <groupId>javax.xml.bind</groupId>
       <artifactId>jaxb-api</artifactId>
-      <version>2.3.1</version>
     </dependency>
     <dependency>
       <groupId>org.glassfish.jaxb</groupId>
       <artifactId>jaxb-runtime</artifactId>
-      <version>2.3.7</version>
     </dependency>
     <dependency>
       <groupId>javax.activation</groupId>
       <artifactId>javax.activation-api</artifactId>
-      <version>1.2.0</version>
     </dependency>
 
     <dependency>
@@ -65,6 +61,16 @@
     <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-api</artifactId>
+    </dependency>
+
+    <!-- A concrete SLF4J binding so the ingest CLI's log.info/warn actually print. Without a binding
+         these tools run under the no-op logger (SLF4J's "No providers were found"), which swallowed all
+         per-item progress and the run summary in the label backfill. Scoped runtime, and nothing depends
+         on this module, so it cannot leak a second binding onto the server's logback classpath. -->
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-simple</artifactId>
+      <scope>runtime</scope>
     </dependency>
 
     <dependency>

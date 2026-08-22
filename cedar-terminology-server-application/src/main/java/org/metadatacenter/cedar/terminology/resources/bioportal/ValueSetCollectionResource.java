@@ -12,6 +12,8 @@ import org.metadatacenter.exception.CedarException;
 import org.metadatacenter.rest.context.CedarRequestContext;
 import org.metadatacenter.rest.exception.CedarAssertionException;
 import org.metadatacenter.terms.domainObjects.ValueSetCollection;
+import org.metadatacenter.terms.domainObjects.VersionTriple;
+import org.metadatacenter.util.http.CedarResponse;
 import org.metadatacenter.util.json.JsonMapper;
 
 import jakarta.ws.rs.*;
@@ -56,6 +58,35 @@ public class ValueSetCollectionResource extends AbstractTerminologyServerResourc
       return Response.ok().entity(JsonMapper.MAPPER.valueToTree(vsCollections)).build();
     } catch (HTTPException e) {
       return Response.status(e.getStatusCode()).build();
+    } catch (IOException e) {
+      throw new CedarAssertionException(e);
+    }
+  }
+
+  @GET
+  @Path("vs-collections/version-current")
+  @Operation(summary = "Resolve the current version triple for a value-set collection",
+      description = "The version triple of a value-set collection's current (\"latest\") locally-stored "
+          + "snapshot — the freeze-on-publish capability for a value-set-valued constraint. Value-set "
+          + "collections are ingested and versioned by the same content-hash mechanism as ontologies. "
+          + "404 when the collection is not ingested and served locally.")
+  @ApiResponses({
+      @ApiResponse(responseCode = "200", description = "Successful operation"),
+      @ApiResponse(responseCode = "401", description = "Unauthorized"),
+      @ApiResponse(responseCode = "404", description = "Value-set collection not resolvable locally"),
+      @ApiResponse(responseCode = "500", description = "Internal server error")
+  })
+  public Response resolveCurrentVersionForValueSetCollection(
+      @Parameter(description = "Value-set collection acronym. Example: CEDARVS.", required = true)
+      @QueryParam("collection") String collection) throws CedarException {
+    CedarRequestContext ctx = buildRequestContext();
+    ctx.must(ctx.user()).be(LoggedIn);
+    try {
+      VersionTriple triple = terminologyService.resolveCurrentVersionForValueSetCollection(collection);
+      if (triple == null) {
+        return CedarResponse.notFound().build();
+      }
+      return Response.ok().entity(JsonMapper.MAPPER.valueToTree(triple)).build();
     } catch (IOException e) {
       throw new CedarAssertionException(e);
     }

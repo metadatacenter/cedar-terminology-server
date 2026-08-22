@@ -1,5 +1,6 @@
 package org.metadatacenter.cedar.terminology.resources.bioportal;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import io.dropwizard.testing.DropwizardTestSupport;
 import io.dropwizard.testing.ResourceHelpers;
 import jakarta.ws.rs.client.ClientBuilder;
@@ -19,6 +20,7 @@ import org.metadatacenter.model.SystemComponent;
 import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.terms.domainObjects.OntologyClass;
 import org.metadatacenter.terms.domainObjects.OntologyVersion;
+import org.metadatacenter.terms.domainObjects.VersionTriple;
 import org.metadatacenter.terms.domainObjects.SearchResult;
 import org.metadatacenter.terms.domainObjects.VersionDiff;
 import org.metadatacenter.terms.store.CatalogStore;
@@ -66,6 +68,10 @@ public class LocalStoreResourceTest {
   }
 
   private static final String ONT = "LOCALTEST";
+  // A non-standard collection name (not one of the historical CEDARVS/NLMVS/CADSR-VS): integrated-search
+  // now imposes no collection allow-list, so a value-set constraint on any collection resolves. Serving
+  // this proves the cap is gone.
+  private static final String VS = "LOCALVS";
   private static final String BASE = "http://localtest/";
 
   static {
@@ -108,12 +114,33 @@ public class LocalStoreResourceTest {
         c.addSnapshot(new CatalogStore.SnapshotInfo("v2", ONT, "2.0", "2025-06-01", "2025-06-01T00:00:00Z",
             "OWL", "subsumption", 4, 3, snapshot2.toString(), "v2", "open"));
         c.setTag(ONT, CatalogStore.TAG_LATEST, "v2");
+        // Claim the term ID-space so a class/term IRI can be mapped back to its owning ontology (the
+        // reverse of the A6 iri derivation). idspace("http://localtest/cancer") is "http://localtest/",
+        // so that is LOCALTEST's raw namespace; the iri value itself is only provenance here.
+        c.setOntologyIri(ONT, BASE, BASE);
+
+        // A value-set collection, versioned by the same content-hash mechanism. Deliberately NOT in
+        // the localOntologies allowlist below: value-set-collection version resolution gates on the
+        // catalog's kind marker, not the search/browse allowlist. It reuses the ONT snapshot file (the
+        // version-current endpoint reads only catalog columns for the triple).
+        c.upsertOntology(new CatalogStore.OntologyInfo(VS, "Local Value Sets", null, "SKOS"));
+        c.addSnapshot(new CatalogStore.SnapshotInfo("vs1", VS, "2024-05-01", "2024-05-01",
+            "2024-05-02T00:00:00Z", "SKOS", "subsumption", 3, 2, snapshot.toString(), "vs1", "open"));
+        // A second, newer version of the collection (reusing the v2 snapshot, which adds "infection"
+        // under "disease"), left un-tagged so `latest` stays vs1 — it gives a value-set constraint a
+        // pinned version distinct from current, so a frozen value-set read can be exercised.
+        c.addSnapshot(new CatalogStore.SnapshotInfo("vs2", VS, "2024-11-01", "2024-11-01",
+            "2024-11-02T00:00:00Z", "SKOS", "subsumption", 4, 3, snapshot2.toString(), "vs2", "open"));
+        c.setTag(VS, CatalogStore.TAG_LATEST, "vs1");
+        c.setOntologyKind(VS, CatalogStore.KIND_VALUE_SET_COLLECTION);
       }
 
       // Override the (empty) cedar-main.yml localStore config for this test. Uses the non-"cedar."
       // property names the app recognizes, set before the app starts so the local store is enabled.
       System.setProperty("terminologyStore.catalogPath", catalog.toString());
-      System.setProperty("terminologyStore.localOntologies", ONT);
+      // Serve LOCALTEST and the LOCALVS collection: a value-set collection is in the serving allowlist
+      // (as CEDARVS is in production) so its members can be enumerated at populate time.
+      System.setProperty("terminologyStore.localOntologies", ONT + "," + VS);
     } catch (Exception e) {
       throw new ExceptionInInitializerError(e);
     }
@@ -184,6 +211,108 @@ public class LocalStoreResourceTest {
     List<OntologyVersion> latest = versions.stream().filter(OntologyVersion::latest).collect(Collectors.toList());
     Assertions.assertEquals(1, latest.size());
     Assertions.assertEquals("v2", latest.get(0).versionId());
+    // Each entry carries the full triple: effectiveDate (the release day) alongside the id and the
+    // declared version. v2 released 2025-06-01.
+    Assertions.assertEquals("2025-06-01", latest.get(0).effectiveDate());
+    Assertions.assertEquals("2.0", latest.get(0).version());
+  }
+
+  @Test
+  public void currentVersionTripleServedFromLocalStore() {
+    String url = childrenUrlBase + "/" + ONT + "/versions/current";
+    Response response = clientBuilder.build().target(url).request()
+        .header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
+
+    Assertions.assertEquals(Status.OK.getStatusCode(), response.getStatus());
+    VersionTriple triple = response.readEntity(VersionTriple.class);
+    response.close();
+
+    // The current snapshot is the tagged latest (v2): its content-hash id, release day, and label.
+    Assertions.assertEquals("v2", triple.id());
+    Assertions.assertEquals("2025-06-01", triple.effectiveDate());
+    Assertions.assertEquals("2.0", triple.declaredVersion());
+  }
+
+  @Test
+  public void valueSetCollectionCurrentVersionServedFromLocalStore() {
+    String url = "http://localhost:" + RULE.getLocalPort() + "/" + BP_ENDPOINT
+        + "/vs-collections/version-current?collection=" + VS;
+    Response response = clientBuilder.build().target(url).request()
+        .header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
+
+    Assertions.assertEquals(Status.OK.getStatusCode(), response.getStatus());
+    VersionTriple triple = response.readEntity(VersionTriple.class);
+    response.close();
+
+    // The collection's current snapshot triple — resolved even though LOCALVS is not in the ontology
+    // serving allowlist, because it is marked a value-set collection in the catalog.
+    Assertions.assertEquals("vs1", triple.id());
+    Assertions.assertEquals("2024-05-01", triple.effectiveDate());
+  }
+
+  @Test
+  public void valueSetCollectionCurrentVersionIs404ForAnOntologyOrUnknown() {
+    // An ordinary ontology acronym is not a value-set collection (the kind guard), and an unknown one
+    // is not served — both 404, so a value-set constraint pointing at neither is left unpinned.
+    for (String collection : new String[]{ONT, "NOPE"}) {
+      String url = "http://localhost:" + RULE.getLocalPort() + "/" + BP_ENDPOINT
+          + "/vs-collections/version-current?collection=" + collection;
+      Response response = clientBuilder.build().target(url).request()
+          .header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
+      response.close();
+      Assertions.assertEquals(Status.NOT_FOUND.getStatusCode(), response.getStatus(),
+          "collection=" + collection + " must not resolve");
+    }
+  }
+
+  @Test
+  public void classCurrentVersionServedForLocalConceptIri() {
+    // A class-valued constraint names a term IRI but not its ontology. The IRI's namespace is mapped
+    // back to LOCALTEST, whose current triple (v2) is returned — the freeze-on-publish path for a
+    // class constraint. This is the only endpoint that resolves an ontology from a bare term IRI.
+    String url = "http://localhost:" + RULE.getLocalPort() + "/" + BP_ENDPOINT + "/classes/version-current?uri="
+        + URLEncoder.encode(BASE + "melanoma", StandardCharsets.UTF_8);
+    Response response = clientBuilder.build().target(url).request()
+        .header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
+
+    Assertions.assertEquals(Status.OK.getStatusCode(), response.getStatus());
+    VersionTriple triple = response.readEntity(VersionTriple.class);
+    response.close();
+
+    Assertions.assertEquals("v2", triple.id());
+    Assertions.assertEquals("2025-06-01", triple.effectiveDate());
+    Assertions.assertEquals("2.0", triple.declaredVersion());
+  }
+
+  @Test
+  public void classCurrentVersionIs404ForAnUnservedNamespace() {
+    // A term whose namespace maps to no locally served ontology cannot be pinned — 404, so a class
+    // constraint pointing outside the local store is left unpinned rather than mis-resolved.
+    String url = "http://localhost:" + RULE.getLocalPort() + "/" + BP_ENDPOINT + "/classes/version-current?uri="
+        + URLEncoder.encode("http://elsewhere.example/nope", StandardCharsets.UTF_8);
+    Response response = clientBuilder.build().target(url).request()
+        .header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
+    response.close();
+    Assertions.assertEquals(Status.NOT_FOUND.getStatusCode(), response.getStatus());
+  }
+
+  @Test
+  public void integratedSearchResolvesAPinByDeclaredVersion() {
+    // The pin is the self-declared label ("1.0"/"2.0"), not the content-hash id ("v1"/"v2") that
+    // integratedSearchHonoursPinnedVersionOverHttp uses — the declared-version branch of the resolver
+    // reached over HTTP. This is exactly the shape a frozen template carries. v1 has 3 concepts, v2 4.
+    Assertions.assertEquals(3, integratedSearchOntologyConceptCount(",\"version\":\"1.0\""));
+    Assertions.assertEquals(4, integratedSearchOntologyConceptCount(",\"version\":\"2.0\""));
+  }
+
+  @Test
+  public void integratedSearchResolvesAPinByAsOfDate() {
+    // A date pin serves the newest snapshot released on or before it (as-of-date resolution). v1
+    // released 2025-01-01, v2 2025-06-01: a 2025-03-01 pin lands on v1 (3 concepts), a later date on
+    // v2 (4). (A date before either would resolve to empty and fall back to the remote adapter, which
+    // is unconfigured here, so that boundary is left to the store-layer unit tests.)
+    Assertions.assertEquals(3, integratedSearchOntologyConceptCount(",\"version\":\"2025-03-01\""));
+    Assertions.assertEquals(4, integratedSearchOntologyConceptCount(",\"version\":\"2025-09-01\""));
   }
 
   @Test
@@ -225,8 +354,59 @@ public class LocalStoreResourceTest {
    */
   @Test
   public void integratedSearchHonoursPinnedVersionOverHttp() {
-    Assertions.assertEquals(3, integratedSearchOntologyConceptCount(",\"version\":\"v1\""));
+    Assertions.assertEquals(3, integratedSearchOntologyConceptCount(",\"version\":{\"id\":\"v1\","
+        + "\"effectiveDate\":\"2025-01-01\",\"declaredVersion\":\"1.0\"}"));
     Assertions.assertEquals(4, integratedSearchOntologyConceptCount("")); // no version -> latest (v2)
+  }
+
+  @Test
+  public void integratedSearchHonoursPinnedVersionForABranch() {
+    // A branch (a class + its descendants) served at a pinned version. The "disease" branch spans the
+    // whole tree; v2 adds "infection" under "disease", so latest carries exactly one more concept than
+    // v1. Pinning v1 must serve the smaller v1 subtree, proving the pin reaches the branch read path.
+    int pinnedV1 = integratedSearchCount("{\"ontologies\":[],\"branches\":[{\"acronym\":\"" + ONT
+        + "\",\"uri\":\"" + BASE + "disease\",\"version\":{\"id\":\"v1\"}}],"
+        + "\"valueSets\":[],\"classes\":[]}");
+    int latest = integratedSearchCount("{\"ontologies\":[],\"branches\":[{\"acronym\":\"" + ONT
+        + "\",\"uri\":\"" + BASE + "disease\"}],\"valueSets\":[],\"classes\":[]}");
+    Assertions.assertTrue(pinnedV1 >= 2, "v1 branch is non-empty");
+    Assertions.assertEquals(pinnedV1 + 1, latest, "v2 adds exactly one concept to the disease branch");
+  }
+
+  @Test
+  public void integratedSearchHonoursPinnedVersionForAValueSet() {
+    // A value set's members are the children of its root class in the collection snapshot. Under
+    // "disease": 1 child (cancer) in vs1, 2 (cancer, infection) in vs2. Pinning each serves that version.
+    Assertions.assertEquals(1, integratedSearchCount("{\"ontologies\":[],\"branches\":[],\"valueSets\":[{"
+        + "\"vsCollection\":\"" + VS + "\",\"uri\":\"" + BASE
+        + "disease\",\"version\":{\"id\":\"vs1\"}}],\"classes\":[]}"));
+    Assertions.assertEquals(2, integratedSearchCount("{\"ontologies\":[],\"branches\":[],\"valueSets\":[{"
+        + "\"vsCollection\":\"" + VS + "\",\"uri\":\"" + BASE
+        + "disease\",\"version\":{\"id\":\"vs2\"}}],\"classes\":[]}"));
+  }
+
+  @Test
+  public void integratedSearchToleratesTheFrozenSpecFieldsOnAClassConstraint() {
+    // A frozen template carries iri / sourceSystem / version on a class entry too. An enumerated class
+    // is self-describing (uri + prefLabel used as-is), so those fields are not consumed — but the
+    // request must still deserialize and return the class rather than 400 on the extra fields.
+    int count = integratedSearchCount("{\"ontologies\":[],\"branches\":[],\"valueSets\":[],\"classes\":[{"
+        + "\"uri\":\"" + BASE + "cancer\",\"prefLabel\":\"Cancer\",\"type\":\"OntologyClass\","
+        + "\"source\":\"" + ONT + "\",\"iri\":\"" + BASE + "cancer\",\"sourceSystem\":\"bioportal\","
+        + "\"version\":{\"id\":\"v1\",\"effectiveDate\":\"2025-01-01\",\"declaredVersion\":\"1.0\"}}]}");
+    Assertions.assertEquals(1, count);
+  }
+
+  /** POST integrated-search with an explicit valueConstraints object (inner JSON) and return the total. */
+  private static int integratedSearchCount(String valueConstraintsJson) {
+    String url = "http://localhost:" + RULE.getLocalPort() + "/" + BP_ENDPOINT + "/integrated-search";
+    String body = "{\"parameterObject\":{\"valueConstraints\":" + valueConstraintsJson
+        + ",\"inputText\":\"\"},\"page\":1,\"pageSize\":50}";
+    Response response = clientBuilder.build().target(url).request().post(Entity.json(body));
+    Assertions.assertEquals(Status.OK.getStatusCode(), response.getStatus());
+    PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {});
+    response.close();
+    return results.getTotalCount();
   }
 
   /** POST integrated-search enumerating one ontology constraint (empty input text) and return its
@@ -243,5 +423,105 @@ public class LocalStoreResourceTest {
         response.readEntity(new GenericType<PagedResults<SearchResult>>() {});
     response.close();
     return results.getTotalCount();
+  }
+
+  /* ------------------------------------------------------------------------------------------------
+   * POST /search — version-aware search, at its own root path rather than under /bioportal.
+   *
+   * These exercise the wiring and the JSON contract over the real HTTP stack; what the service does
+   * with a snapshot is covered by VersionAwareSearchServiceTest in the core module.
+   * --------------------------------------------------------------------------------------------- */
+
+  private static JsonNode postSearch(String body, Status expected) {
+    String url = "http://localhost:" + RULE.getLocalPort() + "/search";
+    // No Authorization header: this endpoint is unauthenticated, like integrated-search.
+    Response response = clientBuilder.build().target(url).request().post(Entity.json(body));
+    Assertions.assertEquals(expected.getStatusCode(), response.getStatus());
+    JsonNode json = response.readEntity(JsonNode.class);
+    response.close();
+    return json;
+  }
+
+  @Test
+  public void versionAwareSearchIsServedFromTheLocalStore() {
+    JsonNode json = postSearch("{\"query\":\"melanoma\",\"types\":[\"class\"],"
+        + "\"sources\":[{\"sourceAcronym\":\"" + ONT + "\"}]}", Status.OK);
+
+    JsonNode classes = json.get("results").get("class");
+    Assertions.assertEquals(1, classes.get("totalCount").asInt());
+    JsonNode hit = classes.get("collection").get(0);
+    Assertions.assertEquals("class", hit.get("type").asText());
+    Assertions.assertEquals(BASE + "melanoma", hit.get("termIri").asText());
+    Assertions.assertEquals("Melanoma", hit.get("termLabel").asText());
+    // The addressing pair is on the hit; everything else about the source is in the envelope.
+    Assertions.assertEquals("bioportal", hit.get("sourceSystem").asText());
+    Assertions.assertEquals(ONT, hit.get("sourceAcronym").asText());
+    Assertions.assertFalse(hit.has("sourceIri"));
+
+    JsonNode source = json.get("sources").get(0);
+    Assertions.assertEquals("local", source.get("served").asText());
+    Assertions.assertTrue(source.get("pinnable").asBoolean());
+    Assertions.assertEquals("v2", source.get("version").get("id").asText(), "latest, with no pin asked for");
+  }
+
+  @Test
+  public void versionAwareSearchHonoursAPin() {
+    // v2 adds "infection"; v1 predates it. Searching latest while pinned to v1 is exactly the bug
+    // this endpoint exists to prevent, so the pinned search must not see it.
+    JsonNode latest = postSearch("{\"query\":\"infection\",\"types\":[\"class\"],"
+        + "\"sources\":[{\"sourceAcronym\":\"" + ONT + "\"}]}", Status.OK);
+    Assertions.assertEquals(1, latest.get("results").get("class").get("totalCount").asInt());
+
+    JsonNode pinned = postSearch("{\"query\":\"infection\",\"types\":[\"class\"],"
+        + "\"sources\":[{\"sourceAcronym\":\"" + ONT + "\",\"version\":{\"id\":\"v1\"}}]}", Status.OK);
+    Assertions.assertEquals(0, pinned.get("results").get("class").get("totalCount").asInt());
+    Assertions.assertEquals("v1", pinned.get("sources").get(0).get("version").get("id").asText());
+  }
+
+  @Test
+  public void versionAwareSearchAcceptsLatestAsAVersion() {
+    JsonNode json = postSearch("{\"query\":\"infection\",\"types\":[\"class\"],"
+        + "\"sources\":[{\"sourceAcronym\":\"" + ONT + "\",\"version\":\"latest\"}]}", Status.OK);
+    Assertions.assertEquals(1, json.get("results").get("class").get("totalCount").asInt(),
+        "\"latest\" is the constraint spec's spelling of unpinned");
+  }
+
+  @Test
+  public void versionAwareSearchReportsASourceItCouldNotSearch() {
+    JsonNode json = postSearch("{\"query\":\"melanoma\",\"types\":[\"class\"],"
+        + "\"sources\":[{\"sourceAcronym\":\"" + ONT + "\"},"
+        + "{\"sourceSystem\":\"agroportal\",\"sourceAcronym\":\"NOSUCH\"}]}", Status.OK);
+
+    JsonNode absent = json.get("sources").get(1);
+    Assertions.assertEquals("unavailable", absent.get("served").asText());
+    Assertions.assertEquals("sourceUnknown", absent.get("reason").asText());
+    Assertions.assertEquals("agroportal", absent.get("sourceSystem").asText());
+    // The rest of the results still came back: a search across sources has a partial answer.
+    Assertions.assertEquals(1, json.get("results").get("class").get("totalCount").asInt());
+  }
+
+  @Test
+  public void versionAwareSearchRefusesWhatItWillNotAnswer() {
+    postSearch("{\"query\":\"melanoma\",\"types\":[\"nonsense\"],"
+        + "\"sources\":[{\"sourceAcronym\":\"" + ONT + "\"}]}", Status.BAD_REQUEST);
+    // Every type but ontology needs a source: corpus-wide search would mean querying every snapshot.
+    postSearch("{\"query\":\"melanoma\",\"types\":[\"class\"],\"sources\":[]}", Status.BAD_REQUEST);
+  }
+
+  @Test
+  public void versionAwareSearchAnswersEveryTypeAtOnce() {
+    JsonNode json = postSearch("{\"query\":\"disease\","
+        + "\"sources\":[{\"sourceAcronym\":\"" + ONT + "\"}]}", Status.OK);
+
+    JsonNode results = json.get("results");
+    Assertions.assertTrue(results.has("ontology"));
+    Assertions.assertTrue(results.has("branch"));
+    Assertions.assertTrue(results.has("class"));
+    Assertions.assertTrue(results.has("valueSet"));
+    // "Disease" has something beneath it, so it is a branch as well as a class. Three descendants,
+    // not two: this searches latest, which is v2, and v2 adds "infection" under "disease".
+    JsonNode branch = results.get("branch").get("collection").get(0);
+    Assertions.assertEquals(BASE + "disease", branch.get("termBaseIri").asText());
+    Assertions.assertEquals(3, branch.get("descendantCount").asInt());
   }
 }

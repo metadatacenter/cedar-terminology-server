@@ -1,6 +1,7 @@
 package org.metadatacenter.terms.ingest;
 
 import org.metadatacenter.terms.store.CatalogStore;
+import org.metadatacenter.terms.store.OntologyIri;
 import org.metadatacenter.terms.store.SnapshotStore;
 import org.semanticweb.owlapi.model.IRI;
 import org.slf4j.Logger;
@@ -76,6 +77,35 @@ public class IngestJob {
   }
 
   /**
+   * Ingests the latest submission of a BioPortal value-set collection and points {@code latest} at
+   * it. A collection is an ontology of type {@code VALUE_SET_COLLECTION} in BioPortal — fetched,
+   * downloaded, hashed, and snapshotted through the exact same content-hash mechanism as an ontology
+   * ({@link #ingestSubmission}); the only difference is that the catalog row is marked
+   * {@link CatalogStore#KIND_VALUE_SET_COLLECTION} so its version resolves separately. This is what
+   * lets a value-set-valued constraint be frozen on publish.
+   */
+  public IngestResult ingestValueSetCollectionLatest(CatalogStore catalog, String acronym, Path snapshotDir)
+      throws IOException, InterruptedException, SQLException {
+    IngestResult r = ingestLatest(catalog, acronym, snapshotDir);
+    catalog.setOntologyKind(acronym, CatalogStore.KIND_VALUE_SET_COLLECTION);
+    return r;
+  }
+
+  /**
+   * Ingests every submission (version) of a value-set collection and marks the collection's row as
+   * {@link CatalogStore#KIND_VALUE_SET_COLLECTION}. The value-set-collection analogue of
+   * {@link #ingestAll}, giving the collection real version history to resolve and diff.
+   */
+  public List<IngestResult> ingestAllValueSetCollection(CatalogStore catalog, String acronym, Path snapshotDir)
+      throws IOException, InterruptedException, SQLException {
+    List<IngestResult> results = ingestAll(catalog, acronym, snapshotDir);
+    if (!results.isEmpty()) {
+      catalog.setOntologyKind(acronym, CatalogStore.KIND_VALUE_SET_COLLECTION);
+    }
+    return results;
+  }
+
+  /**
    * Ingests every submission (version) of an ontology as its own snapshot, then points
    * {@code latest} at the newest (highest submission id). Older versions remain resolvable by their
    * content-hash version id. Submissions that fail to download or extract are logged and skipped so
@@ -115,18 +145,14 @@ public class IngestJob {
     log.info("Ingesting {} submission {} (version {}, format {})",
         acronym, sub.submissionId(), sub.version(), sub.format());
 
-    // Licensing guard: never download or ingest content BioPortal marks as restricted/licensed.
-    OntologyAccess access = source.accessInfo(acronym);
-    if (!access.isPublic()) {
-      throw new IOException("Refusing to ingest restricted ontology " + acronym
-          + " (viewingRestriction=" + access.viewingRestriction() + "); licensed content is not ingested");
-    }
-
     Path ontoDir = snapshotDir.resolve(acronym);
-    Path raw = source.download(acronym, sub.submissionId(), ontoDir.resolve("raw"));
-    String versionId = sha256(raw);      // version id hashes the archival download as-is
-    Path loadable = decompress(raw);     // .zip/.gz submissions must be expanded before parsing
-    loadable = stripOboImports(loadable);// OBO import: declarations must be dropped before parsing
+    Prepared prep = prepareSubmission(acronym, sub, ontoDir); // licensing guard + download + decompress + strip
+    OntologyAccess access = prep.access();
+    String rawHash = prep.rawHash();     // hash of the archival download, kept as file_hash provenance
+    // The ontology's self-declared owl:Ontology IRI, read cheaply from the file head. A fallback
+    // identity for when the class namespace is a file/host base or a merely-imported namespace that
+    // de-confliction declines (VERSIONING item 6).
+    String headerIri = OntologyHeaderIri.fromFile(prep.loadable()).orElse(null);
 
     // Extract into a temp file and only replace the live snapshot once extraction succeeds with a
     // non-empty result. Extracting in place (delete-then-write) would lose a good snapshot whenever
@@ -134,13 +160,24 @@ public class IngestJob {
     // resolution throw NoClassDefFoundError (an Error, missed by catch(Exception)), leaving an empty
     // file with the previous good data already deleted. Catch Throwable so such an Error becomes a
     // skippable failure rather than clobbering data or aborting a batch.
-    Path snapshotFile = ontoDir.resolve(versionId + ".sqlite");
-    Path tempFile = ontoDir.resolve(versionId + ".sqlite.tmp");
+    //
+    // The version id is the normalized content hash (VERSIONING-ROADMAP "The Model" §4.3), so it can only be
+    // computed after extraction. The temp file is therefore named by the raw hash (name-independent
+    // of identity); the final file is named by the content-hash version id.
+    Path tempFile = ontoDir.resolve(rawHash + ".sqlite.tmp");
     Files.deleteIfExists(tempFile);
     HierarchyExtractor.Result extracted;
+    String versionId;
+    String ownNamespace; // this snapshot's dominant own ID-space, for the canonical iri
     try (SnapshotStore store = SnapshotStore.openFile(tempFile.toString())) {
       store.initSchema();
-      extracted = extractorFor(acronym, sub.format()).extractFromFile(loadable.toFile(), store);
+      Extraction ex = extractInto(store, acronym, sub, prep.loadable());
+      if (headerIri != null) {
+        store.setMeta("ontology_iri", headerIri); // record the declared IRI in the snapshot
+      }
+      extracted = ex.result();
+      versionId = ex.versionId();
+      ownNamespace = ex.ownNamespace();
     } catch (Throwable e) {
       Files.deleteIfExists(tempFile);
       throw new IOException("Extraction failed for " + acronym + " submission " + sub.submissionId(), e);
@@ -150,21 +187,863 @@ public class IngestJob {
       throw new IOException("Extraction produced 0 classes for " + acronym + " submission "
           + sub.submissionId() + "; refusing to overwrite the existing snapshot with an empty one");
     }
+    Path snapshotFile = ontoDir.resolve(versionId + ".sqlite");
     Files.move(tempFile, snapshotFile, StandardCopyOption.REPLACE_EXISTING);
 
-    catalog.upsertOntology(new CatalogStore.OntologyInfo(acronym, acronym, null, sub.format()));
-    catalog.addSnapshot(new CatalogStore.SnapshotInfo(
-        versionId, acronym, sub.version(), sub.released(), Instant.now().toString(),
-        sub.format(), "subsumption", extracted.classCount(), extracted.edgeCount(),
-        catalogRelativePath(catalog, snapshotFile), versionId,
-        access.viewingRestriction() == null ? "public" : access.viewingRestriction()));
-    if (setAsLatest) {
-      catalog.setTag(acronym, CatalogStore.TAG_LATEST, versionId);
-    }
+    // Register the snapshot and reconcile its canonical identity atomically. These steps are all
+    // idempotent upserts, so re-running the ingest after a crash heals any partial state; the
+    // transaction additionally ensures a concurrent reader never sees a half-registered snapshot (a
+    // snapshot row without its latest tag, or a served snapshot with no canonical iri). The snapshot
+    // file was moved into place first — it is content-addressed by version id — so a rollback leaves
+    // only an unreferenced orphan file that the next ingest overwrites in place.
+    String ownNamespaceFinal = ownNamespace; // effectively-final copy for the transaction lambda
+    // The source's human-readable title becomes the catalog display name (shown in the ontology
+    // picker). BioPortal supplies one in its submission metadata; a direct-URL/OBO source does not, so
+    // fall back to the title the ontology declares in its own owl:Ontology header, and only then to the
+    // acronym. This keeps a URL-sourced ontology's real name across re-ingests instead of resetting it.
+    String displayName = access.name() != null && !access.name().isBlank() ? access.name()
+        : OntologyHeaderTitle.fromFile(prep.loadable()).filter(t -> !t.isBlank()).orElse(acronym);
+    catalog.inTransaction(() -> {
+      catalog.upsertOntology(new CatalogStore.OntologyInfo(acronym, displayName, null, sub.format()));
+      catalog.addSnapshot(new CatalogStore.SnapshotInfo(
+          versionId, acronym, sub.version(), sub.released(), Instant.now().toString(),
+          sub.format(), "subsumption", extracted.classCount(), extracted.edgeCount(),
+          catalogRelativePath(catalog, snapshotFile), rawHash,
+          access.viewingRestriction() == null ? "public" : access.viewingRestriction()));
+      // Display/audit-only provenance: BioPortal's reliable per-upload submission id (in hand here,
+      // unreconstructable offline later) and the version string's self-claimed date.
+      catalog.setSnapshotProvenance(versionId, acronym, sub.submissionId(),
+          CatalogStore.SnapshotProvenance.sourceDateFromDeclaredVersion(sub.version()));
+      // Record the backend the bytes came from (default bioportal). Identity is unaffected — the same
+      // release from a different authority resolves to the same content-hash version_id and merges here.
+      catalog.setSnapshotBackend(versionId, acronym, source.backendId());
+      if (setAsLatest) {
+        catalog.setTag(acronym, CatalogStore.TAG_LATEST, versionId);
+      }
+      // Derive and store the ontology's canonical iri (VERSIONING-ROADMAP "The Model" §6.4) at ingest — its
+      // content-derived, source-independent cross-source identity — rather than leaving it to the
+      // derivation backfill, so a fresh ingest is iri-identified immediately and two sources of one
+      // ontology can be joined by iri. Set on the first ingest and whenever this is the latest; the own
+      // namespace is stable across versions, so re-setting is idempotent. Runs after the latest tag so
+      // the de-confliction below sees this ontology's own content.
+      if (ownNamespaceFinal != null && (setAsLatest || catalog.ontologyIri(acronym).isEmpty())) {
+        String canonicalIri = OntologyIri.canonical(ownNamespaceFinal);
+        catalog.setOntologyIri(acronym, canonicalIri, ownNamespaceFinal);
+        // Enforce the identity invariant: a placeholder/host base or a merely-imported namespace is
+        // shared with a content-distinct ontology. Decline it here (and any importer this ingest
+        // displaces), keeping the iri only for its true OBO owner; then reap any orphaned identity row.
+        IriDeconfliction.reconcile(catalog, canonicalIri);
+        catalog.pruneOrphanIdentities();
+      }
+      // Header-IRI fallback (item 6): if the class namespace produced no identity, or de-confliction
+      // just declined it (a file/host base, or a namespace this ontology only imports), fall back to the
+      // ontology's own owl:Ontology IRI. Guarded on the acronym still being identity-less, so a clean
+      // class-derived, source-independent iri always wins. De-conflict it too — a header IRI shared by
+      // two content-distinct ontologies is still not a merge.
+      if (headerIri != null && catalog.ontologyIri(acronym).isEmpty()) {
+        String headerCanonical = OntologyIri.canonical(headerIri);
+        catalog.setOntologyIri(acronym, headerCanonical, headerIri);
+        IriDeconfliction.reconcile(catalog, headerCanonical);
+        catalog.pruneOrphanIdentities();
+      }
+    });
 
     log.info("Ingested {} submission {} -> {} ({} classes, {} edges)",
         acronym, sub.submissionId(), versionId, extracted.classCount(), extracted.edgeCount());
     return new IngestResult(sub.submissionId(), versionId, snapshotFile, extracted.classCount(), extracted.edgeCount());
+  }
+
+  /** A downloaded, parse-ready submission: the loadable file, its raw-bytes hash, and its access info. */
+  private record Prepared(Path loadable, String rawHash, OntologyAccess access) {}
+
+  /** The result of extracting a submission into a store: the counts, the content-hash version id, and
+   *  the ontology's dominant own ID-space (for the canonical iri). */
+  private record Extraction(HierarchyExtractor.Result result, String versionId, String ownNamespace) {}
+
+  /**
+   * Applies the licensing guard, downloads the submission, and expands/normalizes it to a parse-ready
+   * file (decompress {@code .gz}/{@code .zip}, strip OBO {@code import:} lines). Shared by
+   * {@link #ingestSubmission} and {@link #backfillLabels} so both feed the extractor identical bytes.
+   */
+  private Prepared prepareSubmission(String acronym, Submission sub, Path ontoDir)
+      throws IOException, InterruptedException {
+    // Licensing guard: never download or ingest content BioPortal marks as restricted/licensed.
+    OntologyAccess access = source.accessInfo(acronym);
+    if (!access.isPublic()) {
+      throw new IOException("Refusing to ingest restricted ontology " + acronym
+          + " (viewingRestriction=" + access.viewingRestriction() + "); licensed content is not ingested");
+    }
+    Path raw = source.download(acronym, sub.submissionId(), ontoDir.resolve("raw"));
+    String rawHash = sha256(raw);
+    raw = retainByHash(raw, rawHash);     // keep every download, named by what it is
+    Path loadable = decompress(raw);      // .zip/.gz submissions must be expanded before parsing
+    loadable = stripOboImports(loadable); // OBO import: declarations must be dropped before parsing
+    return new Prepared(loadable, rawHash, access);
+  }
+
+  /**
+   * Extracts a prepared submission into {@code store} with the exact post-processing ingest applies —
+   * prune dead-end import roots, then IRI-fragment fallback labels — and returns the counts, the
+   * content-hash version id, and the own ID-space. Shared so {@link #backfillLabels} reproduces a
+   * snapshot's identity byte-for-byte; the label backfill gates on the returned version id matching.
+   */
+  private Extraction extractInto(SnapshotStore store, String acronym, Submission sub, Path loadable)
+      throws Exception {
+    HierarchyExtractor.Result extracted =
+        extractorFor(acronym, sub.format()).extractFromFile(loadable.toFile(), store);
+    // Drop dead-end import references from the roots: unlabeled foreign classes with no labeled
+    // descendant are unresolved-owl:imports dangling references, not real tree entry points.
+    store.pruneDeadEndImportRoots(acronym);
+    // Then give any still-unlabeled class a fallback label from its IRI fragment (matching BioPortal),
+    // so label-less ontologies are searchable/browsable rather than blank. After the prune, which keys
+    // on the genuinely-unlabeled state.
+    store.fillMissingLabelsFromIri();
+    // Identity = the normalized served model, independent of the source bytes/serialization.
+    String versionId = store.normalizedContentHash(true);
+    String ownNamespace = store.dominantOwnIdspace(acronym).orElse(null);
+    return new Extraction(extracted, versionId, ownNamespace);
+  }
+
+  /** Tally of a label backfill run. */
+  public record BackfillSummary(int filled, int alreadyLabeled, int otherBackend, int noSubmission,
+                                int mismatched, int failed, long labelsAdded) {}
+
+  /**
+   * Backfills the multilingual {@code label} table of already-ingested snapshots that predate label
+   * capture. For each snapshot served from this run's source (matched by backend), re-fetches the exact
+   * submission, re-extracts it into a throwaway store, and — only if the recomputed content-hash
+   * version id equals the snapshot's — copies the captured labels into the existing snapshot file. The
+   * version-id gate makes it fail-safe: a snapshot is enriched in place with identity-preserving labels,
+   * or skipped, never rewritten with different content. Snapshots that already carry labels are skipped,
+   * so the run is resumable and idempotent. {@code only} limits the run to the given acronyms (empty =
+   * all). The catalog is never mutated.
+   */
+  private static final String BACKFILLED_MARKER = "labels_backfilled";
+
+  public BackfillSummary backfillLabels(CatalogStore catalog, Path snapshotDir, Set<String> only)
+      throws SQLException {
+    int filled = 0, already = 0, otherBackend = 0, noSub = 0, mismatched = 0, failed = 0;
+    long labelsAdded = 0;
+    String myBackend = source.backendId();
+    List<String> acronyms = new ArrayList<>();
+    for (CatalogStore.OntologyInfo o : catalog.listOntologies()) {
+      if (only.isEmpty() || only.contains(o.acronym())) {
+        acronyms.add(o.acronym());
+      }
+    }
+    java.util.Optional<Path> base = catalog.baseDir();
+    int idx = 0;
+    for (String acronym : acronyms) {
+      idx++;
+      for (CatalogStore.SnapshotInfo snap : catalog.listSnapshots(acronym)) {
+        Path file = base.map(b -> b.resolve(snap.filePath())).orElse(Path.of(snap.filePath()));
+        try {
+          // Skip snapshots already processed (resumable/idempotent): either they carry captured labels,
+          // or a prior backfill marked them done (a label-less ontology legitimately has zero labels).
+          // initSchema migrates a pre-label snapshot to the empty label/meta tables.
+          try (SnapshotStore existing = SnapshotStore.openFile(file.toString())) {
+            existing.initSchema();
+            if (existing.labelCount() > 0 || existing.getMeta(BACKFILLED_MARKER).isPresent()) {
+              already++;
+              continue;
+            }
+          }
+          // Only backfill snapshots this source can re-fetch (matched by backend).
+          java.util.Optional<CatalogStore.SnapshotProvenance> prov =
+              catalog.snapshotProvenance(snap.versionId(), acronym);
+          String backend = prov.map(CatalogStore.SnapshotProvenance::backend).orElse("bioportal");
+          if (!myBackend.equals(backend)) {
+            otherBackend++;
+            continue;
+          }
+          // Prefer the exact submission when its id was recorded; otherwise fall back to the source's
+          // current latest. Either way the version-id gate below rejects any content drift, so the
+          // fallback can only ever enrich the identical snapshot, never a different one.
+          Integer submissionId = prov.map(CatalogStore.SnapshotProvenance::submissionId).orElse(null);
+          Submission sub;
+          if (submissionId != null) {
+            sub = source.listSubmissions(acronym).stream()
+                .filter(s -> s.submissionId() == submissionId).findFirst().orElse(null);
+          } else {
+            sub = source.latestSubmission(acronym);
+          }
+          if (sub == null) {
+            noSub++;
+            log.warn("[{}/{}] {}: no re-fetchable submission (id {})", idx, acronyms.size(),
+                acronym, submissionId);
+            continue;
+          }
+          Path ontoDir = snapshotDir.resolve(acronym);
+          Prepared prep = prepareSubmission(acronym, sub, ontoDir);
+          Path tempFile = ontoDir.resolve(prep.rawHash() + ".backfill.tmp");
+          Files.deleteIfExists(tempFile);
+          List<SnapshotStore.LabelRow> labels;
+          String recomputed;
+          try (SnapshotStore tmp = SnapshotStore.openFile(tempFile.toString())) {
+            tmp.initSchema();
+            recomputed = extractInto(tmp, acronym, sub, prep.loadable()).versionId();
+            labels = tmp.allLabels();
+          } finally {
+            Files.deleteIfExists(tempFile);
+          }
+          if (!recomputed.equals(snap.versionId())) {
+            mismatched++;
+            log.warn("[{}/{}] {}: re-extraction hashed to {} not {}; leaving snapshot untouched",
+                idx, acronyms.size(), acronym, recomputed, snap.versionId());
+            continue;
+          }
+          try (SnapshotStore existing = SnapshotStore.openFile(file.toString())) {
+            existing.setBusyTimeoutMillis(60_000); // wait out the live server's brief read locks
+            existing.initSchema();
+            existing.addLabels(labels);
+            existing.setMeta(BACKFILLED_MARKER, recomputed); // mark done even when there were 0 labels
+          }
+          filled++;
+          labelsAdded += labels.size();
+          log.info("[{}/{}] {} {}: +{} labels", idx, acronyms.size(), acronym, snap.versionId(), labels.size());
+        } catch (Throwable e) {
+          failed++;
+          log.warn("[{}/{}] {} {}: backfill failed: {}", idx, acronyms.size(), acronym, snap.versionId(),
+              e.toString());
+          System.err.printf("FAIL %s %s: %s%n", acronym, snap.versionId(), e);
+        }
+      }
+    }
+    return new BackfillSummary(filled, already, otherBackend, noSub, mismatched, failed, labelsAdded);
+  }
+
+  /**
+   * Like {@link #backfillLabels}, but re-extracts each snapshot's labels from the <b>retained local raw
+   * download</b> — the file under {@code <snapshotDir>/<acronym>/raw/} whose SHA-256 equals the
+   * snapshot's stored {@code file_hash} — instead of re-fetching from the source. This is the reliable
+   * path once a source has drifted: BioPortal no longer serves the exact bytes a snapshot was built from
+   * (its live submission moved on, or the ontology was withdrawn), so a re-download hashes to a different
+   * version and the identity gate declines it (the {@code hash-mismatch} case). The retained raw is by
+   * definition that exact content, so the recomputed hash matches and the labels attach. Needs no network
+   * and no source credentials. Resumable/idempotent (skips snapshots already labeled or marked);
+   * {@code only} limits the run to the given acronyms (empty = all).
+   */
+  public BackfillSummary backfillLabelsFromRaw(CatalogStore catalog, Path snapshotDir, Set<String> only)
+      throws SQLException {
+    int filled = 0, already = 0, noRaw = 0, drifted = 0, failed = 0;
+    long labelsAdded = 0;
+    List<String> acronyms = new ArrayList<>();
+    for (CatalogStore.OntologyInfo o : catalog.listOntologies()) {
+      if (only.isEmpty() || only.contains(o.acronym())) {
+        acronyms.add(o.acronym());
+      }
+    }
+    java.util.Optional<Path> base = catalog.baseDir();
+    int idx = 0;
+    for (String acronym : acronyms) {
+      idx++;
+      for (CatalogStore.SnapshotInfo snap : catalog.listSnapshots(acronym)) {
+        Path file = base.map(b -> b.resolve(snap.filePath())).orElse(Path.of(snap.filePath()));
+        try {
+          try (SnapshotStore existing = SnapshotStore.openFile(file.toString())) {
+            existing.initSchema();
+            if (existing.labelCount() > 0 || existing.getMeta(BACKFILLED_MARKER).isPresent()) {
+              already++;
+              continue;
+            }
+          }
+          Path rawDir = snapshotDir.resolve(acronym).resolve("raw");
+          Path raw = findRawByHash(rawDir, snap.fileHash());
+          if (raw == null) {
+            noRaw++;
+            log.warn("[{}/{}] {}: no retained raw matches file_hash {}", idx, acronyms.size(),
+                acronym, snap.fileHash());
+            continue;
+          }
+          Path loadable = stripOboImports(decompress(raw));
+          // extractInto only reads the format off the Submission; the rest is display metadata we don't need.
+          Submission sub = new Submission(0, "", "", snap.format());
+          Path tempFile = rawDir.resolveSibling(snap.versionId() + ".rawbackfill.tmp");
+          Files.deleteIfExists(tempFile);
+          List<SnapshotStore.LabelRow> labels;
+          String recomputed;
+          try (SnapshotStore tmp = SnapshotStore.openFile(tempFile.toString())) {
+            tmp.initSchema();
+            recomputed = extractInto(tmp, acronym, sub, loadable).versionId();
+            labels = tmp.allLabels();
+          } finally {
+            Files.deleteIfExists(tempFile);
+          }
+          // No version-id gate here (unlike the source-refetch path): the matched file_hash already
+          // proves this raw is the exact bytes the snapshot was built from, and labels are keyed by
+          // concept IRI (addLabels is INSERT-OR-IGNORE on c.iri), so authentic labels attach to the right
+          // concepts even when today's extractor derives a different model hash than the stored snapshot
+          // (extractor evolution since ingest). A drift is noted, not fatal.
+          if (!recomputed.equals(snap.versionId())) {
+            drifted++;
+            log.info("[{}/{}] {}: extractor drift (recomputed {} vs stored {}); labels still authentic "
+                + "(raw hash matched)", idx, acronyms.size(), acronym, recomputed, snap.versionId());
+          }
+          try (SnapshotStore existing = SnapshotStore.openFile(file.toString())) {
+            existing.setBusyTimeoutMillis(60_000); // wait out the live server's brief read locks
+            existing.initSchema();
+            existing.addLabels(labels);
+            existing.setMeta(BACKFILLED_MARKER, recomputed);
+          }
+          filled++;
+          labelsAdded += labels.size();
+          log.info("[{}/{}] {} {}: +{} labels (from local raw)", idx, acronyms.size(), acronym,
+              snap.versionId(), labels.size());
+        } catch (Throwable e) {
+          failed++;
+          log.warn("[{}/{}] {} {}: raw backfill failed: {}", idx, acronyms.size(), acronym,
+              snap.versionId(), e.toString());
+          System.err.printf("FAIL %s %s: %s%n", acronym, snap.versionId(), e);
+        }
+      }
+    }
+    // otherBackend is unused here (no source involved); noSubmission carries no-matching-raw, mismatched
+    // carries the drift count (those were still filled — informational only).
+    return new BackfillSummary(filled, already, 0, noRaw, drifted, failed, labelsAdded);
+  }
+
+  /**
+   * Fills in definitions for snapshots already written, from the raw download each was built from.
+   *
+   * The same route the label backfill takes, for the same reason: the raw matched by file hash is
+   * the exact bytes the snapshot came from, so what is extracted from it is authentic even where
+   * today's extractor computes a different model hash than the one stored. Definitions attach by
+   * concept IRI, so a drift in the hierarchy does not misplace them.
+   *
+   * Additive throughout — the definition table is outside content identity, so no version id moves
+   * and no pin is disturbed. Resumable: a snapshot that already holds definitions is skipped.
+   */
+  /** Marks a snapshot whose definitions have been considered, so a resume skips it. */
+  private static final String DEFINED_MARKER = "definitionsBackfilled";
+
+  public BackfillSummary backfillDefinitionsFromRaw(CatalogStore catalog, Path snapshotDir, Set<String> only)
+      throws SQLException {
+    int filled = 0, already = 0, noRaw = 0, none = 0, failed = 0;
+    long added = 0;
+    List<String> acronyms = new ArrayList<>();
+    for (CatalogStore.OntologyInfo o : catalog.listOntologies()) {
+      if (only.isEmpty() || only.contains(o.acronym())) {
+        acronyms.add(o.acronym());
+      }
+    }
+    java.util.Optional<Path> base = catalog.baseDir();
+    int idx = 0;
+    for (String acronym : acronyms) {
+      idx++;
+      for (CatalogStore.SnapshotInfo snap : catalog.listSnapshots(acronym)) {
+        Path file = base.map(b -> b.resolve(snap.filePath())).orElse(Path.of(snap.filePath()));
+        try {
+          try (SnapshotStore existing = SnapshotStore.openFile(file.toString())) {
+            existing.initSchema();
+            if (existing.definitionCount() > 0 || existing.getMeta(DEFINED_MARKER).isPresent()) {
+              already++;
+              continue;
+            }
+          }
+          Path rawDir = snapshotDir.resolve(acronym).resolve("raw");
+          Path raw = findRawByHash(rawDir, snap.fileHash());
+          if (raw == null) {
+            noRaw++;
+            continue;
+          }
+          Path loadable = stripOboImports(decompress(raw));
+          Submission sub = new Submission(0, "", "", snap.format());
+          Path tempFile = rawDir.resolveSibling(snap.versionId() + ".defbackfill.tmp");
+          Files.deleteIfExists(tempFile);
+          List<SnapshotStore.DefinitionRow> definitions;
+          try (SnapshotStore tmp = SnapshotStore.openFile(tempFile.toString())) {
+            tmp.initSchema();
+            extractInto(tmp, acronym, sub, loadable);
+            definitions = tmp.allDefinitions();
+          } finally {
+            Files.deleteIfExists(tempFile);
+          }
+          try (SnapshotStore existing = SnapshotStore.openFile(file.toString())) {
+            existing.setBusyTimeoutMillis(60_000); // wait out the live server's brief read locks
+            existing.initSchema();
+            existing.addDefinitions(definitions);
+            // Marked either way, so an ontology that genuinely asserts none is not retried for ever.
+            existing.setMeta(DEFINED_MARKER, String.valueOf(definitions.size()));
+          }
+          if (definitions.isEmpty()) {
+            none++;
+          } else {
+            filled++;
+            added += definitions.size();
+          }
+          log.info("[{}/{}] {} {}: +{} definitions (from local raw)", idx, acronyms.size(), acronym,
+              snap.versionId(), definitions.size());
+        } catch (Throwable e) {
+          failed++;
+          log.warn("[{}/{}] {} {}: definition backfill failed: {}", idx, acronyms.size(), acronym,
+              snap.versionId(), e.toString());
+        }
+      }
+    }
+    // noSubmission carries no-matching-raw; mismatched carries the count that legitimately have none.
+    return new BackfillSummary(filled, already, 0, noRaw, none, failed, added);
+  }
+
+  /**
+   * Stores a download under the hash of its own bytes, compressed.
+   *
+   * The name was the source's — {@code doid.owl} — and BioPortal reuses a filename across releases,
+   * so each download landed on the one before it. Nothing was deleted on purpose; DOID has fifteen
+   * snapshots and six surviving files, and about a quarter of the store's snapshots have lost the
+   * bytes they were built from. A content hash cannot collide with a different download, and it is
+   * also what a lookup asks for, so finding one no longer means hashing a directory.
+   *
+   * Compressed on the way in, because these are XML and OBO text: measured on the store's own files,
+   * gzip takes them to a tenth to a fifteenth of their size. What arrives already compressed is
+   * stored as it came. Either way {@link #decompress} reads it back by its magic bytes.
+   */
+  static Path retainByHash(Path raw, String hash) throws IOException {
+    if (hash == null || hash.isBlank()) {
+      return raw;
+    }
+    boolean compressed = isCompressed(raw);
+    Path kept = raw.resolveSibling(hash + (compressed ? ".raw" : ".gz"));
+    if (Files.exists(kept)) {
+      // The same bytes are already held: this is a re-download of a release we have.
+      Files.deleteIfExists(raw);
+      return kept;
+    }
+    if (compressed) {
+      Files.move(raw, kept, StandardCopyOption.REPLACE_EXISTING);
+      return kept;
+    }
+    Path temp = raw.resolveSibling(hash + ".gz.tmp");
+    try (InputStream in = Files.newInputStream(raw);
+         java.util.zip.GZIPOutputStream out =
+             new java.util.zip.GZIPOutputStream(Files.newOutputStream(temp))) {
+      in.transferTo(out);
+    }
+    Files.move(temp, kept, StandardCopyOption.REPLACE_EXISTING);
+    Files.deleteIfExists(raw);
+    return kept;
+  }
+
+  private static boolean isCompressed(Path file) throws IOException {
+    byte[] magic = new byte[4];
+    try (InputStream in = Files.newInputStream(file)) {
+      if (in.read(magic) < 4) {
+        return false;
+      }
+    }
+    boolean gz = (magic[0] & 0xff) == 0x1f && (magic[1] & 0xff) == 0x8b;
+    boolean zip = magic[0] == 'P' && magic[1] == 'K' && magic[2] == 3 && magic[3] == 4;
+    return gz || zip;
+  }
+
+  /**
+   * The retained download a snapshot was built from, or null.
+   *
+   * By name first, which is the hash itself and so costs a stat. Falling back to hashing the
+   * directory for downloads retained before that was the rule — those keep working, and the
+   * migration renames them.
+   */
+  private static Path findRawByHash(Path rawDir, String wantHash) throws IOException {
+    if (wantHash == null || wantHash.isBlank() || !Files.isDirectory(rawDir)) {
+      return null;
+    }
+    for (String suffix : new String[]{".gz", ".raw"}) {
+      Path named = rawDir.resolve(wantHash + suffix);
+      if (Files.isRegularFile(named)) {
+        return named;
+      }
+    }
+    try (java.util.stream.Stream<Path> entries = Files.list(rawDir)) {
+      for (Path p : (Iterable<Path>) entries.sorted()::iterator) {
+        if (Files.isRegularFile(p) && wantHash.equals(sha256(p))) {
+          return p;
+        }
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Fills in definitions by fetching the source again, where the download was not retained.
+   *
+   * The raw-file pass is the cheap route and covers most of the corpus; it cannot help a snapshot
+   * whose bytes are gone, and 284 of the 1,215 releases the index serves are in that position —
+   * downloads lost to the filename collision that content-hash naming has since closed.
+   *
+   * Gated on identity, as the label refetch is. A source that has moved on hands back a different
+   * release, and a definition is a property of the release that asserts it: attaching next year's
+   * wording to this year's snapshot would put words in its mouth. So the fetch is re-extracted, its
+   * version id compared with the snapshot's, and anything that does not match is left alone and
+   * counted.
+   *
+   * What it fetches is retained on the way past, which is the lasting half of this: the next
+   * extractor fix will find the bytes where this run could not.
+   */
+  public BackfillSummary refetchDefinitions(CatalogStore catalog, Path snapshotDir, Set<String> only,
+                                            boolean currentOnly) throws SQLException {
+    int filled = 0, already = 0, otherBackend = 0, noSub = 0, drifted = 0, failed = 0;
+    long added = 0;
+    String myBackend = source.backendId();
+    List<String> acronyms = new ArrayList<>();
+    for (CatalogStore.OntologyInfo o : catalog.listOntologies()) {
+      if (only.isEmpty() || only.contains(o.acronym())) {
+        acronyms.add(o.acronym());
+      }
+    }
+    java.util.Optional<Path> base = catalog.baseDir();
+    int idx = 0;
+    for (String acronym : acronyms) {
+      idx++;
+      // The releases the index serves are what an author sees; an older one only matters to a pin.
+      List<CatalogStore.SnapshotInfo> snapshots = currentOnly
+          ? catalog.resolveLatest(acronym).map(List::of).orElse(List.of())
+          : catalog.listSnapshots(acronym);
+      for (CatalogStore.SnapshotInfo snap : snapshots) {
+        Path file = base.map(b -> b.resolve(snap.filePath())).orElse(Path.of(snap.filePath()));
+        try {
+          try (SnapshotStore existing = SnapshotStore.openFile(file.toString())) {
+            existing.initSchema();
+            if (existing.definitionCount() > 0) {
+              already++;
+              continue;
+            }
+          }
+          // Only where the raw is genuinely gone. Anything still held was handled by the raw pass,
+          // and a snapshot that asserts no definitions must not be re-downloaded for ever.
+          Path rawDir = snapshotDir.resolve(acronym).resolve("raw");
+          if (findRawByHash(rawDir, snap.fileHash()) != null) {
+            already++;
+            continue;
+          }
+          java.util.Optional<CatalogStore.SnapshotProvenance> prov =
+              catalog.snapshotProvenance(snap.versionId(), acronym);
+          String backend = prov.map(CatalogStore.SnapshotProvenance::backend).orElse("bioportal");
+          if (!myBackend.equals(backend)) {
+            otherBackend++;
+            continue;
+          }
+          Integer submissionId = prov.map(CatalogStore.SnapshotProvenance::submissionId).orElse(null);
+          Submission sub;
+          if (submissionId != null) {
+            sub = source.listSubmissions(acronym).stream()
+                .filter(s -> s.submissionId() == submissionId).findFirst().orElse(null);
+          } else {
+            sub = source.latestSubmission(acronym);
+          }
+          if (sub == null) {
+            noSub++;
+            continue;
+          }
+          // prepareSubmission retains the download by hash on the way past.
+          Prepared prep = prepareSubmission(acronym, sub, snapshotDir.resolve(acronym));
+          Path tempFile = snapshotDir.resolve(acronym).resolve(prep.rawHash() + ".refetch.tmp");
+          Files.deleteIfExists(tempFile);
+          List<SnapshotStore.DefinitionRow> definitions;
+          String recomputed;
+          try (SnapshotStore tmp = SnapshotStore.openFile(tempFile.toString())) {
+            tmp.initSchema();
+            recomputed = extractInto(tmp, acronym, sub, prep.loadable()).versionId();
+            definitions = tmp.allDefinitions();
+          } finally {
+            Files.deleteIfExists(tempFile);
+          }
+          if (!recomputed.equals(snap.versionId())) {
+            drifted++;
+            log.info("[{}/{}] {}: source has moved on (hashed {} not {}); left alone",
+                idx, acronyms.size(), acronym, recomputed.substring(0, 12),
+                snap.versionId().substring(0, 12));
+            continue;
+          }
+          try (SnapshotStore existing = SnapshotStore.openFile(file.toString())) {
+            existing.setBusyTimeoutMillis(60_000);
+            existing.initSchema();
+            existing.addDefinitions(definitions);
+            existing.setMeta(DEFINED_MARKER, String.valueOf(definitions.size()));
+          }
+          filled++;
+          added += definitions.size();
+          log.info("[{}/{}] {} {}: +{} definitions (refetched)", idx, acronyms.size(), acronym,
+              snap.versionId().substring(0, 12), definitions.size());
+        } catch (Throwable e) {
+          failed++;
+          log.warn("[{}/{}] {}: refetch failed: {}", idx, acronyms.size(), acronym, e.toString());
+        }
+      }
+    }
+    return new BackfillSummary(filled, already, otherBackend, noSub, drifted, failed, added);
+  }
+
+  /**
+   * Renames every retained download to the hash of its bytes and compresses it.
+   *
+   * One pass over what is already on disk, so the collision that lost a quarter of the store's
+   * sources cannot happen again and the space they take drops by an order of magnitude. Hashes once
+   * per file — the name is the answer from then on. A file already named for its hash is left alone,
+   * so this can be run again.
+   */
+  public RetainSummary retainRawByHash(Path snapshotDir) throws IOException {
+    int renamed = 0, already = 0, failed = 0;
+    long before = 0, after = 0;
+    try (java.util.stream.Stream<Path> dirs = Files.list(snapshotDir)) {
+      for (Path ontoDir : (Iterable<Path>) dirs.sorted()::iterator) {
+        Path rawDir = ontoDir.resolve("raw");
+        if (!Files.isDirectory(rawDir)) {
+          continue;
+        }
+        List<Path> files;
+        try (java.util.stream.Stream<Path> s = Files.list(rawDir)) {
+          files = s.filter(Files::isRegularFile).sorted().toList();
+        }
+        for (Path file : files) {
+          String name = file.getFileName().toString();
+          if (name.matches("[0-9a-f]{64}\\.(gz|raw)")) {
+            already++;
+            after += Files.size(file);
+            continue;
+          }
+          try {
+            long was = Files.size(file);
+            Path kept = retainByHash(file, sha256(file));
+            renamed++;
+            before += was;
+            after += Files.size(kept);
+          } catch (Exception e) {
+            failed++;
+            log.warn("{}: could not retain {}: {}", ontoDir.getFileName(), name, e.toString());
+          }
+        }
+      }
+    }
+    return new RetainSummary(renamed, already, failed, before, after);
+  }
+
+  /** What the retention pass did, and what it saved. */
+  public record RetainSummary(int renamed, int alreadyNamed, int failed, long bytesBefore, long bytesAfter) {}
+
+  /** Tally of a store integrity check. */
+  public record VerifySummary(int snapshots, int ok, int missingFile, int unreadable, int emptyConcepts,
+                              int hashMismatch, int unresolvableLatest, int orphanFiles) {
+    public boolean clean() {
+      return missingFile + unreadable + emptyConcepts + hashMismatch + unresolvableLatest + orphanFiles == 0;
+    }
+  }
+
+  /**
+   * Read-only integrity check of the store. The reproducibility guarantee is only as good as snapshot
+   * retention, and nothing else verifies it: this confirms every catalog snapshot row resolves to a
+   * present, readable file that holds concepts; that every ontology's {@code latest} resolves to a
+   * present snapshot; and reports any snapshot {@code .sqlite} on disk the catalog does not reference (an
+   * orphan). With {@code deep}, it also recomputes each snapshot's content hash and asserts it equals the
+   * stored {@code version_id} — this reads every snapshot in full (28&nbsp;GB+), so it is opt-in. Mutates
+   * nothing; problems are logged with a leading tag (MISSING FILE / UNREADABLE / EMPTY / HASH MISMATCH /
+   * NO LATEST / ORPHAN FILE) and tallied.
+   */
+  public VerifySummary verifyStore(CatalogStore catalog, Path snapshotDir, boolean deep)
+      throws SQLException, IOException {
+    int total = 0, ok = 0, missingFile = 0, unreadable = 0, emptyConcepts = 0, hashMismatch = 0,
+        unresolvableLatest = 0;
+    java.util.Optional<Path> base = catalog.baseDir();
+    java.util.Set<Path> referenced = new java.util.HashSet<>();
+    for (CatalogStore.OntologyInfo o : catalog.listOntologies()) {
+      for (CatalogStore.SnapshotInfo snap : catalog.listSnapshots(o.acronym())) {
+        total++;
+        Path file = base.map(b -> b.resolve(snap.filePath())).orElse(Path.of(snap.filePath()));
+        referenced.add(file.toAbsolutePath().normalize());
+        if (!Files.isRegularFile(file)) {
+          missingFile++;
+          log.error("MISSING FILE   {} {} -> {}", o.acronym(), snap.versionId(), snap.filePath());
+          continue;
+        }
+        try (SnapshotStore s = SnapshotStore.openFile(file.toString())) {
+          if (s.conceptCount() == 0) { // throws below if the concept table is absent (malformed store)
+            emptyConcepts++;
+            log.warn("EMPTY          {} {} (0 concepts)", o.acronym(), snap.versionId());
+            continue;
+          }
+          if (deep) {
+            String recomputed = s.normalizedContentHash(true);
+            if (!recomputed.equals(snap.versionId())) {
+              hashMismatch++;
+              log.error("HASH MISMATCH  {} recomputed {} != stored {}", o.acronym(), recomputed,
+                  snap.versionId());
+              continue;
+            }
+          }
+        } catch (Exception e) {
+          unreadable++;
+          log.error("UNREADABLE     {} {} ({}): {}", o.acronym(), snap.versionId(), file, e.toString());
+          continue;
+        }
+        ok++;
+      }
+      // Every served ontology should have a latest that resolves to a present snapshot file.
+      java.util.Optional<CatalogStore.SnapshotInfo> latest = catalog.resolveLatest(o.acronym());
+      if (latest.isEmpty()) {
+        unresolvableLatest++;
+        log.error("NO LATEST      {} (latest tag missing or dangling)", o.acronym());
+      } else {
+        Path lf = base.map(b -> b.resolve(latest.get().filePath())).orElse(Path.of(latest.get().filePath()));
+        if (!Files.isRegularFile(lf)) {
+          unresolvableLatest++;
+          log.error("LATEST MISSING {} -> {} (file absent)", o.acronym(), latest.get().filePath());
+        }
+      }
+    }
+    int orphanFiles = reportOrphanSnapshotFiles(snapshotDir, referenced);
+    return new VerifySummary(total, ok, missingFile, unreadable, emptyConcepts, hashMismatch,
+        unresolvableLatest, orphanFiles);
+  }
+
+  /** Snapshot {@code .sqlite} files under {@code snapshotDir} that no catalog row references (the per-
+   *  ontology {@code raw/} downloads are excluded). Reported, never deleted. */
+  private static int reportOrphanSnapshotFiles(Path snapshotDir, java.util.Set<Path> referenced)
+      throws IOException {
+    if (!Files.isDirectory(snapshotDir)) {
+      return 0;
+    }
+    int orphans = 0;
+    try (java.util.stream.Stream<Path> walk = Files.walk(snapshotDir)) {
+      for (Path p : (Iterable<Path>) walk::iterator) {
+        if (!Files.isRegularFile(p) || !p.getFileName().toString().endsWith(".sqlite")
+            || p.toString().contains("/raw/")) {
+          continue;
+        }
+        if (!referenced.contains(p.toAbsolutePath().normalize())) {
+          orphans++;
+          log.warn("ORPHAN FILE    {} ({} bytes) — on disk but no catalog row references it", p,
+              Files.size(p));
+        }
+      }
+    }
+    return orphans;
+  }
+
+  /** Tally of an orphan-file prune. */
+  public record PruneSummary(int orphans, long bytes, int referencedPresent, boolean applied) {}
+
+  /**
+   * Deletes — or by default only reports — snapshot {@code .sqlite} files under {@code snapshotDir} that
+   * no catalog row references, the reclaimable residue of re-ingests. Read-only unless {@code apply}.
+   * Guards against a path misconfiguration wiping the store: if not one catalog-referenced snapshot is
+   * found on disk, every file would look orphaned, so it refuses to delete anything.
+   */
+  public PruneSummary pruneOrphans(CatalogStore catalog, Path snapshotDir, boolean apply)
+      throws SQLException, IOException {
+    java.util.Set<Path> referenced = referencedSnapshotFiles(catalog);
+    java.util.List<Path> orphans = new java.util.ArrayList<>();
+    long bytes = 0;
+    int referencedPresent = 0;
+    if (Files.isDirectory(snapshotDir)) {
+      try (java.util.stream.Stream<Path> walk = Files.walk(snapshotDir)) {
+        for (Path p : (Iterable<Path>) walk::iterator) {
+          if (!Files.isRegularFile(p) || !p.getFileName().toString().endsWith(".sqlite")
+              || p.toString().contains("/raw/")) {
+            continue;
+          }
+          if (referenced.contains(p.toAbsolutePath().normalize())) {
+            referencedPresent++;
+          } else {
+            orphans.add(p);
+            bytes += Files.size(p);
+          }
+        }
+      }
+    }
+    // Safety: if nothing on disk matches the catalog the paths are misconfigured — every file looks
+    // orphaned. Refuse to delete rather than wipe the store.
+    if (apply && !orphans.isEmpty() && referencedPresent == 0) {
+      throw new IOException("refusing to prune: no catalog-referenced snapshot found under " + snapshotDir
+          + " — check the catalog and snapshot paths");
+    }
+    for (Path p : orphans) {
+      long sz = Files.size(p);
+      if (apply) {
+        Files.delete(p);
+        log.warn("DELETED ORPHAN {} ({} bytes)", p, sz);
+      } else {
+        log.warn("WOULD DELETE   {} ({} bytes)", p, sz);
+      }
+    }
+    return new PruneSummary(orphans.size(), bytes, referencedPresent, apply);
+  }
+
+  /** Absolute, normalized paths of every snapshot file the catalog references. */
+  private static java.util.Set<Path> referencedSnapshotFiles(CatalogStore catalog) throws SQLException {
+    java.util.Optional<Path> base = catalog.baseDir();
+    java.util.Set<Path> referenced = new java.util.HashSet<>();
+    for (CatalogStore.OntologyInfo o : catalog.listOntologies()) {
+      for (CatalogStore.SnapshotInfo snap : catalog.listSnapshots(o.acronym())) {
+        Path file = base.map(b -> b.resolve(snap.filePath())).orElse(Path.of(snap.filePath()));
+        referenced.add(file.toAbsolutePath().normalize());
+      }
+    }
+    return referenced;
+  }
+
+  /** Tally of a header-IRI backfill run. */
+  public record HeaderIriSummary(int targets, int headerFound, int noHeader, int failed,
+                                 int nowIdentified, int stillAcronymOnly) {}
+
+  /**
+   * Restores identity for acronym-only ontologies (item 6) from the {@code owl:Ontology} header. For
+   * every ontology the catalog leaves without a canonical iri, downloads its latest submission, reads
+   * the declared header IRI ({@link OntologyHeaderIri}) — cheaply, a file-head scan, not a full parse —
+   * and sets it as the ontology's identity, also recording it in the served snapshot's {@code meta}.
+   * A single de-confliction pass then settles collisions (a header IRI two content-distinct ontologies
+   * both declare is still not a merge), so an ontology can end still acronym-only if it has no header or
+   * its header collides. The catalog is written in place; {@code only} limits the run to given acronyms.
+   */
+  public HeaderIriSummary backfillHeaderIris(CatalogStore catalog, Path snapshotDir, Set<String> only)
+      throws SQLException {
+    List<String> targets = new ArrayList<>();
+    for (CatalogStore.OntologyInfo o : catalog.listOntologies()) {
+      if (!only.isEmpty() && !only.contains(o.acronym())) {
+        continue;
+      }
+      if (catalog.ontologyIri(o.acronym()).isEmpty()) {
+        targets.add(o.acronym());
+      }
+    }
+    int headerFound = 0, noHeader = 0, failed = 0, i = 0;
+    java.util.Optional<Path> base = catalog.baseDir();
+    for (String acronym : targets) {
+      i++;
+      try {
+        Submission sub = source.latestSubmission(acronym); // the header IRI is stable across versions
+        Prepared prep = prepareSubmission(acronym, sub, snapshotDir.resolve(acronym));
+        java.util.Optional<String> header = OntologyHeaderIri.fromFile(prep.loadable());
+        if (header.isEmpty()) {
+          noHeader++;
+          log.info("[{}/{}] {}: no owl:Ontology header IRI", i, targets.size(), acronym);
+          continue;
+        }
+        catalog.setOntologyIri(acronym, OntologyIri.canonical(header.get()), header.get());
+        // Persist the declared IRI in the served snapshot too, so a later re-derivation keeps it.
+        for (CatalogStore.SnapshotInfo snap : catalog.listSnapshots(acronym)) {
+          Path file = base.map(b -> b.resolve(snap.filePath())).orElse(Path.of(snap.filePath()));
+          try (SnapshotStore s = SnapshotStore.openFile(file.toString())) {
+            s.setBusyTimeoutMillis(60_000);
+            s.initSchema();
+            s.setMeta("ontology_iri", header.get());
+          }
+        }
+        headerFound++;
+        log.info("[{}/{}] {}: header IRI {}", i, targets.size(), acronym, header.get());
+      } catch (Throwable e) {
+        failed++;
+        log.warn("[{}/{}] {}: header backfill failed: {}", i, targets.size(), acronym, e.toString());
+        System.err.printf("FAIL %s: %s%n", acronym, e);
+      }
+    }
+    // Settle collisions among the newly-set header IRIs, and against existing identities.
+    IriDeconfliction.run(catalog, true);
+    int stillAcronymOnly = 0;
+    for (String acronym : targets) {
+      if (catalog.ontologyIri(acronym).isEmpty()) {
+        stillAcronymOnly++;
+      }
+    }
+    return new HeaderIriSummary(targets.size(), headerFound, noHeader, failed,
+        targets.size() - stillAcronymOnly, stillAcronymOnly);
   }
 
   /**
@@ -289,18 +1168,73 @@ public class IngestJob {
   }
 
   /**
-   * Usage: IngestJob &lt;catalogPath&gt; &lt;snapshotDir&gt; [--all] &lt;acronym&gt; [acronym...]
+   * Usage: IngestJob &lt;catalogPath&gt; &lt;snapshotDir&gt; [--source bioportal|obofoundry] [--release
+   *        &lt;date&gt;] [--all] [--valuesets] [--submission &lt;id&gt;] &lt;acronym&gt; [acronym...]
    * With {@code --all}, every submission (version) of each ontology is ingested; otherwise only the
-   * latest. The BioPortal API key is read from the {@code BIOPORTAL_API_KEY} environment variable.
+   * latest. With {@code --valuesets}, the listed acronyms are ingested as value-set collections
+   * (same content-hash mechanism, marked {@code value_set_collection} in the catalog) rather than
+   * ontologies. {@code --source obofoundry} draws from the OBO Foundry PURL instead of BioPortal — the
+   * current release, or the {@code --release <date>} dated release — and records the snapshot backend
+   * accordingly; identity is unchanged (the content hash is source-independent), so the same release
+   * from either source merges. {@code --submission} is BioPortal-only. The BioPortal API key is read
+   * from {@code BIOPORTAL_API_KEY} (required only for the BioPortal source).
    */
+  /**
+   * The ingest source named by {@code --source}: {@code bioportal} (default; needs
+   * {@code BIOPORTAL_API_KEY}) or {@code obofoundry} (public; {@code release} targets a dated PURL, or
+   * null for the current release). Exits the process on an unknown name or a missing BioPortal key.
+   * Package-visible for testing the selection without the network.
+   */
+  static SubmissionSource selectSource(String sourceName, String release) {
+    if ("obofoundry".equals(sourceName)) {
+      return new OboFoundrySubmissionSource(release);
+    }
+    if ("bioportal".equals(sourceName)) {
+      String apiKey = System.getenv("BIOPORTAL_API_KEY");
+      if (apiKey == null || apiKey.isBlank()) {
+        System.err.println("BIOPORTAL_API_KEY environment variable is not set");
+        System.exit(2);
+      }
+      return new BioPortalDownloader(apiKey);
+    }
+    System.err.println("Unknown --source '" + sourceName + "' (expected bioportal, obofoundry, or url)");
+    System.exit(2);
+    throw new IllegalStateException("unreachable"); // System.exit does not return
+  }
+
+  /**
+   * Overload adding two source options: {@code --source url} downloads from {@code --url <URL>} with an
+   * optional {@code --format} ({@code OWL} default, or {@code SKOS}) and {@code --backend} label; and a
+   * {@code --base-url} pointing {@code --source bioportal} at any OntoPortal instance (AgroPortal,
+   * EcoPortal, …) instead of BioPortal — same REST API, its own {@code BIOPORTAL_API_KEY}. Any other
+   * combination delegates to {@link #selectSource(String, String)}.
+   */
+  static SubmissionSource selectSource(String sourceName, String release, String url, String format,
+                                       String backend, String baseUrl) {
+    if ("url".equals(sourceName)) {
+      if (url == null || url.isBlank()) {
+        System.err.println("--source url requires --url <URL>");
+        System.exit(2);
+      }
+      return new DirectUrlSubmissionSource(url, format, backend);
+    }
+    if ("bioportal".equals(sourceName) && baseUrl != null && !baseUrl.isBlank()) {
+      String apiKey = System.getenv("BIOPORTAL_API_KEY");
+      if (apiKey == null || apiKey.isBlank()) {
+        System.err.println("BIOPORTAL_API_KEY environment variable is not set (the OntoPortal instance's key)");
+        System.exit(2);
+      }
+      return new BioPortalDownloader(apiKey, baseUrl);
+    }
+    return selectSource(sourceName, release);
+  }
+
   public static void main(String[] args) throws Exception {
     if (args.length < 3) {
-      System.err.println("Usage: IngestJob <catalogPath> <snapshotDir> [--all] <acronym> [acronym...]");
-      System.exit(2);
-    }
-    String apiKey = System.getenv("BIOPORTAL_API_KEY");
-    if (apiKey == null || apiKey.isBlank()) {
-      System.err.println("BIOPORTAL_API_KEY environment variable is not set");
+      System.err.println("Usage: IngestJob <catalogPath> <snapshotDir> "
+          + "[--source bioportal|obofoundry|url] [--url <URL>] [--format OWL|SKOS] [--backend <name>] "
+          + "[--base-url <ontoportal-api>] "
+          + "[--release <date>] [--all] [--valuesets] [--submission <id>] <acronym> [acronym...]");
       System.exit(2);
     }
     Path catalogPath = Path.of(args[0]);
@@ -308,11 +1242,65 @@ public class IngestJob {
     Files.createDirectories(snapshotDir);
 
     boolean all = false;
+    boolean valuesets = false;
+    boolean backfillLabels = false;
+    boolean backfillLabelsFromRaw = false;
+    boolean backfillDefinitionsFromRaw = false;
+    boolean retainRawByHash = false;
+    boolean refetchDefinitions = false;
+    boolean currentOnly = false;
+    boolean backfillHeaderIri = false;
+    boolean verify = false;
+    boolean deep = false;
+    boolean pruneOrphans = false;
+    boolean apply = false;
+    String sourceName = "bioportal";
+    String oboRelease = null;
+    String url = null;
+    String format = null;
+    String backend = null;
+    String baseUrl = null;
     List<Integer> submissionIds = new ArrayList<>();
     List<String> acronyms = new ArrayList<>();
     for (int i = 2; i < args.length; i++) {
       if ("--all".equals(args[i])) {
         all = true;
+      } else if ("--valuesets".equals(args[i])) {
+        valuesets = true;
+      } else if ("--backfill-labels".equals(args[i])) {
+        backfillLabels = true;
+      } else if ("--backfill-labels-from-raw".equals(args[i])) {
+        backfillLabelsFromRaw = true;
+      } else if ("--backfill-definitions-from-raw".equals(args[i])) {
+        backfillDefinitionsFromRaw = true;
+      } else if ("--retain-raw-by-hash".equals(args[i])) {
+        retainRawByHash = true;
+      } else if ("--refetch-definitions".equals(args[i])) {
+        refetchDefinitions = true;
+      } else if ("--current-only".equals(args[i])) {
+        currentOnly = true;
+      } else if ("--verify".equals(args[i])) {
+        verify = true;
+      } else if ("--deep".equals(args[i])) {
+        deep = true;
+      } else if ("--prune-orphans".equals(args[i])) {
+        pruneOrphans = true;
+      } else if ("--apply".equals(args[i])) {
+        apply = true;
+      } else if ("--backfill-header-iri".equals(args[i])) {
+        backfillHeaderIri = true;
+      } else if ("--source".equals(args[i]) && i + 1 < args.length) {
+        sourceName = args[++i];
+      } else if ("--release".equals(args[i]) && i + 1 < args.length) {
+        oboRelease = args[++i];
+      } else if ("--url".equals(args[i]) && i + 1 < args.length) {
+        url = args[++i];
+      } else if ("--format".equals(args[i]) && i + 1 < args.length) {
+        format = args[++i];
+      } else if ("--backend".equals(args[i]) && i + 1 < args.length) {
+        backend = args[++i];
+      } else if ("--base-url".equals(args[i]) && i + 1 < args.length) {
+        baseUrl = args[++i];
       } else if ("--submission".equals(args[i]) && i + 1 < args.length) {
         submissionIds.add(Integer.parseInt(args[++i]));
       } else {
@@ -320,14 +1308,96 @@ public class IngestJob {
       }
     }
 
-    BioPortalDownloader downloader = new BioPortalDownloader(apiKey);
-    IngestJob job = new IngestJob(downloader);
+    // A raw-file backfill, the integrity check, and the orphan prune read only local files, so they need
+    // no source or credentials.
+    SubmissionSource source = (backfillLabelsFromRaw || verify || pruneOrphans)
+        ? null : selectSource(sourceName, oboRelease, url, format, backend, baseUrl);
+    IngestJob job = new IngestJob(source);
     try (CatalogStore catalog = CatalogStore.openFile(catalogPath.toString())) {
+      catalog.setBusyTimeoutMillis(60_000); // wait out a live server's brief catalog read locks
       catalog.initSchema();
+      if (backfillLabels) {
+        IngestJob.BackfillSummary sum =
+            job.backfillLabels(catalog, snapshotDir, new java.util.HashSet<>(acronyms));
+        System.out.printf(
+            "backfill-labels: %d filled (+%d labels), %d already labeled, %d other-backend, "
+                + "%d no-submission, %d hash-mismatch, %d failed%n",
+            sum.filled(), sum.labelsAdded(), sum.alreadyLabeled(), sum.otherBackend(),
+            sum.noSubmission(), sum.mismatched(), sum.failed());
+        return;
+      }
+      if (backfillLabelsFromRaw) {
+        IngestJob.BackfillSummary sum =
+            job.backfillLabelsFromRaw(catalog, snapshotDir, new java.util.HashSet<>(acronyms));
+        System.out.printf(
+            "backfill-labels-from-raw: %d filled (+%d labels; %d of them despite extractor-drift), "
+                + "%d already labeled, %d no-matching-raw, %d failed%n",
+            sum.filled(), sum.labelsAdded(), sum.mismatched(), sum.alreadyLabeled(),
+            sum.noSubmission(), sum.failed());
+        return;
+      }
+      if (backfillDefinitionsFromRaw) {
+        IngestJob.BackfillSummary sum =
+            job.backfillDefinitionsFromRaw(catalog, snapshotDir, new java.util.HashSet<>(acronyms));
+        System.out.printf(
+            "backfill-definitions-from-raw: %d filled (+%d definitions), %d already done, "
+                + "%d assert none, %d no-matching-raw, %d failed%n",
+            sum.filled(), sum.labelsAdded(), sum.alreadyLabeled(), sum.mismatched(),
+            sum.noSubmission(), sum.failed());
+        return;
+      }
+      if (refetchDefinitions) {
+        IngestJob.BackfillSummary sum = job.refetchDefinitions(
+            catalog, snapshotDir, new java.util.HashSet<>(acronyms), currentOnly);
+        System.out.printf(
+            "refetch-definitions: %d filled (+%d definitions), %d already held or still have raw, "
+                + "%d other-backend, %d no-submission, %d source moved on, %d failed%n",
+            sum.filled(), sum.labelsAdded(), sum.alreadyLabeled(), sum.otherBackend(),
+            sum.noSubmission(), sum.mismatched(), sum.failed());
+        return;
+      }
+      if (retainRawByHash) {
+        IngestJob.RetainSummary sum = job.retainRawByHash(snapshotDir);
+        System.out.printf("retain-raw-by-hash: %d renamed, %d already named, %d failed; %.1f GB -> %.1f GB%n",
+            sum.renamed(), sum.alreadyNamed(), sum.failed(),
+            sum.bytesBefore() / 1073741824.0, sum.bytesAfter() / 1073741824.0);
+        return;
+      }
+      if (verify) {
+        IngestJob.VerifySummary v = job.verifyStore(catalog, snapshotDir, deep);
+        System.out.printf(
+            "verify%s: %d snapshots — %d ok, %d missing-file, %d unreadable, %d empty, %d hash-mismatch, "
+                + "%d unresolvable-latest, %d orphan-files%n",
+            deep ? " (deep)" : "", v.snapshots(), v.ok(), v.missingFile(), v.unreadable(),
+            v.emptyConcepts(), v.hashMismatch(), v.unresolvableLatest(), v.orphanFiles());
+        if (!v.clean()) {
+          System.err.println("STORE INTEGRITY: problems found (see the tagged lines above); exit 1.");
+          System.exit(1);
+        }
+        return;
+      }
+      if (pruneOrphans) {
+        IngestJob.PruneSummary p = job.pruneOrphans(catalog, snapshotDir, apply);
+        System.out.printf("prune-orphans %s: %d orphan files (%.1f MB), %d referenced snapshots present%n",
+            p.applied() ? "APPLIED" : "dry-run (pass --apply to delete)",
+            p.orphans(), p.bytes() / 1048576.0, p.referencedPresent());
+        return;
+      }
+      if (backfillHeaderIri) {
+        catalog.setBusyTimeoutMillis(60_000); // write identity while the server reads the catalog
+        IngestJob.HeaderIriSummary sum =
+            job.backfillHeaderIris(catalog, snapshotDir, new java.util.HashSet<>(acronyms));
+        System.out.printf(
+            "backfill-header-iri: %d acronym-only targets — %d header found, %d no header, %d failed; "
+                + "after de-confliction: %d now identified, %d still acronym-only%n",
+            sum.targets(), sum.headerFound(), sum.noHeader(), sum.failed(),
+            sum.nowIdentified(), sum.stillAcronymOnly());
+        return;
+      }
       for (String acronym : acronyms) {
         if (!submissionIds.isEmpty()) {
           // Ingest specific historical submissions without moving the latest tag.
-          List<Submission> subs = downloader.listSubmissions(acronym);
+          List<Submission> subs = source.listSubmissions(acronym);
           for (int id : submissionIds) {
             Submission sub = subs.stream().filter(s -> s.submissionId() == id).findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("No submission " + id + " for " + acronym));
@@ -335,16 +1405,24 @@ public class IngestJob {
             System.out.printf("%s submission %d (%s): version %s, %d classes, %d edges%n",
                 acronym, id, sub.format(), r.versionId(), r.classCount(), r.edgeCount());
           }
+          if (valuesets) {
+            catalog.setOntologyKind(acronym, CatalogStore.KIND_VALUE_SET_COLLECTION);
+          }
         } else if (all) {
-          List<IngestResult> rs = job.ingestAll(catalog, acronym, snapshotDir);
-          System.out.printf("%s: ingested %d versions (latest -> %s)%n",
-              acronym, rs.size(),
+          List<IngestResult> rs = valuesets
+              ? job.ingestAllValueSetCollection(catalog, acronym, snapshotDir)
+              : job.ingestAll(catalog, acronym, snapshotDir);
+          System.out.printf("%s%s: ingested %d versions (latest -> %s)%n",
+              valuesets ? "[value-set collection] " : "", acronym, rs.size(),
               rs.stream().max(Comparator.comparingInt(IngestResult::submissionId))
                   .map(IngestResult::versionId).orElse("none"));
         } else {
-          IngestResult r = job.ingestLatest(catalog, acronym, snapshotDir);
-          System.out.printf("%s: version %s, %d classes, %d edges -> %s%n",
-              acronym, r.versionId(), r.classCount(), r.edgeCount(), r.snapshotFile());
+          IngestResult r = valuesets
+              ? job.ingestValueSetCollectionLatest(catalog, acronym, snapshotDir)
+              : job.ingestLatest(catalog, acronym, snapshotDir);
+          System.out.printf("%s%s: version %s, %d classes, %d edges -> %s%n",
+              valuesets ? "[value-set collection] " : "", acronym, r.versionId(), r.classCount(),
+              r.edgeCount(), r.snapshotFile());
         }
       }
     }

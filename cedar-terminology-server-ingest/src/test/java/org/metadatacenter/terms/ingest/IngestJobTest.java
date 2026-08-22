@@ -21,6 +21,8 @@ import java.util.Comparator;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -95,6 +97,55 @@ public class IngestJobTest {
     };
   }
 
+  /** {@link #fakeSource()} with a display name supplied on its access info, like BioPortal's. */
+  private SubmissionSource namedSource(String displayName) {
+    SubmissionSource base = fakeSource();
+    return new SubmissionSource() {
+      @Override
+      public OntologyAccess accessInfo(String acronym) {
+        return new OntologyAccess("public", null, displayName);
+      }
+
+      @Override
+      public List<Submission> listSubmissions(String acronym) throws IOException, InterruptedException {
+        return base.listSubmissions(acronym);
+      }
+
+      @Override
+      public Submission latestSubmission(String acronym) throws IOException, InterruptedException {
+        return base.latestSubmission(acronym);
+      }
+
+      @Override
+      public Path download(String acronym, int submissionId, Path targetDir)
+          throws IOException, InterruptedException {
+        return base.download(acronym, submissionId, targetDir);
+      }
+    };
+  }
+
+  private String displayNameOf(String acronym) throws Exception {
+    return catalog.listOntologies().stream()
+        .filter(o -> acronym.equals(o.acronym()))
+        .map(CatalogStore.OntologyInfo::name)
+        .findFirst()
+        .orElseThrow();
+  }
+
+  @Test
+  public void ingestLatest_persistsSourceDisplayName_elseFallsBackToAcronym() throws Exception {
+    // A source that supplies a human-readable title stores it as the catalog display name.
+    new IngestJob(namedSource("Human Disease Ontology"))
+        .ingestLatest(catalog, "DOID", tempDir.resolve("snapshots"));
+    assertEquals("Human Disease Ontology", displayNameOf("DOID"));
+
+    // A source with no title falls back to the acronym — the only label available — rather than
+    // leaving the name null.
+    new IngestJob(fakeSource())
+        .ingestLatest(catalog, "EX", tempDir.resolve("snapshots"));
+    assertEquals("EX", displayNameOf("EX"));
+  }
+
   @Test
   public void ingestLatest_writesSnapshotAndRegistersCatalog() throws Exception {
     IngestJob job = new IngestJob(fakeSource());
@@ -117,6 +168,28 @@ public class IngestJobTest {
       assertEquals(List.of(BASE + "cat", BASE + "dog"), store.children(BASE + "mammal"));
       assertEquals("Dog", store.prefLabel(BASE + "dog").orElseThrow());
     }
+  }
+
+  @Test
+  public void ingestValueSetCollection_usesTheSameMechanismAndMarksKind() throws Exception {
+    // A value-set collection is ingested through the exact same content-hash path as an ontology (same
+    // snapshot, same version id), then its catalog row is marked kind=value_set_collection so its
+    // version resolves separately. This is what backs freeze-on-publish for a value-set constraint.
+    IngestJob job = new IngestJob(fakeSource());
+    Path snapshotDir = tempDir.resolve("snapshots");
+
+    IngestJob.IngestResult r = job.ingestValueSetCollectionLatest(catalog, "MYVS", snapshotDir);
+
+    // Same snapshot machinery as an ontology: file written, catalog registered, latest tag set.
+    assertEquals(5, r.classCount());
+    assertTrue(Files.exists(r.snapshotFile()));
+    CatalogStore.SnapshotInfo latest = catalog.resolveLatest("MYVS").orElseThrow();
+    assertEquals(r.versionId(), latest.versionId());
+    assertEquals(64, r.versionId().length()); // normalized content hash
+
+    // But the row is now a value-set collection, not an ontology.
+    assertTrue(catalog.isValueSetCollection("MYVS"));
+    assertFalse(catalog.isValueSetCollection("EX")); // an ordinary ingest stays an ontology
   }
 
   @Test
@@ -153,11 +226,15 @@ public class IngestJobTest {
   }
 
   @Test
-  public void versionIdIsContentHashOfRawFile() throws Exception {
-    String expected = IngestJob.sha256(sourceOwl);
+  public void versionIdIsNormalizedContentHash_rawHashKeptAsFileHash() throws Exception {
+    // Identity is the normalized content hash (VERSIONING-ROADMAP "The Model" §4.3), not the raw-file hash; the
+    // raw hash is retained as file_hash for provenance.
+    String rawHash = IngestJob.sha256(sourceOwl);
     IngestJob job = new IngestJob(fakeSource());
     IngestJob.IngestResult r = job.ingestLatest(catalog, "EX", tempDir.resolve("snapshots"));
-    assertEquals(expected, r.versionId());
+    assertNotEquals(rawHash, r.versionId());
+    assertEquals(64, r.versionId().length());
+    assertEquals(rawHash, catalog.getSnapshot(r.versionId()).orElseThrow().fileHash());
   }
 
   @Test
@@ -229,6 +306,81 @@ public class IngestJobTest {
     assertEquals("v2", catalog.resolveLatest("EX").orElseThrow().declaredVersion()); // latest = the good one
   }
 
+  @Test
+  public void selectSource_choosesOboFoundryWithTheGivenRelease() {
+    // The standard ingest CLI can draw from OBO Foundry, not just BioPortal (no network here — the
+    // selection + PURL addressing is what's under test). BioPortal selection needs the API key env and
+    // is covered by the ingest path elsewhere.
+    SubmissionSource current = IngestJob.selectSource("obofoundry", null);
+    assertTrue(current instanceof OboFoundrySubmissionSource);
+    assertEquals("obofoundry", current.backendId());
+    assertEquals("http://purl.obolibrary.org/obo/doid.owl",
+        ((OboFoundrySubmissionSource) current).downloadUrl("DOID"));
+
+    SubmissionSource dated = IngestJob.selectSource("obofoundry", "2024-05-29");
+    assertEquals("http://purl.obolibrary.org/obo/doid/releases/2024-05-29/doid.owl",
+        ((OboFoundrySubmissionSource) dated).downloadUrl("DOID"));
+  }
+
+  @Test
+  public void recordsTheSourceBackendOnTheSnapshot() throws Exception {
+    // The backend a snapshot's bytes came from is recorded as audit provenance. The default BioPortal
+    // source leaves it 'bioportal'; a second source (here an OBO-Foundry-like stub) records its own id.
+    // Identity is unaffected — same content, same version_id regardless of backend.
+    IngestJob.IngestResult bp = new IngestJob(fakeSource()).ingestLatest(catalog, "EX", tempDir.resolve("bp"));
+    assertEquals("bioportal", catalog.snapshotProvenance(bp.versionId(), "EX").orElseThrow().backend());
+
+    SubmissionSource obo = new SubmissionSource() {
+      @Override
+      public String backendId() {
+        return "obofoundry";
+      }
+
+      @Override
+      public OntologyAccess accessInfo(String acronym) {
+        return new OntologyAccess("public", null);
+      }
+
+      @Override
+      public List<Submission> listSubmissions(String acronym) {
+        return List.of(submission());
+      }
+
+      @Override
+      public Submission latestSubmission(String acronym) {
+        return submission();
+      }
+
+      @Override
+      public Path download(String acronym, int submissionId, Path targetDir) throws IOException {
+        Files.createDirectories(targetDir);
+        Path dest = targetDir.resolve("source.owl");
+        Files.copy(sourceOwl, dest, StandardCopyOption.REPLACE_EXISTING);
+        return dest;
+      }
+    };
+    IngestJob.IngestResult r = new IngestJob(obo).ingestLatest(catalog, "OBOEX", tempDir.resolve("obo"));
+    assertEquals("obofoundry", catalog.snapshotProvenance(r.versionId(), "OBOEX").orElseThrow().backend());
+    // Same source bytes as the BioPortal ingest ⇒ identical content-hash version_id: identity does not
+    // depend on the backend.
+    assertEquals(bp.versionId(), r.versionId());
+  }
+
+  @Test
+  public void derivesTheCanonicalIriAtIngest_andJoinsSourcesByIri() throws Exception {
+    // A6 derived iri via a later backfill; ingest now derives it inline (from this snapshot's dominant
+    // own namespace), so a fresh ingest is iri-identified immediately. The iri is content-derived, so
+    // the same ontology ingested under two acronyms — as two authorities might label it — shares one
+    // iri, and acronymsForIri joins them. The test ontology's namespace is http://ex/ -> iri http://ex.
+    IngestJob job = new IngestJob(fakeSource());
+    job.ingestLatest(catalog, "EX", tempDir.resolve("a"));
+    assertEquals("http://ex", catalog.ontologyIri("EX").orElseThrow());
+
+    job.ingestLatest(catalog, "EX_ALIAS", tempDir.resolve("b")); // same bytes, a different acronym
+    assertEquals("http://ex", catalog.ontologyIri("EX_ALIAS").orElseThrow());
+    assertEquals(List.of("EX", "EX_ALIAS"), catalog.acronymsForIri("http://ex"));
+  }
+
   private static void buildOntology(Path file) throws Exception {
     OWLOntologyManager m = OWLManager.createOWLOntologyManager();
     OWLDataFactory df = m.getOWLDataFactory();
@@ -270,5 +422,37 @@ public class IngestJobTest {
     IngestJob job = new IngestJob(fakeSource());
     assertThrows(IOException.class, () -> job.ingestLatest(catalog, "EX", tempDir.resolve("snapshots")));
     assertTrue(catalog.resolveLatest("EX").isEmpty());
+  }
+
+  @Test
+  public void retainByHash_namesADownloadForItsBytesAndCompressesIt() throws Exception {
+    Path dir = tempDir;
+    // Two releases of one ontology, served under the same filename — the collision that lost about a
+    // quarter of the store's sources, since the second landed on the first.
+    Path raw = dir.resolve("doid.owl");
+    String first = "<owl>first release, which is long enough to be worth compressing. "
+        + "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa</owl>";
+    Files.writeString(raw, first);
+    String firstHash = IngestJob.sha256(raw);
+    Path keptFirst = IngestJob.retainByHash(raw, firstHash);
+
+    Files.writeString(raw, "<owl>second release</owl>");
+    String secondHash = IngestJob.sha256(raw);
+    Path keptSecond = IngestJob.retainByHash(raw, secondHash);
+
+    // Both survive, named for what they are.
+    assertTrue(Files.exists(keptFirst));
+    assertTrue(Files.exists(keptSecond));
+    assertEquals(firstHash + ".gz", keptFirst.getFileName().toString());
+    assertNotEquals(keptFirst, keptSecond);
+    // Smaller on disk than the text it holds, and readable back to exactly those bytes.
+    assertTrue(Files.size(keptFirst) < first.length());
+    assertEquals(first, Files.readString(IngestJob.decompress(keptFirst)));
+
+    // Re-downloading a release we already hold keeps the one copy rather than adding a second.
+    Files.writeString(raw, first);
+    Path again = IngestJob.retainByHash(raw, firstHash);
+    assertEquals(keptFirst, again);
+    assertFalse(Files.exists(raw));
   }
 }

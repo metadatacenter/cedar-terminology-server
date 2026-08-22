@@ -60,6 +60,11 @@ public class OwlHierarchyExtractor implements HierarchyExtractor {
   /** OBO "term replaced by": links an obsolete term to its successor. */
   private static final IRI TERM_REPLACED_BY = IRI.create("http://purl.obolibrary.org/obo/IAO_0100001");
 
+  /** obo2owl renders an OBO {@code relationship: is_a X} clause (a non-standard way some ontologies write
+   *  subsumption, e.g. BSAO) as {@code is_a some X} on its TEMP# placeholder namespace rather than as
+   *  {@code rdfs:subClassOf}. It is still subsumption, so this property is always a hierarchy edge. */
+  private static final IRI OBO_RELATIONSHIP_IS_A = IRI.create("http://purl.obolibrary.org/obo/TEMP#is_a");
+
   /** SKOS preferred label: the label BioPortal serves for UMLS/TTL ontologies (e.g. ICD10CM, MESH,
    *  LOINC), which carry an OWL {@code rdfs:subClassOf} hierarchy but label concepts with
    *  {@code skos:prefLabel} rather than {@code rdfs:label}. */
@@ -97,14 +102,26 @@ public class OwlHierarchyExtractor implements HierarchyExtractor {
     OWLAnnotationProperty replacedBy = df.getOWLAnnotationProperty(TERM_REPLACED_BY);
 
     int classCount = 0;
+    List<SnapshotStore.LabelRow> labelRows = new ArrayList<>();
+    List<SnapshotStore.DefinitionRow> definitionRows = new ArrayList<>();
     for (OWLClass cls : ont.getClassesInSignature(Imports.INCLUDED)) {
       if (cls.isOWLThing() || cls.isOWLNothing()) {
         continue;
       }
       store.addConcept(cls.getIRI().toString(), label(cls, ont),
           isDeprecated(cls, ont, deprecated), replacedBy(cls, ont, replacedBy));
+      captureLabels(cls, ont, labelRows);
+      captureDefinitions(cls, ont, definitionRows);
       classCount++;
     }
+    // Preserve every language variant of every name (labels + synonyms) alongside the single served
+    // pref_label. Additive: pref_label (and thus content identity) is unchanged; this only records what
+    // the single-label pick discards.
+    store.addLabels(labelRows);
+    // What each concept means, beside what it is called. Additive like the labels: content identity
+    // is a hash over concepts, labels and edges, and admitting definitions to it would change the
+    // identity of every snapshot already written.
+    store.addDefinitions(definitionRows);
 
     int edgeCount = 0;
     // Asserted rdfs:subClassOf. A named superclass is a parent; a named genus inside an
@@ -188,12 +205,17 @@ public class OwlHierarchyExtractor implements HierarchyExtractor {
       for (OWLClassExpression operand : intersection.getOperands()) {
         collectParents(operand, parents);
       }
-    } else if (expr instanceof OWLObjectSomeValuesFrom svf && !hierarchyProperties.isEmpty()
-        && !svf.getProperty().isAnonymous()
-        && hierarchyProperties.contains(svf.getProperty().asOWLObjectProperty().getIRI())
-        && !svf.getFiller().isAnonymous()) {
-      // e.g. BTO: "part_of some hematopoietic system" makes hematopoietic system a parent.
-      addNamed(parents, svf.getFiller());
+    } else if (expr instanceof OWLObjectSomeValuesFrom svf
+        && !svf.getProperty().isAnonymous() && !svf.getFiller().isAnonymous()) {
+      IRI prop = svf.getProperty().asOWLObjectProperty().getIRI();
+      // An OBO `relationship: is_a X` clause (as some ontologies write their subsumption — BSAO) is
+      // rendered by obo2owl as `is_a some X` on the TEMP# namespace, not rdfs:subClassOf. It is still
+      // subsumption, so treat it as a hierarchy edge everywhere. Plus, for a configured partonomy, the
+      // configured relations (e.g. BTO/EHDAA part_of some system) also make the filler a parent.
+      if (OBO_RELATIONSHIP_IS_A.equals(prop)
+          || (!hierarchyProperties.isEmpty() && hierarchyProperties.contains(prop))) {
+        addNamed(parents, svf.getFiller());
+      }
     }
   }
 
@@ -232,6 +254,15 @@ public class OwlHierarchyExtractor implements HierarchyExtractor {
     // best-ranked literal (English, then untagged, then any other) rather than the first encountered,
     // so a multilingual ontology (NANDO's Japanese, ONTOAD's French, ...) does not diverge from
     // BioPortal on which language it names the term in. rdfs:label wins over skos:prefLabel overall.
+    //
+    // A blank literal is not a label. ABD asserts rdfs:label "" alongside the real one on 61 of its
+    // classes, and taking the blank left the class unlabeled — which then drew the IRI-fragment
+    // fallback, so "White pine blister rust" was served as "?id=118".
+    //
+    // Nor is a list one. Where a class asserts both a plain label and a list packed into a single
+    // literal, the plain one is the name the source meant, so language decides first and a literal
+    // holding no line break wins among equals — see {@link Names}. ABD's meningitis class asserts
+    // "Meningitis" and a six-line list of the kinds of meningitis, and the list was winning.
     String rdfsLabel = null;
     int rdfsRank = -1;
     String prefLabel = null;
@@ -242,15 +273,19 @@ public class OwlHierarchyExtractor implements HierarchyExtractor {
         if (!(ax.getValue() instanceof OWLLiteral literal)) {
           continue;
         }
-        int rank = langRank(literal);
+        String name = Names.nameOf(literal.getLiteral());
+        if (name == null) {
+          continue;
+        }
+        int rank = rankOf(literal);
         if (ax.getProperty().isLabel()) {
           if (rank > rdfsRank) {
             rdfsRank = rank;
-            rdfsLabel = literal.getLiteral();
+            rdfsLabel = name;
           }
         } else if (ax.getProperty().getIRI().equals(SKOS_PREF_LABEL) && rank > prefRank) {
           prefRank = rank;
-          prefLabel = literal.getLiteral();
+          prefLabel = name;
         }
       }
     }
@@ -258,9 +293,81 @@ public class OwlHierarchyExtractor implements HierarchyExtractor {
   }
 
   /**
+   * Records every name literal of a class — labels and synonyms ({@link LabelProperties}) — with its
+   * language tag into {@code out}, for the snapshot's {@code label} table. Reads the class's own
+   * annotation-assertion axioms across the import closure, the same clean source {@link #label} uses
+   * (an OBO {@code xref} description exposed as an axiom-annotation label is not surfaced here). This
+   * preserves the multilingual names the single {@code pref_label} pick drops; it does not affect
+   * which literal that pick chooses.
+   */
+  private static void captureLabels(OWLClass cls, OWLOntology ont, List<SnapshotStore.LabelRow> out) {
+    String iri = cls.getIRI().toString();
+    for (OWLOntology o : ont.getImportsClosure()) {
+      for (OWLAnnotationAssertionAxiom ax : o.getAnnotationAssertionAxioms(cls.getIRI())) {
+        if (!(ax.getValue() instanceof OWLLiteral literal)) {
+          continue;
+        }
+        String curie = LabelProperties.curieFor(ax.getProperty().getIRI());
+        if (curie == null) {
+          continue;
+        }
+        // A list packed into one literal becomes one name per entry, so each is findable on its own.
+        // Run together they could only be matched by a query spanning two of them, and the panel
+        // that shows a term's other names rendered the whole list as a single run-on line.
+        String name = Names.nameOf(literal.getLiteral());
+        if (name == null) {
+          continue;
+        }
+        out.add(new SnapshotStore.LabelRow(iri, curie, literal.getLang(), name));
+        for (String rest : Names.restOf(literal.getLiteral())) {
+          out.add(new SnapshotStore.LabelRow(iri, curie, literal.getLang(), rest));
+        }
+      }
+    }
+  }
+
+  /**
+   * Records every definition literal of a class, with its language, into {@code out}.
+   *
+   * Read from the class's own annotation-assertion axioms across the import closure, the same clean
+   * source the labels use, so a definition attached as an axiom annotation on some other assertion
+   * is not mistaken for the class's own.
+   */
+  private static void captureDefinitions(OWLClass cls, OWLOntology ont,
+                                         List<SnapshotStore.DefinitionRow> out) {
+    String iri = cls.getIRI().toString();
+    for (OWLOntology o : ont.getImportsClosure()) {
+      for (OWLAnnotationAssertionAxiom ax : o.getAnnotationAssertionAxioms(cls.getIRI())) {
+        if (!(ax.getValue() instanceof OWLLiteral literal)) {
+          continue;
+        }
+        String curie = DefinitionProperties.curieFor(ax.getProperty().getIRI());
+        // Whitespace-only is no definition, the same rule a label is held to. A definition runs to
+        // several lines legitimately, though, so it is trimmed rather than cut at the first break.
+        String text = curie == null ? null : literal.getLiteral().trim();
+        if (text != null && !text.isEmpty()) {
+          out.add(new SnapshotStore.DefinitionRow(iri, curie, literal.getLang(), text));
+        }
+      }
+    }
+  }
+
+  /**
    * Language preference for choosing among a class's labels: English best, then an untagged literal,
    * then any other language. Matches BioPortal, which serves the English label when several exist.
    */
+  /**
+   * How good a candidate a literal is: its language first, then whether it is a name or a list.
+   *
+   * Language dominates because BioPortal serves the English label and diverging on which language
+   * names a term is the larger error. Among literals of equally good language, one holding no line
+   * break is preferred: it is a name as asserted, where the other has to be reduced to its first
+   * line to become one.
+   */
+  private static int rankOf(OWLLiteral literal) {
+    return langRank(literal) * 2 + (Names.hasBreak(literal.getLiteral()) ? 0 : 1);
+  }
+
   private static int langRank(OWLLiteral literal) {
     String lang = literal.getLang();
     if (lang == null || lang.isEmpty()) {
@@ -282,21 +389,40 @@ public class OwlHierarchyExtractor implements HierarchyExtractor {
     return false;
   }
 
+  /**
+   * The IRI a deprecated class was replaced by, or null.
+   *
+   * A class may assert several. ICTV's retired virus names do: 19 of them name more than one
+   * successor, because a split taxon is replaced by each of the taxa it split into. Taking whichever
+   * the axiom iteration yielded first made the choice depend on iteration order, which OWLAPI does
+   * not fix — so the same bytes extracted twice produced two different {@code replaced_by} values,
+   * and with them two different content identities for one release. That defeats the property the
+   * whole version model rests on: a release is identified by its content, so extracting it again has
+   * to yield the same identity. The smallest value wins, being the one choice that does not depend on
+   * how the axioms happen to be visited.
+   *
+   * Which of several successors is "the" replacement is not a question the annotation answers, and
+   * this does not pretend to answer it either. It picks reproducibly.
+   */
   private static String replacedBy(OWLClass cls, OWLOntology ont, OWLAnnotationProperty replacedBy) {
+    String smallest = null;
     for (OWLOntology o : ont.getImportsClosure()) {
       for (OWLAnnotationAssertionAxiom ax : o.getAnnotationAssertionAxioms(cls.getIRI())) {
         if (!ax.getProperty().equals(replacedBy)) {
           continue;
         }
         OWLAnnotationValue value = ax.getValue();
+        String candidate = null;
         if (value instanceof IRI iri) {
-          return iri.toString();
+          candidate = iri.toString();
+        } else if (value instanceof OWLLiteral literal) {
+          candidate = literal.getLiteral();
         }
-        if (value instanceof OWLLiteral literal) {
-          return literal.getLiteral();
+        if (candidate != null && (smallest == null || candidate.compareTo(smallest) < 0)) {
+          smallest = candidate;
         }
       }
     }
-    return null;
+    return smallest;
   }
 }

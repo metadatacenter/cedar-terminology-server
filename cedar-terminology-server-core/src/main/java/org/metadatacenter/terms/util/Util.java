@@ -1,5 +1,6 @@
 package org.metadatacenter.terms.util;
 
+import jakarta.ws.rs.BadRequestException;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.terms.domainObjects.SearchResult;
@@ -39,14 +40,13 @@ public class Util {
     if ((vsCollection == null) || (vsCollection.length() == 0)) {
       return false;
     }
-    List<String> validCollections;
-    if (creation) {
-      validCollections = Arrays.asList(BP_VS_COLLECTIONS_WRITE);
-    } else {
-      validCollections = Arrays.asList(BP_VS_COLLECTIONS_READ);
+    // Reading is unrestricted: a value set from any collection may be read. (The historical
+    // CEDARVS/NLMVS/CADSR-VS allow-list was removed.) Creation of provisional value sets stays
+    // restricted to CEDAR's own collection — you cannot write into a third party's BioPortal ontology.
+    if (!creation) {
+      return true;
     }
-
-    for (String vc : validCollections) {
+    for (String vc : BP_VS_COLLECTIONS_WRITE) {
       if ((vsCollection.compareTo(vc) == 0) || (vsCollection.compareTo(BP_API_BASE + BP_VS_COLLECTIONS + vc) == 0)) {
         return true;
       }
@@ -203,7 +203,7 @@ public class Util {
     if (ontologyUri != null && ontologyUri.startsWith(prefix)) {
       return ontologyUri.substring(prefix.length());
     } else {
-      throw new InternalError("Malformed ontology URI: " + ontologyUri);
+      throw new BadRequestException("Malformed ontology URI: " + ontologyUri);
     }
   }
 

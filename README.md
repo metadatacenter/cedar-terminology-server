@@ -1,6 +1,6 @@
 # cedar-terminology-server
 
-[![Build Status](https://travis-ci.com/metadatacenter/cedar-terminology-server.svg?branch=master)](https://travis-ci.com/metadatacenter/cedar-terminology-server)
+[![CI](https://github.com/metadatacenter/cedar-terminology-server/actions/workflows/ci.yml/badge.svg?branch=develop)](https://github.com/metadatacenter/cedar-terminology-server/actions/workflows/ci.yml)
 
 A wrapper for the BioPortal API that simplifies the access to BioPortal ontologies and value sets from CEDAR tools.
 

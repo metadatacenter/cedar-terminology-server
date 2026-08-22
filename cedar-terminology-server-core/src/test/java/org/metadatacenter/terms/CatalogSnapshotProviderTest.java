@@ -5,6 +5,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.metadatacenter.terms.domainObjects.Ontology;
 import org.metadatacenter.terms.domainObjects.OntologyVersion;
+import org.metadatacenter.terms.domainObjects.VersionTriple;
 import org.metadatacenter.terms.store.CatalogStore;
 import org.metadatacenter.terms.store.SnapshotStore;
 
@@ -18,6 +19,7 @@ import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -82,6 +84,8 @@ public class CatalogSnapshotProviderTest {
     }
     catalog.addSnapshot(new CatalogStore.SnapshotInfo("v2", "EX", "2.0", "2025-06-01", "2025-06-02T00:00:00Z",
         "OWL", "subsumption", 7, 7, v2File.toString(), "v2", "open")); // latest stays v1
+    // Record EX's namespace so a class IRI can be mapped back to it (A6 raw_namespace reverse lookup).
+    catalog.setOntologyIri("EX", "http://ex", "http://ex/");
 
     // Allowlist EX and OTHER; only EX is actually ingested.
     provider = new CatalogSnapshotProvider(catalog, Set.of("EX", "OTHER"));
@@ -147,8 +151,151 @@ public class CatalogSnapshotProviderTest {
   }
 
   @Test
+  public void listedVersionsCarryTheFullTriple() {
+    // Each entry surfaces effectiveDate (the release day) alongside id and declaredVersion, so a
+    // /versions listing and a resolve-current agree on the same triple. v1 released 2025-01-01.
+    OntologyVersion v1 = provider.versions("EX").stream()
+        .filter(v -> v.versionId().equals("v1")).findFirst().orElseThrow();
+    assertEquals("1.0", v1.version());
+    assertEquals("2025-01-01", v1.effectiveDate());
+  }
+
+  @Test
   public void unknownVersionResolvesEmpty() {
     assertTrue(provider.forOntology("EX", "no-such-version").isEmpty());
+  }
+
+  @Test
+  public void resolvesByAsOfDate() throws Exception {
+    // v1 released 2025-01-01 (no wolf), v2 released 2025-06-01 (wolf). "As of" a date serves the
+    // newest snapshot published on or before it, independent of where latest (v1) points.
+    assertTrue(provider.forOntology("EX", "2025-03-01").orElseThrow().prefLabel(BASE + "wolf").isEmpty());
+    assertTrue(provider.forOntology("EX", "2025-07-01").orElseThrow().prefLabel(BASE + "wolf").isPresent());
+  }
+
+  @Test
+  public void asOfDateBeforeAllHistoryResolvesEmpty() {
+    // A pin we cannot honor fails to empty (caller falls back to remote), never silently to latest.
+    assertTrue(provider.forOntology("EX", "2024-01-01").isEmpty());
+  }
+
+  @Test
+  public void resolvesByDeclaredVersionLabel() throws Exception {
+    // The free-form declared version resolves its snapshot: "2.0" is v2 (wolf), "1.0" is v1.
+    assertTrue(provider.forOntology("EX", "2.0").orElseThrow().prefLabel(BASE + "wolf").isPresent());
+    assertTrue(provider.forOntology("EX", "1.0").orElseThrow().prefLabel(BASE + "wolf").isEmpty());
+  }
+
+  @Test
+  public void ambiguousDeclaredVersionServesTheNewest() throws Exception {
+    // Two snapshots sharing declared version "2.0": the newer (later release) wins; a warning is
+    // logged (not asserted here). This mirrors INCENTIVE publishing several submissions under one
+    // label. Register a second "2.0" that is newer than v2 and adds "fox".
+    Path v3File = tempDir.resolve("EX_v3.sqlite");
+    try (SnapshotStore store = SnapshotStore.openFile(v3File.toString())) {
+      store.initSchema();
+      store.addConcept(BASE + "thing", "Thing");
+      store.addConcept(BASE + "fox", "Fox");
+      store.addEdge(BASE + "fox", BASE + "thing", "rdfs:subClassOf");
+      store.materialize();
+    }
+    catalog.addSnapshot(new CatalogStore.SnapshotInfo("v3", "EX", "2.0", "2025-09-01", "2025-09-02T00:00:00Z",
+        "OWL", "subsumption", 2, 1, v3File.toString(), "v3", "open"));
+
+    assertTrue(provider.forOntology("EX", "2.0").orElseThrow().prefLabel(BASE + "fox").isPresent());
+  }
+
+  @Test
+  public void resolvesCurrentVersionTripleForLatest() {
+    // latest is v1: released 2025-01-01, declared "1.0", content-hash id "v1".
+    VersionTriple t = provider.currentVersion("EX").orElseThrow();
+    assertEquals("v1", t.id());
+    assertEquals("2025-01-01", t.effectiveDate());
+    assertEquals("1.0", t.declaredVersion());
+  }
+
+  @Test
+  public void currentVersionEmptyWhenNotServed() {
+    assertTrue(provider.currentVersion("OTHER").isEmpty()); // allowlisted but never ingested
+    assertTrue(provider.currentVersion("NOPE").isEmpty());  // not allowlisted
+    assertTrue(provider.currentVersion(null).isEmpty());
+  }
+
+  @Test
+  public void resolvesOntologyForConceptIriByNamespace() {
+    assertEquals("EX", provider.ontologyForConceptIri("http://ex/wolf").orElseThrow());
+    assertTrue(provider.ontologyForConceptIri("http://other/thing").isEmpty()); // unknown namespace
+    assertTrue(provider.ontologyForConceptIri(null).isEmpty());
+  }
+
+  @Test
+  public void resolvesCurrentVersionForClassViaTheService() throws Exception {
+    // A class IRI -> its ontology (EX, by namespace) -> EX's current triple (latest is v1).
+    SqliteTerminologyService service = new SqliteTerminologyService(provider);
+    assertEquals("v1", service.resolveCurrentVersionForClass("http://ex/wolf").id());
+    assertNull(service.resolveCurrentVersionForClass("http://other/x")); // namespace not ours
+  }
+
+  @Test
+  public void resolvesCurrentVersionForValueSetCollection() throws Exception {
+    // A value-set collection MYVS, ingested and marked as such, resolves its current triple — even
+    // though it is NOT in the ontology serving allowlist (Set.of("EX","OTHER")). Value-set-collection
+    // version resolution gates on the catalog's kind marker, not the search/browse allowlist.
+    catalog.upsertOntology(new CatalogStore.OntologyInfo("MYVS", "My Value Sets", null, "SKOS"));
+    catalog.addSnapshot(new CatalogStore.SnapshotInfo("vs1", "MYVS", "2024-05-01", "2024-05-01",
+        "2024-05-02T00:00:00Z", "SKOS", "subsumption", 3, 2, "/snapshots/MYVS/vs1.sqlite", "vs1", "open"));
+    catalog.setTag("MYVS", CatalogStore.TAG_LATEST, "vs1");
+    catalog.setOntologyKind("MYVS", CatalogStore.KIND_VALUE_SET_COLLECTION);
+
+    VersionTriple triple = provider.currentVersionForValueSetCollection("MYVS").orElseThrow();
+    assertEquals("vs1", triple.id());
+    assertEquals("2024-05-01", triple.effectiveDate());
+
+    // An ordinary ontology (EX) is not a value-set collection: the kind guard declines, so an
+    // ontology of the same acronym can never answer here.
+    assertTrue(provider.currentVersionForValueSetCollection("EX").isEmpty());
+    assertTrue(provider.currentVersionForValueSetCollection("NOPE").isEmpty());
+    assertTrue(provider.currentVersionForValueSetCollection(null).isEmpty());
+
+    // End-to-end through the service: the freeze capability behind currentVersionByValueSetCollection.
+    SqliteTerminologyService service = new SqliteTerminologyService(provider);
+    assertEquals("vs1", service.resolveCurrentVersionForValueSetCollection("MYVS").id());
+    assertNull(service.resolveCurrentVersionForValueSetCollection("EX"));   // an ontology, not a collection
+    assertNull(service.resolveCurrentVersionForValueSetCollection("NOPE")); // unknown
+  }
+
+  @Test
+  public void serviceReturnsNullTripleWhenNotServedLocally() throws Exception {
+    // The ITerminologyService contract: null (not an empty Optional) signals "cannot freeze here",
+    // which the publish pipeline reads as "defer to remote / leave unpinned".
+    SqliteTerminologyService service = new SqliteTerminologyService(provider);
+    assertEquals("v1", service.resolveCurrentVersion("EX").id());
+    assertNull(service.resolveCurrentVersion("OTHER"));
+  }
+
+  @Test
+  public void tripleEffectiveDateFallsBackToIngestDateAndTruncatesToDay() {
+    // A source release date is truncated to its calendar day.
+    VersionTriple withRelease = CatalogSnapshotProvider.toTriple(new CatalogStore.SnapshotInfo(
+        "h", "EX", "9.9", "2025-06-01T00:00:00.000+00:00", "2026-07-29T02:56:36.324676Z",
+        "OWL", "subsumption", 1, 1, "/x", "h", "open"));
+    assertEquals("2025-06-01", withRelease.effectiveDate());
+    // No source release date -> the ingest timestamp stands in, likewise truncated. Label may be null.
+    VersionTriple noRelease = CatalogSnapshotProvider.toTriple(new CatalogStore.SnapshotInfo(
+        "h", "EX", null, null, "2026-07-29T02:56:36.324676Z",
+        "OWL", "subsumption", 1, 1, "/x", "h", "open"));
+    assertEquals("2026-07-29", noRelease.effectiveDate());
+    assertNull(noRelease.declaredVersion());
+  }
+
+  @Test
+  public void asOfDateHelperExtractsLeadingCalendarDate() {
+    assertEquals("2022-06-26", CatalogSnapshotProvider.asOfDate("2022-06-26").orElseThrow());
+    assertEquals("2022-06-26", CatalogSnapshotProvider.asOfDate("2022-06-26T18:07:50.000-07:00").orElseThrow());
+    assertTrue(CatalogSnapshotProvider.asOfDate("2024-13-40").isEmpty()); // not a real date
+    assertTrue(CatalogSnapshotProvider.asOfDate("2.0").isEmpty());        // a declared-version label
+    assertTrue(CatalogSnapshotProvider.asOfDate("ff05a9a36f3a").isEmpty()); // a content hash
+    assertTrue(CatalogSnapshotProvider.asOfDate(null).isEmpty());
   }
 
   @Test

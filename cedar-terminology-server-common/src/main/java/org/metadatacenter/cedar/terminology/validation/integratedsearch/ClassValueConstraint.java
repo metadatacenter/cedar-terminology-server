@@ -1,10 +1,15 @@
 package org.metadatacenter.cedar.terminology.validation.integratedsearch;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import org.hibernate.validator.constraints.NotEmpty;
 
+// Tolerate the additive value-constraint spec fields (iri / sourceSystem / version) a frozen template
+// carries on a class entry: an enumerated class is self-describing (its uri + prefLabel are used as-is,
+// no snapshot lookup), so those fields are not consumed here, but the request must still deserialize.
+// The other three constraint kinds already declare this; matching them makes the tolerance explicit
+// rather than relying on the Dropwizard mapper's fail-on-unknown being off.
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class ClassValueConstraint {
-  // Enumerated classes will be returned to the client as they are, all the attributes are required, and we will not
-  // allow any extra attributes
 
   @NotEmpty
   private String uri;

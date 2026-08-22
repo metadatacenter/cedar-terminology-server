@@ -176,18 +176,114 @@ public class RoutingTerminologyService implements ITerminologyService {
 
   @Override
   public PagedResults<SearchResult> integratedSearch(Optional<String> q, ValueConstraints valueConstraints, int page,
-                                                     int pageSize, String apiKey) throws IOException {
+                                                     int pageSize, String apiKey, String lang) throws IOException {
     if (local != null && integratedSearchServedLocally(valueConstraints)) {
       if (localOnly) {
-        return local.integratedSearch(q, valueConstraints, page, pageSize, apiKey);
+        return local.integratedSearch(q, valueConstraints, page, pageSize, apiKey, lang);
       }
       try {
-        return local.integratedSearch(q, valueConstraints, page, pageSize, apiKey);
+        return local.integratedSearch(q, valueConstraints, page, pageSize, apiKey, lang);
       } catch (UnsupportedOperationException notImplementedLocally) {
+        // The local backend cannot serve this search *shape* (e.g. multi-source or mixed constraints).
+        // Routing to the remote adapter is fine for an unpinned request, but never for a pinned one:
+        // BioPortal serves latest, which would silently break the freeze. (A pinned *version* miss is a
+        // PinnedVersionUnavailableException — not an UnsupportedOperationException — so it is not caught
+        // here; it propagates and fails loud.)
+        if (hasExplicitVersionPin(valueConstraints)) {
+          throw new PinnedVersionUnavailableException(
+              "A constraint pins a version, but the local backend cannot serve this search; refusing to "
+                  + "serve latest from the remote adapter.");
+        }
         // Fall through to remote.
       }
+    } else if (hasExplicitVersionPin(valueConstraints)) {
+      // The pinned source is not served locally at all; the remote adapter would serve latest, breaking
+      // the freeze. Fail loud instead of silently resolving against current content.
+      throw new PinnedVersionUnavailableException(
+          "A constraint pins a version, but its source is not served locally; refusing to serve latest "
+              + "from the remote adapter.");
     }
-    return remote.integratedSearch(q, valueConstraints, page, pageSize, apiKey);
+    // A constraint that names a non-BioPortal source is served from the local store or not at all — it is
+    // never proxied to BioPortal. Identity is source-independent, so a locally-served snapshot already
+    // answered above; reaching here means it is not served locally. Return no results rather than
+    // BioPortal's content for a different source.
+    if (hasNonBioPortalSource(valueConstraints)) {
+      return emptyResults(page, pageSize);
+    }
+    return remote.integratedSearch(q, valueConstraints, page, pageSize, apiKey, lang);
+  }
+
+  /** Whether any ontology / branch / value-set constraint names a source system other than BioPortal (a
+   *  non-null, non-blank {@code sourceSystem} that is not {@code "bioportal"}). Such a constraint must be
+   *  served locally or reported unavailable — never proxied to BioPortal. */
+  private static boolean hasNonBioPortalSource(ValueConstraints vc) {
+    if (vc == null) {
+      return false;
+    }
+    if (vc.getOntologies() != null) {
+      for (OntologyValueConstraint o : vc.getOntologies()) {
+        if (isNonBioPortalSource(o.getSourceSystem())) {
+          return true;
+        }
+      }
+    }
+    if (vc.getBranches() != null) {
+      for (BranchValueConstraint b : vc.getBranches()) {
+        if (isNonBioPortalSource(b.getSourceSystem())) {
+          return true;
+        }
+      }
+    }
+    if (vc.getValueSets() != null) {
+      for (ValueSetValueConstraint v : vc.getValueSets()) {
+        if (isNonBioPortalSource(v.getSourceSystem())) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  private static boolean isNonBioPortalSource(String sourceSystem) {
+    return sourceSystem != null && !sourceSystem.isBlank() && !"bioportal".equalsIgnoreCase(sourceSystem);
+  }
+
+  private static PagedResults<SearchResult> emptyResults(int page, int pageSize) {
+    return new PagedResults<>(page, 0, pageSize, 0, null, null, java.util.List.of());
+  }
+
+  /** Whether any ontology / branch / value-set constraint carries an explicit version pin (a value that
+   *  is not null, blank, or the "latest" sentinel). Enumerated classes cannot be pinned. */
+  private static boolean hasExplicitVersionPin(ValueConstraints vc) {
+    if (vc == null) {
+      return false;
+    }
+    if (vc.getOntologies() != null) {
+      for (OntologyValueConstraint o : vc.getOntologies()) {
+        if (isVersionPin(o.getVersion())) {
+          return true;
+        }
+      }
+    }
+    if (vc.getBranches() != null) {
+      for (BranchValueConstraint b : vc.getBranches()) {
+        if (isVersionPin(b.getVersion())) {
+          return true;
+        }
+      }
+    }
+    if (vc.getValueSets() != null) {
+      for (ValueSetValueConstraint v : vc.getValueSets()) {
+        if (isVersionPin(v.getVersion())) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  private static boolean isVersionPin(String version) {
+    return version != null && !version.isBlank() && !"latest".equalsIgnoreCase(version);
   }
 
   /**
@@ -297,6 +393,27 @@ public class RoutingTerminologyService implements ITerminologyService {
   }
 
   @Override
+  public VersionTriple resolveCurrentVersion(String ontology) throws IOException {
+    // A local-store concept: a locally-served ontology resolves its current triple; everything else
+    // returns null (the remote backend has no content-hash triple), signalling "cannot freeze here".
+    return dispatch(ontology, s -> s.resolveCurrentVersion(ontology));
+  }
+
+  @Override
+  public VersionTriple resolveCurrentVersionForClass(String classIri) throws IOException {
+    // Only the local store can map a class IRI's namespace to an ontology and resolve its triple; the
+    // remote backend has none. The ontology is derived inside, so this cannot go through dispatch(ontology).
+    return local != null ? local.resolveCurrentVersionForClass(classIri) : null;
+  }
+
+  @Override
+  public VersionTriple resolveCurrentVersionForValueSetCollection(String vsCollection) throws IOException {
+    // Only the local store has content-hash snapshots of value-set collections; BioPortal has none.
+    // The collection is not one of the routed ontologies, so this bypasses dispatch(ontology).
+    return local != null ? local.resolveCurrentVersionForValueSetCollection(vsCollection) : null;
+  }
+
+  @Override
   public VersionDiff diffVersions(String ontology, String fromVersion, String toVersion) throws IOException {
     return dispatch(ontology, s -> s.diffVersions(ontology, fromVersion, toVersion));
   }
@@ -322,8 +439,8 @@ public class RoutingTerminologyService implements ITerminologyService {
   }
 
   @Override
-  public OntologyClass findClass(String id, String ontology, String apiKey) throws IOException {
-    return dispatch(ontology, s -> s.findClass(id, ontology, apiKey));
+  public OntologyClass findClass(String id, String ontology, String apiKey, String lang) throws IOException {
+    return dispatch(ontology, s -> s.findClass(id, ontology, apiKey, lang));
   }
 
   @Override
@@ -462,11 +579,6 @@ public class RoutingTerminologyService implements ITerminologyService {
    * ------------------------------------------------------------------------------------------- */
 
   @Override
-  public OntologyClass createProvisionalClass(OntologyClass c, String apiKey) throws IOException {
-    return remote.createProvisionalClass(c, apiKey);
-  }
-
-  @Override
   public OntologyClass findProvisionalClass(String id, String apiKey) throws IOException {
     return remote.findProvisionalClass(id, apiKey);
   }
@@ -478,33 +590,8 @@ public class RoutingTerminologyService implements ITerminologyService {
   }
 
   @Override
-  public void updateProvisionalClass(OntologyClass c, String apiKey) throws IOException {
-    remote.updateProvisionalClass(c, apiKey);
-  }
-
-  @Override
-  public void deleteProvisionalClass(String id, String apiKey) throws IOException {
-    remote.deleteProvisionalClass(id, apiKey);
-  }
-
-  @Override
-  public Relation createProvisionalRelation(Relation relation, String apiKey) throws IOException {
-    return remote.createProvisionalRelation(relation, apiKey);
-  }
-
-  @Override
   public Relation findProvisionalRelation(String id, String apiKey) throws IOException {
     return remote.findProvisionalRelation(id, apiKey);
-  }
-
-  @Override
-  public void deleteProvisionalRelation(String id, String apiKey) throws IOException {
-    remote.deleteProvisionalRelation(id, apiKey);
-  }
-
-  @Override
-  public ValueSet createProvisionalValueSet(ValueSet vs, String apiKey) throws IOException {
-    return remote.createProvisionalValueSet(vs, apiKey);
   }
 
   @Override
@@ -513,32 +600,8 @@ public class RoutingTerminologyService implements ITerminologyService {
   }
 
   @Override
-  public void updateProvisionalValueSet(ValueSet vs, String apiKey) throws IOException {
-    remote.updateProvisionalValueSet(vs, apiKey);
-  }
-
-  @Override
-  public void deleteProvisionalValueSet(String id, String apiKey) throws IOException {
-    remote.deleteProvisionalValueSet(id, apiKey);
-  }
-
-  @Override
-  public Value createProvisionalValue(Value v, String apiKey) throws IOException {
-    return remote.createProvisionalValue(v, apiKey);
-  }
-
-  @Override
   public Value findProvisionalValue(String id, String apiKey) throws IOException {
     return remote.findProvisionalValue(id, apiKey);
   }
 
-  @Override
-  public void updateProvisionalValue(Value v, String apiKey) throws IOException {
-    remote.updateProvisionalValue(v, apiKey);
-  }
-
-  @Override
-  public void deleteProvisionalValue(String id, String apiKey) throws IOException {
-    remote.deleteProvisionalValue(id, apiKey);
-  }
 }
