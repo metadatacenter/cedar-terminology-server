@@ -345,7 +345,7 @@ public class VersionAwareSearchService {
     // matched, like every other vocabulary.
     Map<String, Integer> matches = index == null || !resolved.isEmpty()
         ? Map.of()
-        : index.vocabularyFacet(query, VOCABULARY_FACET_LIMIT).stream()
+        : index.vocabularyFacet(query, VOCABULARY_FACET_LIMIT, FACET_CAP).stream()
             .collect(java.util.stream.Collectors.toMap(
                 SearchIndexStore.VocabularyMatch::acronym, SearchIndexStore.VocabularyMatch::matchCount,
                 (a, b) -> a, LinkedHashMap::new));

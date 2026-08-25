@@ -738,24 +738,40 @@ public class SearchIndexStore implements AutoCloseable {
    * it: a group-by over the same match. Note it is not derivable from a page of results — a page is
    * truncated and its sources are whichever happened to rank highest, which undercounts. Measured
    * 2026-08-13, "melanoma" is in 113 vocabularies where the first thousand hits come from 88.
+   *
+   * {@code cap} bounds how many matched terms are grouped. Grouping every one of them costs time in
+   * proportion to how broadly the query matches, and a short prefix matches very broadly. An author
+   * reaching for "cell" types "ce" on the way. The cap is the one {@link #matchCount} already
+   * applies, and it buys that time with accuracy rather than for free.
+   *
+   * Which matches fall inside the cap follows the order the index holds them rather than rank, and
+   * that order tracks the acronym. A capped facet therefore drops vocabularies whose acronyms sort
+   * late and reorders the ones it keeps. Measured 2026-08-25 against a 1,266-ontology store, "ce"
+   * fell from 821 vocabularies to 48 and kept one of the uncapped top ten. "disease" fell from 463
+   * to 100, also keeping one. "melanoma" matches fewer terms than the cap and came back unchanged.
+   * A caller tells an exact facet from a cut one by the total: counts that sum to {@code cap} were
+   * cut, and a smaller sum saw the whole match.
    */
-  public List<VocabularyMatch> vocabularyFacet(String query, int limit) throws SQLException {
+  public List<VocabularyMatch> vocabularyFacet(String query, int limit, int cap) throws SQLException {
     String match = toPrefixMatch(query);
     if (match.isEmpty()) {
       return List.of();
     }
     List<VocabularyMatch> out = new ArrayList<>();
     try (PreparedStatement ps = connection.prepareStatement("""
-        SELECT t.acronym, COUNT(DISTINCT t.term_id) c
-        FROM name_fts f
-        JOIN name n ON n.name_id = f.rowid
-        JOIN term t ON t.term_id = n.term_id
-        WHERE name_fts MATCH ?
-        GROUP BY t.acronym
-        ORDER BY c DESC, t.acronym
+        SELECT acronym, COUNT(*) c FROM (
+          SELECT DISTINCT t.acronym, t.term_id
+          FROM name_fts f
+          JOIN name n ON n.name_id = f.rowid
+          JOIN term t ON t.term_id = n.term_id
+          WHERE name_fts MATCH ?
+          LIMIT ?)
+        GROUP BY acronym
+        ORDER BY c DESC, acronym
         LIMIT ?""")) {
       ps.setString(1, match);
-      ps.setInt(2, limit);
+      ps.setInt(2, cap);
+      ps.setInt(3, limit);
       try (ResultSet rs = ps.executeQuery()) {
         while (rs.next()) {
           out.add(new VocabularyMatch(rs.getString(1), rs.getInt(2)));
