@@ -251,6 +251,12 @@ public class SearchIndexStore implements AutoCloseable {
             definition       TEXT
           )""");
       st.executeUpdate("CREATE INDEX IF NOT EXISTS term_by_acronym ON term(acronym)");
+      // Terms are also reached by IRI alone, which is how a page of corpus-wide hits fetches its
+      // names: the hits come from the whole corpus, so there is no acronym to narrow by. Without
+      // this the lookup scans every term in the index -- fifteen million rows for a page of
+      // twenty-five, on every corpus-wide search -- and the scan, not the search, is what the
+      // request costs.
+      st.executeUpdate("CREATE INDEX IF NOT EXISTS term_by_iri ON term(iri)");
       // An index built before definitions were captured has no such column; adding it here means an
       // existing index keeps working and fills as ontologies are rebuilt, rather than all at once.
       if (!hasColumn(st, "term", "definition")) {
