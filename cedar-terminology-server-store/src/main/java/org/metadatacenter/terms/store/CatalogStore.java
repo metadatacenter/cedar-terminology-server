@@ -103,6 +103,17 @@ public class CatalogStore implements AutoCloseable {
   public static final String KIND_VALUE_SET_COLLECTION = "value_set_collection";
 
   private final Connection connection;
+
+  /**
+   * A connection each reading thread, or {@code null} when this store was opened to write.
+   *
+   * Every lookup consults the catalog to say which release answered it, so one connection here
+   * serialises the whole server however many the snapshots and the index have.
+   */
+  private final ReadConnections reads;
+
+  /** Connections a serving catalog will open before threads start sharing one again. */
+  private static final int READ_CONNECTION_LIMIT = 8;
   /**
    * Directory the catalog file lives in, used to resolve snapshot {@code file_path}s stored relative
    * to it. Null for an in-memory catalog, in which case relative paths are left as-is (resolved
@@ -111,8 +122,18 @@ public class CatalogStore implements AutoCloseable {
   private final Path baseDir;
 
   private CatalogStore(Connection connection, Path baseDir) {
+    this(connection, baseDir, null);
+  }
+
+  private CatalogStore(Connection connection, Path baseDir, ReadConnections reads) {
     this.connection = connection;
     this.baseDir = baseDir;
+    this.reads = reads;
+  }
+
+  /** The connection this call should use: a reading thread has its own when the store serves. */
+  private Connection connection() throws SQLException {
+    return reads == null ? connection : reads.get();
   }
 
   public static CatalogStore openFile(String path) throws SQLException {
@@ -120,10 +141,23 @@ public class CatalogStore implements AutoCloseable {
     return new CatalogStore(DriverManager.getConnection("jdbc:sqlite:" + path), parent);
   }
 
+  /**
+   * Opens the catalog to answer queries, where lookups arrive on many threads at once.
+   *
+   * The store this returns writes nothing. An ingest opens the same file with {@link #openFile},
+   * keeping the single connection its transactions need.
+   */
+  public static CatalogStore openForRead(String path) throws SQLException {
+    Path parent = Paths.get(path).toAbsolutePath().getParent();
+    Connection first = DriverManager.getConnection("jdbc:sqlite:" + path);
+    return new CatalogStore(first, parent,
+        ReadConnections.of(path, first, c -> { }, READ_CONNECTION_LIMIT));
+  }
+
   /** How long a write waits for a lock held by another connection (e.g. a live server reading the
    *  catalog) before failing, instead of erroring immediately with SQLITE_BUSY. */
   public void setBusyTimeoutMillis(int millis) throws SQLException {
-    try (Statement s = connection.createStatement()) {
+    try (Statement s = connection().createStatement()) {
       s.execute("PRAGMA busy_timeout = " + millis);
     }
   }
@@ -167,7 +201,7 @@ public class CatalogStore implements AutoCloseable {
     // before creating anything, so initSchema stays safe to call on any existing catalog.
     migrateAcronymKeyedOntologyTable();
 
-    try (Statement s = connection.createStatement()) {
+    try (Statement s = connection().createStatement()) {
       // Canonical cross-source identity, keyed by iri. One row per distinct ontology; populated when
       // an iri is derived (an ontology whose iri cannot be derived — the empty LC-CARRIERS — has a
       // source row but no identity row, and is addressable only by acronym).
@@ -252,14 +286,14 @@ public class CatalogStore implements AutoCloseable {
     if (!tableHasColumn("ontology", "acronym")) {
       return; // fresh catalog, or already migrated
     }
-    try (Statement s = connection.createStatement()) {
+    try (Statement s = connection().createStatement()) {
       s.executeUpdate("ALTER TABLE ontology RENAME TO ontology_source");
     }
     // Old catalogs may predate the iri / raw_namespace / kind columns; ensure the source table has them.
     ensureColumn("ontology_source", "iri", "TEXT");
     ensureColumn("ontology_source", "raw_namespace", "TEXT");
     ensureColumn("ontology_source", "kind", "TEXT NOT NULL DEFAULT 'ontology'");
-    try (Statement s = connection.createStatement()) {
+    try (Statement s = connection().createStatement()) {
       s.executeUpdate("CREATE TABLE IF NOT EXISTS ontology (iri TEXT PRIMARY KEY, name TEXT NOT NULL)");
       // One identity row per distinct derived iri, taking any of the source rows' names.
       s.executeUpdate("""
@@ -271,7 +305,7 @@ public class CatalogStore implements AutoCloseable {
 
   /** Whether {@code table} exists and has a column named {@code column} (case-insensitive). */
   private boolean tableHasColumn(String table, String column) throws SQLException {
-    try (Statement s = connection.createStatement();
+    try (Statement s = connection().createStatement();
          ResultSet rs = s.executeQuery("PRAGMA table_info(" + table + ")")) {
       while (rs.next()) {
         if (column.equalsIgnoreCase(rs.getString("name"))) {
@@ -285,7 +319,7 @@ public class CatalogStore implements AutoCloseable {
   /** Adds {@code column} to {@code table} when absent; a no-op when it is already there. Lets
    *  {@link #initSchema} evolve an on-disk catalog without a full migration. */
   private void ensureColumn(String table, String column, String type) throws SQLException {
-    try (Statement s = connection.createStatement();
+    try (Statement s = connection().createStatement();
          ResultSet rs = s.executeQuery("PRAGMA table_info(" + table + ")")) {
       while (rs.next()) {
         if (column.equalsIgnoreCase(rs.getString("name"))) {
@@ -293,7 +327,7 @@ public class CatalogStore implements AutoCloseable {
         }
       }
     }
-    try (Statement s = connection.createStatement()) {
+    try (Statement s = connection().createStatement()) {
       s.executeUpdate("ALTER TABLE " + table + " ADD COLUMN " + column + " " + type);
     }
   }
@@ -316,7 +350,7 @@ public class CatalogStore implements AutoCloseable {
         name = existing;
       }
     }
-    try (PreparedStatement ps = connection.prepareStatement("""
+    try (PreparedStatement ps = connection().prepareStatement("""
         INSERT INTO ontology_source (acronym, name, source_iri, default_format) VALUES (?, ?, ?, ?)
         ON CONFLICT(acronym) DO UPDATE SET
           name = excluded.name, source_iri = excluded.source_iri, default_format = excluded.default_format""")) {
@@ -331,7 +365,7 @@ public class CatalogStore implements AutoCloseable {
   /** The display name currently stored for {@code acronym}, or null if the ontology is not registered. */
   public String ontologyName(String acronym) throws SQLException {
     try (PreparedStatement ps =
-             connection.prepareStatement("SELECT name FROM ontology_source WHERE acronym = ?")) {
+             connection().prepareStatement("SELECT name FROM ontology_source WHERE acronym = ?")) {
       ps.setString(1, acronym);
       try (ResultSet rs = ps.executeQuery()) {
         return rs.next() ? rs.getString(1) : null;
@@ -346,7 +380,7 @@ public class CatalogStore implements AutoCloseable {
    * content hash gets its own row rather than overwriting this one.
    */
   public void addSnapshot(SnapshotInfo s) throws SQLException {
-    try (PreparedStatement ps = connection.prepareStatement("""
+    try (PreparedStatement ps = connection().prepareStatement("""
         INSERT INTO snapshot (version_id, acronym, declared_version, released_at, ingested_at, format,
                               hierarchy_status, class_count, edge_count, file_path, file_hash, license_tier)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -379,7 +413,7 @@ public class CatalogStore implements AutoCloseable {
    * concepts already on disk; a no-op when the acronym is unknown. Idempotent — re-deriving overwrites.
    */
   public void setOntologyIri(String acronym, String iri, String rawNamespace) throws SQLException {
-    try (PreparedStatement ps = connection.prepareStatement(
+    try (PreparedStatement ps = connection().prepareStatement(
         "UPDATE ontology_source SET iri = ?, raw_namespace = ? WHERE acronym = ?")) {
       ps.setString(1, iri);
       ps.setString(2, rawNamespace);
@@ -389,7 +423,7 @@ public class CatalogStore implements AutoCloseable {
     // Link the source to (and create if new) its canonical identity row. This is where an acronym
     // joins the iri-keyed identity: two acronyms deriving the same iri map to one identity row.
     if (iri != null && !iri.isBlank()) {
-      try (PreparedStatement ps = connection.prepareStatement(
+      try (PreparedStatement ps = connection().prepareStatement(
           "INSERT OR IGNORE INTO ontology (iri, name) SELECT ?, name FROM ontology_source WHERE acronym = ?")) {
         ps.setString(1, iri);
         ps.setString(2, acronym);
@@ -405,7 +439,7 @@ public class CatalogStore implements AutoCloseable {
    * orphaned identity row, if any, is left for {@link #pruneOrphanIdentities} to reap.
    */
   public void clearOntologyIri(String acronym) throws SQLException {
-    try (PreparedStatement ps = connection.prepareStatement(
+    try (PreparedStatement ps = connection().prepareStatement(
         "UPDATE ontology_source SET iri = NULL WHERE acronym = ?")) {
       ps.setString(1, acronym);
       ps.executeUpdate();
@@ -415,7 +449,7 @@ public class CatalogStore implements AutoCloseable {
   /** Canonical iris claimed by more than one source-acronym, ascending — the de-confliction work
    *  list: each is either a true duplicate (same content) or a false merge to resolve. */
   public List<String> sharedIris() throws SQLException {
-    try (Statement s = connection.createStatement();
+    try (Statement s = connection().createStatement();
          ResultSet rs = s.executeQuery("SELECT iri FROM ontology_source "
              + "WHERE iri IS NOT NULL GROUP BY iri HAVING COUNT(*) > 1 ORDER BY iri")) {
       List<String> out = new ArrayList<>();
@@ -429,7 +463,7 @@ public class CatalogStore implements AutoCloseable {
   /** Deletes identity rows no source-acronym points at any more (after de-confliction cleared their
    *  last referrer). Returns the number removed. */
   public int pruneOrphanIdentities() throws SQLException {
-    try (Statement s = connection.createStatement()) {
+    try (Statement s = connection().createStatement()) {
       return s.executeUpdate("DELETE FROM ontology WHERE iri NOT IN "
           + "(SELECT iri FROM ontology_source WHERE iri IS NOT NULL)");
     }
@@ -441,7 +475,7 @@ public class CatalogStore implements AutoCloseable {
    * content-hash ingest has registered the row; a no-op when the acronym is unknown. Idempotent.
    */
   public void setOntologyKind(String acronym, String kind) throws SQLException {
-    try (PreparedStatement ps = connection.prepareStatement(
+    try (PreparedStatement ps = connection().prepareStatement(
         "UPDATE ontology_source SET kind = ? WHERE acronym = ?")) {
       ps.setString(1, kind);
       ps.setString(2, acronym);
@@ -462,7 +496,7 @@ public class CatalogStore implements AutoCloseable {
    */
   public List<String> listValueSetCollections() throws SQLException {
     List<String> out = new ArrayList<>();
-    try (PreparedStatement ps = connection.prepareStatement(
+    try (PreparedStatement ps = connection().prepareStatement(
         "SELECT acronym FROM ontology_source WHERE kind = ? ORDER BY acronym")) {
       ps.setString(1, KIND_VALUE_SET_COLLECTION);
       try (ResultSet rs = ps.executeQuery()) {
@@ -478,7 +512,7 @@ public class CatalogStore implements AutoCloseable {
     if (acronym == null) {
       return false;
     }
-    try (PreparedStatement ps = connection.prepareStatement(
+    try (PreparedStatement ps = connection().prepareStatement(
         "SELECT 1 FROM ontology_source WHERE acronym = ? AND kind = ?")) {
       ps.setString(1, acronym);
       ps.setString(2, KIND_VALUE_SET_COLLECTION);
@@ -499,7 +533,7 @@ public class CatalogStore implements AutoCloseable {
     if (rawNamespace == null) {
       return Optional.empty();
     }
-    try (PreparedStatement ps = connection.prepareStatement(
+    try (PreparedStatement ps = connection().prepareStatement(
         "SELECT acronym FROM ontology_source WHERE raw_namespace = ?")) {
       ps.setString(1, rawNamespace);
       try (ResultSet rs = ps.executeQuery()) {
@@ -515,7 +549,7 @@ public class CatalogStore implements AutoCloseable {
   /** The ontology's canonical {@code iri}, or empty when the acronym is unknown or its iri is not yet
    *  derived. */
   public Optional<String> ontologyIri(String acronym) throws SQLException {
-    try (PreparedStatement ps = connection.prepareStatement("SELECT iri FROM ontology_source WHERE acronym = ?")) {
+    try (PreparedStatement ps = connection().prepareStatement("SELECT iri FROM ontology_source WHERE acronym = ?")) {
       ps.setString(1, acronym);
       try (ResultSet rs = ps.executeQuery()) {
         return rs.next() ? Optional.ofNullable(rs.getString(1)) : Optional.empty();
@@ -537,7 +571,7 @@ public class CatalogStore implements AutoCloseable {
     if (iri == null) {
       return acronyms;
     }
-    try (PreparedStatement ps = connection.prepareStatement(
+    try (PreparedStatement ps = connection().prepareStatement(
         "SELECT acronym FROM ontology_source WHERE iri = ? ORDER BY acronym")) {
       ps.setString(1, iri);
       try (ResultSet rs = ps.executeQuery()) {
@@ -557,7 +591,7 @@ public class CatalogStore implements AutoCloseable {
    */
   public void setSnapshotProvenance(String versionId, String acronym, Integer submissionId, String sourceDate)
       throws SQLException {
-    try (PreparedStatement ps = connection.prepareStatement(
+    try (PreparedStatement ps = connection().prepareStatement(
         "UPDATE snapshot SET submission_id = ?, source_date = ? WHERE version_id = ? AND acronym = ?")) {
       setNullableInt(ps, 1, submissionId);
       ps.setString(2, sourceDate);
@@ -574,7 +608,7 @@ public class CatalogStore implements AutoCloseable {
    * does not participate in identity, which is the source-independent content hash. Idempotent.
    */
   public void setSnapshotBackend(String versionId, String acronym, String backend) throws SQLException {
-    try (PreparedStatement ps = connection.prepareStatement(
+    try (PreparedStatement ps = connection().prepareStatement(
         "UPDATE snapshot SET backend = ? WHERE version_id = ? AND acronym = ?")) {
       ps.setString(1, backend);
       ps.setString(2, versionId);
@@ -585,7 +619,7 @@ public class CatalogStore implements AutoCloseable {
 
   /** A snapshot's provenance, or empty when the {@code (versionId, acronym)} is unknown. */
   public Optional<SnapshotProvenance> snapshotProvenance(String versionId, String acronym) throws SQLException {
-    try (PreparedStatement ps = connection.prepareStatement(
+    try (PreparedStatement ps = connection().prepareStatement(
         "SELECT backend, submission_id, source_date FROM snapshot WHERE version_id = ? AND acronym = ?")) {
       ps.setString(1, versionId);
       ps.setString(2, acronym);
@@ -604,7 +638,7 @@ public class CatalogStore implements AutoCloseable {
    * the previous target in a single statement, so a reader never sees the tag between two versions.
    */
   public void setTag(String acronym, String tag, String versionId) throws SQLException {
-    try (PreparedStatement ps = connection.prepareStatement("""
+    try (PreparedStatement ps = connection().prepareStatement("""
         INSERT INTO version_tag (acronym, tag, version_id) VALUES (?, ?, ?)
         ON CONFLICT(acronym, tag) DO UPDATE SET version_id = excluded.version_id""")) {
       ps.setString(1, acronym);
@@ -633,16 +667,16 @@ public class CatalogStore implements AutoCloseable {
    * is allowed.
    */
   public void cutoverToContentHash(List<VersionRemap> remaps) throws SQLException {
-    try (Statement fk = connection.createStatement()) {
+    try (Statement fk = connection().createStatement()) {
       fk.execute("PRAGMA foreign_keys=OFF"); // a no-op inside a transaction, so set it before one
     }
-    boolean autoCommit = connection.getAutoCommit();
-    connection.setAutoCommit(false);
-    try (PreparedStatement tag = connection.prepareStatement(
+    boolean autoCommit = connection().getAutoCommit();
+    connection().setAutoCommit(false);
+    try (PreparedStatement tag = connection().prepareStatement(
              "UPDATE version_tag SET version_id = ? WHERE acronym = ? AND version_id = ?");
-         PreparedStatement del = connection.prepareStatement(
+         PreparedStatement del = connection().prepareStatement(
              "DELETE FROM snapshot WHERE acronym = ? AND version_id = ?");
-         PreparedStatement upd = connection.prepareStatement(
+         PreparedStatement upd = connection().prepareStatement(
              "UPDATE snapshot SET version_id = ? WHERE acronym = ? AND version_id = ?")) {
       // 1. Repoint every tag from its old id to the surviving content hash (covers a tag that sat on
       //    a merged-away duplicate — it maps to the survivor).
@@ -671,12 +705,12 @@ public class CatalogStore implements AutoCloseable {
           upd.executeUpdate();
         }
       }
-      connection.commit();
+      connection().commit();
     } catch (SQLException e) {
-      connection.rollback();
+      connection().rollback();
       throw e;
     } finally {
-      connection.setAutoCommit(autoCommit);
+      connection().setAutoCommit(autoCommit);
     }
   }
 
@@ -699,16 +733,16 @@ public class CatalogStore implements AutoCloseable {
    * order (ontology_source before snapshot before version_tag).
    */
   public void inTransaction(TransactionalWork work) throws SQLException {
-    boolean autoCommit = connection.getAutoCommit();
-    connection.setAutoCommit(false);
+    boolean autoCommit = connection().getAutoCommit();
+    connection().setAutoCommit(false);
     try {
       work.run();
-      connection.commit();
+      connection().commit();
     } catch (SQLException e) {
-      connection.rollback();
+      connection().rollback();
       throw e;
     } finally {
-      connection.setAutoCommit(autoCommit);
+      connection().setAutoCommit(autoCommit);
     }
   }
 
@@ -718,7 +752,7 @@ public class CatalogStore implements AutoCloseable {
 
   /** Resolves the snapshot a tag points to for an ontology. */
   public Optional<SnapshotInfo> resolve(String acronym, String tag) throws SQLException {
-    try (PreparedStatement ps = connection.prepareStatement("""
+    try (PreparedStatement ps = connection().prepareStatement("""
         SELECT s.* FROM version_tag t
         JOIN snapshot s ON s.version_id = t.version_id AND s.acronym = t.acronym
         WHERE t.acronym = ? AND t.tag = ?""")) {
@@ -740,7 +774,7 @@ public class CatalogStore implements AutoCloseable {
    * {@code latest} currently points.
    */
   public Optional<SnapshotInfo> resolveVersion(String acronym, String versionId) throws SQLException {
-    try (PreparedStatement ps = connection.prepareStatement(
+    try (PreparedStatement ps = connection().prepareStatement(
         "SELECT * FROM snapshot WHERE acronym = ? AND version_id = ?")) {
       ps.setString(1, acronym);
       ps.setString(2, versionId);
@@ -761,7 +795,7 @@ public class CatalogStore implements AutoCloseable {
    * full released timestamp, then ingest order, then version id, so the choice is deterministic.
    */
   public Optional<SnapshotInfo> resolveAsOfDate(String acronym, String asOfDate) throws SQLException {
-    try (PreparedStatement ps = connection.prepareStatement("""
+    try (PreparedStatement ps = connection().prepareStatement("""
         SELECT * FROM snapshot
         WHERE acronym = ? AND released_at IS NOT NULL AND substr(released_at, 1, 10) <= ?
         ORDER BY released_at DESC, ingested_at DESC, version_id DESC
@@ -782,7 +816,7 @@ public class CatalogStore implements AutoCloseable {
    * no reliable internal ordering, so only the release timestamp orders them.
    */
   public List<SnapshotInfo> resolveByDeclaredVersion(String acronym, String declaredVersion) throws SQLException {
-    try (PreparedStatement ps = connection.prepareStatement("""
+    try (PreparedStatement ps = connection().prepareStatement("""
         SELECT * FROM snapshot
         WHERE acronym = ? AND declared_version = ?
         ORDER BY released_at DESC, ingested_at DESC, version_id DESC""")) {
@@ -805,14 +839,14 @@ public class CatalogStore implements AutoCloseable {
    * care which. Callers that need a specific ontology's row should use {@link #resolve} instead.
    */
   public Optional<SnapshotInfo> getSnapshot(String versionId) throws SQLException {
-    try (PreparedStatement ps = connection.prepareStatement("SELECT * FROM snapshot WHERE version_id = ? LIMIT 1")) {
+    try (PreparedStatement ps = connection().prepareStatement("SELECT * FROM snapshot WHERE version_id = ? LIMIT 1")) {
       ps.setString(1, versionId);
       return firstSnapshot(ps);
     }
   }
 
   public List<OntologyInfo> listOntologies() throws SQLException {
-    try (Statement s = connection.createStatement();
+    try (Statement s = connection().createStatement();
          ResultSet rs = s.executeQuery(
              "SELECT acronym, name, source_iri, default_format FROM ontology_source ORDER BY acronym")) {
       List<OntologyInfo> out = new ArrayList<>();
@@ -826,7 +860,7 @@ public class CatalogStore implements AutoCloseable {
   /** Every canonical ontology identity (iri), ascending — one row per distinct ontology, spanning
    *  sources. The iri-keyed counterpart of {@link #listOntologies} (which lists source acronyms). */
   public List<String> listOntologyIdentities() throws SQLException {
-    try (Statement s = connection.createStatement();
+    try (Statement s = connection().createStatement();
          ResultSet rs = s.executeQuery("SELECT iri FROM ontology ORDER BY iri")) {
       List<String> out = new ArrayList<>();
       while (rs.next()) {
@@ -846,7 +880,7 @@ public class CatalogStore implements AutoCloseable {
    * iri has a current snapshot.
    */
   public Optional<SnapshotInfo> resolveLatestByIri(String iri) throws SQLException {
-    try (PreparedStatement ps = connection.prepareStatement("""
+    try (PreparedStatement ps = connection().prepareStatement("""
         SELECT s.* FROM version_tag t
         JOIN snapshot s ON s.version_id = t.version_id AND s.acronym = t.acronym
         JOIN ontology_source os ON os.acronym = t.acronym
@@ -860,7 +894,7 @@ public class CatalogStore implements AutoCloseable {
   }
 
   public List<SnapshotInfo> listSnapshots(String acronym) throws SQLException {
-    try (PreparedStatement ps = connection.prepareStatement(
+    try (PreparedStatement ps = connection().prepareStatement(
         "SELECT * FROM snapshot WHERE acronym = ? ORDER BY released_at")) {
       ps.setString(1, acronym);
       try (ResultSet rs = ps.executeQuery()) {
@@ -888,7 +922,7 @@ public class CatalogStore implements AutoCloseable {
   public List<SnapshotInfo> listCurrentSnapshots(String acronym) throws SQLException {
     // Newest ingest of each file hash, with the version id breaking a tie so the choice is
     // deterministic rather than whatever the scan happened to reach first.
-    try (PreparedStatement ps = connection.prepareStatement("""
+    try (PreparedStatement ps = connection().prepareStatement("""
         SELECT * FROM snapshot s
         WHERE s.acronym = ?
           AND NOT EXISTS (
@@ -919,7 +953,7 @@ public class CatalogStore implements AutoCloseable {
    * rather than leaving an author to compare ingest dates by hand.
    */
   public boolean isSuperseded(String versionId, String acronym) throws SQLException {
-    try (PreparedStatement ps = connection.prepareStatement("""
+    try (PreparedStatement ps = connection().prepareStatement("""
         SELECT EXISTS (
           SELECT 1 FROM snapshot s JOIN snapshot o
             ON o.acronym = s.acronym AND o.file_hash = s.file_hash
@@ -975,6 +1009,10 @@ public class CatalogStore implements AutoCloseable {
 
   @Override
   public void close() throws SQLException {
+    if (reads != null) {
+      reads.close();
+      return;
+    }
     connection.close();
   }
 }

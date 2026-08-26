@@ -91,7 +91,7 @@ public class SearchIndexStore implements AutoCloseable {
     String sql = "SELECT t.acronym, t.iri, n.property, n.lang, n.value FROM term t"
         + " JOIN name n ON n.term_id = t.term_id WHERE t.iri IN ("
         + String.join(",", Collections.nCopies(distinct.size(), "?")) + ")";
-    try (PreparedStatement ps = connection.prepareStatement(sql)) {
+    try (PreparedStatement ps = connection().prepareStatement(sql)) {
       for (int i = 0; i < distinct.size(); i++) {
         ps.setString(i + 1, distinct.get(i));
       }
@@ -125,7 +125,7 @@ public class SearchIndexStore implements AutoCloseable {
         FROM up JOIN term t ON t.iri = up.iri AND t.acronym = ?
         ORDER BY up.depth DESC""";
     List<IndexedTerm> chain = new ArrayList<>();
-    try (PreparedStatement ps = connection.prepareStatement(sql)) {
+    try (PreparedStatement ps = connection().prepareStatement(sql)) {
       ps.setString(1, acronym);
       ps.setString(2, iri);
       ps.setString(3, acronym);
@@ -153,7 +153,7 @@ public class SearchIndexStore implements AutoCloseable {
         + " descendant_count, parent_iri, parent_label, definition FROM term"
         + " WHERE acronym = ? AND parent_iri = ? ORDER BY pref_label COLLATE NOCASE, pref_label, iri LIMIT ? OFFSET ?";
     List<IndexedTerm> out = new ArrayList<>();
-    try (PreparedStatement ps = connection.prepareStatement(sql)) {
+    try (PreparedStatement ps = connection().prepareStatement(sql)) {
       ps.setString(1, acronym);
       ps.setString(2, iri);
       ps.setInt(3, limit);
@@ -169,7 +169,7 @@ public class SearchIndexStore implements AutoCloseable {
 
   /** How many children a term has, without reading them. */
   public int childCount(String acronym, String iri) throws SQLException {
-    try (PreparedStatement ps = connection.prepareStatement(
+    try (PreparedStatement ps = connection().prepareStatement(
         "SELECT COUNT(*) FROM term WHERE acronym = ? AND parent_iri = ?")) {
       ps.setString(1, acronym);
       ps.setString(2, iri);
@@ -180,7 +180,7 @@ public class SearchIndexStore implements AutoCloseable {
   }
 
   public Optional<IndexedTerm> term(String acronym, String iri) throws SQLException {
-    try (PreparedStatement ps = connection.prepareStatement(
+    try (PreparedStatement ps = connection().prepareStatement(
         "SELECT acronym, iri, pref_label, obsolete, replaced_by, has_children, descendant_count,"
             + " parent_iri, parent_label, definition FROM term WHERE acronym = ? AND iri = ?")) {
       ps.setString(1, acronym);
@@ -216,12 +216,42 @@ public class SearchIndexStore implements AutoCloseable {
 
   private final Connection connection;
 
+  /**
+   * A connection each reading thread, or {@code null} when this store was opened to write.
+   *
+   * A writer keeps the one connection it commits on. Only a store opened by {@link #openForRead}
+   * hands out others, because only then is every statement a read.
+   */
+  private final ReadConnections reads;
+
+  /** Connections a serving store will open before threads start sharing one again. */
+  private static final int READ_CONNECTION_LIMIT = 8;
+
   /** The SQL name of the function applying {@link #carriesResidual}. */
   static final String RESIDUAL_FN = "cedar_carries_residual";
 
   private SearchIndexStore(Connection connection) throws SQLException {
+    this(connection, null);
+  }
+
+  private SearchIndexStore(Connection connection, String readPath) throws SQLException {
     this.connection = connection;
     registerResidualFunction(connection);
+    this.reads = readPath == null ? null
+        : ReadConnections.of(readPath, connection, SearchIndexStore::prepareRead,
+            READ_CONNECTION_LIMIT);
+  }
+
+  /** Everything a freshly opened reading connection needs before it answers a query. */
+  private static void prepareRead(Connection fresh) throws SQLException {
+    registerResidualFunction(fresh);
+  }
+
+  /**
+   * The connection this call should use: the caller's thread has its own when the store serves.
+   */
+  private Connection connection() throws SQLException {
+    return reads == null ? connection : reads.get();
   }
 
   /**
@@ -256,12 +286,22 @@ public class SearchIndexStore implements AutoCloseable {
     return new SearchIndexStore(DriverManager.getConnection("jdbc:sqlite:" + path));
   }
 
+  /**
+   * Opens the index to answer queries, where lookups arrive on many threads at once.
+   *
+   * The store this returns writes nothing. An ingest opens the same file with {@link #openFile},
+   * which keeps the single connection its transactions need.
+   */
+  public static SearchIndexStore openForRead(String path) throws SQLException {
+    return new SearchIndexStore(DriverManager.getConnection("jdbc:sqlite:" + path), path);
+  }
+
   public static SearchIndexStore openInMemory() throws SQLException {
     return new SearchIndexStore(DriverManager.getConnection("jdbc:sqlite::memory:"));
   }
 
   public void initSchema() throws SQLException {
-    try (Statement st = connection.createStatement()) {
+    try (Statement st = connection().createStatement()) {
       st.executeUpdate("""
           CREATE TABLE IF NOT EXISTS indexed_snapshot (
             acronym     TEXT PRIMARY KEY,
@@ -333,7 +373,7 @@ public class SearchIndexStore implements AutoCloseable {
   /** The version of an ontology the index currently holds, if any. */
   public Optional<String> indexedVersion(String acronym) throws SQLException {
     try (PreparedStatement ps =
-             connection.prepareStatement("SELECT version_id FROM indexed_snapshot WHERE acronym = ?")) {
+             connection().prepareStatement("SELECT version_id FROM indexed_snapshot WHERE acronym = ?")) {
       ps.setString(1, acronym);
       try (ResultSet rs = ps.executeQuery()) {
         return rs.next() ? Optional.of(rs.getString(1)) : Optional.empty();
@@ -344,7 +384,7 @@ public class SearchIndexStore implements AutoCloseable {
   /** Every ontology in the index, with the version held for each. */
   public Map<String, String> indexedVersions() throws SQLException {
     Map<String, String> out = new LinkedHashMap<>();
-    try (Statement st = connection.createStatement();
+    try (Statement st = connection().createStatement();
          ResultSet rs = st.executeQuery("SELECT acronym, version_id FROM indexed_snapshot ORDER BY acronym")) {
       while (rs.next()) {
         out.put(rs.getString(1), rs.getString(2));
@@ -354,14 +394,14 @@ public class SearchIndexStore implements AutoCloseable {
   }
 
   public int indexedOntologyCount() throws SQLException {
-    try (Statement st = connection.createStatement();
+    try (Statement st = connection().createStatement();
          ResultSet rs = st.executeQuery("SELECT COUNT(*) FROM indexed_snapshot")) {
       return rs.next() ? rs.getInt(1) : 0;
     }
   }
 
   public long termCount() throws SQLException {
-    try (Statement st = connection.createStatement();
+    try (Statement st = connection().createStatement();
          ResultSet rs = st.executeQuery("SELECT COUNT(*) FROM term")) {
       return rs.next() ? rs.getLong(1) : 0;
     }
@@ -377,16 +417,16 @@ public class SearchIndexStore implements AutoCloseable {
   public void replaceOntology(String acronym, String versionId, String indexedAt,
                               Collection<IndexedTerm> terms,
                               Map<String, List<IndexedName>> namesByIri) throws SQLException {
-    boolean autoCommit = connection.getAutoCommit();
-    connection.setAutoCommit(false);
+    boolean autoCommit = connection().getAutoCommit();
+    connection().setAutoCommit(false);
     try {
       deleteOntologyRows(acronym);
-      try (PreparedStatement insertTerm = connection.prepareStatement(
+      try (PreparedStatement insertTerm = connection().prepareStatement(
                "INSERT INTO term(acronym, iri, pref_label, obsolete, replaced_by, has_children, "
                    + "descendant_count, parent_iri, parent_label, definition) "
                    + "VALUES (?,?,?,?,?,?,?,?,?,?)",
                Statement.RETURN_GENERATED_KEYS);
-           PreparedStatement insertName = connection.prepareStatement(
+           PreparedStatement insertName = connection().prepareStatement(
                "INSERT INTO name(term_id, property, lang, value) VALUES (?,?,?,?)")) {
         for (IndexedTerm t : terms) {
           insertTerm.setString(1, acronym);
@@ -415,7 +455,7 @@ public class SearchIndexStore implements AutoCloseable {
         }
         insertName.executeBatch();
       }
-      try (PreparedStatement ps = connection.prepareStatement(
+      try (PreparedStatement ps = connection().prepareStatement(
           "INSERT OR REPLACE INTO indexed_snapshot(acronym, version_id, term_count, indexed_at) VALUES (?,?,?,?)")) {
         ps.setString(1, acronym);
         ps.setString(2, versionId);
@@ -423,12 +463,12 @@ public class SearchIndexStore implements AutoCloseable {
         ps.setString(4, indexedAt);
         ps.executeUpdate();
       }
-      connection.commit();
+      connection().commit();
     } catch (SQLException e) {
-      connection.rollback();
+      connection().rollback();
       throw e;
     } finally {
-      connection.setAutoCommit(autoCommit);
+      connection().setAutoCommit(autoCommit);
     }
   }
 
@@ -442,12 +482,12 @@ public class SearchIndexStore implements AutoCloseable {
   }
 
   private void deleteOntologyRows(String acronym) throws SQLException {
-    try (PreparedStatement ps = connection.prepareStatement(
+    try (PreparedStatement ps = connection().prepareStatement(
         "DELETE FROM name WHERE term_id IN (SELECT term_id FROM term WHERE acronym = ?)")) {
       ps.setString(1, acronym);
       ps.executeUpdate();
     }
-    try (PreparedStatement ps = connection.prepareStatement("DELETE FROM term WHERE acronym = ?")) {
+    try (PreparedStatement ps = connection().prepareStatement("DELETE FROM term WHERE acronym = ?")) {
       ps.setString(1, acronym);
       ps.executeUpdate();
     }
@@ -461,14 +501,14 @@ public class SearchIndexStore implements AutoCloseable {
    * stale rather than one that disagrees with itself.
    */
   public void rebuildFullText() throws SQLException {
-    try (Statement st = connection.createStatement()) {
+    try (Statement st = connection().createStatement()) {
       st.executeUpdate("INSERT INTO name_fts(name_fts) VALUES('rebuild')");
     }
   }
 
   /** Reclaims space and updates the planner's statistics. Worth running once after a full build. */
   public void optimize() throws SQLException {
-    try (Statement st = connection.createStatement()) {
+    try (Statement st = connection().createStatement()) {
       st.executeUpdate("INSERT INTO name_fts(name_fts) VALUES('optimize')");
       st.executeUpdate("ANALYZE");
     }
@@ -524,7 +564,7 @@ public class SearchIndexStore implements AutoCloseable {
         .append(", t.obsolete, LENGTH(n.value), n.value, t.iri LIMIT ?");
 
     Map<Long, IndexHit> byTerm = new LinkedHashMap<>();
-    try (PreparedStatement ps = connection.prepareStatement(sql.toString())) {
+    try (PreparedStatement ps = connection().prepareStatement(sql.toString())) {
       int p = 1;
       ps.setString(p++, match);
       if (acronyms != null) {
@@ -603,7 +643,7 @@ public class SearchIndexStore implements AutoCloseable {
         + " FROM name_fts f JOIN name n ON n.name_id = f.rowid JOIN term t ON t.term_id = n.term_id"
         + " WHERE name_fts MATCH ?" + branchFilter + acronymFilter + residualFilter
         + " GROUP BY LOWER(t.pref_label) " + labelOrder + " LIMIT ? OFFSET ?";
-    try (PreparedStatement ps = connection.prepareStatement(labelSql)) {
+    try (PreparedStatement ps = connection().prepareStatement(labelSql)) {
       int p = 1;
       for (int i = 0; i < MATCH_RANK_PARAMS; i++) {
         ps.setString(p++, needle);
@@ -640,7 +680,7 @@ public class SearchIndexStore implements AutoCloseable {
         + branchFilter + acronymFilter + residualFilter
         + " AND LOWER(t.pref_label) IN (" + String.join(",", java.util.Collections.nCopies(labels.size(), "?")) + ")";
     Map<Long, IndexHit> byTerm = new LinkedHashMap<>();
-    try (PreparedStatement ps = connection.prepareStatement(hitSql)) {
+    try (PreparedStatement ps = connection().prepareStatement(hitSql)) {
       int p = 1;
       ps.setString(p++, match);
       if (acronyms != null) {
@@ -764,7 +804,7 @@ public class SearchIndexStore implements AutoCloseable {
     }
     inner.append(residualFilter(plan));
     inner.append(" LIMIT ?");
-    try (PreparedStatement ps = connection.prepareStatement("SELECT COUNT(*) FROM (" + inner + ")")) {
+    try (PreparedStatement ps = connection().prepareStatement("SELECT COUNT(*) FROM (" + inner + ")")) {
       int p = 1;
       ps.setString(p++, match);
       if (acronyms != null) {
@@ -810,7 +850,7 @@ public class SearchIndexStore implements AutoCloseable {
     }
     MatchPlan plan = toMatchPlan(query);
     List<VocabularyMatch> out = new ArrayList<>();
-    try (PreparedStatement ps = connection.prepareStatement("""
+    try (PreparedStatement ps = connection().prepareStatement("""
         SELECT acronym, COUNT(*) c FROM (
           SELECT DISTINCT t.acronym, t.term_id
           FROM name_fts f
@@ -945,14 +985,14 @@ public class SearchIndexStore implements AutoCloseable {
   }
 
   public void setBusyTimeoutMillis(int millis) throws SQLException {
-    try (Statement st = connection.createStatement()) {
+    try (Statement st = connection().createStatement()) {
       st.executeUpdate("PRAGMA busy_timeout = " + millis);
     }
   }
 
   /** Bulk-load settings. Durability is traded for speed on a file that is rebuilt, never edited. */
   public void applyBulkLoadPragmas() throws SQLException {
-    try (Statement st = connection.createStatement()) {
+    try (Statement st = connection().createStatement()) {
       st.executeUpdate("PRAGMA journal_mode = OFF");
       st.executeUpdate("PRAGMA synchronous = OFF");
       st.executeUpdate("PRAGMA cache_size = -200000");
@@ -961,6 +1001,10 @@ public class SearchIndexStore implements AutoCloseable {
 
   @Override
   public void close() throws SQLException {
+    if (reads != null) {
+      reads.close();
+      return;
+    }
     connection.close();
   }
 }

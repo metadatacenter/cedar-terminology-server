@@ -114,7 +114,7 @@ public class TerminologyServerApplication extends CedarMicroserviceApplication<T
       return new RoutingTerminologyService(bioPortalService);
     }
     try {
-      CatalogStore catalog = CatalogStore.openFile(catalogPath);
+      CatalogStore catalog = CatalogStore.openForRead(catalogPath);
       // Bring the catalog to the current schema before serving. Idempotent and additive, so a catalog
       // built by the ingest tools is unchanged; a pre-re-key acronym-keyed catalog is migrated to the
       // iri-keyed identity + ontology_source split this server queries. Without this the server would
@@ -167,7 +167,7 @@ public class TerminologyServerApplication extends CedarMicroserviceApplication<T
       return null;
     }
     try {
-      SearchIndexStore index = SearchIndexStore.openFile(path);
+      SearchIndexStore index = SearchIndexStore.openForRead(path);
       index.initSchema();
       log.info("Cross-snapshot search index opened from {}: {} ontologies, {} terms",
           path, index.indexedOntologyCount(), index.termCount());

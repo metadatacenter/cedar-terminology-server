@@ -276,7 +276,7 @@ public class CatalogSnapshotProvider implements SqliteTerminologyService.Snapsho
 
   private SnapshotStore open(String path) {
     try {
-      return SnapshotStore.openFile(path);
+      return SnapshotStore.openForRead(path);
     } catch (SQLException e) {
       log.warn("Failed to open snapshot file {}; falling back to remote", path, e);
       return null;
