@@ -24,7 +24,9 @@ import java.util.concurrent.ConcurrentHashMap;
  * populates the catalog but does not make the server serve it locally until it is allowlisted.
  *
  * Opened snapshot stores are cached by version id, so the {@code latest} pointer can move (a new
- * ingest) and the next resolution opens the new file while the old one stays cached until eviction
+ * ingest) and the next resolution opens the new file while the old one stays cached — indefinitely,
+ * there being no eviction: every snapshot ever resolved is held open, with its connections, for the
+ * life of the process
  * is added. Reads go through SQLite in its default serialized threading mode; each read creates and
  * closes its own statement, so a cached store is safe to share across request threads.
  */
