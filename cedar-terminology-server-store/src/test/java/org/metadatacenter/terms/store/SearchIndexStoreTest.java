@@ -121,10 +121,36 @@ public class SearchIndexStoreTest {
   @Test
   public void punctuationInAQueryIsTextRatherThanSyntax() {
     // FTS5 reads bare -, *, ", ( and OR as operators, and ontology labels are full of them.
-    assertEquals("\"type\"* \"2\"* \"diabetes\"*", SearchIndexStore.toPrefixMatch("type-2 diabetes"));
     assertEquals("\"or\"*", SearchIndexStore.toPrefixMatch("OR"));
     assertEquals("", SearchIndexStore.toPrefixMatch("  -  "));
     assertFalse(SearchIndexStore.toPrefixMatch("a\"b").contains("a\"b"));
+  }
+
+  @Test
+  public void aShortTokenIsHeldBackOnlyWhenAnotherTokenCanCarryTheMatch() {
+    // "diabetes" is long enough to find the rows on its own, so "2" waits and is applied to them.
+    SearchIndexStore.MatchPlan held = SearchIndexStore.toMatchPlan("type-2 diabetes");
+    assertEquals("\"type\"* \"diabetes\"*", held.match());
+    assertEquals(List.of("2"), held.residual());
+
+    // Nothing here can carry it, so the query is put to the index whole, exactly as before.
+    SearchIndexStore.MatchPlan whole = SearchIndexStore.toMatchPlan("e coli");
+    assertEquals("\"e\"* \"coli\"*", whole.match());
+    assertTrue(whole.residual().isEmpty());
+
+    // A query with nothing short about it is unchanged either way.
+    assertEquals("\"mannitol\"*", SearchIndexStore.toMatchPlan("mannitol").match());
+  }
+
+  @Test
+  public void aHeldBackTokenMatchesTheStartOfAWordJustAsTheIndexWould() {
+    // The rule has to be the prefix match it replaced: "d" reaches "D2", which is why holding it
+    // back cannot become an exact comparison.
+    assertTrue(SearchIndexStore.carriesResidual("vitamin D2 deficiency", List.of("d")));
+    assertTrue(SearchIndexStore.carriesResidual("N,N'-diphenylthiourea", List.of("n")));
+    // Any token may carry it, which is why "deficiency" would answer for "d" and this does not.
+    assertFalse(SearchIndexStore.carriesResidual("vitamin C", List.of("d")));
+    assertTrue(SearchIndexStore.carriesResidual("anything", List.of()));
   }
 
   @Test
