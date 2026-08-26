@@ -1,6 +1,5 @@
 package org.metadatacenter.cedar.terminology.validation.integratedsearch;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import org.hibernate.validator.constraints.NotEmpty;
 
 import jakarta.validation.constraints.Pattern;
@@ -11,8 +10,7 @@ import static org.metadatacenter.cedar.terminology.util.Constants.CEDAR_VALUE_AR
  * See the validation schema at cedar-model-validation-library/schema/valueConstraintsActionsFieldItemContent.json
  * for a reference on how the original schema must look like
  */
-@JsonIgnoreProperties(ignoreUnknown = true)
-public class Action {
+public class Action extends RejectUnknownFields {
 
   private Integer to; // Optional
   @NotEmpty
