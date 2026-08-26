@@ -391,6 +391,22 @@ public class SearchIndexStore implements AutoCloseable {
   }
 
   /** The version of an ontology the index currently holds, if any. */
+  /**
+   * How many terms the index holds for an ontology, or zero where it holds none.
+   *
+   * Recorded when the ontology was indexed rather than counted on demand, so a caller deciding
+   * whether an ontology is large enough to answer from the index pays nothing to ask.
+   */
+  public long indexedTermCount(String acronym) throws SQLException {
+    try (PreparedStatement ps = connection().prepareStatement(
+        "SELECT term_count FROM indexed_snapshot WHERE acronym = ?")) {
+      ps.setString(1, acronym);
+      try (ResultSet rs = ps.executeQuery()) {
+        return rs.next() ? rs.getLong(1) : 0L;
+      }
+    }
+  }
+
   public Optional<String> indexedVersion(String acronym) throws SQLException {
     try (PreparedStatement ps =
              connection().prepareStatement("SELECT version_id FROM indexed_snapshot WHERE acronym = ?")) {

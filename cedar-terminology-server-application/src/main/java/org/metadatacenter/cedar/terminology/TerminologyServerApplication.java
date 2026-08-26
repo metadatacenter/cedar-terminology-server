@@ -132,10 +132,13 @@ public class TerminologyServerApplication extends CedarMicroserviceApplication<T
       Set<String> served = new LinkedHashSet<>(localOntologies);
       served.addAll(rootsOntologies);
       CatalogSnapshotProvider provider = new CatalogSnapshotProvider(catalog, served);
-      SqliteTerminologyService local = new SqliteTerminologyService(provider);
+      // One index, opened once and shared: version-aware search reads it, and integrated-search
+      // reads it for the ontologies large enough that a snapshot answers them slowly.
+      SearchIndexStore index = openSearchIndex();
+      SqliteTerminologyService local = new SqliteTerminologyService(provider, index);
       // Over the union of the search and browse sets, like the provider: version-aware search has no
       // reason to refuse an ontology whose tree is served but whose search allowlist entry is absent.
-      versionAwareSearchService = new VersionAwareSearchService(provider, openSearchIndex());
+      versionAwareSearchService = new VersionAwareSearchService(provider, index);
       boolean localOnly = Boolean.parseBoolean(System.getProperty(PROP_LOCAL_ONLY, "false"));
       RoutingTerminologyService.LocalAvailability search =
           ontology -> localOntologies.contains(ontology) && local.isAvailable(ontology);
