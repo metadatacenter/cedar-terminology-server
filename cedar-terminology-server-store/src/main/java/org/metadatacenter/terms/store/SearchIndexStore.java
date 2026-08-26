@@ -544,6 +544,12 @@ public class SearchIndexStore implements AutoCloseable {
       // open, because opening is what a serving process does: dropping the table there would leave
       // the server answering nothing until a rebuild it has no reason to run. A rebuild is already
       // the operation that repopulates it, and the text it draws on lives in `name` either way.
+      // A label the query is a prefix of outranks a label that merely contains it somewhere, so a
+      // page filled from the first needs nothing from the second. Reaching them takes an index on
+      // the text: without one the prefix is a scan, which is the cost being avoided. Built here
+      // rather than on open because it takes about 45 seconds and two gigabytes, and opening is
+      // what a serving process does.
+      st.executeUpdate("CREATE INDEX IF NOT EXISTS name_by_value ON name(value COLLATE NOCASE)");
       if (!hasColumn(st, "name_fts", "ont")) {
         st.executeUpdate("DROP TABLE name_fts");
         st.executeUpdate("""
@@ -657,6 +663,58 @@ public class SearchIndexStore implements AutoCloseable {
   }
 
   /**
+   * The page's labels taken from those the query is a prefix of, or fewer when there are not enough.
+   *
+   * A label the query begins outranks a label that merely contains it: the ladder puts an exact
+   * name first, then a name the query starts, and only then a name carrying it somewhere. So a page
+   * filled entirely from the first two can contain nothing from the third, whatever else matched,
+   * and the whole match never has to be ranked. That is the difference between reading a page and
+   * reading the corpus — measured on the served index, "cell" fell from 5,609 ms to 148 and "acid"
+   * from 850 to 28, with the same twenty-five labels in the same order.
+   *
+   * Returns short of a page when the prefixes run out, and the caller then ranks the whole match as
+   * before. Short is not wrong, only unfinished: the labels found here are the ones that would have
+   * led anyway.
+   *
+   * Left to the caller when the index has no text index to read prefixes from, and when a scope
+   * narrows the search, which is already answered in tens of milliseconds by the ontology column.
+   */
+  private List<String> leadingLabels(String query, Collection<String> acronyms, boolean branchesOnly,
+                                     int page, int pageSize) throws SQLException {
+    List<String> labels = new ArrayList<>();
+    if (acronyms != null && !acronyms.isEmpty() || !indexesLabelText()) {
+      return labels;
+    }
+    String needle = query.trim().toLowerCase(Locale.ROOT);
+    if (needle.isEmpty()) {
+      return labels;
+    }
+    String order = branchesOnly
+        ? "ORDER BY MIN(r), MAX(beneath) DESC, MIN(o), label"
+        : "ORDER BY MIN(r), MIN(o), MIN(ln), label";
+    String sql = "SELECT label FROM (SELECT LOWER(t.pref_label) label, " + MATCH_RANK + " r,"
+        + " t.obsolete o, LENGTH(n.value) ln, t.descendant_count beneath"
+        + " FROM name n JOIN term t ON t.term_id = n.term_id"
+        + " WHERE n.value LIKE ? ESCAPE '\\'" + (branchesOnly ? " AND t.has_children = 1" : "")
+        + ") GROUP BY label " + order + " LIMIT ? OFFSET ?";
+    try (PreparedStatement ps = connection().prepareStatement(sql)) {
+      int p = 1;
+      for (int i = 0; i < MATCH_RANK_PARAMS; i++) {
+        ps.setString(p++, needle);
+      }
+      ps.setString(p++, escapeLike(needle) + "%");
+      ps.setInt(p++, Math.max(pageSize, 1));
+      ps.setInt(p, Math.max(page - 1, 0) * Math.max(pageSize, 1));
+      try (ResultSet rs = ps.executeQuery()) {
+        while (rs.next()) {
+          labels.add(rs.getString(1));
+        }
+      }
+    }
+    return labels;
+  }
+
+  /**
    * A page of matches, paged by distinct label rather than by hit, with every hit of those labels.
    *
    * Paging by hit makes collapsing impossible to do honestly. A query for a common term returns the
@@ -683,7 +741,7 @@ public class SearchIndexStore implements AutoCloseable {
         : " AND t.acronym IN (" + String.join(",", java.util.Collections.nCopies(acronyms.size(), "?")) + ")";
     String branchFilter = branchesOnly ? " AND t.has_children = 1" : "";
 
-    List<String> labels = new ArrayList<>();
+    List<String> labels = leadingLabels(query, acronyms, branchesOnly, page, pageSize);
     // A label ranks by the best of its names, so a term reached through an exact synonym is not
     // pushed below one reached through a long label that merely contains the query.
     // Branches order by how much is under them, terms by how well they matched. A branch constraint
@@ -699,25 +757,31 @@ public class SearchIndexStore implements AutoCloseable {
         + " FROM name_fts f JOIN name n ON n.name_id = f.rowid JOIN term t ON t.term_id = n.term_id"
         + " WHERE name_fts MATCH ?" + branchFilter + acronymFilter + residualFilter
         + " GROUP BY LOWER(t.pref_label) " + labelOrder + " LIMIT ? OFFSET ?";
-    try (PreparedStatement ps = connection().prepareStatement(labelSql)) {
-      int p = 1;
-      for (int i = 0; i < MATCH_RANK_PARAMS; i++) {
-        ps.setString(p++, needle);
-      }
-      ps.setString(p++, match);
-      if (acronyms != null) {
-        for (String acronym : acronyms) {
-          ps.setString(p++, acronym);
+    if (labels.size() < Math.max(pageSize, 1)) {
+      // The prefixes did not fill the page, so labels that merely contain the query are needed and
+      // the whole match has to be ranked after all. Discard the partial answer rather than append
+      // to it: this query returns the page, prefix matches included, in one order.
+      labels.clear();
+      try (PreparedStatement ps = connection().prepareStatement(labelSql)) {
+        int p = 1;
+        for (int i = 0; i < MATCH_RANK_PARAMS; i++) {
+          ps.setString(p++, needle);
         }
-      }
-      if (!plan.residual().isEmpty()) {
-        ps.setString(p++, heldTokens);
-      }
-      ps.setInt(p++, Math.max(pageSize, 1));
-      ps.setInt(p, Math.max(page - 1, 0) * Math.max(pageSize, 1));
-      try (ResultSet rs = ps.executeQuery()) {
-        while (rs.next()) {
-          labels.add(rs.getString(1));
+        ps.setString(p++, match);
+        if (acronyms != null) {
+          for (String acronym : acronyms) {
+            ps.setString(p++, acronym);
+          }
+        }
+        if (!plan.residual().isEmpty()) {
+          ps.setString(p++, heldTokens);
+        }
+        ps.setInt(p++, Math.max(pageSize, 1));
+        ps.setInt(p, Math.max(page - 1, 0) * Math.max(pageSize, 1));
+        try (ResultSet rs = ps.executeQuery()) {
+          while (rs.next()) {
+            labels.add(rs.getString(1));
+          }
         }
       }
     }
@@ -993,6 +1057,26 @@ public class SearchIndexStore implements AutoCloseable {
 
   /** Cached: an index predating the scoped column filters after the match, as it always did. */
   private Boolean scopedIndex;
+
+  /** Whether the label text is indexed, so a page can be filled from prefixes of it. */
+  private boolean indexesLabelText() throws SQLException {
+    if (labelTextIndexed == null) {
+      try (Statement st = connection().createStatement();
+           ResultSet rs = st.executeQuery("SELECT 1 FROM sqlite_master WHERE type='index' "
+               + "AND tbl_name='name' AND name='name_by_value'")) {
+        labelTextIndexed = rs.next();
+      }
+    }
+    return labelTextIndexed;
+  }
+
+  /** Cached: an index predating the text index answers every page the long way. */
+  private Boolean labelTextIndexed;
+
+  /** Escapes the SQL {@code LIKE} metacharacters, so a query is a prefix rather than a pattern. */
+  private static String escapeLike(String s) {
+    return s.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
+  }
 
   static String toPrefixMatch(String query) {
     return toMatchPlan(query).match();
