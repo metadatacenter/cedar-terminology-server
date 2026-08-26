@@ -135,9 +135,21 @@ public class SqliteTerminologyService implements ITerminologyService {
   }
 
   public SqliteTerminologyService(SnapshotProvider provider, SearchIndexStore index) {
+    this(provider, index, INDEX_ROUTING_TERMS);
+  }
+
+  /**
+   * As above, with the size at which an ontology is answered from the index given rather than
+   * assumed. A test cannot build an ontology of a quarter of a million terms to cross the real one.
+   */
+  SqliteTerminologyService(SnapshotProvider provider, SearchIndexStore index, long routeAbove) {
     this.provider = provider;
     this.index = index;
+    this.routeAbove = routeAbove;
   }
+
+  /** The size this instance routes above, which is {@link #INDEX_ROUTING_TERMS} unless given. */
+  private final long routeAbove;
 
   /** Whether this backend currently serves the given ontology. */
   public boolean isAvailable(String ontology) {
@@ -236,12 +248,20 @@ public class SqliteTerminologyService implements ITerminologyService {
    * Escherichia coli. Better, but not the same answer, which is the exchange this makes.
    */
   private PagedResults<SearchResult> indexAnswer(OntologyValueConstraint ont, String query,
-                                                int page, int pageSize) throws SQLException {
+                                                int page, int pageSize, String lang)
+      throws SQLException {
     if (index == null || query.isEmpty() || isPinned(ont.getVersion())) {
       return null;
     }
+    // A request naming a language is answered from the snapshot, which is where the languages are.
+    // The index keeps one label a term, the one the store serves, so answering from it would return
+    // the default label and say nothing about having done so — the multilingual read path silently
+    // absent for exactly the largest ontologies. Slower and right beats faster and quietly wrong.
+    if (lang != null && !lang.isBlank()) {
+      return null;
+    }
     String acronym = ont.getAcronym();
-    if (index.indexedTermCount(acronym) < INDEX_ROUTING_TERMS) {
+    if (index.indexedTermCount(acronym) < routeAbove) {
       return null;
     }
     Optional<String> indexed = index.indexedVersion(acronym);
@@ -254,18 +274,22 @@ public class SqliteTerminologyService implements ITerminologyService {
     // and doing it here cost more than the snapshot for an ontology whose matches are many: DDSS
     // answered in 384 ms fetching ten thousand where it answers in 28 fetching a page.
     int size = pageSize <= 0 ? DEFAULT_PAGE_SIZE : pageSize;
-    List<SnapshotStore.Concept> rows = new ArrayList<>();
+    // The index pages by distinct label and returns every term carrying the labels on the page, so
+    // it hands back more rows than were asked for. A caller counting on a page holding at most what
+    // it requested — which the snapshot path has always given it — would be handed a longer list
+    // and a page count describing something else. Cut it to the size asked for.
+    List<SearchResult> slice = new ArrayList<>();
     for (SearchIndexStore.IndexHit hit
         : index.searchByLabelPage(query, List.of(acronym), false, Math.max(page, 1), size)) {
+      if (slice.size() >= size) {
+        break;
+      }
       SearchIndexStore.IndexedTerm t = hit.term();
-      rows.add(new SnapshotStore.Concept(t.iri(), t.prefLabel(), t.obsolete(), t.hasChildren()));
+      slice.add(ObjectConverter.toSearchResult(toClass(
+          new SnapshotStore.Concept(t.iri(), t.prefLabel(), t.obsolete(), t.hasChildren()), acronym)));
     }
     int total = index.matchCount(query, List.of(acronym), false, INDEX_ROUTING_CAP);
     int pageCount = total == 0 ? 0 : (int) Math.ceil((double) total / size);
-    List<SearchResult> slice = new ArrayList<>();
-    for (SnapshotStore.Concept c : rows) {
-      slice.add(ObjectConverter.toSearchResult(toClass(c, acronym)));
-    }
     Integer prev = page > 1 ? page - 1 : null;
     Integer next = page < pageCount ? page + 1 : null;
     return new PagedResults<>(page, pageCount, slice.size(), total, prev, next, slice);
@@ -664,7 +688,7 @@ public class SqliteTerminologyService implements ITerminologyService {
       OntologyValueConstraint ont = ontologies.get(0);
       String query = q.map(String::trim).orElse("");
       try {
-        PagedResults<SearchResult> fromIndex = indexAnswer(ont, query, page, pageSize);
+        PagedResults<SearchResult> fromIndex = indexAnswer(ont, query, page, pageSize, lang);
         if (fromIndex != null) {
           return fromIndex;
         }

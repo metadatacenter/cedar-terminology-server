@@ -9,9 +9,12 @@ import org.metadatacenter.cedar.terminology.validation.integratedsearch.ValueCon
 import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.terms.domainObjects.OntologyClass;
 import org.metadatacenter.terms.domainObjects.SearchResult;
+import org.metadatacenter.terms.domainObjects.VersionTriple;
 import org.metadatacenter.terms.store.SnapshotStore;
+import org.metadatacenter.terms.store.SearchIndexStore;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -227,6 +230,106 @@ public class SqliteTerminologyServiceTest {
 
   private PagedResults<SearchResult> integrated(Optional<String> q, String vcJson) throws Exception {
     return service.integratedSearch(q, VC_MAPPER.readValue(vcJson, ValueConstraints.class), 1, 50, null);
+  }
+
+  /* Answering from the index rather than the snapshot: when it happens, and what it must preserve. */
+
+  /** The same six concepts, in an index, so the two paths can be asked the same question. */
+  private SearchIndexStore indexOf(String acronym, String versionId) throws Exception {
+    SearchIndexStore index = SearchIndexStore.openInMemory();
+    index.initSchema();
+    index.replaceOntology(acronym, versionId, "2026-08-26T00:00:00Z",
+        List.of(new SearchIndexStore.IndexedTerm(acronym, iri("cat"), "Cat", false, null, false, 0),
+            new SearchIndexStore.IndexedTerm(acronym, iri("dog"), "Dog", false, null, false, 0)),
+        Map.of());
+    index.rebuildFullText();
+    return index;
+  }
+
+  private SqliteTerminologyService routing(SearchIndexStore index, String servedVersion, long above) {
+    SqliteTerminologyService.SnapshotProvider provider = new SqliteTerminologyService.SnapshotProvider() {
+      @Override
+      public Optional<SnapshotStore> forOntology(String ontology) {
+        return EX.equals(ontology) ? Optional.of(store) : Optional.empty();
+      }
+
+      @Override
+      public Optional<VersionTriple> currentVersion(String ontology) {
+        return EX.equals(ontology) ? Optional.of(new VersionTriple(servedVersion, null, null))
+            : Optional.empty();
+      }
+    };
+    return new SqliteTerminologyService(provider, index, above);
+  }
+
+  @Test
+  public void anOntologyLargeEnoughIsAnsweredFromTheIndex() throws Exception {
+    // The index holds two of the six concepts, so which store answered is visible in the answer.
+    try (SearchIndexStore index = indexOf(EX, "v1")) {
+      SqliteTerminologyService routed = routing(index, "v1", 1);
+      // Mammal is in the snapshot and not in the index, so an empty answer proves the index answered.
+      PagedResults<SearchResult> mammal = routed.integratedSearch(Optional.of("Mammal"),
+          VC_MAPPER.readValue("{\"ontologies\":[{\"acronym\":\"EX\"}],\"branches\":[],"
+              + "\"valueSets\":[],\"classes\":[]}", ValueConstraints.class), 1, 50, null);
+      assertEquals(0, mammal.getCollection().size(), "the index has no Mammal, and it answered");
+      PagedResults<SearchResult> r = routed.integratedSearch(Optional.of("Cat"),
+          VC_MAPPER.readValue("{\"ontologies\":[{\"acronym\":\"EX\"}],\"branches\":[],"
+              + "\"valueSets\":[],\"classes\":[]}", ValueConstraints.class), 1, 50, null);
+      assertEquals("Cat", r.getCollection().get(0).getPrefLabel());
+    }
+  }
+
+  @Test
+  public void anOntologyBelowTheSizeKeepsItsSnapshot() throws Exception {
+    // Below the line the snapshot is quicker, so it must still be the one asked.
+    try (SearchIndexStore index = indexOf(EX, "v1")) {
+      SqliteTerminologyService routed = routing(index, "v1", 1_000_000);
+      PagedResults<SearchResult> r = routed.integratedSearch(Optional.empty(),
+          VC_MAPPER.readValue("{\"ontologies\":[{\"acronym\":\"EX\"}],\"branches\":[],"
+              + "\"valueSets\":[],\"classes\":[]}", ValueConstraints.class), 1, 50, null);
+      assertEquals(Integer.valueOf(6), r.getTotalCount(), "all six, so the snapshot answered");
+    }
+  }
+
+  @Test
+  public void anIndexHoldingAnotherReleaseIsNotAsked() throws Exception {
+    // A re-ingest can move the served version before the index catches up. Answering from the older
+    // one would attribute terms to a release that did not produce them.
+    try (SearchIndexStore index = indexOf(EX, "v1")) {
+      SqliteTerminologyService routed = routing(index, "v2", 1);
+      PagedResults<SearchResult> r = routed.integratedSearch(Optional.empty(),
+          VC_MAPPER.readValue("{\"ontologies\":[{\"acronym\":\"EX\"}],\"branches\":[],"
+              + "\"valueSets\":[],\"classes\":[]}", ValueConstraints.class), 1, 50, null);
+      assertEquals(Integer.valueOf(6), r.getTotalCount(), "the snapshot answered, not the stale index");
+    }
+  }
+
+  @Test
+  public void aRequestNamingALanguageKeepsTheSnapshot() throws Exception {
+    // The index keeps one label a term. Answering a lang request from it would return the default
+    // label and say nothing about having done so, which is the multilingual path silently absent.
+    try (SearchIndexStore index = indexOf(EX, "v1")) {
+      SqliteTerminologyService routed = routing(index, "v1", 1);
+      // Mammal is in the snapshot and not in the index, so finding it proves which store answered.
+      PagedResults<SearchResult> r = routed.integratedSearch(Optional.of("Mammal"),
+          VC_MAPPER.readValue("{\"ontologies\":[{\"acronym\":\"EX\"}],\"branches\":[],"
+              + "\"valueSets\":[],\"classes\":[]}", ValueConstraints.class), 1, 50, null, "fr");
+      assertEquals(1, r.getCollection().size(), "answered where the languages are");
+      assertEquals("Mammal", r.getCollection().get(0).getPrefLabel());
+    }
+  }
+
+  @Test
+  public void aRoutedPageHoldsNoMoreThanItWasAskedFor() throws Exception {
+    // The index pages by distinct label and returns every term carrying them, which is more rows
+    // than a caller asked for and more than its own page count describes.
+    try (SearchIndexStore index = indexOf(EX, "v1")) {
+      SqliteTerminologyService routed = routing(index, "v1", 1);
+      PagedResults<SearchResult> r = routed.integratedSearch(Optional.of("o"),
+          VC_MAPPER.readValue("{\"ontologies\":[{\"acronym\":\"EX\"}],\"branches\":[],"
+              + "\"valueSets\":[],\"classes\":[]}", ValueConstraints.class), 1, 1, null);
+      assertTrue(r.getCollection().size() <= 1, "a page of one holds at most one");
+    }
   }
 
   @Test

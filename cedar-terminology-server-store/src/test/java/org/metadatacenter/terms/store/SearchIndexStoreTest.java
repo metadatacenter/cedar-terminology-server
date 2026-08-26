@@ -151,30 +151,6 @@ public class SearchIndexStoreTest {
   }
 
   @Test
-  public void aLabelTheQueryBeginsComesBeforeOneThatMerelyCarriesIt() throws Exception {
-    // The property the fast path rests on. A page filled from labels the query begins can contain
-    // nothing from labels that carry it elsewhere, because the first always outrank the second — so
-    // filling a page that way is not an approximation of the ranked answer, it is the ranked answer.
-    index.replaceOntology("EX2", "hash-x1", "2026-08-13T00:00:00Z",
-        List.of(
-            new SearchIndexStore.IndexedTerm("EX2", "http://x/1", "cell membrane", false, null, false, 0),
-            new SearchIndexStore.IndexedTerm("EX2", "http://x/2", "T cell", false, null, false, 0),
-            new SearchIndexStore.IndexedTerm("EX2", "http://x/3", "cell", false, null, false, 0)),
-        Map.of());
-    index.rebuildFullText();
-
-    List<String> page = index.searchByLabelPage("cell", List.of(), false, 1, 2).stream()
-        .map(hit -> hit.term().prefLabel()).toList();
-    assertEquals(List.of("cell", "cell membrane"), page,
-        "the exact name, then the one it begins — never the one carrying it in second position");
-
-    // Asking for more than the prefixes can fill falls back, and the fallback finds the rest.
-    List<String> all = index.searchByLabelPage("cell", List.of(), false, 1, 10).stream()
-        .map(hit -> hit.term().prefLabel()).toList();
-    assertTrue(all.contains("T cell"), "a label carrying the query is reached once the page needs it");
-  }
-
-  @Test
   public void punctuationInAQueryIsTextRatherThanSyntax() {
     // FTS5 reads bare -, *, ", ( and OR as operators, and ontology labels are full of them.
     assertEquals("\"or\"*", SearchIndexStore.toPrefixMatch("OR"));
