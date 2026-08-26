@@ -341,17 +341,37 @@ public class SearchIndexStore implements AutoCloseable {
             term_id  INTEGER NOT NULL,
             property TEXT,
             lang     TEXT,
-            value    TEXT NOT NULL
+            value    TEXT NOT NULL,
+            ont      TEXT
           )""");
+      // An index built before the ontology was indexed alongside the text has no such column. It
+      // keeps working: the column stays empty, and a scoped search then filters rows after the
+      // match, which is what every scoped search used to do. Rebuilding the index fills it.
+      if (!hasColumn(st, "name", "ont")) {
+        st.executeUpdate("ALTER TABLE name ADD COLUMN ont TEXT");
+      }
       st.executeUpdate("CREATE INDEX IF NOT EXISTS name_by_term ON name(term_id)");
       // External-content FTS: the searchable text lives once, in `name`, and the index refers to it
       // by rowid. Storing it twice would add a gigabyte to say the same thing.
       //
       // remove_diacritics 2 folds accents, so "aquifere" finds "aquifère" — which the snapshot's
       // LIKE cannot do, since SQLite folds ASCII case only.
+      //
+      // `ont` carries the ontology a name belongs to, so that narrowing a search to one ontology
+      // narrows what the index reads rather than what it returns. Filtered after the match, a search
+      // of DOID's 19,578 terms costs what a search of all 15.3 million costs, because the match has
+      // already walked them: "acid" in DOID took 284 ms that way and 21 ms this way, and in RH-MESH
+      // 1,526 ms became 27 ms.
+      //
+      // The value is the acronym hex-encoded rather than the acronym. An acronym is not one token to
+      // this tokenizer — 191 of the 1,266 carry a hyphen or an underscore — so `RH-MESH` indexed as
+      // text answers a search scoped to `MESH`. Stripping the punctuation instead collides 16 pairs,
+      // among them COVID-19 with COVID19, which are different ontologies holding different terms.
+      // Hex is one token, and one token an acronym.
       st.executeUpdate("""
           CREATE VIRTUAL TABLE IF NOT EXISTS name_fts USING fts5(
             value,
+            ont,
             content='name',
             content_rowid='name_id',
             tokenize="unicode61 remove_diacritics 2"
@@ -427,7 +447,8 @@ public class SearchIndexStore implements AutoCloseable {
                    + "VALUES (?,?,?,?,?,?,?,?,?,?)",
                Statement.RETURN_GENERATED_KEYS);
            PreparedStatement insertName = connection().prepareStatement(
-               "INSERT INTO name(term_id, property, lang, value) VALUES (?,?,?,?)")) {
+               "INSERT INTO name(term_id, property, lang, value, ont) VALUES (?,?,?,?,?)")) {
+        String ont = ontToken(acronym);
         for (IndexedTerm t : terms) {
           insertTerm.setString(1, acronym);
           insertTerm.setString(2, t.iri());
@@ -447,10 +468,10 @@ public class SearchIndexStore implements AutoCloseable {
           // The preferred label is a searchable name like any other, so a plain label match needs no
           // separate query path.
           if (t.prefLabel() != null && !t.prefLabel().isBlank()) {
-            addName(insertName, termId, "prefLabel", null, t.prefLabel());
+            addName(insertName, termId, "prefLabel", null, t.prefLabel(), ont);
           }
           for (IndexedName n : namesByIri.getOrDefault(t.iri(), List.of())) {
-            addName(insertName, termId, n.property(), n.lang(), n.value());
+            addName(insertName, termId, n.property(), n.lang(), n.value(), ont);
           }
         }
         insertName.executeBatch();
@@ -473,11 +494,12 @@ public class SearchIndexStore implements AutoCloseable {
   }
 
   private static void addName(PreparedStatement insertName, long termId, String property, String lang,
-                              String value) throws SQLException {
+                              String value, String ont) throws SQLException {
     insertName.setLong(1, termId);
     insertName.setString(2, property);
     insertName.setString(3, lang);
     insertName.setString(4, value);
+    insertName.setString(5, ont);
     insertName.addBatch();
   }
 
@@ -502,6 +524,22 @@ public class SearchIndexStore implements AutoCloseable {
    */
   public void rebuildFullText() throws SQLException {
     try (Statement st = connection().createStatement()) {
+      // An index whose full-text table predates the ontology column is widened here rather than on
+      // open, because opening is what a serving process does: dropping the table there would leave
+      // the server answering nothing until a rebuild it has no reason to run. A rebuild is already
+      // the operation that repopulates it, and the text it draws on lives in `name` either way.
+      if (!hasColumn(st, "name_fts", "ont")) {
+        st.executeUpdate("DROP TABLE name_fts");
+        st.executeUpdate("""
+            CREATE VIRTUAL TABLE name_fts USING fts5(
+              value,
+              ont,
+              content='name',
+              content_rowid='name_id',
+              tokenize="unicode61 remove_diacritics 2"
+            )""");
+        scopedIndex = null;
+      }
       st.executeUpdate("INSERT INTO name_fts(name_fts) VALUES('rebuild')");
     }
   }
@@ -537,6 +575,7 @@ public class SearchIndexStore implements AutoCloseable {
     if (match.isEmpty()) {
       return List.of();
     }
+    match = scopedMatch(match, acronyms);
     String needle = query.trim().toLowerCase(Locale.ROOT);
     StringBuilder sql = new StringBuilder("""
         SELECT t.acronym, t.iri, t.pref_label, t.obsolete, t.replaced_by, t.has_children,
@@ -620,6 +659,7 @@ public class SearchIndexStore implements AutoCloseable {
     if (match.isEmpty()) {
       return List.of();
     }
+    match = scopedMatch(match, acronyms);
     String residualFilter = residualFilter(plan);
     String heldTokens = String.join(" ", plan.residual());
     String needle = query.trim().toLowerCase(Locale.ROOT);
@@ -786,6 +826,7 @@ public class SearchIndexStore implements AutoCloseable {
       return 0;
     }
     MatchPlan plan = toMatchPlan(query);
+    match = scopedMatch(match, acronyms);
     String selected = distinctLabels ? "DISTINCT LOWER(t.pref_label)" : "DISTINCT t.term_id";
     // The space matters: a text block drops the newline after its opening delimiter, so without it
     // the column list runs straight into FROM.
@@ -885,6 +926,58 @@ public class SearchIndexStore implements AutoCloseable {
    * {@code (}, {@code :} and {@code OR} as syntax, and an ontology search is full of them — "type-2
    * diabetes" would otherwise parse as a NOT.
    */
+  /**
+   * The single token standing for an ontology in the index, which is its acronym hex-encoded.
+   *
+   * Encoded rather than written out because the tokenizer splits on punctuation and 191 acronyms
+   * carry some, so `RH-MESH` written plainly would answer a search scoped to `MESH`. Stripping the
+   * punctuation collides COVID-19 with COVID19, and those hold different terms.
+   */
+  static String ontToken(String acronym) {
+    StringBuilder out = new StringBuilder("o");
+    for (byte b : acronym.getBytes(java.nio.charset.StandardCharsets.UTF_8)) {
+      out.append(Character.forDigit((b >> 4) & 0xF, 16)).append(Character.forDigit(b & 0xF, 16));
+    }
+    return out.toString();
+  }
+
+  /**
+   * The match expression, narrowed to the ontologies asked for where the index can carry the scope.
+   *
+   * Kept beside the SQL acronym filter rather than replacing it. The filter is then reached with the
+   * rows already narrowed, so it costs nothing, and an index without the column still answers the
+   * scope correctly through it alone.
+   */
+  private String scopedMatch(String match, Collection<String> acronyms) throws SQLException {
+    if (match.isEmpty()) {
+      return match;
+    }
+    if (acronyms == null || acronyms.isEmpty() || !scopesInIndex()) {
+      return "value: (" + match + ")";
+    }
+    StringBuilder scope = new StringBuilder();
+    for (String acronym : acronyms) {
+      if (!scope.isEmpty()) {
+        scope.append(" OR ");
+      }
+      scope.append(ontToken(acronym));
+    }
+    return "ont: (" + scope + ") AND value: (" + match + ")";
+  }
+
+  /** Whether this index carries the ontology alongside the text, so a scope can narrow the match. */
+  private boolean scopesInIndex() throws SQLException {
+    if (scopedIndex == null) {
+      try (Statement st = connection().createStatement()) {
+        scopedIndex = hasColumn(st, "name_fts", "ont");
+      }
+    }
+    return scopedIndex;
+  }
+
+  /** Cached: an index predating the scoped column filters after the match, as it always did. */
+  private Boolean scopedIndex;
+
   static String toPrefixMatch(String query) {
     return toMatchPlan(query).match();
   }
