@@ -164,6 +164,12 @@ jobs:
       - name: Run Maven verification
         run: ./mvnw --batch-mode --no-transfer-progress --update-snapshots verify --settings .m2/nexus-settings.xml
 
+      - name: Verify generated OpenAPI is committed
+        run: |
+          git diff --exit-code -- \
+            cedar-terminology-server-application/src/main/resources/assets/swagger-api/swagger.json \
+            cedar-terminology-server-application/src/main/resources/assets/swagger-api/swagger.yaml
+
       # Other repositories resolve this artifact from Nexus, so a merged change
       # is invisible to their builds until the snapshot is republished. Tests have
       # already run in the step above; this only uploads what they verified.
