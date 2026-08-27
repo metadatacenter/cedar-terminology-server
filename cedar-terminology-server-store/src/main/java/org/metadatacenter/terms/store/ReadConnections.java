@@ -38,6 +38,19 @@ final class ReadConnections implements AutoCloseable {
     void configure(Connection connection) throws SQLException;
   }
 
+  /**
+   * How many reading connections all stores together may open.
+   *
+   * The per-store limit is what multiplies: a serving process caches a store a snapshot, and each
+   * would take its own allowance, so the ceiling was the corpus rather than the concurrency. This
+   * one is shared, and a thread that finds it reached reads on the store's first connection and
+   * waits as it used to — slower than its own, and better than opening a thousand.
+   */
+  private static final int TOTAL_LIMIT =
+      Integer.getInteger("cedar.terminology.readConnections.total", 96);
+
+  private static final AtomicInteger TOTAL_OPEN = new AtomicInteger();
+
   private final String url;
   private final Configurer configurer;
   private final Connection shared;
@@ -74,6 +87,11 @@ final class ReadConnections implements AutoCloseable {
       created.decrementAndGet();
       return shared;
     }
+    if (TOTAL_OPEN.incrementAndGet() > TOTAL_LIMIT) {
+      TOTAL_OPEN.decrementAndGet();
+      created.decrementAndGet();
+      return shared;
+    }
     Connection fresh = DriverManager.getConnection(url);
     configurer.configure(fresh);
     opened.add(fresh);
@@ -93,6 +111,8 @@ final class ReadConnections implements AutoCloseable {
         }
       }
     }
+    // Give back what this store took, so a store closed for going quiet returns its allowance.
+    TOTAL_OPEN.addAndGet(-Math.max(opened.size() - 1, 0));
     opened.clear();
     if (first != null) {
       throw first;
