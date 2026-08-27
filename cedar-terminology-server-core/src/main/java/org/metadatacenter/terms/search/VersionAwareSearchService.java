@@ -129,16 +129,31 @@ public class VersionAwareSearchService {
     }
     List<Resolved> searchable = resolved.stream().filter(Resolved::isLocal).toList();
 
-    // The index answers whenever nothing is pinned, whether or not sources are named. Narrowing to
-    // an ontology is not a different kind of search — it is the same search over less — so it keeps
-    // the index's matching, its label paging and its counts. Only a pinned version has to leave the
-    // index, because the index holds current versions and no others.
+    // The index answers whenever nothing is pinned and it holds what the catalog serves. Narrowing
+    // to an ontology is not a different kind of search — it is the same search over less — so it
+    // keeps the index's matching, its label paging and its counts. Two things force the snapshot
+    // path instead: a pinned version, because the index holds current versions and no others; and a
+    // named source the index is behind on or has never indexed, because answering it from the index
+    // would credit hits to the catalog-current version its block reports — or return none for a
+    // source that is served — and a named snapshot is affordable in a way the whole corpus is not.
+    // The corpus-wide case has no such escape, so it reports the indexed version on each block
+    // instead (see the hit loop below).
     boolean pinned = request.sourcesOrEmpty().stream().anyMatch(s -> s.version() != null);
     List<String> scope = request.sourcesOrEmpty().stream()
         .map(SourceSelector::sourceAcronym)
         .filter(java.util.Objects::nonNull)
         .toList();
     boolean useIndex = index != null && !pinned;
+    if (useIndex && !scope.isEmpty()) {
+      for (Resolved source : searchable) {
+        String current = source.block().version() == null ? null : source.block().version().id();
+        Optional<String> indexed = index.indexedVersion(source.acronym());
+        if (indexed.isEmpty() || !indexed.get().equals(current)) {
+          useIndex = false;
+          break;
+        }
+      }
+    }
     boolean corpusWide = useIndex && scope.isEmpty();
     if (corpusWide && query.length() < MIN_CORPUS_QUERY_LENGTH) {
       throw new BadSearchRequestException(query.isEmpty()
