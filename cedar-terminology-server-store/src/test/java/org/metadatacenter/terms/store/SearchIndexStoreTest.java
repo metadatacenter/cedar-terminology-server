@@ -9,6 +9,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class SearchIndexStoreTest {
@@ -119,12 +120,69 @@ public class SearchIndexStoreTest {
   }
 
   @Test
+  public void anOntologyWhoseAcronymSplitsIntoTokensStillScopesToItself() throws Exception {
+    // The tokenizer splits on punctuation, so an acronym written into the index as text would let a
+    // search scoped to MESH answer from RH-MESH as well. 191 of the 1,266 acronyms carry a hyphen or
+    // an underscore, so this is the common case rather than the odd one.
+    index.replaceOntology("MESH", "hash-m1", "2026-08-13T00:00:00Z",
+        List.of(new SearchIndexStore.IndexedTerm("MESH", "http://mesh/1", "aspirin", false, null, false, 0)),
+        Map.of());
+    index.replaceOntology("RH-MESH", "hash-r1", "2026-08-13T00:00:00Z",
+        List.of(new SearchIndexStore.IndexedTerm("RH-MESH", "http://rh/1", "aspirin", false, null, false, 0)),
+        Map.of());
+    index.rebuildFullText();
+
+    List<SearchIndexStore.IndexHit> mesh = index.search("aspirin", List.of("MESH"), 10);
+    assertEquals(1, mesh.size());
+    assertEquals("MESH", mesh.get(0).term().acronym());
+
+    List<SearchIndexStore.IndexHit> rh = index.search("aspirin", List.of("RH-MESH"), 10);
+    assertEquals(1, rh.size());
+    assertEquals("RH-MESH", rh.get(0).term().acronym());
+  }
+
+  @Test
+  public void oneTokenStandsForOneOntology() {
+    // Stripping the punctuation instead would collide these, and they hold different terms.
+    assertNotEquals(SearchIndexStore.ontToken("COVID-19"), SearchIndexStore.ontToken("COVID19"));
+    assertNotEquals(SearchIndexStore.ontToken("APOLLO-SV"), SearchIndexStore.ontToken("APOLLO_SV"));
+    // One token to the tokenizer, so a scope cannot be answered by half of an acronym.
+    assertEquals(1, SearchIndexStore.matchTokens(SearchIndexStore.ontToken("RH-MESH")).size());
+  }
+
+  @Test
   public void punctuationInAQueryIsTextRatherThanSyntax() {
     // FTS5 reads bare -, *, ", ( and OR as operators, and ontology labels are full of them.
-    assertEquals("\"type\"* \"2\"* \"diabetes\"*", SearchIndexStore.toPrefixMatch("type-2 diabetes"));
     assertEquals("\"or\"*", SearchIndexStore.toPrefixMatch("OR"));
     assertEquals("", SearchIndexStore.toPrefixMatch("  -  "));
     assertFalse(SearchIndexStore.toPrefixMatch("a\"b").contains("a\"b"));
+  }
+
+  @Test
+  public void aShortTokenIsHeldBackOnlyWhenAnotherTokenCanCarryTheMatch() {
+    // "diabetes" is long enough to find the rows on its own, so "2" waits and is applied to them.
+    SearchIndexStore.MatchPlan held = SearchIndexStore.toMatchPlan("type-2 diabetes");
+    assertEquals("\"type\"* \"diabetes\"*", held.match());
+    assertEquals(List.of("2"), held.residual());
+
+    // Nothing here can carry it, so the query is put to the index whole, exactly as before.
+    SearchIndexStore.MatchPlan whole = SearchIndexStore.toMatchPlan("e coli");
+    assertEquals("\"e\"* \"coli\"*", whole.match());
+    assertTrue(whole.residual().isEmpty());
+
+    // A query with nothing short about it is unchanged either way.
+    assertEquals("\"mannitol\"*", SearchIndexStore.toMatchPlan("mannitol").match());
+  }
+
+  @Test
+  public void aHeldBackTokenMatchesTheStartOfAWordJustAsTheIndexWould() {
+    // The rule has to be the prefix match it replaced: "d" reaches "D2", which is why holding it
+    // back cannot become an exact comparison.
+    assertTrue(SearchIndexStore.carriesResidual("vitamin D2 deficiency", List.of("d")));
+    assertTrue(SearchIndexStore.carriesResidual("N,N'-diphenylthiourea", List.of("n")));
+    // Any token may carry it, which is why "deficiency" would answer for "d" and this does not.
+    assertFalse(SearchIndexStore.carriesResidual("vitamin C", List.of("d")));
+    assertTrue(SearchIndexStore.carriesResidual("anything", List.of()));
   }
 
   @Test

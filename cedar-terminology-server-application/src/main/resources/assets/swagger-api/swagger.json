@@ -3,7 +3,7 @@
   "info" : {
     "description" : "CEDAR Terminology Server API",
     "title" : "CEDAR Terminology Server API",
-    "version" : "2.9.2"
+    "version" : "2.9.3"
   },
   "paths" : {
     "/bioportal/classes/provisional" : {
@@ -1940,6 +1940,19 @@
             "maxLength" : 2147483647,
             "minLength" : 1
           },
+          "iri" : {
+            "type" : "string"
+          },
+          "maxDepth" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "source" : {
+            "type" : "string"
+          },
           "sourceSystem" : {
             "type" : "string"
           },
@@ -1957,6 +1970,9 @@
       "ClassValueConstraint" : {
         "type" : "object",
         "properties" : {
+          "iri" : {
+            "type" : "string"
+          },
           "label" : {
             "type" : "string"
           },
@@ -1970,6 +1986,9 @@
             "maxLength" : 2147483647,
             "minLength" : 1
           },
+          "sourceSystem" : {
+            "type" : "string"
+          },
           "type" : {
             "type" : "string",
             "maxLength" : 2147483647,
@@ -1979,6 +1998,9 @@
             "type" : "string",
             "maxLength" : 2147483647,
             "minLength" : 1
+          },
+          "version" : {
+            "type" : "string"
           }
         },
         "required" : [ "prefLabel", "source", "type", "uri" ]
@@ -2491,6 +2513,9 @@
         },
         "required" : [ "branches", "classes", "ontologies", "valueSets" ]
       },
+      "JsonNode" : {
+        "type" : "object"
+      },
       "OntologyValueConstraint" : {
         "type" : "object",
         "properties" : {
@@ -2499,7 +2524,20 @@
             "maxLength" : 2147483647,
             "minLength" : 1
           },
+          "iri" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "numTerms" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
           "sourceSystem" : {
+            "type" : "string"
+          },
+          "uri" : {
             "type" : "string"
           },
           "version" : {
@@ -2541,11 +2579,23 @@
               "$ref" : "#/components/schemas/ClassValueConstraint"
             }
           },
+          "defaultValue" : {
+            "$ref" : "#/components/schemas/JsonNode"
+          },
+          "multipleChoice" : {
+            "type" : "boolean"
+          },
           "ontologies" : {
             "type" : "array",
             "items" : {
               "$ref" : "#/components/schemas/OntologyValueConstraint"
             }
+          },
+          "recommendedValue" : {
+            "type" : "boolean"
+          },
+          "requiredValue" : {
+            "type" : "boolean"
           },
           "valueSets" : {
             "type" : "array",
@@ -2559,6 +2609,16 @@
       "ValueSetValueConstraint" : {
         "type" : "object",
         "properties" : {
+          "iri" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "numTerms" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
           "sourceSystem" : {
             "type" : "string"
           },

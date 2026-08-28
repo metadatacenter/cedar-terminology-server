@@ -24,9 +24,11 @@ import java.util.concurrent.ConcurrentHashMap;
  * populates the catalog but does not make the server serve it locally until it is allowlisted.
  *
  * Opened snapshot stores are cached by version id, so the {@code latest} pointer can move (a new
- * ingest) and the next resolution opens the new file while the old one stays cached until eviction
- * is added. Reads go through SQLite in its default serialized threading mode; each read creates and
- * closes its own statement, so a cached store is safe to share across request threads.
+ * ingest) and the next resolution opens the new file while the old one stays cached — until the
+ * cache exceeds its ceiling and {@link #closeStoresGoneQuiet} closes the stores nobody has asked
+ * for within the quiet window, oldest first. Reads go through SQLite in its default serialized
+ * threading mode; each read creates and closes its own statement, so a cached store is safe to
+ * share across request threads.
  */
 public class CatalogSnapshotProvider implements SqliteTerminologyService.SnapshotProvider, AutoCloseable {
 
@@ -59,7 +61,10 @@ public class CatalogSnapshotProvider implements SqliteTerminologyService.Snapsho
       if (info.isEmpty()) {
         return Optional.empty();
       }
-      SnapshotStore store = openByFile.computeIfAbsent(info.get().filePath(), this::open);
+      String file = info.get().filePath();
+      SnapshotStore store = openByFile.computeIfAbsent(file, this::open);
+      lastUsed.put(file, System.nanoTime());
+      closeStoresGoneQuiet(file);
       return Optional.ofNullable(store);
     } catch (SQLException e) {
       log.warn("Catalog lookup failed for ontology {} version {}; falling back to remote", ontology, version, e);
@@ -274,9 +279,68 @@ public class CatalogSnapshotProvider implements SqliteTerminologyService.Snapsho
 
   private static final String BP_ONTOLOGY_BASE = "https://data.bioontology.org/ontologies/";
 
+  /** How many snapshots stay open before the quiet ones are closed. */
+  private final int maxOpenSnapshots =
+      Integer.getInteger("cedar.terminology.openSnapshots.max", 64);
+
+  /**
+   * How long a snapshot must have gone unasked-for before it may be closed.
+   *
+   * A store is handed to a caller and used after this method returns, so closing one still in use
+   * would fail that request. Nothing holds a store for anything like this long — the slowest lookup
+   * measured is about a second — so a store untouched for a minute is one nobody is reading.
+   */
+  private final long quietNanos = 1_000_000L
+      * Long.getLong("cedar.terminology.openSnapshots.quietMillis", 60_000L);
+
+  private final ConcurrentHashMap<String, Long> lastUsed = new ConcurrentHashMap<>();
+
+  /**
+   * Closes snapshots nobody has asked for lately, once too many are open.
+   *
+   * Without this every snapshot ever resolved stays open for the life of the process, and the
+   * ceiling is the corpus rather than the working set: a pinned constraint opens a superseded
+   * snapshot beside the current one, and every re-ingest strands the store it replaced. Each one
+   * holds connections, so the cost is not only a file handle.
+   *
+   * The one just handed out is never a candidate, whatever its age.
+   */
+  private void closeStoresGoneQuiet(String justUsed) {
+    if (openByFile.size() <= maxOpenSnapshots) {
+      return;
+    }
+    long now = System.nanoTime();
+    List<String> quiet = lastUsed.entrySet().stream()
+        .filter(e -> !e.getKey().equals(justUsed))
+        .filter(e -> now - e.getValue() > quietNanos)
+        .sorted(java.util.Map.Entry.comparingByValue())
+        .map(java.util.Map.Entry::getKey)
+        .toList();
+    for (String file : quiet) {
+      if (openByFile.size() <= maxOpenSnapshots) {
+        return;
+      }
+      SnapshotStore going = openByFile.remove(file);
+      lastUsed.remove(file);
+      if (going == null) {
+        continue;
+      }
+      try {
+        going.close();
+      } catch (SQLException e) {
+        log.warn("Error closing quiet snapshot store {}", file, e);
+      }
+    }
+  }
+
+  /** How many snapshot stores are open, which is what the bound above governs. */
+  int openSnapshotCount() {
+    return openByFile.size();
+  }
+
   private SnapshotStore open(String path) {
     try {
-      return SnapshotStore.openFile(path);
+      return SnapshotStore.openForRead(path);
     } catch (SQLException e) {
       log.warn("Failed to open snapshot file {}; falling back to remote", path, e);
       return null;
@@ -293,6 +357,7 @@ public class CatalogSnapshotProvider implements SqliteTerminologyService.Snapsho
       }
     }
     openByFile.clear();
+    lastUsed.clear();
     try {
       catalog.close();
     } catch (SQLException e) {

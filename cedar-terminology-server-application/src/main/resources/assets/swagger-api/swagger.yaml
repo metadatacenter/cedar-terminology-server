@@ -2,7 +2,7 @@ openapi: 3.0.1
 info:
   description: CEDAR Terminology Server API
   title: CEDAR Terminology Server API
-  version: 2.9.2
+  version: 2.9.3
 paths:
   /bioportal/classes/provisional:
     get:
@@ -1499,6 +1499,15 @@ components:
           type: string
           maxLength: 2147483647
           minLength: 1
+        iri:
+          type: string
+        maxDepth:
+          type: integer
+          format: int32
+        name:
+          type: string
+        source:
+          type: string
         sourceSystem:
           type: string
         uri:
@@ -1513,6 +1522,8 @@ components:
     ClassValueConstraint:
       type: object
       properties:
+        iri:
+          type: string
         label:
           type: string
         prefLabel:
@@ -1523,6 +1534,8 @@ components:
           type: string
           maxLength: 2147483647
           minLength: 1
+        sourceSystem:
+          type: string
         type:
           type: string
           maxLength: 2147483647
@@ -1531,6 +1544,8 @@ components:
           type: string
           maxLength: 2147483647
           minLength: 1
+        version:
+          type: string
       required:
       - prefLabel
       - source
@@ -1986,6 +2001,8 @@ components:
       - classes
       - ontologies
       - valueSets
+    JsonNode:
+      type: object
     OntologyValueConstraint:
       type: object
       properties:
@@ -1993,7 +2010,16 @@ components:
           type: string
           maxLength: 2147483647
           minLength: 1
+        iri:
+          type: string
+        name:
+          type: string
+        numTerms:
+          type: integer
+          format: int32
         sourceSystem:
+          type: string
+        uri:
           type: string
         version:
           type: string
@@ -2023,10 +2049,18 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ClassValueConstraint"
+        defaultValue:
+          $ref: "#/components/schemas/JsonNode"
+        multipleChoice:
+          type: boolean
         ontologies:
           type: array
           items:
             $ref: "#/components/schemas/OntologyValueConstraint"
+        recommendedValue:
+          type: boolean
+        requiredValue:
+          type: boolean
         valueSets:
           type: array
           items:
@@ -2039,6 +2073,13 @@ components:
     ValueSetValueConstraint:
       type: object
       properties:
+        iri:
+          type: string
+        name:
+          type: string
+        numTerms:
+          type: integer
+          format: int32
         sourceSystem:
           type: string
         uri:

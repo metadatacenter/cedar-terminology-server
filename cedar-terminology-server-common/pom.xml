@@ -5,7 +5,7 @@
   <parent>
     <groupId>org.metadatacenter</groupId>
     <artifactId>cedar-terminology-server</artifactId>
-    <version>2.9.2</version>
+    <version>2.9.3</version>
   </parent>
 
   <groupId>org.metadatacenter</groupId>
@@ -24,6 +24,14 @@
     <dependency>
       <groupId>org.metadatacenter</groupId>
       <artifactId>cedar-config-library</artifactId>
+    </dependency>
+
+    <!-- The integrated-search request is a compatibility view of the artifact library's
+         controlled-term constraint wire shape. Keep the source model as a direct dependency so
+         the drift test below cannot be bypassed by a transitive dependency change. -->
+    <dependency>
+      <groupId>org.metadatacenter</groupId>
+      <artifactId>cedar-artifact-library</artifactId>
     </dependency>
 
     <dependency>

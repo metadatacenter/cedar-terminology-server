@@ -9,6 +9,7 @@ import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.terms.domainObjects.*;
 import org.metadatacenter.terms.store.CatalogStore;
 import org.metadatacenter.terms.store.SnapshotDiff;
+import org.metadatacenter.terms.store.SearchIndexStore;
 import org.metadatacenter.terms.store.SnapshotStore;
 import org.metadatacenter.terms.util.ObjectConverter;
 import org.metadatacenter.terms.util.Util;
@@ -103,9 +104,52 @@ public class SqliteTerminologyService implements ITerminologyService {
 
   private final SnapshotProvider provider;
 
+  /** The cross-snapshot index, or {@code null} where none is configured. */
+  private final SearchIndexStore index;
+
+  /**
+   * The size at which an ontology is answered from the index rather than from its snapshot.
+   *
+   * A snapshot has no text index, so it answers by comparing every concept's label and costs what
+   * the ontology is large. The index costs what the query matches, which since the ontology is
+   * indexed alongside the text is bounded by the ontology too. The two cross around here. Measured
+   * 2026-08-26 on the served corpus with the probe "acid": NCBITAXON 971 ms against 65, DDSS 206
+   * against 74, MEDGEN 328 against 72, and going the other way DOID 9 ms against 42 and MONDO 23
+   * against 47. Below the line the snapshot is simply quicker, and routing everything would make
+   * the common small ontology four times slower to spare the rare large one.
+   */
+  static final long INDEX_ROUTING_TERMS = 250_000L;
+
+  /**
+   * How many matches a routed answer carries, and so how high its reported total can go.
+   *
+   * The snapshot path counts exactly, because it has already compared every label and can afford
+   * to. The index stops at a cap, so an ontology answering more matches than this reports the cap
+   * instead of the true figure — the page an author reads is unaffected, the count above it is.
+   * Set high enough that paging is not what runs out first.
+   */
+  static final int INDEX_ROUTING_CAP = 10_000;
+
   public SqliteTerminologyService(SnapshotProvider provider) {
-    this.provider = provider;
+    this(provider, null);
   }
+
+  public SqliteTerminologyService(SnapshotProvider provider, SearchIndexStore index) {
+    this(provider, index, INDEX_ROUTING_TERMS);
+  }
+
+  /**
+   * As above, with the size at which an ontology is answered from the index given rather than
+   * assumed. A test cannot build an ontology of a quarter of a million terms to cross the real one.
+   */
+  SqliteTerminologyService(SnapshotProvider provider, SearchIndexStore index, long routeAbove) {
+    this.provider = provider;
+    this.index = index;
+    this.routeAbove = routeAbove;
+  }
+
+  /** The size this instance routes above, which is {@link #INDEX_ROUTING_TERMS} unless given. */
+  private final long routeAbove;
 
   /** Whether this backend currently serves the given ontology. */
   public boolean isAvailable(String ontology) {
@@ -183,6 +227,82 @@ public class SqliteTerminologyService implements ITerminologyService {
    * carries the number of items actually on this page (not the requested size). An empty match set
    * yields {@code pageCount = 0} and {@code pageSize = 0}, as BioPortal does.
    */
+  /**
+   * The ontology's matches from the index, or {@code null} where the snapshot should answer.
+   *
+   * A snapshot carries no text index, so it answers by comparing every label it holds and costs
+   * what the ontology is large. The index costs what the query matches, and since the ontology is
+   * indexed alongside the text that is bounded by the ontology too. Past a size the second is much
+   * the cheaper; below it the first still wins, which is why this is a threshold and not a switch.
+   *
+   * Only an unpinned constraint qualifies. The index keeps one version an ontology, so a constraint
+   * naming an older release must be answered from the snapshot holding it. A constraint naming none
+   * is still checked against what the index actually indexed, because a re-ingest can move the
+   * current version before the index catches up, and answering from the stale one would attribute
+   * terms to a release that did not produce them.
+   *
+   * Matching differs, visibly. A snapshot matches a substring anywhere in a label and leads with
+   * the shortest; the index matches tokens by prefix and leads with the best match. Searching
+   * NCBITAXON for "Escherichia" the snapshot returns "Muvirus mu" and "Inovirus M13" first, short
+   * labels carrying the word in a synonym, where the index returns Escherichia, Escherichia sp.,
+   * Escherichia coli. Better, but not the same answer, which is the exchange this makes.
+   */
+  private PagedResults<SearchResult> indexAnswer(OntologyValueConstraint ont, String query,
+                                                int page, int pageSize, String lang)
+      throws SQLException {
+    if (index == null || query.isEmpty() || isPinned(ont.getVersion())) {
+      return null;
+    }
+    // A request naming a language is answered from the snapshot, which is where the languages are.
+    // The index keeps one label a term, the one the store serves, so answering from it would return
+    // the default label and say nothing about having done so — the multilingual read path silently
+    // absent for exactly the largest ontologies. Slower and right beats faster and quietly wrong.
+    if (lang != null && !lang.isBlank()) {
+      return null;
+    }
+    String acronym = ont.getAcronym();
+    if (index.indexedTermCount(acronym) < routeAbove) {
+      return null;
+    }
+    Optional<String> indexed = index.indexedVersion(acronym);
+    Optional<VersionTriple> current = provider.currentVersion(acronym);
+    if (indexed.isEmpty() || current.isEmpty() || !indexed.get().equals(current.get().id())) {
+      return null;
+    }
+    // The page and the count are asked for separately, because the index can answer each cheaply
+    // and cannot answer both at once. Fetching every match to count them is what the snapshot does,
+    // and doing it here cost more than the snapshot for an ontology whose matches are many: DDSS
+    // answered in 384 ms fetching ten thousand where it answers in 28 fetching a page.
+    int size = pageSize <= 0 ? DEFAULT_PAGE_SIZE : pageSize;
+    // The index pages by distinct label and returns every term carrying the labels on the page, so
+    // it hands back more rows than were asked for. A caller counting on a page holding at most what
+    // it requested — which the snapshot path has always given it — would be handed a longer list
+    // and a page count describing something else. Cut it to the size asked for.
+    List<SearchResult> slice = new ArrayList<>();
+    for (SearchIndexStore.IndexHit hit
+        : index.searchByLabelPage(query, List.of(acronym), false, Math.max(page, 1), size)) {
+      if (slice.size() >= size) {
+        break;
+      }
+      SearchIndexStore.IndexedTerm t = hit.term();
+      slice.add(ObjectConverter.toSearchResult(toClass(
+          new SnapshotStore.Concept(t.iri(), t.prefLabel(), t.obsolete(), t.hasChildren()), acronym)));
+    }
+    int total = index.matchCount(query, List.of(acronym), false, INDEX_ROUTING_CAP);
+    int pageCount = total == 0 ? 0 : (int) Math.ceil((double) total / size);
+    Integer prev = page > 1 ? page - 1 : null;
+    Integer next = page < pageCount ? page + 1 : null;
+    return new PagedResults<>(page, pageCount, slice.size(), total, prev, next, slice);
+  }
+
+  /** What a page holds when the caller names no size, matching the snapshot path's own default. */
+  private static final int DEFAULT_PAGE_SIZE = 50;
+
+  /** Whether a constraint names a release, rather than taking whichever is current. */
+  private static boolean isPinned(String version) {
+    return version != null && !version.isBlank() && !"latest".equalsIgnoreCase(version.trim());
+  }
+
   private PagedResults<SearchResult> pagedSearchResults(List<SnapshotStore.Concept> rows, String ontology,
                                                         int page, int pageSize) {
     try {
@@ -568,6 +688,10 @@ public class SqliteTerminologyService implements ITerminologyService {
       OntologyValueConstraint ont = ontologies.get(0);
       String query = q.map(String::trim).orElse("");
       try {
+        PagedResults<SearchResult> fromIndex = indexAnswer(ont, query, page, pageSize, lang);
+        if (fromIndex != null) {
+          return fromIndex;
+        }
         SnapshotStore st = store(ont.getAcronym(), ont.getVersion());
         List<SnapshotStore.Concept> rows =
             query.isEmpty() ? st.allConceptsDetailed() : st.searchByLabel(query, false, 0);

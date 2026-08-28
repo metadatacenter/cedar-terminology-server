@@ -1,15 +1,10 @@
 package org.metadatacenter.cedar.terminology.validation.integratedsearch;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import org.metadatacenter.artifacts.model.core.fields.constraints.VersionSpec;
 import org.hibernate.validator.constraints.NotEmpty;
 
-// Tolerate the additive value-constraint spec fields (iri / sourceSystem / version) a frozen template
-// carries on a class entry: an enumerated class is self-describing (its uri + prefLabel are used as-is,
-// no snapshot lookup), so those fields are not consumed here, but the request must still deserialize.
-// The other three constraint kinds already declare this; matching them makes the tolerance explicit
-// rather than relying on the Dropwizard mapper's fail-on-unknown being off.
-@JsonIgnoreProperties(ignoreUnknown = true)
-public class ClassValueConstraint {
+public class ClassValueConstraint extends RejectUnknownFields {
 
   @NotEmpty
   private String uri;
@@ -20,6 +15,10 @@ public class ClassValueConstraint {
   private String label; // Optional
   @NotEmpty
   private String source;
+  private String iri;
+  private String sourceSystem;
+  @JsonDeserialize(using = ConstraintVersionDeserializer.class)
+  private VersionSpec version;
 
   public ClassValueConstraint() { }
 
@@ -42,5 +41,13 @@ public class ClassValueConstraint {
   public String getSource() {
     return source;
   }
+
+  public String getIri() { return iri; }
+
+  public String getSourceSystem() { return sourceSystem; }
+
+  public String getVersion() { return version == null ? null : version.id(); }
+
+  public VersionSpec versionSpec() { return version; }
 
 }

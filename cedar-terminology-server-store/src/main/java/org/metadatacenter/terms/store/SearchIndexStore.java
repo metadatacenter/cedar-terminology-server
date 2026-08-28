@@ -7,6 +7,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Collection;
@@ -90,7 +91,7 @@ public class SearchIndexStore implements AutoCloseable {
     String sql = "SELECT t.acronym, t.iri, n.property, n.lang, n.value FROM term t"
         + " JOIN name n ON n.term_id = t.term_id WHERE t.iri IN ("
         + String.join(",", Collections.nCopies(distinct.size(), "?")) + ")";
-    try (PreparedStatement ps = connection.prepareStatement(sql)) {
+    try (PreparedStatement ps = connection().prepareStatement(sql)) {
       for (int i = 0; i < distinct.size(); i++) {
         ps.setString(i + 1, distinct.get(i));
       }
@@ -124,7 +125,7 @@ public class SearchIndexStore implements AutoCloseable {
         FROM up JOIN term t ON t.iri = up.iri AND t.acronym = ?
         ORDER BY up.depth DESC""";
     List<IndexedTerm> chain = new ArrayList<>();
-    try (PreparedStatement ps = connection.prepareStatement(sql)) {
+    try (PreparedStatement ps = connection().prepareStatement(sql)) {
       ps.setString(1, acronym);
       ps.setString(2, iri);
       ps.setString(3, acronym);
@@ -152,7 +153,7 @@ public class SearchIndexStore implements AutoCloseable {
         + " descendant_count, parent_iri, parent_label, definition FROM term"
         + " WHERE acronym = ? AND parent_iri = ? ORDER BY pref_label COLLATE NOCASE, pref_label, iri LIMIT ? OFFSET ?";
     List<IndexedTerm> out = new ArrayList<>();
-    try (PreparedStatement ps = connection.prepareStatement(sql)) {
+    try (PreparedStatement ps = connection().prepareStatement(sql)) {
       ps.setString(1, acronym);
       ps.setString(2, iri);
       ps.setInt(3, limit);
@@ -168,7 +169,7 @@ public class SearchIndexStore implements AutoCloseable {
 
   /** How many children a term has, without reading them. */
   public int childCount(String acronym, String iri) throws SQLException {
-    try (PreparedStatement ps = connection.prepareStatement(
+    try (PreparedStatement ps = connection().prepareStatement(
         "SELECT COUNT(*) FROM term WHERE acronym = ? AND parent_iri = ?")) {
       ps.setString(1, acronym);
       ps.setString(2, iri);
@@ -179,7 +180,7 @@ public class SearchIndexStore implements AutoCloseable {
   }
 
   public Optional<IndexedTerm> term(String acronym, String iri) throws SQLException {
-    try (PreparedStatement ps = connection.prepareStatement(
+    try (PreparedStatement ps = connection().prepareStatement(
         "SELECT acronym, iri, pref_label, obsolete, replaced_by, has_children, descendant_count,"
             + " parent_iri, parent_label, definition FROM term WHERE acronym = ? AND iri = ?")) {
       ps.setString(1, acronym);
@@ -215,12 +216,84 @@ public class SearchIndexStore implements AutoCloseable {
 
   private final Connection connection;
 
-  private SearchIndexStore(Connection connection) {
+  /**
+   * A connection each reading thread, or {@code null} when this store was opened to write.
+   *
+   * A writer keeps the one connection it commits on. Only a store opened by {@link #openForRead}
+   * hands out others, because only then is every statement a read.
+   */
+  private final ReadConnections reads;
+
+  /** Connections a serving store will open before threads start sharing one again. */
+  private static final int READ_CONNECTION_LIMIT = 8;
+
+  /** The SQL name of the function applying {@link #carriesResidual}. */
+  static final String RESIDUAL_FN = "cedar_carries_residual";
+
+  private SearchIndexStore(Connection connection) throws SQLException {
+    this(connection, null);
+  }
+
+  private SearchIndexStore(Connection connection, String readPath) throws SQLException {
     this.connection = connection;
+    registerResidualFunction(connection);
+    this.reads = readPath == null ? null
+        : ReadConnections.of(readPath, connection, SearchIndexStore::prepareRead,
+            READ_CONNECTION_LIMIT);
+  }
+
+  /** Everything a freshly opened reading connection needs before it answers a query. */
+  private static void prepareRead(Connection fresh) throws SQLException {
+    registerResidualFunction(fresh);
+  }
+
+  /**
+   * The connection this call should use: the caller's thread has its own when the store serves.
+   */
+  private Connection connection() throws SQLException {
+    return reads == null ? connection : reads.get();
+  }
+
+  /**
+   * Teaches SQLite the test a held-back token has to pass.
+   *
+   * The test belongs where the rows are, not where they land: the paged query ranks and groups its
+   * matches in SQL, so a filter applied to its output would rank names it is about to discard. A
+   * scalar function keeps one definition of the rule, in Java, and lets every query apply it before
+   * it aggregates.
+   */
+  private static void registerResidualFunction(Connection connection) throws SQLException {
+    org.sqlite.Function.create(connection, RESIDUAL_FN, new org.sqlite.Function() {
+      @Override
+      protected void xFunc() throws SQLException {
+        String value = value_text(0);
+        String held = value_text(1);
+        if (held == null || held.isBlank()) {
+          result(1);
+          return;
+        }
+        result(carriesResidual(value, Arrays.asList(held.split(" "))) ? 1 : 0);
+      }
+    });
+  }
+
+  /** {@code ""} when the plan held nothing back, otherwise a predicate with one bound parameter. */
+  private static String residualFilter(MatchPlan plan) {
+    return plan.residual().isEmpty() ? "" : " AND " + RESIDUAL_FN + "(n.value, ?) = 1";
   }
 
   public static SearchIndexStore openFile(String path) throws SQLException {
     return new SearchIndexStore(DriverManager.getConnection("jdbc:sqlite:" + path));
+  }
+
+  /**
+   * Opens the index to answer queries, where lookups arrive on many threads at once.
+   *
+   * The store this returns writes nothing. An ingest opens the same file with {@link #openFile},
+   * which keeps the single connection its transactions need.
+   */
+  public static SearchIndexStore openForRead(String path) throws SQLException {
+    return new SearchIndexStore(DriverManager.getConnection("jdbc:sqlite:" + path), path);
   }
 
   public static SearchIndexStore openInMemory() throws SQLException {
@@ -228,7 +301,7 @@ public class SearchIndexStore implements AutoCloseable {
   }
 
   public void initSchema() throws SQLException {
-    try (Statement st = connection.createStatement()) {
+    try (Statement st = connection().createStatement()) {
       st.executeUpdate("""
           CREATE TABLE IF NOT EXISTS indexed_snapshot (
             acronym     TEXT PRIMARY KEY,
@@ -251,6 +324,12 @@ public class SearchIndexStore implements AutoCloseable {
             definition       TEXT
           )""");
       st.executeUpdate("CREATE INDEX IF NOT EXISTS term_by_acronym ON term(acronym)");
+      // Terms are also reached by IRI alone, which is how a page of corpus-wide hits fetches its
+      // names: the hits come from the whole corpus, so there is no acronym to narrow by. Without
+      // this the lookup scans every term in the index -- fifteen million rows for a page of
+      // twenty-five, on every corpus-wide search -- and the scan, not the search, is what the
+      // request costs.
+      st.executeUpdate("CREATE INDEX IF NOT EXISTS term_by_iri ON term(iri)");
       // An index built before definitions were captured has no such column; adding it here means an
       // existing index keeps working and fills as ontologies are rebuilt, rather than all at once.
       if (!hasColumn(st, "term", "definition")) {
@@ -262,17 +341,37 @@ public class SearchIndexStore implements AutoCloseable {
             term_id  INTEGER NOT NULL,
             property TEXT,
             lang     TEXT,
-            value    TEXT NOT NULL
+            value    TEXT NOT NULL,
+            ont      TEXT
           )""");
+      // An index built before the ontology was indexed alongside the text has no such column. It
+      // keeps working: the column stays empty, and a scoped search then filters rows after the
+      // match, which is what every scoped search used to do. Rebuilding the index fills it.
+      if (!hasColumn(st, "name", "ont")) {
+        st.executeUpdate("ALTER TABLE name ADD COLUMN ont TEXT");
+      }
       st.executeUpdate("CREATE INDEX IF NOT EXISTS name_by_term ON name(term_id)");
       // External-content FTS: the searchable text lives once, in `name`, and the index refers to it
       // by rowid. Storing it twice would add a gigabyte to say the same thing.
       //
       // remove_diacritics 2 folds accents, so "aquifere" finds "aquifère" — which the snapshot's
       // LIKE cannot do, since SQLite folds ASCII case only.
+      //
+      // `ont` carries the ontology a name belongs to, so that narrowing a search to one ontology
+      // narrows what the index reads rather than what it returns. Filtered after the match, a search
+      // of DOID's 19,578 terms costs what a search of all 15.3 million costs, because the match has
+      // already walked them: "acid" in DOID took 284 ms that way and 21 ms this way, and in RH-MESH
+      // 1,526 ms became 27 ms.
+      //
+      // The value is the acronym hex-encoded rather than the acronym. An acronym is not one token to
+      // this tokenizer — 191 of the 1,266 carry a hyphen or an underscore — so `RH-MESH` indexed as
+      // text answers a search scoped to `MESH`. Stripping the punctuation instead collides 16 pairs,
+      // among them COVID-19 with COVID19, which are different ontologies holding different terms.
+      // Hex is one token, and one token an acronym.
       st.executeUpdate("""
           CREATE VIRTUAL TABLE IF NOT EXISTS name_fts USING fts5(
             value,
+            ont,
             content='name',
             content_rowid='name_id',
             tokenize="unicode61 remove_diacritics 2"
@@ -292,9 +391,25 @@ public class SearchIndexStore implements AutoCloseable {
   }
 
   /** The version of an ontology the index currently holds, if any. */
+  /**
+   * How many terms the index holds for an ontology, or zero where it holds none.
+   *
+   * Recorded when the ontology was indexed rather than counted on demand, so a caller deciding
+   * whether an ontology is large enough to answer from the index pays nothing to ask.
+   */
+  public long indexedTermCount(String acronym) throws SQLException {
+    try (PreparedStatement ps = connection().prepareStatement(
+        "SELECT term_count FROM indexed_snapshot WHERE acronym = ?")) {
+      ps.setString(1, acronym);
+      try (ResultSet rs = ps.executeQuery()) {
+        return rs.next() ? rs.getLong(1) : 0L;
+      }
+    }
+  }
+
   public Optional<String> indexedVersion(String acronym) throws SQLException {
     try (PreparedStatement ps =
-             connection.prepareStatement("SELECT version_id FROM indexed_snapshot WHERE acronym = ?")) {
+             connection().prepareStatement("SELECT version_id FROM indexed_snapshot WHERE acronym = ?")) {
       ps.setString(1, acronym);
       try (ResultSet rs = ps.executeQuery()) {
         return rs.next() ? Optional.of(rs.getString(1)) : Optional.empty();
@@ -305,7 +420,7 @@ public class SearchIndexStore implements AutoCloseable {
   /** Every ontology in the index, with the version held for each. */
   public Map<String, String> indexedVersions() throws SQLException {
     Map<String, String> out = new LinkedHashMap<>();
-    try (Statement st = connection.createStatement();
+    try (Statement st = connection().createStatement();
          ResultSet rs = st.executeQuery("SELECT acronym, version_id FROM indexed_snapshot ORDER BY acronym")) {
       while (rs.next()) {
         out.put(rs.getString(1), rs.getString(2));
@@ -315,14 +430,14 @@ public class SearchIndexStore implements AutoCloseable {
   }
 
   public int indexedOntologyCount() throws SQLException {
-    try (Statement st = connection.createStatement();
+    try (Statement st = connection().createStatement();
          ResultSet rs = st.executeQuery("SELECT COUNT(*) FROM indexed_snapshot")) {
       return rs.next() ? rs.getInt(1) : 0;
     }
   }
 
   public long termCount() throws SQLException {
-    try (Statement st = connection.createStatement();
+    try (Statement st = connection().createStatement();
          ResultSet rs = st.executeQuery("SELECT COUNT(*) FROM term")) {
       return rs.next() ? rs.getLong(1) : 0;
     }
@@ -338,17 +453,18 @@ public class SearchIndexStore implements AutoCloseable {
   public void replaceOntology(String acronym, String versionId, String indexedAt,
                               Collection<IndexedTerm> terms,
                               Map<String, List<IndexedName>> namesByIri) throws SQLException {
-    boolean autoCommit = connection.getAutoCommit();
-    connection.setAutoCommit(false);
+    boolean autoCommit = connection().getAutoCommit();
+    connection().setAutoCommit(false);
     try {
       deleteOntologyRows(acronym);
-      try (PreparedStatement insertTerm = connection.prepareStatement(
+      try (PreparedStatement insertTerm = connection().prepareStatement(
                "INSERT INTO term(acronym, iri, pref_label, obsolete, replaced_by, has_children, "
                    + "descendant_count, parent_iri, parent_label, definition) "
                    + "VALUES (?,?,?,?,?,?,?,?,?,?)",
                Statement.RETURN_GENERATED_KEYS);
-           PreparedStatement insertName = connection.prepareStatement(
-               "INSERT INTO name(term_id, property, lang, value) VALUES (?,?,?,?)")) {
+           PreparedStatement insertName = connection().prepareStatement(
+               "INSERT INTO name(term_id, property, lang, value, ont) VALUES (?,?,?,?,?)")) {
+        String ont = ontToken(acronym);
         for (IndexedTerm t : terms) {
           insertTerm.setString(1, acronym);
           insertTerm.setString(2, t.iri());
@@ -368,15 +484,15 @@ public class SearchIndexStore implements AutoCloseable {
           // The preferred label is a searchable name like any other, so a plain label match needs no
           // separate query path.
           if (t.prefLabel() != null && !t.prefLabel().isBlank()) {
-            addName(insertName, termId, "prefLabel", null, t.prefLabel());
+            addName(insertName, termId, "prefLabel", null, t.prefLabel(), ont);
           }
           for (IndexedName n : namesByIri.getOrDefault(t.iri(), List.of())) {
-            addName(insertName, termId, n.property(), n.lang(), n.value());
+            addName(insertName, termId, n.property(), n.lang(), n.value(), ont);
           }
         }
         insertName.executeBatch();
       }
-      try (PreparedStatement ps = connection.prepareStatement(
+      try (PreparedStatement ps = connection().prepareStatement(
           "INSERT OR REPLACE INTO indexed_snapshot(acronym, version_id, term_count, indexed_at) VALUES (?,?,?,?)")) {
         ps.setString(1, acronym);
         ps.setString(2, versionId);
@@ -384,31 +500,32 @@ public class SearchIndexStore implements AutoCloseable {
         ps.setString(4, indexedAt);
         ps.executeUpdate();
       }
-      connection.commit();
+      connection().commit();
     } catch (SQLException e) {
-      connection.rollback();
+      connection().rollback();
       throw e;
     } finally {
-      connection.setAutoCommit(autoCommit);
+      connection().setAutoCommit(autoCommit);
     }
   }
 
   private static void addName(PreparedStatement insertName, long termId, String property, String lang,
-                              String value) throws SQLException {
+                              String value, String ont) throws SQLException {
     insertName.setLong(1, termId);
     insertName.setString(2, property);
     insertName.setString(3, lang);
     insertName.setString(4, value);
+    insertName.setString(5, ont);
     insertName.addBatch();
   }
 
   private void deleteOntologyRows(String acronym) throws SQLException {
-    try (PreparedStatement ps = connection.prepareStatement(
+    try (PreparedStatement ps = connection().prepareStatement(
         "DELETE FROM name WHERE term_id IN (SELECT term_id FROM term WHERE acronym = ?)")) {
       ps.setString(1, acronym);
       ps.executeUpdate();
     }
-    try (PreparedStatement ps = connection.prepareStatement("DELETE FROM term WHERE acronym = ?")) {
+    try (PreparedStatement ps = connection().prepareStatement("DELETE FROM term WHERE acronym = ?")) {
       ps.setString(1, acronym);
       ps.executeUpdate();
     }
@@ -422,14 +539,30 @@ public class SearchIndexStore implements AutoCloseable {
    * stale rather than one that disagrees with itself.
    */
   public void rebuildFullText() throws SQLException {
-    try (Statement st = connection.createStatement()) {
+    try (Statement st = connection().createStatement()) {
+      // An index whose full-text table predates the ontology column is widened here rather than on
+      // open, because opening is what a serving process does: dropping the table there would leave
+      // the server answering nothing until a rebuild it has no reason to run. A rebuild is already
+      // the operation that repopulates it, and the text it draws on lives in `name` either way.
+      if (!hasColumn(st, "name_fts", "ont")) {
+        st.executeUpdate("DROP TABLE name_fts");
+        st.executeUpdate("""
+            CREATE VIRTUAL TABLE name_fts USING fts5(
+              value,
+              ont,
+              content='name',
+              content_rowid='name_id',
+              tokenize="unicode61 remove_diacritics 2"
+            )""");
+        scopedIndex = null;
+      }
       st.executeUpdate("INSERT INTO name_fts(name_fts) VALUES('rebuild')");
     }
   }
 
   /** Reclaims space and updates the planner's statistics. Worth running once after a full build. */
   public void optimize() throws SQLException {
-    try (Statement st = connection.createStatement()) {
+    try (Statement st = connection().createStatement()) {
       st.executeUpdate("INSERT INTO name_fts(name_fts) VALUES('optimize')");
       st.executeUpdate("ANALYZE");
     }
@@ -453,10 +586,12 @@ public class SearchIndexStore implements AutoCloseable {
    */
   public List<IndexHit> search(String query, Collection<String> acronyms, boolean branchesOnly, int limit)
       throws SQLException {
-    String match = toPrefixMatch(query);
+    MatchPlan plan = toMatchPlan(query);
+    String match = plan.match();
     if (match.isEmpty()) {
       return List.of();
     }
+    match = scopedMatch(match, acronyms);
     String needle = query.trim().toLowerCase(Locale.ROOT);
     StringBuilder sql = new StringBuilder("""
         SELECT t.acronym, t.iri, t.pref_label, t.obsolete, t.replaced_by, t.has_children,
@@ -484,7 +619,7 @@ public class SearchIndexStore implements AutoCloseable {
         .append(", t.obsolete, LENGTH(n.value), n.value, t.iri LIMIT ?");
 
     Map<Long, IndexHit> byTerm = new LinkedHashMap<>();
-    try (PreparedStatement ps = connection.prepareStatement(sql.toString())) {
+    try (PreparedStatement ps = connection().prepareStatement(sql.toString())) {
       int p = 1;
       ps.setString(p++, match);
       if (acronyms != null) {
@@ -500,6 +635,9 @@ public class SearchIndexStore implements AutoCloseable {
       ps.setInt(p, Math.max(limit, 1) * 4);
       try (ResultSet rs = ps.executeQuery()) {
         while (rs.next()) {
+          if (!carriesResidual(rs.getString(10), plan.residual())) {
+            continue;
+          }
           long termId = rs.getLong(11);
           IndexHit hit = byTerm.get(termId);
           if (hit == null) {
@@ -532,10 +670,14 @@ public class SearchIndexStore implements AutoCloseable {
    */
   public List<IndexHit> searchByLabelPage(String query, Collection<String> acronyms, boolean branchesOnly,
                                           int page, int pageSize) throws SQLException {
-    String match = toPrefixMatch(query);
+    MatchPlan plan = toMatchPlan(query);
+    String match = plan.match();
     if (match.isEmpty()) {
       return List.of();
     }
+    match = scopedMatch(match, acronyms);
+    String residualFilter = residualFilter(plan);
+    String heldTokens = String.join(" ", plan.residual());
     String needle = query.trim().toLowerCase(Locale.ROOT);
     String acronymFilter = acronyms == null || acronyms.isEmpty() ? ""
         : " AND t.acronym IN (" + String.join(",", java.util.Collections.nCopies(acronyms.size(), "?")) + ")";
@@ -555,9 +697,9 @@ public class SearchIndexStore implements AutoCloseable {
     String labelSql = "SELECT LOWER(t.pref_label) label, MIN(" + MATCH_RANK + ") rank,"
         + " MIN(t.obsolete) obsolete, MIN(LENGTH(n.value)) len, MAX(t.descendant_count) beneath"
         + " FROM name_fts f JOIN name n ON n.name_id = f.rowid JOIN term t ON t.term_id = n.term_id"
-        + " WHERE name_fts MATCH ?" + branchFilter + acronymFilter
+        + " WHERE name_fts MATCH ?" + branchFilter + acronymFilter + residualFilter
         + " GROUP BY LOWER(t.pref_label) " + labelOrder + " LIMIT ? OFFSET ?";
-    try (PreparedStatement ps = connection.prepareStatement(labelSql)) {
+    try (PreparedStatement ps = connection().prepareStatement(labelSql)) {
       int p = 1;
       for (int i = 0; i < MATCH_RANK_PARAMS; i++) {
         ps.setString(p++, needle);
@@ -567,6 +709,9 @@ public class SearchIndexStore implements AutoCloseable {
         for (String acronym : acronyms) {
           ps.setString(p++, acronym);
         }
+      }
+      if (!plan.residual().isEmpty()) {
+        ps.setString(p++, heldTokens);
       }
       ps.setInt(p++, Math.max(pageSize, 1));
       ps.setInt(p, Math.max(page - 1, 0) * Math.max(pageSize, 1));
@@ -588,16 +733,19 @@ public class SearchIndexStore implements AutoCloseable {
         JOIN name n ON n.name_id = f.rowid
         JOIN term t ON t.term_id = n.term_id
         WHERE name_fts MATCH ?"""
-        + branchFilter + acronymFilter
+        + branchFilter + acronymFilter + residualFilter
         + " AND LOWER(t.pref_label) IN (" + String.join(",", java.util.Collections.nCopies(labels.size(), "?")) + ")";
     Map<Long, IndexHit> byTerm = new LinkedHashMap<>();
-    try (PreparedStatement ps = connection.prepareStatement(hitSql)) {
+    try (PreparedStatement ps = connection().prepareStatement(hitSql)) {
       int p = 1;
       ps.setString(p++, match);
       if (acronyms != null) {
         for (String acronym : acronyms) {
           ps.setString(p++, acronym);
         }
+      }
+      if (!plan.residual().isEmpty()) {
+        ps.setString(p++, heldTokens);
       }
       for (String label : labels) {
         ps.setString(p++, label);
@@ -693,6 +841,8 @@ public class SearchIndexStore implements AutoCloseable {
     if (match.isEmpty()) {
       return 0;
     }
+    MatchPlan plan = toMatchPlan(query);
+    match = scopedMatch(match, acronyms);
     String selected = distinctLabels ? "DISTINCT LOWER(t.pref_label)" : "DISTINCT t.term_id";
     // The space matters: a text block drops the newline after its opening delimiter, so without it
     // the column list runs straight into FROM.
@@ -709,14 +859,18 @@ public class SearchIndexStore implements AutoCloseable {
           .append(String.join(",", java.util.Collections.nCopies(acronyms.size(), "?")))
           .append(')');
     }
+    inner.append(residualFilter(plan));
     inner.append(" LIMIT ?");
-    try (PreparedStatement ps = connection.prepareStatement("SELECT COUNT(*) FROM (" + inner + ")")) {
+    try (PreparedStatement ps = connection().prepareStatement("SELECT COUNT(*) FROM (" + inner + ")")) {
       int p = 1;
       ps.setString(p++, match);
       if (acronyms != null) {
         for (String acronym : acronyms) {
           ps.setString(p++, acronym);
         }
+      }
+      if (!plan.residual().isEmpty()) {
+        ps.setString(p++, String.join(" ", plan.residual()));
       }
       ps.setInt(p, cap);
       try (ResultSet rs = ps.executeQuery()) {
@@ -732,24 +886,46 @@ public class SearchIndexStore implements AutoCloseable {
    * it: a group-by over the same match. Note it is not derivable from a page of results — a page is
    * truncated and its sources are whichever happened to rank highest, which undercounts. Measured
    * 2026-08-13, "melanoma" is in 113 vocabularies where the first thousand hits come from 88.
+   *
+   * {@code cap} bounds how many matched terms are grouped. Grouping every one of them costs time in
+   * proportion to how broadly the query matches, and a short prefix matches very broadly. An author
+   * reaching for "cell" types "ce" on the way. The cap is the one {@link #matchCount} already
+   * applies, and it buys that time with accuracy rather than for free.
+   *
+   * Which matches fall inside the cap follows the order the index holds them rather than rank, and
+   * that order tracks the acronym. A capped facet therefore drops vocabularies whose acronyms sort
+   * late and reorders the ones it keeps. Measured 2026-08-25 against a 1,266-ontology store, "ce"
+   * fell from 821 vocabularies to 48 and kept one of the uncapped top ten. "disease" fell from 463
+   * to 100, also keeping one. "melanoma" matches fewer terms than the cap and came back unchanged.
+   * A caller tells an exact facet from a cut one by the total: counts that sum to {@code cap} were
+   * cut, and a smaller sum saw the whole match.
    */
-  public List<VocabularyMatch> vocabularyFacet(String query, int limit) throws SQLException {
+  public List<VocabularyMatch> vocabularyFacet(String query, int limit, int cap) throws SQLException {
     String match = toPrefixMatch(query);
     if (match.isEmpty()) {
       return List.of();
     }
+    MatchPlan plan = toMatchPlan(query);
     List<VocabularyMatch> out = new ArrayList<>();
-    try (PreparedStatement ps = connection.prepareStatement("""
-        SELECT t.acronym, COUNT(DISTINCT t.term_id) c
-        FROM name_fts f
-        JOIN name n ON n.name_id = f.rowid
-        JOIN term t ON t.term_id = n.term_id
-        WHERE name_fts MATCH ?
-        GROUP BY t.acronym
-        ORDER BY c DESC, t.acronym
+    try (PreparedStatement ps = connection().prepareStatement("""
+        SELECT acronym, COUNT(*) c FROM (
+          SELECT DISTINCT t.acronym, t.term_id
+          FROM name_fts f
+          JOIN name n ON n.name_id = f.rowid
+          JOIN term t ON t.term_id = n.term_id
+          WHERE name_fts MATCH ?"""
+        + residualFilter(plan) + """
+          LIMIT ?)
+        GROUP BY acronym
+        ORDER BY c DESC, acronym
         LIMIT ?""")) {
-      ps.setString(1, match);
-      ps.setInt(2, limit);
+      int p = 1;
+      ps.setString(p++, match);
+      if (!plan.residual().isEmpty()) {
+        ps.setString(p++, String.join(" ", plan.residual()));
+      }
+      ps.setInt(p++, cap);
+      ps.setInt(p, limit);
       try (ResultSet rs = ps.executeQuery()) {
         while (rs.next()) {
           out.add(new VocabularyMatch(rs.getString(1), rs.getInt(2)));
@@ -766,35 +942,166 @@ public class SearchIndexStore implements AutoCloseable {
    * {@code (}, {@code :} and {@code OR} as syntax, and an ontology search is full of them — "type-2
    * diabetes" would otherwise parse as a NOT.
    */
-  static String toPrefixMatch(String query) {
-    if (query == null) {
-      return "";
+  /**
+   * The single token standing for an ontology in the index, which is its acronym hex-encoded.
+   *
+   * Encoded rather than written out because the tokenizer splits on punctuation and 191 acronyms
+   * carry some, so `RH-MESH` written plainly would answer a search scoped to `MESH`. Stripping the
+   * punctuation collides COVID-19 with COVID19, and those hold different terms.
+   */
+  static String ontToken(String acronym) {
+    StringBuilder out = new StringBuilder("o");
+    for (byte b : acronym.getBytes(java.nio.charset.StandardCharsets.UTF_8)) {
+      out.append(Character.forDigit((b >> 4) & 0xF, 16)).append(Character.forDigit(b & 0xF, 16));
     }
-    StringBuilder out = new StringBuilder();
+    return out.toString();
+  }
+
+  /**
+   * The match expression, narrowed to the ontologies asked for where the index can carry the scope.
+   *
+   * Kept beside the SQL acronym filter rather than replacing it. The filter is then reached with the
+   * rows already narrowed, so it costs nothing, and an index without the column still answers the
+   * scope correctly through it alone.
+   */
+  private String scopedMatch(String match, Collection<String> acronyms) throws SQLException {
+    if (match.isEmpty()) {
+      return match;
+    }
+    if (acronyms == null || acronyms.isEmpty() || !scopesInIndex()) {
+      return "value: (" + match + ")";
+    }
+    StringBuilder scope = new StringBuilder();
+    for (String acronym : acronyms) {
+      if (!scope.isEmpty()) {
+        scope.append(" OR ");
+      }
+      scope.append(ontToken(acronym));
+    }
+    return "ont: (" + scope + ") AND value: (" + match + ")";
+  }
+
+  /** Whether this index carries the ontology alongside the text, so a scope can narrow the match. */
+  private boolean scopesInIndex() throws SQLException {
+    if (scopedIndex == null) {
+      try (Statement st = connection().createStatement()) {
+        scopedIndex = hasColumn(st, "name_fts", "ont");
+      }
+    }
+    return scopedIndex;
+  }
+
+  /** Cached: an index predating the scoped column filters after the match, as it always did. */
+  private Boolean scopedIndex;
+
+  static String toPrefixMatch(String query) {
+    return toMatchPlan(query).match();
+  }
+
+  /**
+   * The tokens a query contributes to the index, folded and split the way the index splits them.
+   */
+  static List<String> matchTokens(String query) {
+    if (query == null) {
+      return List.of();
+    }
+    List<String> out = new ArrayList<>();
     for (String token : query.trim().toLowerCase(Locale.ROOT).split("\\s+")) {
       String cleaned = token.replaceAll("[^\\p{L}\\p{N}]+", " ").trim();
       if (cleaned.isEmpty()) {
         continue;
       }
-      for (String part : cleaned.split("\\s+")) {
-        if (!out.isEmpty()) {
-          out.append(' ');
-        }
-        out.append('"').append(part).append("\"*");
+      out.addAll(Arrays.asList(cleaned.split("\\s+")));
+    }
+    return out;
+  }
+
+  private static String prefixExpr(List<String> tokens) {
+    StringBuilder out = new StringBuilder();
+    for (String token : tokens) {
+      if (!out.isEmpty()) {
+        out.append(' ');
       }
+      out.append('"').append(token).append("\"*");
     }
     return out.toString();
   }
 
+  /**
+   * How a query is put to the index: an FTS expression, and the tokens held back from it.
+   *
+   * A token of one or two characters prefix-matched against the whole index is not a search, it is
+   * most of the index: {@code "d"*} reaches seven million names where {@code "mannitol"*} reaches
+   * 2,398. Punctuation makes those tokens without anyone typing them, since the index splits on it,
+   * so "D-mannitol" asks for {@code "d"* "mannitol"*} and pays for the first. Chemical and strain
+   * names are built out of exactly these fragments, which is why adding a term to such a query used
+   * to make it slower rather than faster.
+   *
+   * Holding those tokens back and applying them to the matched names afterwards costs nothing when
+   * something else can carry the match, and everything when nothing can: dropping "ca" from
+   * "cell ca" leaves {@code "cell"*} to walk a million names alone. So the exchange is made only
+   * when a token is long enough to be selective on its own, which leaves every query that has no
+   * such token exactly as it was. Measured over 300 labels drawn from six ontologies, the plans
+   * agree with the unconditional form on all 300 and take a third of the time.
+   */
+  record MatchPlan(String match, List<String> residual) {}
+
+  /** Shorter than this, a prefix match is broad enough to dominate the query it appears in. */
+  private static final int MIN_SELECTIVE_LENGTH = 3;
+
+  /** Long enough that a prefix match on it can carry a query by itself. */
+  private static final int DRIVING_LENGTH = 8;
+
+  static MatchPlan toMatchPlan(String query) {
+    List<String> tokens = matchTokens(query);
+    if (tokens.isEmpty()) {
+      return new MatchPlan("", List.of());
+    }
+    List<String> held = tokens.stream().filter(t -> t.length() < MIN_SELECTIVE_LENGTH).toList();
+    boolean canDrive = tokens.stream().anyMatch(t -> t.length() >= DRIVING_LENGTH);
+    if (held.isEmpty() || !canDrive) {
+      return new MatchPlan(prefixExpr(tokens), List.of());
+    }
+    return new MatchPlan(
+        prefixExpr(tokens.stream().filter(t -> t.length() >= MIN_SELECTIVE_LENGTH).toList()), held);
+  }
+
+  /**
+   * Whether a matched name also carries the tokens the plan held back, by the rule the index would
+   * have applied to them: some token of the name begins with each of them.
+   */
+  static boolean carriesResidual(String value, List<String> residual) {
+    if (residual.isEmpty()) {
+      return true;
+    }
+    if (value == null) {
+      return false;
+    }
+    List<String> tokens = matchTokens(value);
+    for (String held : residual) {
+      boolean found = false;
+      for (String token : tokens) {
+        if (token.startsWith(held)) {
+          found = true;
+          break;
+        }
+      }
+      if (!found) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   public void setBusyTimeoutMillis(int millis) throws SQLException {
-    try (Statement st = connection.createStatement()) {
+    try (Statement st = connection().createStatement()) {
       st.executeUpdate("PRAGMA busy_timeout = " + millis);
     }
   }
 
   /** Bulk-load settings. Durability is traded for speed on a file that is rebuilt, never edited. */
   public void applyBulkLoadPragmas() throws SQLException {
-    try (Statement st = connection.createStatement()) {
+    try (Statement st = connection().createStatement()) {
       st.executeUpdate("PRAGMA journal_mode = OFF");
       st.executeUpdate("PRAGMA synchronous = OFF");
       st.executeUpdate("PRAGMA cache_size = -200000");
@@ -803,6 +1110,10 @@ public class SearchIndexStore implements AutoCloseable {
 
   @Override
   public void close() throws SQLException {
+    if (reads != null) {
+      reads.close();
+      return;
+    }
     connection.close();
   }
 }

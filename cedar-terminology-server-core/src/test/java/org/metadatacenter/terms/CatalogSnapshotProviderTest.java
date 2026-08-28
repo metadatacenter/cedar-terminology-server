@@ -107,6 +107,42 @@ public class CatalogSnapshotProviderTest {
   }
 
   @Test
+  public void snapshotsNobodyHasAskedForAreClosedOnceTooManyAreOpen() throws Exception {
+    // Left alone, every snapshot ever resolved stays open for the life of the process, so the
+    // ceiling is the corpus rather than the working set. One open at a time here, and nothing may be
+    // closed until it has gone unasked-for, which the property shortens to no time at all.
+    System.setProperty("cedar.terminology.openSnapshots.max", "1");
+    System.setProperty("cedar.terminology.openSnapshots.quietMillis", "0");
+    try {
+      Path dir = Files.createTempDirectory("evict");
+      try (CatalogStore cat = CatalogStore.openFile(dir.resolve("catalog.sqlite").toString())) {
+        cat.initSchema();
+        for (String acronym : List.of("A", "B")) {
+          Path file = dir.resolve(acronym + ".sqlite");
+          try (SnapshotStore store = SnapshotStore.openFile(file.toString())) {
+            store.initSchema();
+            store.addConcept("http://x/" + acronym, acronym);
+            store.materialize();
+          }
+          cat.upsertOntology(new CatalogStore.OntologyInfo(acronym, acronym, null, "OWL"));
+          cat.addSnapshot(new CatalogStore.SnapshotInfo(acronym + "-v1", acronym, "1.0", "2025-01-01",
+              "2025-01-02T00:00:00Z", "OWL", "subsumption", 1, 1, file.toString(), acronym + "-v1", "open"));
+          cat.setTag(acronym, CatalogStore.TAG_LATEST, acronym + "-v1");
+        }
+        CatalogSnapshotProvider provider = new CatalogSnapshotProvider(cat, Set.of("A", "B"));
+        assertTrue(provider.forOntology("A").isPresent());
+        assertTrue(provider.forOntology("B").isPresent());
+        // Asking again is what notices A has gone quiet; A is closed rather than kept for ever.
+        assertTrue(provider.forOntology("B").isPresent());
+        assertEquals(1, provider.openSnapshotCount(), "the quiet one was closed");
+      }
+    } finally {
+      System.clearProperty("cedar.terminology.openSnapshots.max");
+      System.clearProperty("cedar.terminology.openSnapshots.quietMillis");
+    }
+  }
+
+  @Test
   public void resolvesAllowlistedAndIngested() throws Exception {
     var store = provider.forOntology("EX");
     assertTrue(store.isPresent());

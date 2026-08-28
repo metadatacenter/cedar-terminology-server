@@ -436,6 +436,46 @@ public class VersionAwareSearchServiceTest {
   }
 
   @Test
+  public void aNamedSourceBehindTheIndexIsAnsweredFromItsSnapshot() throws Exception {
+    // The index still holds v1 while the catalog serves v2. Answering the named source from the
+    // index would credit v1's hits to the v2 block resolveSource built — the mis-attribution the
+    // corpus-wide path handles by reporting the indexed version. A named source has the escape the
+    // corpus does not: its snapshot.
+    SearchIndexStore stale = SearchIndexStore.openInMemory();
+    stale.initSchema();
+    stale.replaceOntology("EX", "hash-v1", "2026-08-13T00:00:00Z",
+        List.of(new SearchIndexStore.IndexedTerm("EX", BASE + "cat", "Cat", false, null, false, 0)),
+        java.util.Map.of());
+    stale.rebuildFullText();
+
+    SearchResponse response = new VersionAwareSearchService(provider, stale)
+        .search(request("wolf", List.of("class"), List.of(ex(null))));
+    assertEquals(1, response.results().get("class").totalCount(),
+        "the catalog serves v2, which holds the wolf; the stale index does not");
+    assertEquals("hash-v2", response.sources().get(0).version().id(),
+        "the block names the version that answered");
+    assertNull(response.results().get("class").distinctLabelCount(),
+        "the snapshot path counts hits, not labels");
+  }
+
+  @Test
+  public void aNamedSourceAbsentFromTheIndexIsAnsweredFromItsSnapshot() throws Exception {
+    // Served but never indexed. The index would return zero hits under a block saying the source
+    // was searched at its current version — the silent wrong answer the blocks exist to prevent.
+    SearchIndexStore other = SearchIndexStore.openInMemory();
+    other.initSchema();
+    other.replaceOntology("OTHER", "hash-o1", "2026-08-13T00:00:00Z",
+        List.of(new SearchIndexStore.IndexedTerm("OTHER", "http://other/cat", "Cat", false, null, false, 0)),
+        java.util.Map.of());
+    other.rebuildFullText();
+
+    SearchResponse response = new VersionAwareSearchService(provider, other)
+        .search(request("cat", List.of("class"), List.of(ex(null))));
+    assertEquals(1, response.results().get("class").totalCount(), "the snapshot holds the cat");
+    assertEquals("hash-v2", response.sources().get(0).version().id());
+  }
+
+  @Test
   public void pinningAVersionLeavesTheIndexForTheSnapshot() throws Exception {
     // The index holds current versions and no others, so a pinned search has to read the snapshot.
     SearchResponse pinned = withIndex().search(

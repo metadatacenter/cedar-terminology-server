@@ -58,13 +58,53 @@ public class SnapshotStore implements AutoCloseable {
   private final Connection connection;
   private Boolean labelTablePresent; // cached: a snapshot ingested before label capture has no label table
 
+  /**
+   * A connection each reading thread, or {@code null} when this store was opened to write.
+   *
+   * A snapshot is served to many request threads at once and written by one ingest at a time, so
+   * only the serving side hands out more than one connection.
+   */
+  private final ReadConnections reads;
+
+  /**
+   * Connections a served snapshot will open before threads start sharing one again.
+   *
+   * Set to the concurrency worth serving rather than to something smaller: a thread past the limit
+   * queues on the first connection, so a limit below the number of request threads leaves most of
+   * them exactly where they were. SQLite gives a connection a two-megabyte page cache by default,
+   * and a snapshot is opened only when something asks for it, so the cost follows demand.
+   */
+  private static final int READ_CONNECTION_LIMIT = 16;
+
   private SnapshotStore(Connection connection) {
+    this(connection, null);
+  }
+
+  private SnapshotStore(Connection connection, ReadConnections reads) {
     this.connection = connection;
+    this.reads = reads;
+  }
+
+  /** The connection this call should use: a reading thread has its own when the store serves. */
+  private Connection connection() throws SQLException {
+    return reads == null ? connection : reads.get();
   }
 
   /** Opens a snapshot store backed by the given SQLite file (created if absent). */
   public static SnapshotStore openFile(String path) throws SQLException {
     return new SnapshotStore(DriverManager.getConnection("jdbc:sqlite:" + path));
+  }
+
+  /**
+   * Opens a snapshot to answer queries, where lookups arrive on many threads at once.
+   *
+   * A snapshot opened this way writes nothing. An ingest opens the same file with
+   * {@link #openFile}, keeping the single connection its transactions need.
+   */
+  public static SnapshotStore openForRead(String path) throws SQLException {
+    Connection first = DriverManager.getConnection("jdbc:sqlite:" + path);
+    return new SnapshotStore(first,
+        ReadConnections.of(path, first, c -> { }, READ_CONNECTION_LIMIT));
   }
 
   /** Opens an in-memory snapshot store, useful for tests and transient ingestion. */
@@ -73,7 +113,7 @@ public class SnapshotStore implements AutoCloseable {
   }
 
   public void initSchema() throws SQLException {
-    try (Statement s = connection.createStatement()) {
+    try (Statement s = connection().createStatement()) {
       s.executeUpdate("""
           CREATE TABLE IF NOT EXISTS concept (
             id             INTEGER PRIMARY KEY,
@@ -158,7 +198,7 @@ public class SnapshotStore implements AutoCloseable {
    * Idempotent on IRI.
    */
   public void addConcept(String iri, String prefLabel, boolean obsolete, String replacedBy) throws SQLException {
-    try (PreparedStatement ps = connection.prepareStatement(
+    try (PreparedStatement ps = connection().prepareStatement(
         "INSERT OR IGNORE INTO concept (iri, pref_label, obsolete, replaced_by) VALUES (?, ?, ?, ?)")) {
       ps.setString(1, iri);
       ps.setString(2, prefLabel);
@@ -173,7 +213,7 @@ public class SnapshotStore implements AutoCloseable {
    * records which relation produced the edge (e.g. {@code rdfs:subClassOf}, {@code skos:broader}).
    */
   public void addEdge(String childIri, String parentIri, String sourcePred) throws SQLException {
-    try (PreparedStatement ps = connection.prepareStatement("""
+    try (PreparedStatement ps = connection().prepareStatement("""
         INSERT OR IGNORE INTO edge (child_id, parent_id, source_pred)
         SELECT c.id, p.id, ? FROM concept c, concept p WHERE c.iri = ? AND p.iri = ?""")) {
       ps.setString(1, sourcePred);
@@ -189,7 +229,7 @@ public class SnapshotStore implements AutoCloseable {
    * a non-concept is silently ignored.
    */
   public void addRelation(String subjectIri, String predicate, String objectIri) throws SQLException {
-    try (PreparedStatement ps = connection.prepareStatement("""
+    try (PreparedStatement ps = connection().prepareStatement("""
         INSERT OR IGNORE INTO relation (subject_id, predicate, object_id)
         SELECT s.id, ?, o.id FROM concept s, concept o WHERE s.iri = ? AND o.iri = ?""")) {
       ps.setString(1, predicate);
@@ -204,9 +244,9 @@ public class SnapshotStore implements AutoCloseable {
    * transaction. Relations whose endpoints are not both concepts are ignored.
    */
   public void addRelations(List<String[]> triples) throws SQLException {
-    boolean autoCommit = connection.getAutoCommit();
-    connection.setAutoCommit(false);
-    try (PreparedStatement ps = connection.prepareStatement("""
+    boolean autoCommit = connection().getAutoCommit();
+    connection().setAutoCommit(false);
+    try (PreparedStatement ps = connection().prepareStatement("""
         INSERT OR IGNORE INTO relation (subject_id, predicate, object_id)
         SELECT s.id, ?, o.id FROM concept s, concept o WHERE s.iri = ? AND o.iri = ?""")) {
       for (String[] t : triples) {
@@ -216,9 +256,9 @@ public class SnapshotStore implements AutoCloseable {
         ps.addBatch();
       }
       ps.executeBatch();
-      connection.commit();
+      connection().commit();
     } finally {
-      connection.setAutoCommit(autoCommit);
+      connection().setAutoCommit(autoCommit);
     }
   }
 
@@ -226,7 +266,7 @@ public class SnapshotStore implements AutoCloseable {
    *  snapshot) before failing, instead of erroring immediately with SQLITE_BUSY. Lets a backfill write
    *  labels into a snapshot the server is serving. */
   public void setBusyTimeoutMillis(int millis) throws SQLException {
-    try (Statement s = connection.createStatement()) {
+    try (Statement s = connection().createStatement()) {
       s.execute("PRAGMA busy_timeout = " + millis);
     }
   }
@@ -237,9 +277,9 @@ public class SnapshotStore implements AutoCloseable {
    * Idempotent — duplicate rows are dropped by the primary key. Outside content identity.
    */
   public void addLabels(List<LabelRow> rows) throws SQLException {
-    boolean autoCommit = connection.getAutoCommit();
-    connection.setAutoCommit(false);
-    try (PreparedStatement ps = connection.prepareStatement("""
+    boolean autoCommit = connection().getAutoCommit();
+    connection().setAutoCommit(false);
+    try (PreparedStatement ps = connection().prepareStatement("""
         INSERT OR IGNORE INTO label (concept_id, property, lang, value)
         SELECT c.id, ?, ?, ? FROM concept c WHERE c.iri = ?""")) {
       for (LabelRow r : rows) {
@@ -250,15 +290,15 @@ public class SnapshotStore implements AutoCloseable {
         ps.addBatch();
       }
       ps.executeBatch();
-      connection.commit();
+      connection().commit();
     } finally {
-      connection.setAutoCommit(autoCommit);
+      connection().setAutoCommit(autoCommit);
     }
   }
 
   /** Every captured name literal for one concept, ordered by property then language. */
   public List<LabelEntry> labels(String conceptIri) throws SQLException {
-    try (PreparedStatement ps = connection.prepareStatement(
+    try (PreparedStatement ps = connection().prepareStatement(
         "SELECT l.property, l.lang, l.value FROM label l JOIN concept c ON c.id = l.concept_id "
             + "WHERE c.iri = ? ORDER BY l.property, l.lang, l.value")) {
       ps.setString(1, conceptIri);
@@ -279,9 +319,9 @@ public class SnapshotStore implements AutoCloseable {
    * and a backfill can be run again without duplicating what it already wrote.
    */
   public void addDefinitions(List<DefinitionRow> rows) throws SQLException {
-    boolean autoCommit = connection.getAutoCommit();
-    connection.setAutoCommit(false);
-    try (PreparedStatement ps = connection.prepareStatement("""
+    boolean autoCommit = connection().getAutoCommit();
+    connection().setAutoCommit(false);
+    try (PreparedStatement ps = connection().prepareStatement("""
         INSERT OR IGNORE INTO definition (concept_id, property, lang, value)
         SELECT c.id, ?, ?, ? FROM concept c WHERE c.iri = ?""")) {
       for (DefinitionRow r : rows) {
@@ -292,9 +332,9 @@ public class SnapshotStore implements AutoCloseable {
         ps.addBatch();
       }
       ps.executeBatch();
-      connection.commit();
+      connection().commit();
     } finally {
-      connection.setAutoCommit(autoCommit);
+      connection().setAutoCommit(autoCommit);
     }
   }
 
@@ -303,7 +343,7 @@ public class SnapshotStore implements AutoCloseable {
     if (!hasTable("definition")) {
       return List.of();
     }
-    try (PreparedStatement ps = connection.prepareStatement(
+    try (PreparedStatement ps = connection().prepareStatement(
         "SELECT d.property, d.lang, d.value FROM definition d JOIN concept c ON c.id = d.concept_id "
             + "WHERE c.iri = ? ORDER BY d.property, d.lang, d.value")) {
       ps.setString(1, conceptIri);
@@ -322,14 +362,14 @@ public class SnapshotStore implements AutoCloseable {
     if (!hasTable("definition")) {
       return 0;
     }
-    try (Statement s = connection.createStatement();
+    try (Statement s = connection().createStatement();
          ResultSet rs = s.executeQuery("SELECT COUNT(*) FROM definition")) {
       return rs.next() ? rs.getInt(1) : 0;
     }
   }
 
   private boolean hasTable(String name) throws SQLException {
-    try (PreparedStatement ps = connection.prepareStatement(
+    try (PreparedStatement ps = connection().prepareStatement(
         "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?")) {
       ps.setString(1, name);
       try (ResultSet rs = ps.executeQuery()) {
@@ -349,7 +389,7 @@ public class SnapshotStore implements AutoCloseable {
    *  than fail with "no such table: label". Cached per connection. */
   private boolean hasLabelTable() throws SQLException {
     if (labelTablePresent == null) {
-      try (Statement s = connection.createStatement();
+      try (Statement s = connection().createStatement();
            ResultSet rs = s.executeQuery(
                "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'label'")) {
         labelTablePresent = rs.next();
@@ -366,7 +406,7 @@ public class SnapshotStore implements AutoCloseable {
     if (lang == null || lang.isBlank() || !hasLabelTable()) {
       return Optional.empty();
     }
-    try (PreparedStatement ps = connection.prepareStatement(
+    try (PreparedStatement ps = connection().prepareStatement(
         "SELECT l.value FROM label l JOIN concept c ON c.id = l.concept_id "
             + "WHERE c.iri = ? AND l.property IN ('rdfs:label','skos:prefLabel') "
             + "AND (LOWER(l.lang) = LOWER(?) OR LOWER(l.lang) LIKE LOWER(?)) "
@@ -388,7 +428,7 @@ public class SnapshotStore implements AutoCloseable {
     if (!hasLabelTable()) {
       return new ArrayList<>();
     }
-    try (PreparedStatement ps = connection.prepareStatement(
+    try (PreparedStatement ps = connection().prepareStatement(
         "SELECT DISTINCT l.value FROM label l JOIN concept c ON c.id = l.concept_id "
             + "WHERE c.iri = ? AND l.property IN (" + SYNONYM_PROPERTY_LIST + ") ORDER BY l.value")) {
       ps.setString(1, conceptIri);
@@ -405,7 +445,7 @@ public class SnapshotStore implements AutoCloseable {
   /** Every captured name literal in the snapshot, as insertable rows (concept IRI carried). Used to
    *  copy a freshly-extracted snapshot's labels into an existing snapshot file during backfill. */
   public List<LabelRow> allLabels() throws SQLException {
-    try (Statement s = connection.createStatement();
+    try (Statement s = connection().createStatement();
          ResultSet rs = s.executeQuery(
              "SELECT c.iri, l.property, l.lang, l.value FROM label l "
                  + "JOIN concept c ON c.id = l.concept_id")) {
@@ -423,7 +463,7 @@ public class SnapshotStore implements AutoCloseable {
     if (!hasTable("definition")) {
       return List.of();
     }
-    try (Statement s = connection.createStatement();
+    try (Statement s = connection().createStatement();
          ResultSet rs = s.executeQuery(
              "SELECT c.iri, d.property, d.lang, d.value FROM definition d "
                  + "JOIN concept c ON c.id = d.concept_id")) {
@@ -475,7 +515,7 @@ public class SnapshotStore implements AutoCloseable {
   /** Total captured name literals. Zero means labels have not been captured for this snapshot yet
    *  (the backfill skip check). */
   public int labelCount() throws SQLException {
-    try (Statement s = connection.createStatement();
+    try (Statement s = connection().createStatement();
          ResultSet rs = s.executeQuery("SELECT COUNT(*) FROM label")) {
       return rs.next() ? rs.getInt(1) : 0;
     }
@@ -485,7 +525,7 @@ public class SnapshotStore implements AutoCloseable {
    *  creation), so it throws on a malformed or truncated store whose table is absent — which the
    *  integrity check treats as unreadable. */
   public long conceptCount() throws SQLException {
-    try (Statement s = connection.createStatement();
+    try (Statement s = connection().createStatement();
          ResultSet rs = s.executeQuery("SELECT COUNT(*) FROM concept")) {
       return rs.next() ? rs.getLong(1) : 0;
     }
@@ -493,7 +533,7 @@ public class SnapshotStore implements AutoCloseable {
 
   /** Sets a snapshot-level provenance value (see the {@code meta} table). */
   public void setMeta(String key, String value) throws SQLException {
-    try (PreparedStatement ps = connection.prepareStatement(
+    try (PreparedStatement ps = connection().prepareStatement(
         "INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value")) {
       ps.setString(1, key);
       ps.setString(2, value);
@@ -503,7 +543,7 @@ public class SnapshotStore implements AutoCloseable {
 
   /** A snapshot-level provenance value, or empty if unset. */
   public java.util.Optional<String> getMeta(String key) throws SQLException {
-    try (PreparedStatement ps = connection.prepareStatement("SELECT value FROM meta WHERE key = ?")) {
+    try (PreparedStatement ps = connection().prepareStatement("SELECT value FROM meta WHERE key = ?")) {
       ps.setString(1, key);
       try (ResultSet rs = ps.executeQuery()) {
         return rs.next() ? java.util.Optional.ofNullable(rs.getString(1)) : java.util.Optional.empty();
@@ -516,7 +556,7 @@ public class SnapshotStore implements AutoCloseable {
    * no parent). Run once after all concepts and edges are ingested. Assumes an acyclic hierarchy.
    */
   public void materialize() throws SQLException {
-    try (Statement s = connection.createStatement()) {
+    try (Statement s = connection().createStatement()) {
       s.executeUpdate("DELETE FROM closure");
       // Cycle-safe: UNION over (ancestor, descendant) pairs terminates once no new pair appears,
       // even if the asserted hierarchy contains a cycle (a cyclic node ends up as its own
@@ -574,7 +614,7 @@ public class SnapshotStore implements AutoCloseable {
     } catch (java.security.NoSuchAlgorithmException e) {
       throw new IllegalStateException("SHA-256 unavailable", e); // guaranteed present on every JVM
     }
-    try (Statement s = connection.createStatement();
+    try (Statement s = connection().createStatement();
          ResultSet rs = s.executeQuery(
              "SELECT iri, pref_label, obsolete, replaced_by FROM concept ORDER BY iri")) {
       while (rs.next()) {
@@ -587,7 +627,7 @@ public class SnapshotStore implements AutoCloseable {
         md.update(line.append('\n').toString().getBytes(java.nio.charset.StandardCharsets.UTF_8));
       }
     }
-    try (Statement s = connection.createStatement();
+    try (Statement s = connection().createStatement();
          ResultSet rs = s.executeQuery(
              "SELECT c.iri AS child, p.iri AS parent, e.source_pred AS pred FROM edge e "
                  + "JOIN concept c ON c.id = e.child_id JOIN concept p ON p.id = e.parent_id "
@@ -598,7 +638,7 @@ public class SnapshotStore implements AutoCloseable {
         md.update(line.getBytes(java.nio.charset.StandardCharsets.UTF_8));
       }
     }
-    try (Statement s = connection.createStatement();
+    try (Statement s = connection().createStatement();
          ResultSet rs = s.executeQuery(
              "SELECT s.iri AS subj, r.predicate AS pred, o.iri AS obj FROM relation r "
                  + "JOIN concept s ON s.id = r.subject_id JOIN concept o ON o.id = r.object_id "
@@ -661,7 +701,7 @@ public class SnapshotStore implements AutoCloseable {
       }
     }
     java.util.Map<String, Integer> freq = new java.util.HashMap<>();
-    try (Statement s = connection.createStatement();
+    try (Statement s = connection().createStatement();
          ResultSet rs = s.executeQuery("SELECT iri FROM concept")) {
       while (rs.next()) {
         freq.merge(idspace(rs.getString(1)), 1, Integer::sum);
@@ -716,7 +756,7 @@ public class SnapshotStore implements AutoCloseable {
       return java.util.Optional.empty();
     }
     java.util.Map<String, Integer> freq = new java.util.HashMap<>();
-    try (Statement s = connection.createStatement();
+    try (Statement s = connection().createStatement();
          ResultSet rs = s.executeQuery("SELECT iri FROM concept")) {
       while (rs.next()) {
         String sp = idspace(rs.getString(1));
@@ -772,7 +812,7 @@ public class SnapshotStore implements AutoCloseable {
   public int pruneDeadEndImportRoots(String acronym) throws SQLException {
     java.util.Set<String> own = ownIdspaces(acronym);
     List<Long> unlabeledForeign = new ArrayList<>();
-    try (Statement s = connection.createStatement();
+    try (Statement s = connection().createStatement();
          ResultSet rs = s.executeQuery(
              "SELECT ci.id, ci.iri FROM root r JOIN concept ci ON ci.id = r.concept_id "
                  + "WHERE ci.pref_label IS NULL OR ci.pref_label = ''")) {
@@ -783,7 +823,7 @@ public class SnapshotStore implements AutoCloseable {
       }
     }
     List<Long> victims = new ArrayList<>();
-    try (PreparedStatement leadsToContent = connection.prepareStatement(
+    try (PreparedStatement leadsToContent = connection().prepareStatement(
              "SELECT 1 FROM closure cl JOIN concept d ON d.id = cl.descendant_id "
                  + "WHERE cl.ancestor_id = ? AND d.pref_label IS NOT NULL AND d.pref_label <> '' LIMIT 1")) {
       for (long id : unlabeledForeign) {
@@ -802,7 +842,7 @@ public class SnapshotStore implements AutoCloseable {
     // anywhere, so every root is unlabeled with no labeled descendant) would otherwise lose its
     // entire tree entry set and become unbrowsable; an unlabeled tree still beats none.
     int totalRoots;
-    try (Statement s = connection.createStatement();
+    try (Statement s = connection().createStatement();
          ResultSet rs = s.executeQuery("SELECT COUNT(*) FROM root")) {
       rs.next();
       totalRoots = rs.getInt(1);
@@ -810,7 +850,7 @@ public class SnapshotStore implements AutoCloseable {
     if (victims.size() >= totalRoots) {
       return 0;
     }
-    try (PreparedStatement del = connection.prepareStatement("DELETE FROM root WHERE concept_id = ?")) {
+    try (PreparedStatement del = connection().prepareStatement("DELETE FROM root WHERE concept_id = ?")) {
       for (long id : victims) {
         del.setLong(1, id);
         del.addBatch();
@@ -848,7 +888,7 @@ public class SnapshotStore implements AutoCloseable {
   public int fillMissingLabelsFromIri() throws SQLException {
     List<long[]> ids = new ArrayList<>();
     List<String> labels = new ArrayList<>();
-    try (Statement s = connection.createStatement();
+    try (Statement s = connection().createStatement();
          ResultSet rs = s.executeQuery(
              "SELECT id, iri FROM concept WHERE pref_label IS NULL OR pref_label = ''")) {
       while (rs.next()) {
@@ -862,7 +902,7 @@ public class SnapshotStore implements AutoCloseable {
     if (ids.isEmpty()) {
       return 0;
     }
-    try (PreparedStatement up = connection.prepareStatement("UPDATE concept SET pref_label = ? WHERE id = ?")) {
+    try (PreparedStatement up = connection().prepareStatement("UPDATE concept SET pref_label = ? WHERE id = ?")) {
       for (int i = 0; i < ids.size(); i++) {
         up.setString(1, labels.get(i));
         up.setLong(2, ids.get(i)[0]);
@@ -879,7 +919,7 @@ public class SnapshotStore implements AutoCloseable {
 
   /** validate-code: whether the snapshot contains the concept. */
   public boolean contains(String iri) throws SQLException {
-    try (PreparedStatement ps = connection.prepareStatement("SELECT 1 FROM concept WHERE iri = ?")) {
+    try (PreparedStatement ps = connection().prepareStatement("SELECT 1 FROM concept WHERE iri = ?")) {
       ps.setString(1, iri);
       try (ResultSet rs = ps.executeQuery()) {
         return rs.next();
@@ -889,7 +929,7 @@ public class SnapshotStore implements AutoCloseable {
 
   /** lookup: the concept's preferred label, if present. */
   public Optional<String> prefLabel(String iri) throws SQLException {
-    try (PreparedStatement ps = connection.prepareStatement("SELECT pref_label FROM concept WHERE iri = ?")) {
+    try (PreparedStatement ps = connection().prepareStatement("SELECT pref_label FROM concept WHERE iri = ?")) {
       ps.setString(1, iri);
       try (ResultSet rs = ps.executeQuery()) {
         return rs.next() ? Optional.ofNullable(rs.getString(1)) : Optional.empty();
@@ -925,7 +965,7 @@ public class SnapshotStore implements AutoCloseable {
   public List<LabelledConcept> childrenByLabel(String parentIri, int offset, int limit)
       throws SQLException {
     List<LabelledConcept> out = new ArrayList<>();
-    try (PreparedStatement ps = connection.prepareStatement("""
+    try (PreparedStatement ps = connection().prepareStatement("""
         SELECT c.iri, c.pref_label FROM edge e
         JOIN concept c ON c.id = e.child_id
         JOIN concept p ON p.id = e.parent_id
@@ -948,7 +988,7 @@ public class SnapshotStore implements AutoCloseable {
 
   /** How many direct children a concept has, without reading them. */
   public int childCount(String parentIri) throws SQLException {
-    try (PreparedStatement ps = connection.prepareStatement("""
+    try (PreparedStatement ps = connection().prepareStatement("""
         SELECT COUNT(*) FROM edge e
         JOIN concept p ON p.id = e.parent_id
         WHERE p.iri = ?""")) {
@@ -986,7 +1026,7 @@ public class SnapshotStore implements AutoCloseable {
    * list of IRIs, which for an upper-level class is tens of thousands of strings per row.
    */
   public int descendantCount(String ancestorIri) throws SQLException {
-    try (PreparedStatement ps = connection.prepareStatement("""
+    try (PreparedStatement ps = connection().prepareStatement("""
         SELECT COUNT(*) FROM closure cl
         JOIN concept a ON a.id = cl.ancestor_id
         WHERE a.iri = ?""")) {
@@ -1007,7 +1047,7 @@ public class SnapshotStore implements AutoCloseable {
    */
   public Map<String, Integer> descendantCounts() throws SQLException {
     Map<String, Integer> out = new HashMap<>();
-    try (Statement st = connection.createStatement();
+    try (Statement st = connection().createStatement();
          ResultSet rs = st.executeQuery("""
              SELECT a.iri, COUNT(*) FROM closure cl
              JOIN concept a ON a.id = cl.ancestor_id
@@ -1034,7 +1074,7 @@ public class SnapshotStore implements AutoCloseable {
       return List.of();
     }
     List<LabelEntry> out = new ArrayList<>();
-    try (PreparedStatement ps = connection.prepareStatement("""
+    try (PreparedStatement ps = connection().prepareStatement("""
         SELECT l.property, l.lang, l.value FROM label l
         JOIN concept c ON c.id = l.concept_id
         WHERE c.iri = ? AND l.value LIKE ? ESCAPE '\\'
@@ -1061,7 +1101,7 @@ public class SnapshotStore implements AutoCloseable {
 
   /** subsumes: whether {@code ancestorIri} is a (transitive) ancestor of {@code descendantIri}. */
   public boolean subsumes(String ancestorIri, String descendantIri) throws SQLException {
-    try (PreparedStatement ps = connection.prepareStatement("""
+    try (PreparedStatement ps = connection().prepareStatement("""
         SELECT 1 FROM closure cl
         JOIN concept a ON a.id = cl.ancestor_id
         JOIN concept d ON d.id = cl.descendant_id
@@ -1076,7 +1116,7 @@ public class SnapshotStore implements AutoCloseable {
 
   /** Typed relations from a concept, as {@code [predicate, objectIri]} pairs. */
   public List<String[]> relationsFrom(String subjectIri) throws SQLException {
-    try (PreparedStatement ps = connection.prepareStatement("""
+    try (PreparedStatement ps = connection().prepareStatement("""
         SELECT r.predicate, o.iri FROM relation r
         JOIN concept s ON s.id = r.subject_id
         JOIN concept o ON o.id = r.object_id
@@ -1094,7 +1134,7 @@ public class SnapshotStore implements AutoCloseable {
 
   /** Subjects related to an object by a predicate (reverse: e.g. drugs whose has_ingredient is X). */
   public List<String> subjectsWith(String predicate, String objectIri) throws SQLException {
-    try (PreparedStatement ps = connection.prepareStatement("""
+    try (PreparedStatement ps = connection().prepareStatement("""
         SELECT s.iri FROM relation r
         JOIN concept s ON s.id = r.subject_id
         JOIN concept o ON o.id = r.object_id
@@ -1113,7 +1153,7 @@ public class SnapshotStore implements AutoCloseable {
 
   /** Root concepts (top of the hierarchy). */
   public List<String> roots() throws SQLException {
-    try (Statement s = connection.createStatement();
+    try (Statement s = connection().createStatement();
          ResultSet rs = s.executeQuery("""
              SELECT c.iri FROM root r JOIN concept c ON c.id = r.concept_id ORDER BY c.iri""")) {
       List<String> out = new ArrayList<>();
@@ -1126,7 +1166,7 @@ public class SnapshotStore implements AutoCloseable {
 
   /** The number of roots, without materializing the list — a cheap emptiness/size check. */
   public int rootCount() throws SQLException {
-    try (Statement s = connection.createStatement();
+    try (Statement s = connection().createStatement();
          ResultSet rs = s.executeQuery("SELECT COUNT(*) FROM root")) {
       rs.next();
       return rs.getInt(1);
@@ -1149,7 +1189,7 @@ public class SnapshotStore implements AutoCloseable {
 
   /** Cross-version identity metadata for one concept (obsolete flag + replacement IRI), if present. */
   public Optional<ConceptMeta> conceptMeta(String iri) throws SQLException {
-    try (PreparedStatement ps = connection.prepareStatement(
+    try (PreparedStatement ps = connection().prepareStatement(
         "SELECT iri, obsolete, replaced_by FROM concept WHERE iri = ?")) {
       ps.setString(1, iri);
       try (ResultSet rs = ps.executeQuery()) {
@@ -1272,7 +1312,7 @@ public class SnapshotStore implements AutoCloseable {
     if (limit > 0) {
       sql.append(" LIMIT ").append(limit);
     }
-    try (PreparedStatement ps = connection.prepareStatement(sql.toString())) {
+    try (PreparedStatement ps = connection().prepareStatement(sql.toString())) {
       int i = 1;
       if (rootIri != null) {
         ps.setString(i++, rootIri);
@@ -1298,7 +1338,7 @@ public class SnapshotStore implements AutoCloseable {
   }
 
   private List<Concept> queryConcepts(String sql, String param) throws SQLException {
-    try (PreparedStatement ps = connection.prepareStatement(sql)) {
+    try (PreparedStatement ps = connection().prepareStatement(sql)) {
       if (param != null) {
         ps.setString(1, param);
       }
@@ -1318,7 +1358,7 @@ public class SnapshotStore implements AutoCloseable {
 
   /** Every concept IRI in the snapshot. */
   public List<String> allConceptIris() throws SQLException {
-    try (Statement s = connection.createStatement();
+    try (Statement s = connection().createStatement();
          ResultSet rs = s.executeQuery("SELECT iri FROM concept")) {
       List<String> out = new ArrayList<>();
       while (rs.next()) {
@@ -1330,7 +1370,7 @@ public class SnapshotStore implements AutoCloseable {
 
   /** Every concept's cross-version identity metadata (IRI, obsolete flag, replacement IRI). */
   public List<ConceptMeta> allConceptMeta() throws SQLException {
-    try (Statement s = connection.createStatement();
+    try (Statement s = connection().createStatement();
          ResultSet rs = s.executeQuery("SELECT iri, obsolete, replaced_by FROM concept")) {
       List<ConceptMeta> out = new ArrayList<>();
       while (rs.next()) {
@@ -1342,7 +1382,7 @@ public class SnapshotStore implements AutoCloseable {
 
   /** Every concept's complete label-sensitive content state, for version comparison. */
   public List<ConceptState> allConceptStates() throws SQLException {
-    try (Statement s = connection.createStatement();
+    try (Statement s = connection().createStatement();
          ResultSet rs = s.executeQuery("SELECT iri, pref_label, obsolete, replaced_by FROM concept")) {
       List<ConceptState> out = new ArrayList<>();
       while (rs.next()) {
@@ -1354,7 +1394,7 @@ public class SnapshotStore implements AutoCloseable {
 
   /** Every direct edge as a {@code [childIri, parentIri]} pair. */
   public List<String[]> allEdges() throws SQLException {
-    try (Statement s = connection.createStatement();
+    try (Statement s = connection().createStatement();
          ResultSet rs = s.executeQuery("""
              SELECT c.iri, p.iri FROM edge e
              JOIN concept c ON c.id = e.child_id
@@ -1369,7 +1409,7 @@ public class SnapshotStore implements AutoCloseable {
 
   /** Every direct edge as a {@code [childIri, parentIri, sourcePredicate]} triple. */
   public List<String[]> allEdgesWithPredicates() throws SQLException {
-    try (Statement s = connection.createStatement();
+    try (Statement s = connection().createStatement();
          ResultSet rs = s.executeQuery("""
              SELECT c.iri, p.iri, e.source_pred FROM edge e
              JOIN concept c ON c.id = e.child_id
@@ -1384,7 +1424,7 @@ public class SnapshotStore implements AutoCloseable {
 
   /** Every typed relation as a {@code [subjectIri, predicate, objectIri]} triple. */
   public List<String[]> allRelations() throws SQLException {
-    try (Statement s = connection.createStatement();
+    try (Statement s = connection().createStatement();
          ResultSet rs = s.executeQuery("""
              SELECT subj.iri, r.predicate, obj.iri FROM relation r
              JOIN concept subj ON subj.id = r.subject_id
@@ -1399,7 +1439,7 @@ public class SnapshotStore implements AutoCloseable {
 
   /** Every closure pair, encoded as {@code ancestorIri + '\t' + descendantIri}. */
   public java.util.Set<String> allClosurePairs() throws SQLException {
-    try (Statement s = connection.createStatement();
+    try (Statement s = connection().createStatement();
          ResultSet rs = s.executeQuery("""
              SELECT a.iri, d.iri FROM closure cl
              JOIN concept a ON a.id = cl.ancestor_id
@@ -1413,7 +1453,7 @@ public class SnapshotStore implements AutoCloseable {
   }
 
   private List<String> queryIris(String sql, String param) throws SQLException {
-    try (PreparedStatement ps = connection.prepareStatement(sql)) {
+    try (PreparedStatement ps = connection().prepareStatement(sql)) {
       ps.setString(1, param);
       try (ResultSet rs = ps.executeQuery()) {
         List<String> out = new ArrayList<>();
@@ -1427,6 +1467,10 @@ public class SnapshotStore implements AutoCloseable {
 
   @Override
   public void close() throws SQLException {
+    if (reads != null) {
+      reads.close();
+      return;
+    }
     connection.close();
   }
 }
