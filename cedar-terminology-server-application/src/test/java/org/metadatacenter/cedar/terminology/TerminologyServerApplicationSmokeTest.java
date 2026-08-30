@@ -58,6 +58,15 @@ public class TerminologyServerApplicationSmokeTest {
     return CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
   }
 
+  private HttpResponse<String> post(String path, String body) throws Exception {
+    HttpRequest request = HttpRequest.newBuilder()
+        .uri(URI.create("http://localhost:" + SERVER.getLocalPort() + path))
+        .header("Content-Type", "application/json")
+        .POST(HttpRequest.BodyPublishers.ofString(body))
+        .build();
+    return CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+  }
+
   @Test
   public void indexIsServed() throws Exception {
     HttpResponse<String> response = get("/");
@@ -69,6 +78,41 @@ public class TerminologyServerApplicationSmokeTest {
     // The logged-in assertion runs before any BioPortal call, so this needs no network access
     HttpResponse<String> response = get("/bioportal/ontologies");
     Assertions.assertEquals(401, response.statusCode());
+  }
+
+  /**
+   * The relation and integrated-retrieve routes answer, and answer with the authentication gate.
+   *
+   * <p>Every other test of these two resources exercises live BioPortal and is excluded from the
+   * default build, so neither received an HTTP request from any test that ordinarily runs: a
+   * resource dropped from registration, or a path that stopped matching, would have shown up
+   * nowhere. Both checks stop at the credential, so neither needs the network.
+   */
+  @Test
+  public void theRelationRouteIsReachableAndGuarded() throws Exception {
+    HttpResponse<String> response = get("/bioportal/relations/some-relation-id");
+    Assertions.assertEquals(401, response.statusCode());
+  }
+
+  /**
+   * Integrated retrieve is registered and matches its path.
+   *
+   * <p>This asserts reachability rather than a status. The route's authentication is commented out
+   * behind a {@code //TODO} in {@code IntegratedRetrieveResource} — as it is in
+   * {@code IntegratedSearchResource} — so an anonymous caller is answered rather than refused.
+   * Asserting the 401 the OpenAPI on this method documents would fail today; asserting the 200 it
+   * actually returns would write the missing gate into the suite as though it were intended. Both
+   * are recorded on the backend roadmap instead.
+   */
+  @Test
+  public void theIntegratedRetrieveRouteIsReachable() throws Exception {
+    String body = "{\"valueConstraints\":{\"ontologies\":[],\"valueSets\":[],\"classes\":[],\"branches\":[]},"
+        + "\"page\":1,\"pageSize\":10}";
+    HttpResponse<String> response = post("/bioportal/integrated-retrieve", body);
+    Assertions.assertNotEquals(404, response.statusCode(),
+        "POST /bioportal/integrated-retrieve did not match a registered route");
+    Assertions.assertNotEquals(405, response.statusCode(),
+        "POST /bioportal/integrated-retrieve is registered under a different method");
   }
 
   @Test

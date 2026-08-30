@@ -195,7 +195,7 @@
           <prettyPrint>true</prettyPrint>
           <sortOutput>true</sortOutput>
           <resourcePackages>
-            <package>org.metadatacenter.cedar.terminology.resources.bioportal</package>
+            <package>org.metadatacenter.cedar.terminology.resources</package>
           </resourcePackages>
           <openapiFilePath>${project.build.directory}/generated-swagger/openapi-base.yaml</openapiFilePath>
         </configuration>
