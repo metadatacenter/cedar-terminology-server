@@ -18,6 +18,12 @@
     <!-- Opt in to the cedar-shade execution managed in cedar-parent. -->
     <cedar.shade.phase>package</cedar.shade.phase>
     <cedar.shade.main.class>org.metadatacenter.cedar.terminology.TerminologyServerApplication</cedar.shade.main.class>
+    <!--
+      The JUnit tags surefire excludes below. Declared as a property, not written into the plugin
+      configuration, because an explicit plugin value cannot be overridden from the command line:
+      -DexcludedGroups= only clears the exclusion when the configuration reads a property.
+    -->
+    <excludedGroups>bioportal</excludedGroups>
   </properties>
 
   <dependencies>
@@ -143,7 +149,7 @@
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
         <configuration>
-          <excludedGroups>bioportal</excludedGroups>
+          <excludedGroups>${excludedGroups}</excludedGroups>
         </configuration>
       </plugin>
 

@@ -126,6 +126,8 @@ public class ValueSetResource extends AbstractTerminologyServerResource {
       @PathParam("id") @Encoded String id,
       @Parameter(description = "Value set collection. Example: CEDARVS.", required = true)
       @PathParam("vs_collection") String vsCollection) throws CedarException {
+    CedarRequestContext ctx = buildRequestContext();
+    ctx.must(ctx.user()).be(LoggedIn);
     try {
       ValueSet vs = terminologyService.findValueSetByValue(id, vsCollection, apiKey);
       return Response.ok().entity(JsonMapper.MAPPER.valueToTree(vs)).build();
