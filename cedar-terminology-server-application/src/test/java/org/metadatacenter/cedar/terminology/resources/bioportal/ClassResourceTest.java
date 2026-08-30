@@ -230,8 +230,69 @@ public class ClassResourceTest extends AbstractTerminologyServerResourceTest {
     Assertions.assertTrue( parentFound,"Parent " + parentClassId + " not found for the given class " + classId);
   }
 
+  /* ------------------------------------------------------------------------------------------------
+   * The two provisional-class reads. Provisional classes are user-created and BioPortal holds
+   * thousands of them, so these assert the shape of the answer and the scoping, never a particular
+   * class: any assertion naming one would fail the day its author deleted it.
+   * --------------------------------------------------------------------------------------------- */
 
+  @Test
+  public void findAllProvisionalClassesTest() {
+    String url = baseUrlBp + "/" + BP_PROVISIONAL_CLASSES + "?page=1&pageSize=5";
+    Response response =
+        clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
+    Assertions.assertEquals(Status.OK.getStatusCode(), response.getStatus());
+    Assertions.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
+    PagedResults<OntologyClass> classes = response.readEntity(new GenericType<PagedResults<OntologyClass>>() {
+    });
+    response.close();
+    Assertions.assertTrue(classes.getTotalCount() > 0, "No provisional classes were returned");
+    Assertions.assertEquals(5, classes.getCollection().size(), "The page size was not applied");
+    Assertions.assertTrue(classes.getPageCount() > 1,
+        "A 5-class page over " + classes.getTotalCount() + " classes should report more than one page");
+    for (OntologyClass c : classes.getCollection()) {
+      Assertions.assertTrue(c.isProvisional(), "A provisional listing returned a published class: " + c.getLdId());
+    }
+  }
 
+  @Test
+  public void findAllProvisionalClassesForOntologyTest() {
+    // CEDARPC is where the Workbench put every class a user created, so it is the one ontology whose
+    // provisional listing is reliably non-empty.
+    String ontology = "CEDARPC";
+    String url = baseUrlBpOntologies + "/" + ontology + "/" + BP_PROVISIONAL_CLASSES + "?page=1&pageSize=5";
+    Response response =
+        clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
+    Assertions.assertEquals(Status.OK.getStatusCode(), response.getStatus());
+    Assertions.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
+    PagedResults<OntologyClass> classes = response.readEntity(new GenericType<PagedResults<OntologyClass>>() {
+    });
+    response.close();
+    Assertions.assertTrue(classes.getTotalCount() > 0, "No provisional classes were returned for " + ontology);
+    for (OntologyClass c : classes.getCollection()) {
+      Assertions.assertTrue(c.isProvisional(), "A provisional listing returned a published class: " + c.getLdId());
+      // A handful of provisional classes carry no ontology upstream, so this reads the field where
+      // BioPortal set one rather than requiring it. The scoping itself is asserted below.
+      if (c.getOntology() != null) {
+        Assertions.assertEquals(ontology, Util.getShortIdentifier(c.getOntology()),
+            "A listing scoped to " + ontology + " returned a class from another ontology: " + c.getLdId());
+      }
+    }
+  }
 
+  @Test
+  public void findAllProvisionalClassesForOntologyAppliesTheScopeTest() {
+    // The scope reaches BioPortal as a different route, not as a filter applied here, so an ontology
+    // nobody has added a provisional class to must come back empty rather than with the whole corpus.
+    String url = baseUrlBpOntologies + "/NCIT/" + BP_PROVISIONAL_CLASSES;
+    Response response =
+        clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
+    Assertions.assertEquals(Status.OK.getStatusCode(), response.getStatus());
+    PagedResults<OntologyClass> classes = response.readEntity(new GenericType<PagedResults<OntologyClass>>() {
+    });
+    response.close();
+    Assertions.assertEquals(0, classes.getTotalCount(),
+        "NCIT holds no provisional classes, so a scoped listing should be empty");
+  }
 
 }

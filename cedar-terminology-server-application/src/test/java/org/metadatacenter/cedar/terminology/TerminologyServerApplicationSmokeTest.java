@@ -148,22 +148,71 @@ public class TerminologyServerApplicationSmokeTest {
   }
 
   /**
-   * Every value and value-set route stops an anonymous caller at the credential.
+   * The routes that answer an anonymous caller rather than refusing one.
    *
-   * <p>Every behavioural test of these two resources exercises live BioPortal and is excluded from
-   * the default build, so until this probe none of their nine routes received an HTTP request from
+   * <p>{@code POST /search} and {@code GET /search/hierarchy} are unauthenticated by design. The two
+   * integrated routes lost their assertion to a {@code //TODO} in the resource. The class
+   * descendants route and the BioPortal search build an anonymous request context explicitly, so
+   * they read as decisions rather than omissions, but they are the only two of their siblings that
+   * do — the other five class routes and {@code property_search} all assert {@code LoggedIn}. All
+   * six are recorded on the backend roadmap.
+   *
+   * <p>Four of them are exercised elsewhere in the default build: the three search routes by
+   * {@code LocalStoreResourceTest} and integrated-retrieve by
+   * {@link #theIntegratedRetrieveRouteIsReachable()}. The remaining two would have to reach
+   * BioPortal to answer at all, so here they are only asserted registered; their behaviour is
+   * covered by {@code ClassResourceTest} and {@code SearchResourceTest} under the bioportal tag.
+   */
+  private static final java.util.Set<String> UNAUTHENTICATED_ROUTES = java.util.Set.of(
+      "POST /search",
+      "GET /search/hierarchy",
+      "POST /bioportal/integrated-search",
+      "POST /bioportal/integrated-retrieve",
+      "GET /bioportal/search",
+      "GET /bioportal/ontologies/{ontology}/classes/{id}/descendants");
+
+  /**
+   * Every terminology route that declares an authentication gate stops an anonymous caller at it.
+   *
+   * <p>Most behavioural tests of these resources exercise live BioPortal and are excluded from the
+   * default build, which left the greater part of the route surface receiving no HTTP request from
    * any test that ordinarily runs. The probe reaches only as far as the logged-in assertion, so it
-   * needs no network access, and it catches the regressions a refactor introduces: a resource
-   * dropped from registration, a path that stopped matching, a verb that changed, or a gate that
-   * was lost. {@code findValueSetByValue} lost its gate for long enough to be found by an audit
-   * rather than by a test, which is the case this probe exists to make impossible.
+   * needs no network access, and it catches what a refactor breaks: a resource dropped from
+   * registration, a path that stopped matching, a verb that changed, or a gate that was lost.
+   * {@code findValueSetByValue} went without its gate long enough to be found by an audit rather
+   * than by a test, which is the case this probe exists to make impossible.
+   *
+   * <p>The route list comes from Jersey's own registration, so a resource added to the application
+   * is probed without anyone remembering to add it here.
    */
   @Test
-  public void everyValueAndValueSetRouteRequiresAuthentication() {
-    List<RouteSurface.Endpoint> routes = RouteSurface.endpoints(ValueResource.class, ValueSetResource.class);
-    Assertions.assertEquals(9, routes.size(),
-        "the value and value-set resources should declare nine routes: " + routes);
-    RouteSurface.assertEveryRouteAnswers("http://localhost:" + SERVER.getLocalPort(), routes, 401);
+  public void everyTerminologyRouteRequiresAuthentication() {
+    List<RouteSurface.Endpoint> registered = RouteSurface.endpoints(registeredResources());
+    List<String> keys = registered.stream().map(RouteSurface.Endpoint::key).toList();
+    Assertions.assertTrue(keys.containsAll(UNAUTHENTICATED_ROUTES),
+        "The exclusion list names a route that is no longer registered: " + UNAUTHENTICATED_ROUTES);
+
+    List<RouteSurface.Endpoint> gated = registered.stream()
+        .filter(endpoint -> !UNAUTHENTICATED_ROUTES.contains(endpoint.key()))
+        // property_search declares @NotEmpty on its query, and bean validation answers 400 before
+        // the method body reaches the gate. It is probed with a query below instead.
+        .filter(endpoint -> !endpoint.key().equals("GET /bioportal/property_search"))
+        .toList();
+    Assertions.assertTrue(gated.size() >= 33,
+        "the gated terminology surface should be nearly the whole route list: " + gated);
+    RouteSurface.assertEveryRouteAnswers("http://localhost:" + SERVER.getLocalPort(), gated, 401);
+  }
+
+  /**
+   * The property search refuses an anonymous caller once its query passes bean validation.
+   *
+   * <p>Without {@code q} it answers 400 before the gate is reached, which says nothing about
+   * authentication, so the probe above cannot cover it.
+   */
+  @Test
+  public void thePropertySearchRouteIsGuarded() throws Exception {
+    HttpResponse<String> response = get("/bioportal/property_search?q=title");
+    Assertions.assertEquals(401, response.statusCode());
   }
 
 }
