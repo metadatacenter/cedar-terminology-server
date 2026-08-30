@@ -21,7 +21,7 @@ import static org.metadatacenter.constant.HttpConstants.HTTP_HEADER_AUTHORIZATIO
 /**
  * Integration tests. They are done by starting a test server that makes it possible to test the real HTTP stack.
  */
-@Disabled
+@Disabled("Requires live BioPortal value-set-collection data and is not deterministic in the default build")
 public class ValueSetCollectionResourceTest extends AbstractTerminologyServerResourceTest {
 
   /**
@@ -48,7 +48,6 @@ public class ValueSetCollectionResourceTest extends AbstractTerminologyServerRes
   public void tearDown() {
   }
 
-  @Disabled
   @Test
   public void findAllVSCollectionsTest() {
     String url = baseUrlBpVSCollections;
