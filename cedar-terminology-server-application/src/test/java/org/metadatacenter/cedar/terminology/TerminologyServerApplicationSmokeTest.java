@@ -6,11 +6,14 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.metadatacenter.util.test.RouteSurface;
 
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Boots the real application in test mode through the Dropwizard test rule and exercises the
@@ -66,6 +69,31 @@ public class TerminologyServerApplicationSmokeTest {
     // The logged-in assertion runs before any BioPortal call, so this needs no network access
     HttpResponse<String> response = get("/bioportal/ontologies");
     Assertions.assertEquals(401, response.statusCode());
+  }
+
+  @Test
+  public void runtimeRegistrationInventoryIncludesEveryTerminologyEndpoint() {
+    org.glassfish.jersey.server.ResourceConfig resourceConfig =
+        SERVER.getEnvironment().jersey().getResourceConfig();
+    List<Object> registeredComponents = new ArrayList<>();
+    registeredComponents.addAll(resourceConfig.getInstances());
+    registeredComponents.addAll(resourceConfig.getSingletons());
+    registeredComponents.addAll(resourceConfig.getClasses());
+    registeredComponents.addAll(resourceConfig.getResources());
+    List<Class<?>> registeredResources = RouteSurface.registeredResourceClasses(
+            registeredComponents, "org.metadatacenter.cedar.terminology.resources").stream()
+        .filter(resourceClass -> !resourceClass.getSimpleName().equals("IndexResource"))
+        .toList();
+
+    Assertions.assertTrue(registeredResources.size() >= 11,
+        "the runtime-derived inventory should include all registered terminology resources: "
+            + registeredResources);
+    List<RouteSurface.Endpoint> endpoints = RouteSurface.endpoints(registeredResources);
+    Assertions.assertTrue(endpoints.size() >= 40,
+        "the runtime-derived inventory should include the complete terminology route surface: "
+            + endpoints);
+    Assertions.assertEquals(endpoints.size(), endpoints.stream().map(RouteSurface.Endpoint::key).distinct().count(),
+        "registered terminology routes must have unique verb/path identities");
   }
 
 }
