@@ -2,54 +2,34 @@
 
 [![CI](https://github.com/metadatacenter/cedar-terminology-server/actions/workflows/ci.yml/badge.svg?branch=develop)](https://github.com/metadatacenter/cedar-terminology-server/actions/workflows/ci.yml)
 
-A wrapper for the BioPortal API that simplifies the access to BioPortal ontologies and value sets from CEDAR tools.
+CEDAR's terminology service. It exposes the BioPortal-compatible endpoints used by CEDAR clients and
+the version-aware search and hierarchy API backed by the local terminology store.
 
-This project is implemented in Java using Dropwizard.
+The reactor has five modules:
 
-The project contains two subdirectories:
+- `cedar-terminology-server-common` — shared terminology records and utilities
+- `cedar-terminology-server-store` — versioned SQLite catalog and search index
+- `cedar-terminology-server-core` — BioPortal and local-store service logic
+- `cedar-terminology-server-ingest` — catalog ingestion, validation, and maintenance tools
+- `cedar-terminology-server-application` — the deployable Dropwizard service
 
-- cedar-terminology-server-core: Core server functionality
-- cedar-terminology-server-application: Dropwizard-based interface to server
+## Development
 
-## Versions
+CEDAR backend development uses Java 17. From a configured CEDAR workspace:
 
-* Java: 17
+```bash
+export CEDAR_HOME="$HOME/CEDAR"
+source "$CEDAR_HOME/cedar-profile-native-develop.sh"
+export JAVA_HOME=$(/usr/libexec/java_home -v 17)
+./mvnw test
+```
 
-## Getting started
+Use `cedar-development/ops/cedar-services.sh` to run the service with the rest of the native stack.
+The service configuration is
+`cedar-terminology-server-application/src/main/resources/config.yml`; the committed OpenAPI files are
+under that module's `src/main/resources/assets/swagger-api/` directory.
 
-Clone the project:
-
-    git clone https://github.com/metadatacenter/cedar-terminology-server.git
-
-## Running the tests
-
-Go to the project root folder and execute the Maven "test" goal:
-
-    mvn test
-
-## Starting the services
-
-At the project root folder:
-
-    mvn install
-    cd cedar-terminology-server-application
-    java \
-          -jar $CEDAR_HOME/cedar-terminology-server/cedar-terminology-server-application/target/cedar-terminology-server-application-*.jar \
-          server \
-          "$CEDAR_HOME/cedar-terminology-server/cedar-terminology-server-application/config.yml"
-
-By default, the services will be running at http://localhost:9004.
-
-## Documentation
-
-This project uses the Swagger Framework (http://swagger.io/), which provides interactive documentation for the terminology server. The documentation is shown when opening the default page (http://localhost:9004).
-
-Note: The 'dist' folder from the swagger-ui project has been copied to the 'public/swagger-ui' folder and a light customization was done using the instructions provided at [https://github.com/swagger-api/swagger-ui](https://github.com/swagger-api/swagger-ui)
-
-## Questions
-
-If you have questions about this repository, please subscribe to the [CEDAR Developer Support
-mailing list](https://mailman.stanford.edu/mailman/listinfo/cedar-developers).
-After subscribing, send messages to cedar-developers at lists.stanford.edu.
-
-
+The canonical setup, build, test, and runtime instructions are in the
+[CEDAR backend runbook](https://github.com/metadatacenter/cedar-development/blob/develop/ops/BACKEND-RUNBOOK.md).
+Local terminology-store ingestion and version-aware serving are documented in the
+[versioning runbook](https://github.com/metadatacenter/cedar-development/blob/develop/ops/VERSIONING-RUNBOOK.md).
