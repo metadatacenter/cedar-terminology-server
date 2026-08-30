@@ -12,6 +12,8 @@ import org.metadatacenter.terms.bioportal.dao.*;
 import org.metadatacenter.terms.bioportal.domainObjects.*;
 import org.metadatacenter.terms.util.HttpUtil;
 import org.metadatacenter.terms.util.Util;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.xml.ws.http.HTTPException;
 import java.io.IOException;
@@ -23,6 +25,8 @@ import static org.metadatacenter.util.json.JsonMapper.MAPPER;
 
 
 public class BioPortalService implements IBioPortalService {
+  private static final Logger logger = LoggerFactory.getLogger(BioPortalService.class);
+
   private final int connectTimeout;
   private final int socketTimeout;
   private BpProvisionalClassDAO bpProvClassDAO;
@@ -131,7 +135,7 @@ public class BioPortalService implements IBioPortalService {
     /** Add displayContext and DisplayLinks **/
     url += "&display_context=" + displayContext + "&display_links=" + displayLinks;
 
-    System.out.println("Search url: " + url);
+    logger.debug("BioPortal search URL: {}", url);
 
     // Send the request to the BioPortal API
     ClassicHttpResponse response = HttpUtil.makeHttpRequest(Request.get(url)
@@ -180,7 +184,7 @@ public class BioPortalService implements IBioPortalService {
     /** Add displayContext and DisplayLinks **/
     url += "&display_context=" + displayContext + "&display_links=" + displayLinks;
 
-    System.out.println("Search url: " + url);
+    logger.debug("BioPortal property search URL: {}", url);
 
     // Send the request to the BioPortal API
     ClassicHttpResponse response = HttpUtil.makeHttpRequest(Request.get(url)
@@ -321,4 +325,3 @@ public class BioPortalService implements IBioPortalService {
   }
 
 }
-
