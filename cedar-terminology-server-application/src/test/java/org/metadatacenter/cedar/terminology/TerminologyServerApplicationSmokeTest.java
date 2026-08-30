@@ -35,7 +35,7 @@ public class TerminologyServerApplicationSmokeTest {
   }
 
   public static final DropwizardTestSupport<TerminologyServerConfiguration> SERVER =
-      new DropwizardTestSupport<>(TerminologyServerApplicationTest.class,
+      new DropwizardTestSupport<>(TerminologyServerApplication.class,
           ResourceHelpers.resourceFilePath("test-config.yml"));
 
   @BeforeAll

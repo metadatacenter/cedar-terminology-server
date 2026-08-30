@@ -17,7 +17,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
-import org.metadatacenter.cedar.terminology.TerminologyServerApplicationTest;
+import org.metadatacenter.cedar.terminology.TerminologyServerApplication;
 import org.metadatacenter.cedar.terminology.TerminologyServerConfiguration;
 import org.metadatacenter.config.CedarConfig;
 import org.metadatacenter.config.environment.CedarEnvironmentVariableProvider;
@@ -92,7 +92,7 @@ public abstract class AbstractTerminologyServerResourceTest {
   protected static final int STATUS_CODE_UNPROCESSABLE_ENTITY = 422;
 
   public static final DropwizardTestSupport<TerminologyServerConfiguration> RULE =
-      new DropwizardTestSupport<>(TerminologyServerApplicationTest.class,
+      new DropwizardTestSupport<>(TerminologyServerApplication.class,
           ResourceHelpers.resourceFilePath("test-config.yml"));
 
   /**

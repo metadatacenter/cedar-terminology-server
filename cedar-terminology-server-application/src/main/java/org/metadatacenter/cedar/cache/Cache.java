@@ -36,11 +36,6 @@ public class Cache {
    */
   public static final int MIN_EXPECTED_ONTOLOGIES = 100;
 
-  /** No-op: retained so the application startup call site is unchanged. Caching has been removed. */
-  public static void init(boolean testMode) {
-    // Intentionally empty — no warmup, no background refresh, no on-disk cache.
-  }
-
   /**
    * Whether an ontology is flat (has no hierarchy). Fetched live; defaults to {@code false}
    * (hierarchical) when metadata is unavailable — e.g. an ontology served from a local snapshot,

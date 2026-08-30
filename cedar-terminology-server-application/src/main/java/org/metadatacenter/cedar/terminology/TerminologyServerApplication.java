@@ -2,7 +2,6 @@ package org.metadatacenter.cedar.terminology;
 
 import io.dropwizard.core.setup.Bootstrap;
 import io.dropwizard.core.setup.Environment;
-import org.metadatacenter.cedar.cache.Cache;
 import org.metadatacenter.cedar.terminology.health.TerminologyServerHealthCheck;
 import org.metadatacenter.cedar.terminology.resources.AbstractTerminologyServerResource;
 import org.metadatacenter.cedar.terminology.resources.IndexResource;
@@ -72,10 +71,6 @@ public class TerminologyServerApplication extends CedarMicroserviceApplication<T
   protected void initializeWithBootstrap(Bootstrap<TerminologyServerConfiguration> bootstrap, CedarConfig cedarConfig) {
   }
 
-  public boolean isTestMode() {
-    return false;
-  }
-
   @Override
   public void initializeApp() {
     // Force the HttpClientFactory static block to run and build the shared client:
@@ -91,10 +86,6 @@ public class TerminologyServerApplication extends CedarMicroserviceApplication<T
     terminologyService = buildTerminologyService(bioPortalService);
     AbstractTerminologyServerResource.injectTerminologyService(terminologyService);
     VersionAwareSearchResource.injectSearchService(versionAwareSearchService);
-    // Initialize cache (note that this must be done after initializing the terminologyService)
-    // When running the application on testing mode, the cache is loaded from the files stored into the test
-    // resources folder
-    Cache.init(isTestMode());
   }
 
   /**
