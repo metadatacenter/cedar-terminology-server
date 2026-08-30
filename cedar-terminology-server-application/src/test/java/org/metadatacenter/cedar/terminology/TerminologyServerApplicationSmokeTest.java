@@ -75,6 +75,26 @@ public class TerminologyServerApplicationSmokeTest {
     Assertions.assertEquals(200, response.statusCode());
   }
 
+  /**
+   * Terminology ships an API spec, so it advertises the documentation links and serves the document.
+   *
+   * <p>The counterpart to {@code RepoServerApplicationSmokeTest.noApiDocumentationIsAdvertisedOrServed}:
+   * the same shared library code gates both, and gating it wrongly would silence a service that does
+   * have documentation just as easily as it would quieten one that does not.
+   */
+  @Test
+  public void theApiSpecIsAdvertisedAndServed() throws Exception {
+    String index = get("/").body();
+    Assertions.assertTrue(index.contains("apiDocs"), "A service with a spec should advertise it: " + index);
+    Assertions.assertTrue(index.contains("/swagger-api/swagger.json"),
+        "The advertised links should name the spec: " + index);
+
+    HttpResponse<String> spec = get("/swagger-api/swagger.json");
+    Assertions.assertEquals(200, spec.statusCode(), "The advertised spec path should serve the document");
+    Assertions.assertTrue(spec.body().contains("openapi"),
+        "The document served should be an OpenAPI spec");
+  }
+
   @Test
   public void unauthenticatedBioPortalRequestIsRejected() throws Exception {
     // The logged-in assertion runs before any BioPortal call, so this needs no network access
