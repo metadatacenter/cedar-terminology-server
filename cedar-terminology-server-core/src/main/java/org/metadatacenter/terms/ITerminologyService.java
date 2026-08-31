@@ -3,6 +3,7 @@ package org.metadatacenter.terms;
 import org.metadatacenter.cedar.terminology.validation.integratedsearch.ValueConstraints;
 import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.terms.domainObjects.*;
+import org.metadatacenter.terms.util.ValueSetIds;
 
 import java.io.IOException;
 import java.util.List;
@@ -16,7 +17,7 @@ public interface ITerminologyService {
   PagedResults<SearchResult> search(String q, List<String> scope, List<String> sources, boolean suggest, String
       source, String
                                         subtreeRootId, int maxDepth, int page, int pageSize, boolean displayContext,
-                                    boolean displayLinks, String apiKey, List<String> valueSetsIds) throws IOException;
+                                    boolean displayLinks, String apiKey, ValueSetIds valueSetIds) throws IOException;
 
   PagedResults<SearchResult> propertySearch(String q, List<String> sources, boolean exactMatch, boolean
       requireDefinitions, int page, int pageSize, boolean displayContext, boolean displayLinks, String apiKey) throws

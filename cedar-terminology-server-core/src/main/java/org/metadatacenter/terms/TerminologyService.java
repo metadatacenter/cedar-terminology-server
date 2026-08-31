@@ -12,6 +12,7 @@ import org.metadatacenter.terms.domainObjects.*;
 import org.metadatacenter.terms.util.IntegratedSearchUtil;
 import org.metadatacenter.terms.util.ObjectConverter;
 import org.metadatacenter.terms.util.Util;
+import org.metadatacenter.terms.util.ValueSetIds;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,12 +39,12 @@ public class TerminologyService implements ITerminologyService {
 
   public PagedResults<SearchResult> search(String q, List<String> scope, List<String> sources, boolean suggest,
                                            String source, String subtreeRootId, int maxDepth, int page, int pageSize,
-                                           boolean displayContext, boolean displayLinks, String apiKey, List<String>
-                                               valueSetsIds) throws IOException {
+                                           boolean displayContext, boolean displayLinks, String apiKey,
+                                           ValueSetIds valueSetIds) throws IOException {
     BpPagedResults<BpClass> results = bpService.search(q, scope, sources, suggest, source, subtreeRootId, maxDepth,
         page, pageSize, displayContext, displayLinks, apiKey);
 
-    return ObjectConverter.toPagedSearchResults(results, valueSetsIds, q);
+    return ObjectConverter.toPagedSearchResults(results, valueSetIds, q);
   }
 
   public PagedResults<SearchResult> propertySearch(String q, List<String> sources, boolean exactMatch, boolean
@@ -71,7 +72,7 @@ public class TerminologyService implements ITerminologyService {
         // and the values are all the branch subclasses. Therefore, we can use the branch search endpoint to find all
         // the values.
         results = search(q, List.of(BP_SEARCH_SCOPE_VALUES), new ArrayList<>(), true, vsCollection,
-            vsId, 0, page, pageSize, false, true, apiKey, new ArrayList<>());
+            vsId, 0, page, pageSize, false, true, apiKey, ValueSetIds.NONE);
       } else { // Provisional value set
         List<SearchResult> values = new ArrayList<>();
         // Get all provisional classes in the vsCollection
@@ -507,7 +508,7 @@ public class TerminologyService implements ITerminologyService {
     return search(q.get(), List.of(BP_SEARCH_SCOPE_CLASSES),
         IntegratedSearchUtil.extractOntologyAcronyms(ontologyValueConstraints), true, null,
         null, 1, page, pageSize,
-        false, true, apiKey, new ArrayList<>());
+        false, true, apiKey, ValueSetIds.NONE);
   }
 
   /**
@@ -602,7 +603,7 @@ public class TerminologyService implements ITerminologyService {
       results = search(q.get(), List.of(BP_SEARCH_SCOPE_CLASSES),
           new ArrayList<>(), true, ontologyAcronym,
           rootClassUri, 0, page, pageSize,
-          false, true, apiKey, new ArrayList<>());
+          false, true, apiKey, ValueSetIds.NONE);
 
     } else { // Retrieve all classes from a given list of ontology branches
 
@@ -1082,20 +1083,21 @@ public class TerminologyService implements ITerminologyService {
     return vsCollections;
   }
 
+  /**
+   * Every value set in every readable collection.
+   *
+   * <p>Paging follows BioPortal's own {@code nextPage}, so a collection that fits in one page costs
+   * one call. Reading on until a page came back empty cost a second call per collection to learn
+   * what the first answer had already said.
+   */
   public List<ValueSet> findAllValueSets(String apiKey) throws IOException {
     List<ValueSet> valueSets = new ArrayList<>();
-    for (String vs : BP_VS_COLLECTIONS_READ) {
-      int page = FIRST_PAGE;
-      int pageSize = LARGE_PAGE_SIZE;
-      boolean finished = false;
-      while (!finished) {
-        List<ValueSet> vsTmp = findValueSetsByVsCollection(vs, page, pageSize, apiKey).getCollection();
-        if (vsTmp.size() > 0) {
-          valueSets.addAll(vsTmp);
-          page++;
-        } else {
-          finished = true;
-        }
+    for (String vsCollection : BP_VS_COLLECTIONS_READ) {
+      Integer page = FIRST_PAGE;
+      while (page != null) {
+        PagedResults<ValueSet> results = findValueSetsByVsCollection(vsCollection, page, LARGE_PAGE_SIZE, apiKey);
+        valueSets.addAll(results.getCollection());
+        page = results.getNextPage();
       }
     }
     return valueSets;

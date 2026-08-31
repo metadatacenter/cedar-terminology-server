@@ -29,7 +29,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
 
 import static org.metadatacenter.rest.assertion.GenericAssertions.LoggedIn;
 import static org.metadatacenter.cedar.terminology.util.Constants.*;
@@ -109,17 +108,17 @@ public class SearchResource extends AbstractTerminologyServerResource {
       if (sources != null && !sources.isEmpty()) {
         sourcesList = Arrays.asList(sources.split("\\s*,\\s*"));
       }
-      List<String> valueSetsIds = new ArrayList<>(Cache.getValueSets().keySet());
-      // TODO: The valueSetsIds parameter is passed to the service to avoid making additional calls to BioPortal.
-      // These ids are used to know if a particular result returned by BioPortal is a value or a value set.
-      // BioPortal should provide this information and this parameter should be removed
+      // BioPortal does not say whether a result from a value-set collection is a value set or one of
+      // its values, so the service is given the identifiers that settle it. It is passed as something
+      // to call rather than as the answer: fetching it costs a BioPortal call per value-set
+      // collection, and a search whose results are all ontology classes never has to ask.
       PagedResults results = terminologyService.search(q, scopeList, sourcesList, suggest, source, subtreeRootId,
-          maxDepth, page, pageSize, false, true, apiKey, valueSetsIds);
+          maxDepth, page, pageSize, false, true, apiKey, Cache::getValueSetIds);
       JsonNode output = JsonMapper.MAPPER.valueToTree(results);
       return Response.ok().entity(output).build();
     } catch (HTTPException e) {
       return relayedBioPortalFailure(e);
-    } catch (IOException | ExecutionException e) {
+    } catch (IOException e) {
       throw new CedarAssertionException(e);
     }
   }

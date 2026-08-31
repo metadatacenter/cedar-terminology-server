@@ -8,6 +8,7 @@ import org.metadatacenter.cedar.terminology.validation.integratedsearch.ValueSet
 import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.terms.domainObjects.*;
 import org.metadatacenter.terms.util.Util;
+import org.metadatacenter.terms.util.ValueSetIds;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -132,22 +133,22 @@ public class RoutingTerminologyService implements ITerminologyService {
   public PagedResults<SearchResult> search(String q, List<String> scope, List<String> sources, boolean suggest,
                                            String source, String subtreeRootId, int maxDepth, int page, int pageSize,
                                            boolean displayContext, boolean displayLinks, String apiKey,
-                                           List<String> valueSetsIds) throws IOException {
+                                           ValueSetIds valueSetIds) throws IOException {
     String localOntology = singleLocalSearchOntology(sources, source, subtreeRootId);
     if (local != null && localOntology != null) {
       if (localOnly) {
         return local.search(q, scope, sources, suggest, source, subtreeRootId, maxDepth, page, pageSize,
-            displayContext, displayLinks, apiKey, valueSetsIds);
+            displayContext, displayLinks, apiKey, valueSetIds);
       }
       try {
         return local.search(q, scope, sources, suggest, source, subtreeRootId, maxDepth, page, pageSize,
-            displayContext, displayLinks, apiKey, valueSetsIds);
+            displayContext, displayLinks, apiKey, valueSetIds);
       } catch (UnsupportedOperationException notImplementedLocally) {
         // Fall through to remote.
       }
     }
     return remote.search(q, scope, sources, suggest, source, subtreeRootId, maxDepth, page, pageSize, displayContext,
-        displayLinks, apiKey, valueSetsIds);
+        displayLinks, apiKey, valueSetIds);
   }
 
   /**

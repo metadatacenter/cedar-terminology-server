@@ -7,7 +7,10 @@ import org.metadatacenter.terms.domainObjects.OntologyDetails;
 import org.metadatacenter.terms.domainObjects.ValueSet;
 
 import java.io.IOException;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 
 import static org.metadatacenter.cedar.terminology.utils.Constants.*;
@@ -37,14 +40,51 @@ public class Cache {
   public static final int MIN_EXPECTED_ONTOLOGIES = 100;
 
   /**
-   * Whether an ontology is flat (has no hierarchy). Fetched live; defaults to {@code false}
-   * (hierarchical) when metadata is unavailable — e.g. an ontology served from a local snapshot,
-   * which carries no BioPortal-style {@code isFlat} flag.
+   * How long an ontology's flatness is held before it is fetched again.
+   *
+   * <p>Whether an ontology has a hierarchy is a property of its structure, so it changes only when
+   * someone publishes a new submission of it, never within an authoring session. An hour matches
+   * {@link #VALUE_SET_IDS_TTL_MS} and keeps the two things this class holds on one clock.
+   */
+  private static final long IS_FLAT_TTL_MS = 60 * 60 * 1000L;
+
+  /** An ontology's flatness and when it was fetched. */
+  private record Flatness(boolean isFlat, long fetchedAt) {
+  }
+
+  /**
+   * Flatness by ontology acronym. Bounded by the size of the registry, around 1300 entries of two
+   * fields each, and only for ontologies someone has actually browsed.
+   */
+  private static final ConcurrentHashMap<String, Flatness> flatness = new ConcurrentHashMap<>();
+
+  /**
+   * Whether an ontology is flat (has no hierarchy). Defaults to {@code false} (hierarchical) when
+   * metadata is unavailable — e.g. an ontology served from a local snapshot, which carries no
+   * BioPortal-style {@code isFlat} flag.
+   *
+   * <p>Held for {@link #IS_FLAT_TTL_MS} between fetches. The two callers are the hierarchy-browsing
+   * endpoints, class tree and root classes, so without this every expansion in the picker spent a
+   * whole round trip on one boolean before it could ask for the classes the reader wanted. For an
+   * ontology the local store serves, that round trip is a local query; for every ontology still
+   * served by BioPortal, it is a remote one.
+   *
+   * <p>Only a clean answer is held. The fallback covers a backend that could not answer at all, and
+   * pinning an hour of {@code false} to a moment when BioPortal was unreachable would turn a
+   * transient failure into a lasting wrong answer about the ontology's shape.
    */
   public static boolean isFlat(String ontology) throws IOException, ExecutionException {
+    Flatness held = flatness.get(ontology);
+    if (held != null && System.currentTimeMillis() - held.fetchedAt() < IS_FLAT_TTL_MS) {
+      return held.isFlat();
+    }
     try {
       Ontology o = AbstractTerminologyServerResource.terminologyService.findOntology(ontology, false, BP_PUBLIC_API_KEY);
-      return o != null && o.getIsFlat();
+      if (o == null) {
+        return false;
+      }
+      flatness.put(ontology, new Flatness(o.getIsFlat(), System.currentTimeMillis()));
+      return o.getIsFlat();
     } catch (RuntimeException metadataUnavailable) {
       return false;
     }
@@ -109,5 +149,44 @@ public class Cache {
     } catch (IOException e) {
       throw new ExecutionException(e);
     }
+  }
+
+  /**
+   * How long a fetched set of value-set identifiers is reused before it is fetched again.
+   *
+   * <p>Value-set collections change on the timescale at which someone publishes a value set, which
+   * is far longer than an authoring session. An hour keeps the identifiers current enough to
+   * classify a search result correctly while charging the fetch to roughly one search an hour
+   * instead of every search.
+   */
+  private static final long VALUE_SET_IDS_TTL_MS = 60 * 60 * 1000L;
+
+  private static volatile Set<String> valueSetIds;
+  private static volatile long valueSetIdsFetchedAt;
+
+  /**
+   * The identifiers of every value set, held for {@link #VALUE_SET_IDS_TTL_MS} between fetches.
+   *
+   * <p>This is not the startup crawl the class documentation describes removing. Nothing warms it,
+   * nothing refreshes it on a timer, and a server that never needs it never makes the call: it is
+   * populated by the first search whose results have to be told apart, and only that.
+   *
+   * <p>Two callers racing a cold or expired entry both fetch and both publish. The answers agree,
+   * so the cost is one redundant fetch rather than a wrong one, which is cheaper than holding a
+   * lock across a network call.
+   */
+  public static Set<String> getValueSetIds() throws IOException {
+    Set<String> held = valueSetIds;
+    if (held != null && System.currentTimeMillis() - valueSetIdsFetchedAt < VALUE_SET_IDS_TTL_MS) {
+      return held;
+    }
+    Set<String> fetched = new HashSet<>();
+    for (ValueSet vs : AbstractTerminologyServerResource.terminologyService.findAllValueSets(BP_PUBLIC_API_KEY)) {
+      fetched.add(vs.getId());
+    }
+    Set<String> immutable = Set.copyOf(fetched);
+    valueSetIds = immutable;
+    valueSetIdsFetchedAt = System.currentTimeMillis();
+    return immutable;
   }
 }

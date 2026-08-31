@@ -12,6 +12,7 @@ import org.metadatacenter.terms.domainObjects.OntologyClass;
 import org.metadatacenter.terms.domainObjects.SearchResult;
 import org.metadatacenter.terms.domainObjects.TreeNode;
 import org.metadatacenter.terms.store.SnapshotStore;
+import org.metadatacenter.terms.util.ValueSetIds;
 
 import java.lang.reflect.Proxy;
 import java.util.List;
@@ -112,7 +113,7 @@ public class RoutingTerminologyServiceTest {
   public void searchScopedToOneLocalOntology_servedByLocal() throws Exception {
     // Labels containing "a" in EX: Cat, Mammal — from the local store, not the REMOTE sentinel.
     PagedResults<SearchResult> r = router.search("a", List.of("classes"), List.of(EX), false, null, null, 0, 1, 50,
-        false, false, null, null);
+        false, false, null, ValueSetIds.NONE);
     assertEquals(List.of(iri("cat"), iri("mammal")), ldIds(r));
   }
 
@@ -120,14 +121,14 @@ public class RoutingTerminologyServiceTest {
   public void branchSearchInLocalOntology_servedByLocal() throws Exception {
     // The branch is the root's descendants (cat, dog); the root mammal is excluded. "a" matches Cat.
     PagedResults<SearchResult> r = router.search("a", List.of("classes"), null, false, EX, iri("mammal"), 0, 1, 50,
-        false, false, null, null);
+        false, false, null, ValueSetIds.NONE);
     assertEquals(List.of(iri("cat")), ldIds(r));
   }
 
   @Test
   public void searchAcrossMultipleSources_servedByRemote() throws Exception {
     PagedResults<SearchResult> r = router.search("a", List.of("classes"), List.of(EX, "OTHER"), false, null, null, 0,
-        1, 50, false, false, null, null);
+        1, 50, false, false, null, ValueSetIds.NONE);
     assertEquals(REMOTE, r.getCollection().get(0).getPrefLabel());
   }
 
@@ -135,14 +136,14 @@ public class RoutingTerminologyServiceTest {
   public void searchNonClassScopeInLocalOntology_fallsBackToRemote() throws Exception {
     // Single local source, but a value-set scope the local backend cannot serve -> remote sentinel.
     PagedResults<SearchResult> r = router.search("a", List.of("value_sets"), List.of(EX), false, null, null, 0, 1, 50,
-        false, false, null, null);
+        false, false, null, ValueSetIds.NONE);
     assertEquals(REMOTE, r.getCollection().get(0).getPrefLabel());
   }
 
   @Test
   public void searchInNonLocalOntology_servedByRemote() throws Exception {
     PagedResults<SearchResult> r = router.search("a", List.of("classes"), List.of("OTHER"), false, null, null, 0, 1,
-        50, false, false, null, null);
+        50, false, false, null, ValueSetIds.NONE);
     assertEquals(REMOTE, r.getCollection().get(0).getPrefLabel());
   }
 
