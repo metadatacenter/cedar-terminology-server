@@ -23,6 +23,12 @@ paths:
         schema:
           type: integer
           format: int32
+      - description: "Alias for the page size, accepted in either spelling."
+        in: query
+        name: page_size
+        schema:
+          type: integer
+          format: int32
       responses:
         "200":
           description: Successful operation
@@ -350,6 +356,12 @@ paths:
         schema:
           type: integer
           format: int32
+      - description: "Alias for the page size, accepted in either spelling."
+        in: query
+        name: page_size
+        schema:
+          type: integer
+          format: int32
       responses:
         "200":
           description: Successful operation
@@ -390,6 +402,12 @@ paths:
       - description: "Number of results per page. Example: 10."
         in: query
         name: pageSize
+        schema:
+          type: integer
+          format: int32
+      - description: "Alias for the page size, accepted in either spelling."
+        in: query
+        name: page_size
         schema:
           type: integer
           format: int32
@@ -516,6 +534,12 @@ paths:
         schema:
           type: integer
           format: int32
+      - description: "Alias for the page size, accepted in either spelling."
+        in: query
+        name: page_size
+        schema:
+          type: integer
+          format: int32
       responses:
         "200":
           description: Successful operation
@@ -563,6 +587,12 @@ paths:
       - description: "Number of results per page. Example: 10."
         in: query
         name: pageSize
+        schema:
+          type: integer
+          format: int32
+      - description: "Alias for the page size, accepted in either spelling."
+        in: query
+        name: page_size
         schema:
           type: integer
           format: int32
@@ -932,6 +962,12 @@ paths:
         schema:
           type: integer
           format: int32
+      - description: "Alias for the page size, accepted in either spelling."
+        in: query
+        name: pageSize
+        schema:
+          type: integer
+          format: int32
       responses:
         "200":
           description: Successful operation
@@ -1043,6 +1079,12 @@ paths:
       - description: "Number of results per page. Example: 10."
         in: query
         name: page_size
+        schema:
+          type: integer
+          format: int32
+      - description: "Alias for the page size, accepted in either spelling."
+        in: query
+        name: pageSize
         schema:
           type: integer
           format: int32
@@ -1171,6 +1213,12 @@ paths:
         schema:
           type: integer
           format: int32
+      - description: "Alias for the page size, accepted in either spelling."
+        in: query
+        name: page_size
+        schema:
+          type: integer
+          format: int32
       responses:
         "200":
           description: Successful operation
@@ -1289,6 +1337,12 @@ paths:
         schema:
           type: integer
           format: int32
+      - description: "Alias for the page size, accepted in either spelling."
+        in: query
+        name: page_size
+        schema:
+          type: integer
+          format: int32
       responses:
         "200":
           description: Successful operation
@@ -1369,6 +1423,12 @@ paths:
       - description: "Number of results per page. Example: 10."
         in: query
         name: pageSize
+        schema:
+          type: integer
+          format: int32
+      - description: "Alias for the page size, accepted in either spelling."
+        in: query
+        name: page_size
         schema:
           type: integer
           format: int32
