@@ -4,10 +4,10 @@ import io.dropwizard.core.setup.Bootstrap;
 import io.dropwizard.core.setup.Environment;
 import org.metadatacenter.cedar.terminology.health.TerminologyServerHealthCheck;
 import org.metadatacenter.cedar.terminology.resources.AbstractTerminologyServerResource;
-import org.metadatacenter.cedar.terminology.resources.IndexResource;
 import org.metadatacenter.cedar.terminology.resources.VersionAwareSearchResource;
 import org.metadatacenter.cedar.terminology.resources.bioportal.*;
 import org.metadatacenter.cedar.terminology.utils.logging.LogResponseFilter;
+import org.metadatacenter.cedar.util.dw.CedarMicroserviceIndexResource;
 import org.metadatacenter.cedar.util.dw.CedarMicroserviceApplication;
 import org.metadatacenter.config.CedarConfig;
 import org.metadatacenter.config.LocalStoreConfig;
@@ -192,7 +192,8 @@ public class TerminologyServerApplication extends CedarMicroserviceApplication<T
   @Override
   public void runApp(TerminologyServerConfiguration configuration, Environment environment) {
 
-    final IndexResource index = new IndexResource(cedarConfig);
+    final CedarMicroserviceIndexResource index =
+        new CedarMicroserviceIndexResource(cedarConfig, getServerName());
 
     environment.jersey().register(index);
     // Register resources

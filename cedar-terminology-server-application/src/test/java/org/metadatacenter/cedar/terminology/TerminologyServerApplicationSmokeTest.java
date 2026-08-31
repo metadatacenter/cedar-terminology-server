@@ -8,6 +8,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.metadatacenter.cedar.terminology.resources.bioportal.ValueResource;
 import org.metadatacenter.cedar.terminology.resources.bioportal.ValueSetResource;
+import org.metadatacenter.cedar.util.dw.CedarMicroserviceIndexResource;
 import org.metadatacenter.util.test.RouteSurface;
 
 import java.net.URI;
@@ -148,7 +149,7 @@ public class TerminologyServerApplicationSmokeTest {
     registeredComponents.addAll(resourceConfig.getResources());
     return RouteSurface.registeredResourceClasses(
             registeredComponents, "org.metadatacenter.cedar.terminology.resources").stream()
-        .filter(resourceClass -> !resourceClass.getSimpleName().equals("IndexResource"))
+        .filter(resourceClass -> !CedarMicroserviceIndexResource.class.isAssignableFrom(resourceClass))
         .toList();
   }
 
