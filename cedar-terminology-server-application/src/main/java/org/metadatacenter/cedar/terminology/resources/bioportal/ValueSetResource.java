@@ -89,13 +89,12 @@ public class ValueSetResource extends AbstractTerminologyServerResource {
       @Parameter(description = "Page to be returned. Example: 7.")
       @QueryParam("page") @DefaultValue("1") int page,
       @Parameter(description = "Number of results per page. Example: 10.")
-      @QueryParam("pageSize") int pageSize) throws CedarException {
+      @QueryParam("pageSize") int pageSize,
+      @Parameter(description = "Alias for the page size, accepted in either spelling.")
+      @QueryParam("page_size") int pageSizeAlias) throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
-    // If pageSize not defined, set default value
-    if (pageSize == 0) {
-      pageSize = defaultPageSize;
-    }
+    pageSize = resolvePageSize(pageSize, pageSizeAlias);
     try {
       PagedResults<ValueSet> valueSets =
           terminologyService.findValueSetsByVsCollection(vsCollection, page, pageSize, apiKey);

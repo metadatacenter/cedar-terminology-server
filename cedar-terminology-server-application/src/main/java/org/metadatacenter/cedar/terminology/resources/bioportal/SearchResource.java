@@ -82,15 +82,14 @@ public class SearchResource extends AbstractTerminologyServerResource {
       @Parameter(description = "Page to be returned. Example: 7.")
       @QueryParam("page") @DefaultValue("1") int page,
       @Parameter(description = "Number of results per page. Example: 10.")
-      @QueryParam("page_size") int pageSize) throws CedarException {
+      @QueryParam("page_size") int pageSize,
+      @Parameter(description = "Alias for the page size, accepted in either spelling.")
+      @QueryParam("pageSize") int pageSizeAlias) throws CedarException {
 
     CedarRequestContext c = buildAnonymousRequestContext();
 
     try {
-      // If pageSize not defined, set default value
-      if (pageSize == 0) {
-        pageSize = defaultPageSize;
-      }
+      pageSize = resolvePageSize(pageSize, pageSizeAlias);
       // Review and clean scope
       List<String> scopeList = new ArrayList<>();
       List<String> referenceScopeList = Arrays
@@ -154,16 +153,15 @@ public class SearchResource extends AbstractTerminologyServerResource {
       @Parameter(description = "Page to be returned. Example: 7.")
       @QueryParam("page") @DefaultValue("1") int page,
       @Parameter(description = "Number of results per page. Example: 10.")
-      @QueryParam("page_size") int pageSize) throws CedarException {
+      @QueryParam("page_size") int pageSize,
+      @Parameter(description = "Alias for the page size, accepted in either spelling.")
+      @QueryParam("pageSize") int pageSizeAlias) throws CedarException {
 
     CedarRequestContext c = buildRequestContext();
     c.must(c.user()).be(LoggedIn);
 
     try {
-      // If pageSize not defined, set default value
-      if (pageSize == 0) {
-        pageSize = defaultPageSize;
-      }
+      pageSize = resolvePageSize(pageSize, pageSizeAlias);
       // Sources list
       List<String> sourcesList = new ArrayList<>();
       if (sources != null && sources.length() > 0) {
