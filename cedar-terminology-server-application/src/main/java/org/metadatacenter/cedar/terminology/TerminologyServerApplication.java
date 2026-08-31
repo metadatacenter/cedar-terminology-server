@@ -214,8 +214,7 @@ public class TerminologyServerApplication extends CedarMicroserviceApplication<T
     //environment.jersey().register(new LogRequestFilter());
     environment.jersey().register(new LogResponseFilter());
 
-    final TerminologyServerHealthCheck healthCheck = new TerminologyServerHealthCheck();
-    environment.healthChecks().register("message", healthCheck);
+    environment.healthChecks().register("ontology-catalogue", new TerminologyServerHealthCheck());
   }
 
 }
