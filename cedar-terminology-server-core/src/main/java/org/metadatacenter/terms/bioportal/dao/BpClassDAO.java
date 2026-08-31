@@ -17,6 +17,7 @@ import org.slf4j.LoggerFactory;
 
 import jakarta.ws.rs.core.Response.Status;
 import javax.xml.ws.http.HTTPException;
+import org.metadatacenter.terms.util.BioPortalFailure;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -52,7 +53,7 @@ public class BpClassDAO
       JsonNode bpResult = MAPPER.readTree(response.getEntity().getContent());
       return MAPPER.convertValue(bpResult, BpClass.class);
     } else {
-      throw new HTTPException(statusCode);
+      throw BioPortalFailure.relay(statusCode, url);
     }
   }
 
@@ -71,7 +72,7 @@ public class BpClassDAO
       JsonNode bpResult = MAPPER.readTree(response.getEntity().getContent());
       return MAPPER.readValue(MAPPER.treeAsTokens(bpResult), new TypeReference<BpPagedResults<BpClass>>() {});
     } else {
-      throw new HTTPException(statusCode);
+      throw BioPortalFailure.relay(statusCode, url);
     }
   }
 
@@ -89,7 +90,7 @@ public class BpClassDAO
       JsonNode bpResult = MAPPER.readTree(response.getEntity().getContent());
       return ObjectConverter.toBpTreeNodeList(bpResult);
     } else {
-      throw new HTTPException(statusCode);
+      throw BioPortalFailure.relay(statusCode, url);
     }
   }
 
@@ -109,7 +110,7 @@ public class BpClassDAO
       JsonNode bpResult = MAPPER.readTree(response.getEntity().getContent());
       return MAPPER.readValue(MAPPER.treeAsTokens(bpResult), new TypeReference<BpPagedResults<BpClass>>() {});
     } else {
-      throw new HTTPException(statusCode);
+      throw BioPortalFailure.relay(statusCode, url);
     }
   }
 
@@ -128,7 +129,7 @@ public class BpClassDAO
       JsonNode bpResult = MAPPER.readTree(response.getEntity().getContent());
       return MAPPER.readValue(MAPPER.treeAsTokens(bpResult), new TypeReference<BpPagedResults<BpClass>>() {});
     } else {
-      throw new HTTPException(statusCode);
+      throw BioPortalFailure.relay(statusCode, url);
     }
   }
 
@@ -152,7 +153,7 @@ public class BpClassDAO
       }
       return children;
     } else {
-      throw new HTTPException(statusCode);
+      throw BioPortalFailure.relay(statusCode, url);
     }
   }
 
@@ -174,7 +175,7 @@ public class BpClassDAO
       JsonNode bpResult = MAPPER.readTree(response.getEntity().getContent());
       return MAPPER.readValue(MAPPER.treeAsTokens(bpResult), new TypeReference<BpPagedResults<BpClass>>() {});
     } else {
-      throw new HTTPException(statusCode);
+      throw BioPortalFailure.relay(statusCode, url);
     }
   }
 
@@ -201,7 +202,7 @@ public class BpClassDAO
       JsonNode bpResult = MAPPER.readTree(response.getEntity().getContent());
       return MAPPER.readValue(MAPPER.treeAsTokens(bpResult), new TypeReference<BpPagedResults<BpClass>>() {});
     } else {
-      throw new HTTPException(statusCode);
+      throw BioPortalFailure.relay(statusCode, url);
     }
   }
 

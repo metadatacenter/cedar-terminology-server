@@ -17,6 +17,7 @@ import org.slf4j.LoggerFactory;
 
 import jakarta.ws.rs.core.Response.Status;
 import javax.xml.ws.http.HTTPException;
+import org.metadatacenter.terms.util.BioPortalFailure;
 import java.io.IOException;
 import java.util.List;
 
@@ -35,8 +36,9 @@ public class BpProvisionalClassDAO {
   }
 
   public BpProvisionalClass create(BpProvisionalClass c, String apiKey) throws IOException {
+    String url = BP_API_BASE + BP_PROVISIONAL_CLASSES;
     // Send request to the BioPortal API
-    ClassicHttpResponse response = HttpUtil.makeHttpRequest(Request.post(BP_API_BASE + BP_PROVISIONAL_CLASSES)
+    ClassicHttpResponse response = HttpUtil.makeHttpRequest(Request.post(url)
         .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
         connectTimeout(Timeout.ofMilliseconds(connectTimeout)).responseTimeout(Timeout.ofMilliseconds(socketTimeout))
         .bodyString(MAPPER.writeValueAsString(c), ContentType.APPLICATION_JSON));
@@ -47,7 +49,7 @@ public class BpProvisionalClassDAO {
       JsonNode bpResult = MAPPER.readTree(response.getEntity().getContent());
       return MAPPER.convertValue(bpResult, BpProvisionalClass.class);
     } else {
-      throw new HTTPException(statusCode);
+      throw BioPortalFailure.relay(statusCode, url);
     }
   }
 
@@ -66,7 +68,7 @@ public class BpProvisionalClassDAO {
       JsonNode bpResult = MAPPER.readTree(response.getEntity().getContent());
       return MAPPER.convertValue(bpResult, BpProvisionalClass.class);
     } else {
-      throw new HTTPException(statusCode);
+      throw BioPortalFailure.relay(statusCode, url);
     }
   }
 
@@ -101,7 +103,7 @@ public class BpProvisionalClassDAO {
         });
       }
     } else {
-      throw new HTTPException(statusCode);
+      throw BioPortalFailure.relay(statusCode, url);
     }
   }
 
@@ -116,7 +118,7 @@ public class BpProvisionalClassDAO {
         .bodyString(MAPPER.writeValueAsString(c), ContentType.APPLICATION_JSON));
 
     int statusCode = response.getCode();
-    throw new HTTPException(statusCode);
+    throw BioPortalFailure.relay(statusCode, url);
   }
 
   public void delete(String id, String apiKey) throws IOException {
@@ -129,7 +131,7 @@ public class BpProvisionalClassDAO {
         connectTimeout(Timeout.ofMilliseconds(connectTimeout)).responseTimeout(Timeout.ofMilliseconds(socketTimeout)));
 
     int statusCode = response.getCode();
-    throw new HTTPException(statusCode);
+    throw BioPortalFailure.relay(statusCode, url);
   }
 
 }

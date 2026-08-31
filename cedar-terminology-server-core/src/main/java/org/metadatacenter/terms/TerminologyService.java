@@ -856,9 +856,17 @@ public class TerminologyService implements ITerminologyService {
     try {
       c = findRegularClass(id, ontology, apiKey);
     } catch (HTTPException e) {
+      // The regular lookup failing is why the provisional one is tried, and the provisional one
+      // failing is what the caller is told about. Without this the first failure left no trace: a
+      // 500 from BioPortal followed by an ordinary 404 for a term that is simply not provisional
+      // was reported, and recorded, as nothing but a 404.
       try {
         c = findProvisionalClass(id, apiKey);
       } catch (HTTPException e2) {
+        log.warn("Regular class lookup for {} in {} failed with {}; the provisional lookup then "
+            + "failed with {}, which is the status the caller receives",
+            id, ontology, e.getStatusCode(), e2.getStatusCode());
+        e2.addSuppressed(e);
         throw e2;
       }
     }
@@ -978,6 +986,10 @@ public class TerminologyService implements ITerminologyService {
       try {
         vs = findProvisionalValueSet(id, apiKey);
       } catch (HTTPException e2) {
+        log.warn("Regular value-set lookup for {} in {} failed with {}; the provisional lookup then "
+            + "failed with {}, which is the status the caller receives",
+            id, vsCollection, e.getStatusCode(), e2.getStatusCode());
+        e2.addSuppressed(e);
         throw e2;
       }
     }

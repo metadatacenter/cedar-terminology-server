@@ -14,6 +14,7 @@ import org.slf4j.LoggerFactory;
 
 import jakarta.ws.rs.core.Response.Status;
 import javax.xml.ws.http.HTTPException;
+import org.metadatacenter.terms.util.BioPortalFailure;
 import java.io.IOException;
 
 import static org.metadatacenter.cedar.terminology.util.Constants.BP_API_BASE;
@@ -49,7 +50,7 @@ public class BpProvisionalRelationDAO {
       JsonNode bpResult = MAPPER.readTree(response.getEntity().getContent());
       return MAPPER.convertValue(bpResult, BpProvisionalRelation.class);
     } else {
-      throw new HTTPException(statusCode);
+      throw BioPortalFailure.relay(statusCode, url);
     }
   }
 
@@ -67,7 +68,7 @@ public class BpProvisionalRelationDAO {
       JsonNode bpResult = MAPPER.readTree(response.getEntity().getContent());
       return MAPPER.convertValue(bpResult, BpProvisionalRelation.class);
     } else {
-      throw new HTTPException(statusCode);
+      throw BioPortalFailure.relay(statusCode, url);
     }
   }
 
@@ -83,7 +84,7 @@ public class BpProvisionalRelationDAO {
 //        .bodyString(mapper.writeValueAsString(relation), ContentType.APPLICATION_JSON).execute().returnResponse();
 //
 //    int statusCode = response.getCode();
-//    throw new HTTPException(statusCode);
+//    throw BioPortalFailure.relay(statusCode, url);
 //  }
 
   public void delete(String id, String apiKey) throws IOException {
@@ -96,6 +97,6 @@ public class BpProvisionalRelationDAO {
         connectTimeout(Timeout.ofMilliseconds(connectTimeout)).responseTimeout(Timeout.ofMilliseconds(socketTimeout)));
 
     int statusCode = response.getCode();
-    throw new HTTPException(statusCode);
+    throw BioPortalFailure.relay(statusCode, url);
   }
 }

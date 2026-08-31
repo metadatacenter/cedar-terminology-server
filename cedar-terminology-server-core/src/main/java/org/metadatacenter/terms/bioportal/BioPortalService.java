@@ -16,6 +16,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.xml.ws.http.HTTPException;
+import org.metadatacenter.terms.util.BioPortalFailure;
 import java.io.IOException;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -149,7 +150,7 @@ public class BioPortalService implements IBioPortalService {
       return MAPPER.readValue(MAPPER.treeAsTokens(bpResult), new TypeReference<BpPagedResults<BpClass>>() {
       });
     } else {
-      throw new HTTPException(statusCode);
+      throw BioPortalFailure.relay(statusCode, url);
     }
   }
 
@@ -198,7 +199,7 @@ public class BioPortalService implements IBioPortalService {
       return MAPPER.readValue(MAPPER.treeAsTokens(bpResult), new TypeReference<BpPagedResults<BpProperty>>() {
       });
     } else {
-      throw new HTTPException(statusCode);
+      throw BioPortalFailure.relay(statusCode, url);
     }
   }
 

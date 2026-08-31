@@ -17,6 +17,7 @@ import org.slf4j.LoggerFactory;
 
 import jakarta.ws.rs.core.Response.Status;
 import javax.xml.ws.http.HTTPException;
+import org.metadatacenter.terms.util.BioPortalFailure;
 import java.io.IOException;
 import java.util.List;
 
@@ -49,7 +50,7 @@ public class BpPropertyDAO
       JsonNode bpResult = MAPPER.readTree(response.getEntity().getContent());
       return JsonMapper.MAPPER.convertValue(bpResult, BpProperty.class);
     } else {
-      throw new HTTPException(statusCode);
+      throw BioPortalFailure.relay(statusCode, url);
     }
   }
 
@@ -66,7 +67,7 @@ public class BpPropertyDAO
       JsonNode bpResult = MAPPER.readTree(response.getEntity().getContent());
       return JsonMapper.MAPPER.readValue(JsonMapper.MAPPER.treeAsTokens(bpResult), new TypeReference<List<BpProperty>>() {});
     } else {
-      throw new HTTPException(statusCode);
+      throw BioPortalFailure.relay(statusCode, url);
     }
   }
 
@@ -84,7 +85,7 @@ public class BpPropertyDAO
       JsonNode bpResult = MAPPER.readTree(response.getEntity().getContent());
       return ObjectConverter.toBpTreeNodeList(bpResult);
     } else {
-      throw new HTTPException(statusCode);
+      throw BioPortalFailure.relay(statusCode, url);
     }
   }
 
@@ -102,7 +103,7 @@ public class BpPropertyDAO
       JsonNode bpResult = MAPPER.readTree(response.getEntity().getContent());
       return MAPPER.readValue(MAPPER.treeAsTokens(bpResult), new TypeReference<List<BpProperty>>() {});
     } else {
-      throw new HTTPException(statusCode);
+      throw BioPortalFailure.relay(statusCode, url);
     }
   }
 
@@ -119,7 +120,7 @@ public class BpPropertyDAO
       JsonNode bpResult = MAPPER.readTree(response.getEntity().getContent());
       return MAPPER.readValue(MAPPER.treeAsTokens(bpResult), new TypeReference<List<BpProperty>>() {});
     } else {
-      throw new HTTPException(statusCode);
+      throw BioPortalFailure.relay(statusCode, url);
     }
   }
 
@@ -137,7 +138,7 @@ public class BpPropertyDAO
       JsonNode bpResult = MAPPER.readTree(response.getEntity().getContent());
       return JsonMapper.MAPPER.readValue(JsonMapper.MAPPER.treeAsTokens(bpResult), new TypeReference<List<BpProperty>>() {});
     } else {
-      throw new HTTPException(statusCode);
+      throw BioPortalFailure.relay(statusCode, url);
     }
   }
 
