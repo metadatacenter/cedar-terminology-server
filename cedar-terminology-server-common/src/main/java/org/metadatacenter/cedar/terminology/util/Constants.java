@@ -7,9 +7,6 @@ package org.metadatacenter.cedar.terminology.util;
  */
 public class Constants
 {
-  // max calls/second allowed = 15 -> 1 call each 66 ms
-  public static int BP_API_WAIT_TIME = 80;
-
   public static int FIRST_PAGE = 1;
   public static int PAGE_SIZE = 500;
   public static int LARGE_PAGE_SIZE = 5000;
