@@ -66,7 +66,7 @@ public class ValueSetResource extends AbstractTerminologyServerResource {
       ValueSet vs = terminologyService.findValueSet(id, vsCollection, apiKey);
       return Response.ok().entity(JsonMapper.MAPPER.valueToTree(vs)).build();
     } catch (HTTPException e) {
-      return Response.status(e.getStatusCode()).build();
+      return relayedBioPortalFailure(e);
     } catch (IOException e) {
       throw new CedarAssertionException(e);
     }
@@ -103,7 +103,7 @@ public class ValueSetResource extends AbstractTerminologyServerResource {
       //return Response.ok().entity(JsonMapper.MAPPER.valueToTree(writer.writeValueAsString(valueSets))).build();
       return Response.ok().entity(JsonMapper.MAPPER.valueToTree(valueSets)).build();
     } catch (HTTPException e) {
-      return Response.status(e.getStatusCode()).build();
+      return relayedBioPortalFailure(e);
     } catch (IOException e) {
       throw new CedarAssertionException(e);
     }
@@ -131,7 +131,7 @@ public class ValueSetResource extends AbstractTerminologyServerResource {
       ValueSet vs = terminologyService.findValueSetByValue(id, vsCollection, apiKey);
       return Response.ok().entity(JsonMapper.MAPPER.valueToTree(vs)).build();
     } catch (HTTPException e) {
-      return Response.status(e.getStatusCode()).build();
+      return relayedBioPortalFailure(e);
     } catch (IOException e) {
       throw new CedarAssertionException(e);
     }
@@ -160,7 +160,7 @@ public class ValueSetResource extends AbstractTerminologyServerResource {
       TreeNode tree = terminologyService.getValueSetTree(id, vsCollection, apiKey);
       return Response.ok().entity(JsonMapper.MAPPER.valueToTree(tree)).build();
     } catch (HTTPException e) {
-      return Response.status(e.getStatusCode()).build();
+      return relayedBioPortalFailure(e);
     } catch (IOException e) {
       throw new CedarAssertionException(e);
     }
@@ -184,7 +184,7 @@ public class ValueSetResource extends AbstractTerminologyServerResource {
       List<ValueSet> valueSets = new ArrayList<>(Cache.getValueSets().values());
       return Response.ok().entity(JsonMapper.MAPPER.valueToTree(valueSets)).build();
     } catch (HTTPException e) {
-      return Response.status(e.getStatusCode()).build();
+      return relayedBioPortalFailure(e);
     } catch (ExecutionException e) {
       throw new CedarAssertionException(e);
     }

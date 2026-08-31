@@ -61,7 +61,7 @@ public class ValueResource extends AbstractTerminologyServerResource {
       Value v = terminologyService.findValue(id, vsCollection, apiKey);
       return Response.ok().entity(JsonMapper.MAPPER.valueToTree(v)).build();
     } catch (HTTPException e) {
-      return Response.status(e.getStatusCode()).build();
+      return relayedBioPortalFailure(e);
     } catch (IOException e) {
       throw new CedarAssertionException(e);
     }
@@ -90,7 +90,7 @@ public class ValueResource extends AbstractTerminologyServerResource {
       TreeNode tree = terminologyService.getValueTree(id, vsCollection, apiKey);
       return Response.ok().entity(JsonMapper.MAPPER.valueToTree(tree)).build();
     } catch (HTTPException e) {
-      return Response.status(e.getStatusCode()).build();
+      return relayedBioPortalFailure(e);
     } catch (IOException e) {
       throw new CedarAssertionException(e);
     }
@@ -126,7 +126,7 @@ public class ValueResource extends AbstractTerminologyServerResource {
       PagedResults<Value> values = terminologyService.findValuesByValueSet(vsId, vsCollection, page, pageSize, apiKey);
       return Response.ok().entity(JsonMapper.MAPPER.valueToTree(values)).build();
     } catch (HTTPException e) {
-      return Response.status(e.getStatusCode()).build();
+      return relayedBioPortalFailure(e);
     } catch (IOException e) {
       throw new CedarAssertionException(e);
     }
@@ -162,7 +162,7 @@ public class ValueResource extends AbstractTerminologyServerResource {
           terminologyService.findAllValuesInValueSetByValue(id, vsCollection, page, pageSize, apiKey);
       return Response.ok().entity(JsonMapper.MAPPER.valueToTree(values)).build();
     } catch (HTTPException e) {
-      return Response.status(e.getStatusCode()).build();
+      return relayedBioPortalFailure(e);
     } catch (IOException e) {
       throw new CedarAssertionException(e);
     }

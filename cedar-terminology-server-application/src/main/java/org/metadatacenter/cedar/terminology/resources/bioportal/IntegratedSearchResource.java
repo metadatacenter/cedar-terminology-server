@@ -102,7 +102,7 @@ public class IntegratedSearchResource extends AbstractTerminologyServerResource 
           .type(MediaType.APPLICATION_JSON)
           .build();
     } catch (HTTPException e) {
-      return Response.status(e.getStatusCode()).build();
+      return relayedBioPortalFailure(e);
     } catch (IOException /*| ExecutionException*/ e) {
       throw new CedarAssertionException(e);
     }

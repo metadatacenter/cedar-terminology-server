@@ -118,7 +118,7 @@ public class SearchResource extends AbstractTerminologyServerResource {
       JsonNode output = JsonMapper.MAPPER.valueToTree(results);
       return Response.ok().entity(output).build();
     } catch (HTTPException e) {
-      return Response.status(e.getStatusCode()).build();
+      return relayedBioPortalFailure(e);
     } catch (IOException | ExecutionException e) {
       throw new CedarAssertionException(e);
     }
@@ -172,7 +172,7 @@ public class SearchResource extends AbstractTerminologyServerResource {
       JsonNode output = JsonMapper.MAPPER.valueToTree(results);
       return Response.ok().entity(output).build();
     } catch (HTTPException e) {
-      return Response.status(e.getStatusCode()).build();
+      return relayedBioPortalFailure(e);
     } catch (IOException e) {
       throw new CedarAssertionException(e);
     }

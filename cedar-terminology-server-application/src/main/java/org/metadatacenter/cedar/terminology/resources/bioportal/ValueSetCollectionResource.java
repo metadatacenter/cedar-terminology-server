@@ -57,7 +57,7 @@ public class ValueSetCollectionResource extends AbstractTerminologyServerResourc
       List<ValueSetCollection> vsCollections = terminologyService.findAllVSCollections(includeDetails, apiKey);
       return Response.ok().entity(JsonMapper.MAPPER.valueToTree(vsCollections)).build();
     } catch (HTTPException e) {
-      return Response.status(e.getStatusCode()).build();
+      return relayedBioPortalFailure(e);
     } catch (IOException e) {
       throw new CedarAssertionException(e);
     }
