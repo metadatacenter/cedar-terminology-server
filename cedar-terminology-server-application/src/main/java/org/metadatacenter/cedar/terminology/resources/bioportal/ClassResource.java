@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.metadatacenter.cedar.util.dw.AnonymousAccess;
 import org.metadatacenter.cedar.cache.Cache;
 import org.metadatacenter.cedar.terminology.resources.AbstractTerminologyServerResource;
 import org.metadatacenter.config.CedarConfig;
@@ -192,6 +193,7 @@ public class ClassResource extends AbstractTerminologyServerResource {
       @ApiResponse(responseCode = "404", description = "Not found"),
       @ApiResponse(responseCode = "500", description = "Internal server error")
   })
+  @AnonymousAccess
   public Response findClassDescendants(
       @Parameter(description = "Class identifier. Examples: http://data.bioontology.org/provisional_classes/" +
           "4f82a7f0-bbba-0133-b23e-005056010074 (provisional class). " +
