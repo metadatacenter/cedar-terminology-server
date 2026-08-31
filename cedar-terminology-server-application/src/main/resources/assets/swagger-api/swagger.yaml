@@ -110,10 +110,6 @@ paths:
           description: A paginated list of search results
         "400":
           description: Bad request
-        "401":
-          description: Unauthorized
-        "403":
-          description: Forbidden
         "404":
           description: Not found
         "500":
@@ -166,10 +162,6 @@ paths:
           description: A paginated list of search results
         "400":
           description: Bad request
-        "401":
-          description: Unauthorized
-        "403":
-          description: Forbidden
         "404":
           description: Not found
         "422":
