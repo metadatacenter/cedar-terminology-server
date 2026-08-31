@@ -1,9 +1,9 @@
 package org.metadatacenter.cedar.terminology.config;
 
-import org.junit.jupiter.api.Assertions;
-import org.metadatacenter.config.CedarConfig;
+import org.metadatacenter.config.BioPortal;
 import org.metadatacenter.model.SystemComponent;
 import org.metadatacenter.util.test.AbstractCedarConfigTest;
+import org.metadatacenter.config.CedarConfig;
 
 public class CedarConfigTerminologyTest extends AbstractCedarConfigTest {
 
@@ -12,12 +12,16 @@ public class CedarConfigTerminologyTest extends AbstractCedarConfigTest {
     return SystemComponent.SERVER_TERMINOLOGY;
   }
 
+  /**
+   * The BioPortal credentials are the terminology server's alone: no other component is granted
+   * {@code CEDAR_BIOPORTAL_API_KEY} or {@code CEDAR_BIOPORTAL_REST_BASE}, and every other component
+   * loads this same section with both placeholders intact.
+   */
   @Override
   protected void assertServerSpecificConfig(CedarConfig config) {
-    Assertions.assertNotNull(config.getTerminologyConfig(),
-        "the terminology server loaded no terminology configuration");
-    Assertions.assertNotNull(config.getTerminologyConfig().getBioPortal(),
-        "the terminology server loaded no BioPortal configuration");
+    BioPortal bioPortal = config.getTerminologyConfig().getBioPortal();
+    assertResolved("terminology.bioPortal.apiKey", bioPortal.getApiKey());
+    assertResolved("terminology.bioPortal.basePath", bioPortal.getBasePath());
   }
 
 }
