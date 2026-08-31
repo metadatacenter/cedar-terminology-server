@@ -45,19 +45,35 @@ public abstract class AbstractTerminologyServerResource extends CedarMicroservic
    * from CEDAR. The worst case is the server's own API key expiring: the client gets a 401 about a
    * credential it does not hold and has no way to act on.
    *
-   * <p>The status is unchanged here, so this adds a body and breaks nobody. Relaying an upstream 401 as
-   * CEDAR's own is a separate correction, because changing the status changes what a client receives.
+   * <p>Not every upstream status is the caller's answer. A 401 or 403 from BioPortal means the key this
+   * server holds was refused, which the caller can do nothing about and must not be told to retry
+   * authentication over; an upstream 5xx is an outage. Both become 502, which is what a gateway says
+   * when the service behind it failed. A 404 is relayed: the term really was not found, and that is the
+   * caller's answer. A 400 is relayed too, since it usually reflects a parameter the caller supplied.
    */
   protected static Response relayedBioPortalFailure(HTTPException e) {
     int upstreamStatus = e.getStatusCode();
-    CedarResponseStatus status = CedarResponseStatus.fromStatusCode(upstreamStatus);
-    if (status == null) {
-      status = CedarResponseStatus.INTERNAL_SERVER_ERROR;
+    boolean upstreamFault = upstreamStatus == 401 || upstreamStatus == 403 || upstreamStatus >= 500;
+
+    CedarResponseStatus status;
+    String explanation;
+    if (upstreamFault) {
+      status = CedarResponseStatus.BAD_GATEWAY;
+      explanation = upstreamStatus == 401 || upstreamStatus == 403
+          ? "BioPortal refused the API key this server holds, which is a CEDAR configuration problem "
+              + "rather than anything the caller can authenticate its way past."
+          : "BioPortal failed with " + upstreamStatus + ".";
+    } else {
+      status = CedarResponseStatus.fromStatusCode(upstreamStatus);
+      if (status == null) {
+        status = CedarResponseStatus.BAD_GATEWAY;
+      }
+      explanation = "BioPortal answered " + upstreamStatus + ", which is the caller's answer.";
     }
+
     return CedarResponse.status(status)
         .errorKey(CedarErrorKey.UPSTREAM_SERVER_ERROR)
-        .errorMessage("BioPortal answered " + upstreamStatus + ". CEDAR is relaying that status; the "
-            + "condition is upstream, and a credential named in it is CEDAR's own rather than the caller's.")
+        .errorMessage(explanation)
         .parameter("upstreamStatusCode", upstreamStatus)
         .parameter("upstreamService", "BioPortal")
         .build();

@@ -33,11 +33,20 @@ class RelayedFailureBodyTest {
   }
 
   @Test
-  @DisplayName("The status is relayed unchanged, so this adds a body and breaks nobody")
-  void statusIsUnchanged() throws Exception {
-    assertEquals(401, relay(401).getStatus());
-    assertEquals(404, relay(404).getStatus());
-    assertEquals(500, relay(500).getStatus());
+  @DisplayName("A refused key or an upstream outage becomes 502, not the caller's problem")
+  void upstreamFaultsBecomeBadGateway() throws Exception {
+    assertEquals(502, relay(401).getStatus(),
+        "a 401 here means BioPortal refused CEDAR's key; telling the caller to authenticate is wrong");
+    assertEquals(502, relay(403).getStatus());
+    assertEquals(502, relay(500).getStatus());
+    assertEquals(502, relay(503).getStatus());
+  }
+
+  @Test
+  @DisplayName("A status that is genuinely the caller's answer is relayed")
+  void callerAnswersAreRelayed() throws Exception {
+    assertEquals(404, relay(404).getStatus(), "the term really was not found");
+    assertEquals(400, relay(400).getStatus(), "usually reflects a parameter the caller supplied");
   }
 
   @Test
@@ -51,11 +60,11 @@ class RelayedFailureBodyTest {
   }
 
   @Test
-  @DisplayName("A status CEDAR does not model still produces a response rather than a null")
+  @DisplayName("A status CEDAR does not model becomes a gateway failure rather than a null")
   void unmodelledStatusFallsBack() throws Exception {
     Response response = relay(418);
     assertNotNull(response);
-    assertTrue(response.getStatus() >= 400);
+    assertEquals(502, response.getStatus());
   }
 
   @Test
