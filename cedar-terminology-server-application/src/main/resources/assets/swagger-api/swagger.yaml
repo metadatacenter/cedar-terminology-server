@@ -2,7 +2,7 @@ openapi: 3.0.1
 info:
   description: CEDAR Terminology Server API
   title: CEDAR Terminology Server API
-  version: 2.9.4-SNAPSHOT
+  version: 2.9.5-SNAPSHOT
 paths:
   /bioportal/classes/provisional:
     get:
