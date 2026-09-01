@@ -19,7 +19,7 @@ CEDAR backend development uses Java 17. From a configured CEDAR workspace:
 
 ```bash
 export CEDAR_HOME="$HOME/CEDAR"
-source "$CEDAR_HOME/cedar-profile-native-develop.sh"
+CEDAR_PROFILE=develop source "$CEDAR_HOME/cedar-development/bin/templates/cedar-profile-native.sh"
 export JAVA_HOME=$(/usr/libexec/java_home -v 17)
 ./mvnw test
 ```
