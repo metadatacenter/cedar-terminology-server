@@ -13,6 +13,7 @@ import org.metadatacenter.terms.store.SearchIndexStore;
 import org.metadatacenter.terms.store.SnapshotStore;
 import org.metadatacenter.terms.util.ObjectConverter;
 import org.metadatacenter.terms.util.Util;
+import org.metadatacenter.terms.util.ValueSetIds;
 
 import java.io.IOException;
 import java.net.URLDecoder;
@@ -592,7 +593,7 @@ public class SqliteTerminologyService implements ITerminologyService {
   public PagedResults<SearchResult> search(String q, List<String> scope, List<String> sources, boolean suggest,
                                            String source, String subtreeRootId, int maxDepth, int page, int pageSize,
                                            boolean displayContext, boolean displayLinks, String apiKey,
-                                           List<String> valueSetsIds) throws IOException {
+                                           ValueSetIds valueSetIds) throws IOException {
     boolean classOnly = scope != null && !scope.isEmpty()
         && scope.stream().allMatch(s -> s.equalsIgnoreCase("classes"));
     if (!classOnly) {

@@ -57,7 +57,7 @@ public class PropertyResource extends AbstractTerminologyServerResource {
       OntologyProperty p = terminologyService.findProperty(id, ontology, apiKey);
       return Response.ok().entity(JsonMapper.MAPPER.valueToTree(p)).build();
     } catch (HTTPException e) {
-      return Response.status(e.getStatusCode()).build();
+      return relayedBioPortalFailure(e);
     } catch (IOException e) {
       throw new CedarAssertionException(e);
     }
@@ -84,7 +84,7 @@ public class PropertyResource extends AbstractTerminologyServerResource {
       List<OntologyProperty> properties = terminologyService.findAllPropertiesInOntology(ontology, apiKey);
       return Response.ok().entity(JsonMapper.MAPPER.valueToTree(properties)).build();
     } catch (HTTPException e) {
-      return Response.status(e.getStatusCode()).build();
+      return relayedBioPortalFailure(e);
     } catch (IOException e) {
       throw new CedarAssertionException(e);
     }
@@ -113,7 +113,7 @@ public class PropertyResource extends AbstractTerminologyServerResource {
       List<TreeNode> tree = terminologyService.getPropertyTree(id, ontology, apiKey);
       return Response.ok().entity(JsonMapper.MAPPER.valueToTree(tree)).build();
     } catch (HTTPException e) {
-      return Response.status(e.getStatusCode()).build();
+      return relayedBioPortalFailure(e);
     } catch (IOException e) {
       throw new CedarAssertionException(e);
     }
@@ -142,7 +142,7 @@ public class PropertyResource extends AbstractTerminologyServerResource {
       List<OntologyProperty> children = terminologyService.getPropertyChildren(id, ontology, apiKey);
       return Response.ok().entity(JsonMapper.MAPPER.valueToTree(children)).build();
     } catch (HTTPException e) {
-      return Response.status(e.getStatusCode()).build();
+      return relayedBioPortalFailure(e);
     } catch (IOException e) {
       throw new CedarAssertionException(e);
     }
@@ -171,7 +171,7 @@ public class PropertyResource extends AbstractTerminologyServerResource {
       List<OntologyProperty> descendants = terminologyService.getPropertyDescendants(id, ontology, apiKey);
       return Response.ok().entity(JsonMapper.MAPPER.valueToTree(descendants)).build();
     } catch (HTTPException e) {
-      return Response.status(e.getStatusCode()).build();
+      return relayedBioPortalFailure(e);
     } catch (IOException e) {
       throw new CedarAssertionException(e);
     }
@@ -200,7 +200,7 @@ public class PropertyResource extends AbstractTerminologyServerResource {
       List<OntologyProperty> descendants = terminologyService.getPropertyParents(id, ontology, apiKey);
       return Response.ok().entity(JsonMapper.MAPPER.valueToTree(descendants)).build();
     } catch (HTTPException e) {
-      return Response.status(e.getStatusCode()).build();
+      return relayedBioPortalFailure(e);
     } catch (IOException e) {
       throw new CedarAssertionException(e);
     }

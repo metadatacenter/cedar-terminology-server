@@ -2,13 +2,12 @@ package org.metadatacenter.cedar.terminology;
 
 import io.dropwizard.core.setup.Bootstrap;
 import io.dropwizard.core.setup.Environment;
-import org.metadatacenter.cedar.cache.Cache;
 import org.metadatacenter.cedar.terminology.health.TerminologyServerHealthCheck;
 import org.metadatacenter.cedar.terminology.resources.AbstractTerminologyServerResource;
-import org.metadatacenter.cedar.terminology.resources.IndexResource;
 import org.metadatacenter.cedar.terminology.resources.VersionAwareSearchResource;
 import org.metadatacenter.cedar.terminology.resources.bioportal.*;
 import org.metadatacenter.cedar.terminology.utils.logging.LogResponseFilter;
+import org.metadatacenter.cedar.util.dw.CedarMicroserviceIndexResource;
 import org.metadatacenter.cedar.util.dw.CedarMicroserviceApplication;
 import org.metadatacenter.config.CedarConfig;
 import org.metadatacenter.config.LocalStoreConfig;
@@ -72,10 +71,6 @@ public class TerminologyServerApplication extends CedarMicroserviceApplication<T
   protected void initializeWithBootstrap(Bootstrap<TerminologyServerConfiguration> bootstrap, CedarConfig cedarConfig) {
   }
 
-  public boolean isTestMode() {
-    return false;
-  }
-
   @Override
   public void initializeApp() {
     // Force the HttpClientFactory static block to run and build the shared client:
@@ -91,10 +86,6 @@ public class TerminologyServerApplication extends CedarMicroserviceApplication<T
     terminologyService = buildTerminologyService(bioPortalService);
     AbstractTerminologyServerResource.injectTerminologyService(terminologyService);
     VersionAwareSearchResource.injectSearchService(versionAwareSearchService);
-    // Initialize cache (note that this must be done after initializing the terminologyService)
-    // When running the application on testing mode, the cache is loaded from the files stored into the test
-    // resources folder
-    Cache.init(isTestMode());
   }
 
   /**
@@ -201,7 +192,8 @@ public class TerminologyServerApplication extends CedarMicroserviceApplication<T
   @Override
   public void runApp(TerminologyServerConfiguration configuration, Environment environment) {
 
-    final IndexResource index = new IndexResource(cedarConfig);
+    final CedarMicroserviceIndexResource index =
+        new CedarMicroserviceIndexResource(cedarConfig, getServerName());
 
     environment.jersey().register(index);
     // Register resources
@@ -222,8 +214,7 @@ public class TerminologyServerApplication extends CedarMicroserviceApplication<T
     //environment.jersey().register(new LogRequestFilter());
     environment.jersey().register(new LogResponseFilter());
 
-    final TerminologyServerHealthCheck healthCheck = new TerminologyServerHealthCheck();
-    environment.healthChecks().register("message", healthCheck);
+    environment.healthChecks().register("ontology-catalogue", new TerminologyServerHealthCheck());
   }
 
 }

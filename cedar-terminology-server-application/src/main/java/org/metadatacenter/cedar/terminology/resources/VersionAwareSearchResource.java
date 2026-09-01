@@ -60,7 +60,8 @@ public class VersionAwareSearchResource extends AbstractTerminologyServerResourc
   @POST
   @Timed
   @Consumes(MediaType.APPLICATION_JSON)
-  @Operation(summary = "Version-aware search",
+  @Operation(operationId = "versionAwareSearch",
+      summary = "Version-aware search",
       description = "Search the local terminology store at a named version or the current one, across the "
           + "constraint types a controlled-term field can carry: ontology, branch, class and valueSet. "
           + "Returns per-type counts and each type's first page, and describes every source it searched — "
@@ -103,7 +104,8 @@ public class VersionAwareSearchResource extends AbstractTerminologyServerResourc
   @GET
   @Timed
   @Path("/hierarchy")
-  @Operation(summary = "Where a term sits in its ontology",
+  @Operation(operationId = "versionAwareSearchHierarchy",
+      summary = "Where a term sits in its ontology",
       description = "The chain of ancestors above a term, root first, and what hangs directly below it. "
           + "A search result names a term; whether it is the right term is a question about its "
           + "neighbourhood, and two concepts with one label are told apart by nothing else. "

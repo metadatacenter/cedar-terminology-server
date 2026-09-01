@@ -60,14 +60,15 @@ public class IntegratedRetrieveResource extends AbstractTerminologyServerResourc
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "A paginated list of search results", content = @Content(schema = @Schema(implementation = IntegratedRetrieveResults.class))),
       @ApiResponse(responseCode = "400", description = "Bad request"),
-      @ApiResponse(responseCode = "401", description = "Unauthorized"),
-      @ApiResponse(responseCode = "403", description = "Forbidden"),
       @ApiResponse(responseCode = "404", description = "Not found"),
       @ApiResponse(responseCode = "500", description = "Internal server error")
   })
   public Response cedarIntegratedRetrieve(@Valid IntegratedRetrieveBody body) throws CedarException {
 
-    //TODO
+    // Anonymous by decision, not by omission. Third-party deployments of the embeddable editor reach
+    // this route without a CEDAR session, which is why the credential check below is disabled rather
+    // than deleted. The price is that the BioPortal lookups it performs run on the API key this
+    // server holds, so an anonymous caller spends CEDAR's BioPortal quota. Nothing here bounds that.
     // CedarRequestContext c = buildRequestContext();
     // c.must(c.user()).be(LoggedIn);
 
@@ -81,7 +82,7 @@ public class IntegratedRetrieveResource extends AbstractTerminologyServerResourc
       return Response.ok().entity(JsonMapper.MAPPER.valueToTree(results)).build();
 
     } catch (HTTPException e) {
-      return Response.status(e.getStatusCode()).build();
+      return relayedBioPortalFailure(e);
     } catch (IOException /*| ExecutionException*/ e) {
       throw new CedarAssertionException(e);
     }

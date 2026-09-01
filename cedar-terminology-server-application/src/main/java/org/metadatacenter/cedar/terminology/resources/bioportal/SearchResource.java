@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.hibernate.validator.constraints.NotEmpty;
+import org.metadatacenter.cedar.util.dw.AnonymousAccess;
 import org.metadatacenter.cedar.cache.Cache;
 import org.metadatacenter.cedar.terminology.resources.AbstractTerminologyServerResource;
 import org.metadatacenter.config.CedarConfig;
@@ -28,7 +29,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
 
 import static org.metadatacenter.rest.assertion.GenericAssertions.LoggedIn;
 import static org.metadatacenter.cedar.terminology.util.Constants.*;
@@ -58,6 +58,7 @@ public class SearchResource extends AbstractTerminologyServerResource {
       @ApiResponse(responseCode = "404", description = "Not found"),
       @ApiResponse(responseCode = "500", description = "Internal server error")
   })
+  @AnonymousAccess
   public Response search(
       @Parameter(description = "Search query. Example: melanoma.", required = true)
       @QueryParam("q") @NotEmpty String q,
@@ -80,15 +81,14 @@ public class SearchResource extends AbstractTerminologyServerResource {
       @Parameter(description = "Page to be returned. Example: 7.")
       @QueryParam("page") @DefaultValue("1") int page,
       @Parameter(description = "Number of results per page. Example: 10.")
-      @QueryParam("page_size") int pageSize) throws CedarException {
+      @QueryParam("page_size") int pageSize,
+      @Parameter(description = "Alias for the page size, accepted in either spelling.")
+      @QueryParam("pageSize") int pageSizeAlias) throws CedarException {
 
     CedarRequestContext c = buildAnonymousRequestContext();
 
     try {
-      // If pageSize not defined, set default value
-      if (pageSize == 0) {
-        pageSize = defaultPageSize;
-      }
+      pageSize = resolvePageSize(pageSize, pageSizeAlias);
       // Review and clean scope
       List<String> scopeList = new ArrayList<>();
       List<String> referenceScopeList = Arrays
@@ -108,17 +108,17 @@ public class SearchResource extends AbstractTerminologyServerResource {
       if (sources != null && !sources.isEmpty()) {
         sourcesList = Arrays.asList(sources.split("\\s*,\\s*"));
       }
-      List<String> valueSetsIds = new ArrayList<>(Cache.getValueSets().keySet());
-      // TODO: The valueSetsIds parameter is passed to the service to avoid making additional calls to BioPortal.
-      // These ids are used to know if a particular result returned by BioPortal is a value or a value set.
-      // BioPortal should provide this information and this parameter should be removed
+      // BioPortal does not say whether a result from a value-set collection is a value set or one of
+      // its values, so the service is given the identifiers that settle it. It is passed as something
+      // to call rather than as the answer: fetching it costs a BioPortal call per value-set
+      // collection, and a search whose results are all ontology classes never has to ask.
       PagedResults results = terminologyService.search(q, scopeList, sourcesList, suggest, source, subtreeRootId,
-          maxDepth, page, pageSize, false, true, apiKey, valueSetsIds);
+          maxDepth, page, pageSize, false, true, apiKey, Cache::getValueSetIds);
       JsonNode output = JsonMapper.MAPPER.valueToTree(results);
       return Response.ok().entity(output).build();
     } catch (HTTPException e) {
-      return Response.status(e.getStatusCode()).build();
-    } catch (IOException | ExecutionException e) {
+      return relayedBioPortalFailure(e);
+    } catch (IOException e) {
       throw new CedarAssertionException(e);
     }
   }
@@ -152,16 +152,15 @@ public class SearchResource extends AbstractTerminologyServerResource {
       @Parameter(description = "Page to be returned. Example: 7.")
       @QueryParam("page") @DefaultValue("1") int page,
       @Parameter(description = "Number of results per page. Example: 10.")
-      @QueryParam("page_size") int pageSize) throws CedarException {
+      @QueryParam("page_size") int pageSize,
+      @Parameter(description = "Alias for the page size, accepted in either spelling.")
+      @QueryParam("pageSize") int pageSizeAlias) throws CedarException {
 
     CedarRequestContext c = buildRequestContext();
     c.must(c.user()).be(LoggedIn);
 
     try {
-      // If pageSize not defined, set default value
-      if (pageSize == 0) {
-        pageSize = defaultPageSize;
-      }
+      pageSize = resolvePageSize(pageSize, pageSizeAlias);
       // Sources list
       List<String> sourcesList = new ArrayList<>();
       if (sources != null && sources.length() > 0) {
@@ -172,7 +171,7 @@ public class SearchResource extends AbstractTerminologyServerResource {
       JsonNode output = JsonMapper.MAPPER.valueToTree(results);
       return Response.ok().entity(output).build();
     } catch (HTTPException e) {
-      return Response.status(e.getStatusCode()).build();
+      return relayedBioPortalFailure(e);
     } catch (IOException e) {
       throw new CedarAssertionException(e);
     }

@@ -17,7 +17,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
-import org.metadatacenter.cedar.terminology.TerminologyServerApplicationTest;
+import org.metadatacenter.cedar.terminology.TerminologyServerApplication;
 import org.metadatacenter.cedar.terminology.TerminologyServerConfiguration;
 import org.metadatacenter.config.CedarConfig;
 import org.metadatacenter.config.environment.CedarEnvironmentVariableProvider;
@@ -47,12 +47,12 @@ public abstract class AbstractTerminologyServerResourceTest {
 
   static {
     // Must run before the test support boots the server, which reads the port env vars.
-    // Alternate server ports, so the test instance never collides with a running dev server.
+    // OS-assigned server ports, so the test instance never collides with a running dev server.
     java.util.Map<String, String> environment =
         new java.util.HashMap<>(org.metadatacenter.config.environment.CedarEnvironmentSource.getAll());
-    environment.put("CEDAR_TERMINOLOGY_HTTP_PORT", "19004");
-    environment.put("CEDAR_TERMINOLOGY_ADMIN_PORT", "19104");
-    environment.put("CEDAR_TERMINOLOGY_STOP_PORT", "19204");
+    environment.put("CEDAR_TERMINOLOGY_HTTP_PORT", "0");
+    environment.put("CEDAR_TERMINOLOGY_ADMIN_PORT", "0");
+    environment.put("CEDAR_TERMINOLOGY_STOP_PORT", "0");
     org.metadatacenter.config.environment.CedarEnvironmentSource.setOverride(environment);
   }
 
@@ -92,7 +92,7 @@ public abstract class AbstractTerminologyServerResourceTest {
   protected static final int STATUS_CODE_UNPROCESSABLE_ENTITY = 422;
 
   public static final DropwizardTestSupport<TerminologyServerConfiguration> RULE =
-      new DropwizardTestSupport<>(TerminologyServerApplicationTest.class,
+      new DropwizardTestSupport<>(TerminologyServerApplication.class,
           ResourceHelpers.resourceFilePath("test-config.yml"));
 
   /**

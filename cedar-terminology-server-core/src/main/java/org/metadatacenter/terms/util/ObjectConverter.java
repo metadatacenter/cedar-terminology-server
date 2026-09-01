@@ -7,10 +7,12 @@ import org.metadatacenter.terms.bioportal.domainObjects.*;
 import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.terms.domainObjects.*;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 import static org.metadatacenter.cedar.terminology.util.Constants.*;
 import static org.metadatacenter.util.json.JsonMapper.MAPPER;
@@ -166,17 +168,28 @@ public class ObjectConverter {
         bpr.getNextPage(), classes);
   }
 
-  public static PagedResults<SearchResult> toPagedSearchResults(BpPagedResults<BpClass> bpr, List<String> valueSetsIds, String query) {
+  /**
+   * Convert BioPortal search results, classifying each one as a class, a value set or a value.
+   *
+   * <p>{@code valueSetIds} is resolved at most once, and only if a result comes from a value-set
+   * collection, because resolving it costs a BioPortal call per collection. See {@link ValueSetIds}.
+   */
+  public static PagedResults<SearchResult> toPagedSearchResults(BpPagedResults<BpClass> bpr, ValueSetIds valueSetIds,
+                                                                String query) throws IOException {
     List<SearchResult> results = new ArrayList<>();
+    Set<String> resolvedValueSetIds = null;
     for (BpClass c : bpr.getCollection()) {
       // Assign information depending on the result type
       String type = null;
       String ontology = Util.getShortIdentifier(c.getLinks().getOntology());
       // If the ontology is a value set collection
       if (Arrays.asList(BP_VS_COLLECTIONS_READ).contains(ontology)) {
+        if (resolvedValueSetIds == null) {
+          resolvedValueSetIds = valueSetIds.get();
+        }
         String shortId = Util.getShortIdentifier(c.getId());
         // It is a Value Set
-        if (valueSetsIds.contains(shortId)) {
+        if (resolvedValueSetIds.contains(shortId)) {
           type = BP_TYPE_VS;
         }
         // It is a Value

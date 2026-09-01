@@ -64,8 +64,6 @@ public class IntegratedSearchResource extends AbstractTerminologyServerResource 
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "A paginated list of search results", content = @Content(schema = @Schema(implementation = IntegratedSearchResults.class))),
       @ApiResponse(responseCode = "400", description = "Bad request"),
-      @ApiResponse(responseCode = "401", description = "Unauthorized"),
-      @ApiResponse(responseCode = "403", description = "Forbidden"),
       @ApiResponse(responseCode = "404", description = "Not found"),
       @ApiResponse(responseCode = "422", description = "A constraint pins a vocabulary version that cannot be served"),
       @ApiResponse(responseCode = "500", description = "Internal server error")
@@ -75,7 +73,10 @@ public class IntegratedSearchResource extends AbstractTerminologyServerResource 
           + "locally-served, single-source constraints; ignored for BioPortal-proxied ones.")
       @QueryParam("lang") String lang) throws CedarException {
 
-    // We have disabled authentication for this endpoint to simplify 3rd-party deployments of the CEDAR embeddable editor
+    // Anonymous by decision, not by omission. Third-party deployments of the embeddable editor reach
+    // this route without a CEDAR session, which is why the credential check below is disabled rather
+    // than deleted. The price is that the BioPortal lookups it performs run on the API key this
+    // server holds, so an anonymous caller spends CEDAR's BioPortal quota. Nothing here bounds that.
     // CedarRequestContext c = buildRequestContext();
     // c.must(c.user()).be(LoggedIn);
 
@@ -102,7 +103,7 @@ public class IntegratedSearchResource extends AbstractTerminologyServerResource 
           .type(MediaType.APPLICATION_JSON)
           .build();
     } catch (HTTPException e) {
-      return Response.status(e.getStatusCode()).build();
+      return relayedBioPortalFailure(e);
     } catch (IOException /*| ExecutionException*/ e) {
       throw new CedarAssertionException(e);
     }

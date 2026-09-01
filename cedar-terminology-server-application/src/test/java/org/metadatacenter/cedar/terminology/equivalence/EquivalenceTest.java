@@ -14,9 +14,10 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.metadatacenter.cedar.terminology.TerminologyServerApplicationTest;
+import org.metadatacenter.cedar.terminology.TerminologyServerApplication;
 import org.metadatacenter.cedar.terminology.TerminologyServerConfiguration;
 import org.metadatacenter.config.CedarConfig;
+import org.metadatacenter.config.environment.CedarEnvironmentSource;
 import org.metadatacenter.config.environment.CedarEnvironmentVariableProvider;
 import org.metadatacenter.model.SystemComponent;
 import org.metadatacenter.terms.customObjects.PagedResults;
@@ -33,6 +34,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -73,6 +75,12 @@ public class EquivalenceTest {
    */
   static {
     try {
+      Map<String, String> environment = new HashMap<>(CedarEnvironmentSource.getAll());
+      environment.put("CEDAR_TERMINOLOGY_HTTP_PORT", "0");
+      environment.put("CEDAR_TERMINOLOGY_ADMIN_PORT", "0");
+      environment.put("CEDAR_TERMINOLOGY_STOP_PORT", "0");
+      CedarEnvironmentSource.setOverride(environment);
+
       Path tmp = Files.createTempDirectory("equivalence");
       Path catalogPath = tmp.resolve("catalog.sqlite");
       try (CatalogStore catalog = CatalogStore.openFile(catalogPath.toString())) {
@@ -102,7 +110,7 @@ public class EquivalenceTest {
   }
 
   public static final DropwizardTestSupport<TerminologyServerConfiguration> RULE =
-      new DropwizardTestSupport<>(TerminologyServerApplicationTest.class,
+      new DropwizardTestSupport<>(TerminologyServerApplication.class,
           ResourceHelpers.resourceFilePath("test-config.yml"));
 
   @BeforeAll

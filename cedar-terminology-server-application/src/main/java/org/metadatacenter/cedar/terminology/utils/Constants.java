@@ -26,10 +26,6 @@ public class Constants {
   public static final String BP_VALUES = "values";
   public static final String BP_ALL_VALUES = "all-values";
   public static final String BP_PROVISIONAL_CLASSES = BP_CLASSES + "/provisional";
-  public static final String CACHE_FOLDER_NAME = "cache/terminology";
-  public static final String TEST_CACHE_FOLDER_NAME = "src/test/resources/test_cache";
-  public static final String ONTOLOGIES_CACHE_FILE = "ontologies.cache";
-  public static final String VALUE_SETS_CACHE_FILE = "value-sets.cache";
 
   // PRIVATE //
 

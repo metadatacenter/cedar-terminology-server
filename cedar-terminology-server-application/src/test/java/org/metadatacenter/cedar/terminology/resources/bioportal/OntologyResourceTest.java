@@ -60,7 +60,7 @@ public class OntologyResourceTest extends AbstractTerminologyServerResourceTest 
   }
 
   @Test
-  @Disabled
+  @Disabled("Requires live BioPortal ontology data and is not deterministic in the default build")
   public void findAllOntologiesTest() {
     String url = baseUrlBpOntologies;
     // Service invocation

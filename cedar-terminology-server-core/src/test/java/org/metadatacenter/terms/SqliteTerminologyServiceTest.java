@@ -12,6 +12,7 @@ import org.metadatacenter.terms.domainObjects.SearchResult;
 import org.metadatacenter.terms.domainObjects.VersionTriple;
 import org.metadatacenter.terms.store.SnapshotStore;
 import org.metadatacenter.terms.store.SearchIndexStore;
+import org.metadatacenter.terms.util.ValueSetIds;
 
 import java.util.List;
 import java.util.Map;
@@ -148,7 +149,7 @@ public class SqliteTerminologyServiceTest {
 
   private PagedResults<SearchResult> classSearch(String q, int page, int pageSize) throws Exception {
     return service.search(q, List.of("classes"), List.of(EX), false, null, null, 0, page, pageSize,
-        false, false, null, null);
+        false, false, null, ValueSetIds.NONE);
   }
 
   @Test
@@ -192,23 +193,23 @@ public class SqliteTerminologyServiceTest {
     // Within the mammal branch (descendants cat + dog; the root mammal is excluded), labels
     // containing "a": Cat.
     PagedResults<SearchResult> r = service.search("a", List.of("classes"), null, false, EX, iri("mammal"),
-        0, 1, 50, false, false, null, null);
+        0, 1, 50, false, false, null, ValueSetIds.NONE);
     assertEquals(List.of(iri("cat")), ldIds(r.getCollection()));
   }
 
   @Test
   public void search_nonClassScopeIsNotServedLocally() {
     assertThrows(UnsupportedOperationException.class, () -> service.search("a", List.of("value_sets"),
-        List.of(EX), false, null, null, 0, 1, 50, false, false, null, null));
+        List.of(EX), false, null, null, 0, 1, 50, false, false, null, ValueSetIds.NONE));
     // "all" would also need value sets, so it is not served locally either.
     assertThrows(UnsupportedOperationException.class, () -> service.search("a", List.of("all"),
-        List.of(EX), false, null, null, 0, 1, 50, false, false, null, null));
+        List.of(EX), false, null, null, 0, 1, 50, false, false, null, ValueSetIds.NONE));
   }
 
   @Test
   public void search_multiSourceIsNotServedLocally() {
     assertThrows(UnsupportedOperationException.class, () -> service.search("a", List.of("classes"),
-        List.of(EX, "OTHER"), false, null, null, 0, 1, 50, false, false, null, null));
+        List.of(EX, "OTHER"), false, null, null, 0, 1, 50, false, false, null, ValueSetIds.NONE));
   }
 
   @Test

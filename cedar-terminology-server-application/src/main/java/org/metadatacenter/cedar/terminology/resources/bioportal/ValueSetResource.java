@@ -66,7 +66,7 @@ public class ValueSetResource extends AbstractTerminologyServerResource {
       ValueSet vs = terminologyService.findValueSet(id, vsCollection, apiKey);
       return Response.ok().entity(JsonMapper.MAPPER.valueToTree(vs)).build();
     } catch (HTTPException e) {
-      return Response.status(e.getStatusCode()).build();
+      return relayedBioPortalFailure(e);
     } catch (IOException e) {
       throw new CedarAssertionException(e);
     }
@@ -89,13 +89,12 @@ public class ValueSetResource extends AbstractTerminologyServerResource {
       @Parameter(description = "Page to be returned. Example: 7.")
       @QueryParam("page") @DefaultValue("1") int page,
       @Parameter(description = "Number of results per page. Example: 10.")
-      @QueryParam("pageSize") int pageSize) throws CedarException {
+      @QueryParam("pageSize") int pageSize,
+      @Parameter(description = "Alias for the page size, accepted in either spelling.")
+      @QueryParam("page_size") int pageSizeAlias) throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
-    // If pageSize not defined, set default value
-    if (pageSize == 0) {
-      pageSize = defaultPageSize;
-    }
+    pageSize = resolvePageSize(pageSize, pageSizeAlias);
     try {
       PagedResults<ValueSet> valueSets =
           terminologyService.findValueSetsByVsCollection(vsCollection, page, pageSize, apiKey);
@@ -104,7 +103,7 @@ public class ValueSetResource extends AbstractTerminologyServerResource {
       //return Response.ok().entity(JsonMapper.MAPPER.valueToTree(writer.writeValueAsString(valueSets))).build();
       return Response.ok().entity(JsonMapper.MAPPER.valueToTree(valueSets)).build();
     } catch (HTTPException e) {
-      return Response.status(e.getStatusCode()).build();
+      return relayedBioPortalFailure(e);
     } catch (IOException e) {
       throw new CedarAssertionException(e);
     }
@@ -126,11 +125,13 @@ public class ValueSetResource extends AbstractTerminologyServerResource {
       @PathParam("id") @Encoded String id,
       @Parameter(description = "Value set collection. Example: CEDARVS.", required = true)
       @PathParam("vs_collection") String vsCollection) throws CedarException {
+    CedarRequestContext ctx = buildRequestContext();
+    ctx.must(ctx.user()).be(LoggedIn);
     try {
       ValueSet vs = terminologyService.findValueSetByValue(id, vsCollection, apiKey);
       return Response.ok().entity(JsonMapper.MAPPER.valueToTree(vs)).build();
     } catch (HTTPException e) {
-      return Response.status(e.getStatusCode()).build();
+      return relayedBioPortalFailure(e);
     } catch (IOException e) {
       throw new CedarAssertionException(e);
     }
@@ -159,7 +160,7 @@ public class ValueSetResource extends AbstractTerminologyServerResource {
       TreeNode tree = terminologyService.getValueSetTree(id, vsCollection, apiKey);
       return Response.ok().entity(JsonMapper.MAPPER.valueToTree(tree)).build();
     } catch (HTTPException e) {
-      return Response.status(e.getStatusCode()).build();
+      return relayedBioPortalFailure(e);
     } catch (IOException e) {
       throw new CedarAssertionException(e);
     }
@@ -183,7 +184,7 @@ public class ValueSetResource extends AbstractTerminologyServerResource {
       List<ValueSet> valueSets = new ArrayList<>(Cache.getValueSets().values());
       return Response.ok().entity(JsonMapper.MAPPER.valueToTree(valueSets)).build();
     } catch (HTTPException e) {
-      return Response.status(e.getStatusCode()).build();
+      return relayedBioPortalFailure(e);
     } catch (ExecutionException e) {
       throw new CedarAssertionException(e);
     }

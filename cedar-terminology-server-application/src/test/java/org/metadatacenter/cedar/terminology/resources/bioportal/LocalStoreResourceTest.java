@@ -12,7 +12,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.metadatacenter.cedar.terminology.TerminologyServerApplicationTest;
+import org.metadatacenter.cedar.terminology.TerminologyServerApplication;
 import org.metadatacenter.cedar.terminology.TerminologyServerConfiguration;
 import org.metadatacenter.config.CedarConfig;
 import org.metadatacenter.config.environment.CedarEnvironmentVariableProvider;
@@ -58,12 +58,12 @@ public class LocalStoreResourceTest {
 
   static {
     // Must run before the test support boots the server, which reads the port env vars.
-    // Alternate server ports, so the test instance never collides with a running dev server.
+    // OS-assigned server ports, so the test instance never collides with a running dev server.
     java.util.Map<String, String> environment =
         new java.util.HashMap<>(org.metadatacenter.config.environment.CedarEnvironmentSource.getAll());
-    environment.put("CEDAR_TERMINOLOGY_HTTP_PORT", "19004");
-    environment.put("CEDAR_TERMINOLOGY_ADMIN_PORT", "19104");
-    environment.put("CEDAR_TERMINOLOGY_STOP_PORT", "19204");
+    environment.put("CEDAR_TERMINOLOGY_HTTP_PORT", "0");
+    environment.put("CEDAR_TERMINOLOGY_ADMIN_PORT", "0");
+    environment.put("CEDAR_TERMINOLOGY_STOP_PORT", "0");
     org.metadatacenter.config.environment.CedarEnvironmentSource.setOverride(environment);
   }
 
@@ -147,7 +147,7 @@ public class LocalStoreResourceTest {
   }
 
   public static final DropwizardTestSupport<TerminologyServerConfiguration> RULE =
-      new DropwizardTestSupport<>(TerminologyServerApplicationTest.class,
+      new DropwizardTestSupport<>(TerminologyServerApplication.class,
           ResourceHelpers.resourceFilePath("test-config.yml"));
 
   private static ClientBuilder clientBuilder;
@@ -498,6 +498,103 @@ public class LocalStoreResourceTest {
     Assertions.assertEquals("agroportal", absent.get("sourceSystem").asText());
     // The rest of the results still came back: a search across sources has a partial answer.
     Assertions.assertEquals(1, json.get("results").get("class").get("totalCount").asInt());
+  }
+
+  /* ------------------------------------------------------------------------------------------------
+   * GET /search/hierarchy — where a term sits, at the same root path as POST /search.
+   *
+   * Every read here names a release, so it is answered from a snapshot. The unpinned path reads the
+   * cross-snapshot index instead, which this fixture deliberately does not build: an index would
+   * take over the searches above, which exist to prove the snapshots serve them. What the service
+   * does with an index is covered by VersionAwareSearchServiceTest in the core module.
+   * --------------------------------------------------------------------------------------------- */
+
+  private static Response hierarchyResponse(String query) {
+    String url = "http://localhost:" + RULE.getLocalPort() + "/search/hierarchy?" + query;
+    // No Authorization header: this endpoint is unauthenticated, like POST /search.
+    return clientBuilder.build().target(url).request().get();
+  }
+
+  private static JsonNode getHierarchy(String query, Status expected) {
+    Response response = hierarchyResponse(query);
+    Assertions.assertEquals(expected.getStatusCode(), response.getStatus());
+    JsonNode json = response.readEntity(JsonNode.class);
+    response.close();
+    return json;
+  }
+
+  /** A term in LOCALTEST at the named release, ready to append further parameters to. */
+  private static String termAt(String term, String versionId) {
+    return "sourceAcronym=" + ONT + "&termIri=" + URLEncoder.encode(BASE + term, StandardCharsets.UTF_8)
+        + "&versionId=" + versionId;
+  }
+
+  private static Set<String> childIris(JsonNode hierarchy) {
+    Set<String> iris = new java.util.HashSet<>();
+    if (hierarchy.hasNonNull("children")) {
+      hierarchy.get("children").forEach(child -> iris.add(child.get("termIri").asText()));
+    }
+    return iris;
+  }
+
+  @Test
+  public void versionAwareHierarchyIsServedFromTheLocalStore() {
+    JsonNode json = getHierarchy(termAt("cancer", "v2"), Status.OK);
+
+    Assertions.assertEquals(BASE + "cancer", json.get("termIri").asText());
+    Assertions.assertEquals("Cancer", json.get("termLabel").asText());
+    Assertions.assertEquals(ONT, json.get("sourceAcronym").asText());
+    // Root first, ending at the term's parent. Cancer sits directly under Disease.
+    Assertions.assertEquals(1, json.get("path").size());
+    Assertions.assertEquals(BASE + "disease", json.get("path").get(0).get("termIri").asText());
+    Assertions.assertEquals(Set.of(BASE + "melanoma"), childIris(json));
+    Assertions.assertEquals(1, json.get("childCount").asInt());
+  }
+
+  @Test
+  public void versionAwareHierarchyOmitsThePathOfARoot() {
+    JsonNode json = getHierarchy(termAt("disease", "v2"), Status.OK);
+    // Nothing sits above a root, and an empty chain is left out rather than serialized as [].
+    Assertions.assertFalse(json.hasNonNull("path"), "Disease is a root, so it should carry no path");
+  }
+
+  @Test
+  public void versionAwareHierarchyOmitsTheChildrenOfALeaf() {
+    JsonNode json = getHierarchy(termAt("melanoma", "v2"), Status.OK);
+    Assertions.assertFalse(json.hasNonNull("children"), "Melanoma is a leaf, so it should carry no children");
+    Assertions.assertEquals(0, json.get("childCount").asInt());
+  }
+
+  @Test
+  public void versionAwareHierarchyIsReadAtTheReleaseAsked() {
+    // v2 adds "infection" under "disease"; v1 predates it. A hierarchy belongs to a release, so the
+    // two reads of the same term must differ exactly by that term.
+    Assertions.assertEquals(Set.of(BASE + "cancer", BASE + "infection"),
+        childIris(getHierarchy(termAt("disease", "v2"), Status.OK)));
+    Assertions.assertEquals(Set.of(BASE + "cancer"),
+        childIris(getHierarchy(termAt("disease", "v1"), Status.OK)),
+        "v1 predates infection, so a read pinned to it must not see the term");
+  }
+
+  @Test
+  public void versionAwareHierarchyRefusesARequestNamingNoTerm() {
+    // An IRI addresses a term only within a source, so neither half is optional.
+    getHierarchy("sourceAcronym=" + ONT + "&versionId=v2", Status.BAD_REQUEST);
+    getHierarchy("termIri=" + URLEncoder.encode(BASE + "cancer", StandardCharsets.UTF_8) + "&versionId=v2",
+        Status.BAD_REQUEST);
+  }
+
+  @Test
+  public void versionAwareHierarchyDistinguishesAnUnheldReleaseFromAnAbsentTerm() {
+    // Each way of having no tree is reported as itself. Collapsing them once sent a reader looking
+    // for a missing ingest when the request had simply named a release nothing matches.
+    JsonNode unheldRelease = getHierarchy(termAt("cancer", "nosuch"), Status.NOT_FOUND);
+    Assertions.assertTrue(unheldRelease.toString().contains("nosuch"),
+        "A release nothing matches should be named: " + unheldRelease);
+
+    JsonNode absentTerm = getHierarchy(termAt("nonesuch", "v2"), Status.NOT_FOUND);
+    Assertions.assertTrue(absentTerm.toString().contains("nonesuch"),
+        "A term the release does not contain should be named: " + absentTerm);
   }
 
   @Test

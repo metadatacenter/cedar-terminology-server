@@ -2,7 +2,7 @@ openapi: 3.0.1
 info:
   description: CEDAR Terminology Server API
   title: CEDAR Terminology Server API
-  version: 2.9.3
+  version: 2.9.4
 paths:
   /bioportal/classes/provisional:
     get:
@@ -20,6 +20,12 @@ paths:
       - description: "Number of results per page. Example: 10."
         in: query
         name: pageSize
+        schema:
+          type: integer
+          format: int32
+      - description: "Alias for the page size, accepted in either spelling."
+        in: query
+        name: page_size
         schema:
           type: integer
           format: int32
@@ -104,10 +110,6 @@ paths:
           description: A paginated list of search results
         "400":
           description: Bad request
-        "401":
-          description: Unauthorized
-        "403":
-          description: Forbidden
         "404":
           description: Not found
         "500":
@@ -160,10 +162,6 @@ paths:
           description: A paginated list of search results
         "400":
           description: Bad request
-        "401":
-          description: Unauthorized
-        "403":
-          description: Forbidden
         "404":
           description: Not found
         "422":
@@ -350,6 +348,12 @@ paths:
         schema:
           type: integer
           format: int32
+      - description: "Alias for the page size, accepted in either spelling."
+        in: query
+        name: page_size
+        schema:
+          type: integer
+          format: int32
       responses:
         "200":
           description: Successful operation
@@ -390,6 +394,12 @@ paths:
       - description: "Number of results per page. Example: 10."
         in: query
         name: pageSize
+        schema:
+          type: integer
+          format: int32
+      - description: "Alias for the page size, accepted in either spelling."
+        in: query
+        name: page_size
         schema:
           type: integer
           format: int32
@@ -516,6 +526,12 @@ paths:
         schema:
           type: integer
           format: int32
+      - description: "Alias for the page size, accepted in either spelling."
+        in: query
+        name: page_size
+        schema:
+          type: integer
+          format: int32
       responses:
         "200":
           description: Successful operation
@@ -563,6 +579,12 @@ paths:
       - description: "Number of results per page. Example: 10."
         in: query
         name: pageSize
+        schema:
+          type: integer
+          format: int32
+      - description: "Alias for the page size, accepted in either spelling."
+        in: query
+        name: page_size
         schema:
           type: integer
           format: int32
@@ -932,6 +954,12 @@ paths:
         schema:
           type: integer
           format: int32
+      - description: "Alias for the page size, accepted in either spelling."
+        in: query
+        name: pageSize
+        schema:
+          type: integer
+          format: int32
       responses:
         "200":
           description: Successful operation
@@ -1043,6 +1071,12 @@ paths:
       - description: "Number of results per page. Example: 10."
         in: query
         name: page_size
+        schema:
+          type: integer
+          format: int32
+      - description: "Alias for the page size, accepted in either spelling."
+        in: query
+        name: pageSize
         schema:
           type: integer
           format: int32
@@ -1171,6 +1205,12 @@ paths:
         schema:
           type: integer
           format: int32
+      - description: "Alias for the page size, accepted in either spelling."
+        in: query
+        name: page_size
+        schema:
+          type: integer
+          format: int32
       responses:
         "200":
           description: Successful operation
@@ -1289,6 +1329,12 @@ paths:
         schema:
           type: integer
           format: int32
+      - description: "Alias for the page size, accepted in either spelling."
+        in: query
+        name: page_size
+        schema:
+          type: integer
+          format: int32
       responses:
         "200":
           description: Successful operation
@@ -1369,6 +1415,12 @@ paths:
       - description: "Number of results per page. Example: 10."
         in: query
         name: pageSize
+        schema:
+          type: integer
+          format: int32
+      - description: "Alias for the page size, accepted in either spelling."
+        in: query
+        name: page_size
         schema:
           type: integer
           format: int32
@@ -1460,6 +1512,72 @@ paths:
       summary: Find the value set that contains a particular value
       tags:
       - Value sets
+  /search:
+    post:
+      description: "Search the local terminology store at a named version or the current\
+        \ one, across the constraint types a controlled-term field can carry: ontology,\
+        \ branch, class and valueSet. Returns per-type counts and each type's first\
+        \ page, and describes every source it searched — the version that answered,\
+        \ and whether a constraint on it can be pinned."
+      operationId: versionAwareSearch
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SearchRequest"
+      responses:
+        "200":
+          description: "Results, and the sources that produced them"
+        "400":
+          description: A request the server will not answer
+        "503":
+          description: No local terminology store is configured
+      summary: Version-aware search
+      tags:
+      - Search
+  /search/hierarchy:
+    get:
+      description: "The chain of ancestors above a term, root first, and what hangs\
+        \ directly below it. A search result names a term; whether it is the right\
+        \ term is a question about its neighbourhood, and two concepts with one label\
+        \ are told apart by nothing else. With versionId, answered from that release's\
+        \ snapshot: a hierarchy belongs to a release, and a term's parent can move\
+        \ between two of them. Without it, from the cross-snapshot index, which holds\
+        \ each ontology's current version. Children are alphabetical and capped; offset\
+        \ asks for the next page of them."
+      operationId: versionAwareSearchHierarchy
+      parameters:
+      - in: query
+        name: sourceAcronym
+        schema:
+          type: string
+      - in: query
+        name: termIri
+        schema:
+          type: string
+      - in: query
+        name: versionId
+        schema:
+          type: string
+      - in: query
+        name: offset
+        schema:
+          type: integer
+          format: int32
+          default: 0
+      responses:
+        "200":
+          description: The term's ancestors and children
+        "400":
+          description: A request naming no term
+        "404":
+          description: "No such release, a release without that term, or a term the\
+            \ index does not hold"
+        "503":
+          description: No local terminology store is configured
+      summary: Where a term sits in its ontology
+      tags:
+      - Search
 components:
   schemas:
     Action:
@@ -2034,6 +2152,40 @@ components:
           $ref: "#/components/schemas/ValueConstraints"
       required:
       - valueConstraints
+    SearchRequest:
+      type: object
+      properties:
+        includeVersions:
+          type: boolean
+        lang:
+          type: string
+        ontologyOrder:
+          type: string
+        page:
+          type: integer
+          format: int32
+        pageSize:
+          type: integer
+          format: int32
+        query:
+          type: string
+        sources:
+          type: array
+          items:
+            $ref: "#/components/schemas/SourceSelector"
+        types:
+          type: array
+          items:
+            type: string
+    SourceSelector:
+      type: object
+      properties:
+        sourceAcronym:
+          type: string
+        sourceSystem:
+          type: string
+        version:
+          $ref: "#/components/schemas/VersionSelector"
     ValueConstraints:
       type: object
       properties:
@@ -2095,6 +2247,11 @@ components:
       required:
       - uri
       - vsCollection
+    VersionSelector:
+      type: object
+      properties:
+        id:
+          type: string
   securitySchemes:
     api_key:
       description: "Your CEDAR API key, using the format 'apiKey <yourApiKey>'"

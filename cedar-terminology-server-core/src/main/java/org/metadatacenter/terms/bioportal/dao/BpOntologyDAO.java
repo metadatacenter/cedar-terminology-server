@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory;
 
 import jakarta.ws.rs.core.Response.Status;
 import javax.xml.ws.http.HTTPException;
+import org.metadatacenter.terms.util.BioPortalFailure;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -45,7 +46,7 @@ public class BpOntologyDAO {
       JsonNode bpResult = MAPPER.readTree(response.getEntity().getContent());
       return MAPPER.convertValue(bpResult, BpOntology.class);
     } else {
-      throw new HTTPException(statusCode);
+      throw BioPortalFailure.relay(statusCode, url);
     }
   }
 
@@ -63,7 +64,7 @@ public class BpOntologyDAO {
       JsonNode bpResult = MAPPER.readTree(response.getEntity().getContent());
       return MAPPER.convertValue(bpResult, BpOntologySubmission.class);
     } else {
-      throw new HTTPException(statusCode);
+      throw BioPortalFailure.relay(statusCode, url);
     }
   }
 
@@ -85,7 +86,7 @@ public class BpOntologyDAO {
       }
       return ontologies;
     } else {
-      throw new HTTPException(statusCode);
+      throw BioPortalFailure.relay(statusCode, url);
     }
   }
 
@@ -103,7 +104,7 @@ public class BpOntologyDAO {
       JsonNode bpResult = MAPPER.readTree(response.getEntity().getContent());
       return MAPPER.convertValue(bpResult, BpOntologyMetrics.class);
     } else {
-      throw new HTTPException(statusCode);
+      throw BioPortalFailure.relay(statusCode, url);
     }
   }
 
@@ -125,7 +126,7 @@ public class BpOntologyDAO {
       }
       return categories;
     } else {
-      throw new HTTPException(statusCode);
+      throw BioPortalFailure.relay(statusCode, url);
     }
   }
 
@@ -147,7 +148,7 @@ public class BpOntologyDAO {
       }
       return roots;
     } else {
-      throw new HTTPException(statusCode);
+      throw BioPortalFailure.relay(statusCode, url);
     }
   }
 
@@ -169,7 +170,7 @@ public class BpOntologyDAO {
       }
       return roots;
     } else {
-      throw new HTTPException(statusCode);
+      throw BioPortalFailure.relay(statusCode, url);
     }
   }
 

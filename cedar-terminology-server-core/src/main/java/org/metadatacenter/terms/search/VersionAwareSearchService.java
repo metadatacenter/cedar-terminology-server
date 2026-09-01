@@ -405,14 +405,6 @@ public class VersionAwareSearchService {
     return 1;
   }
 
-  private static int nameRank(String acronym, String needle) {
-    String lower = acronym.toLowerCase(Locale.ROOT);
-    if (lower.equals(needle)) {
-      return 0;
-    }
-    return lower.startsWith(needle) ? 1 : 2;
-  }
-
   private List<ClassHit> classHits(String query, List<Resolved> sources, String lang) throws SQLException {
     List<ClassHit> hits = new ArrayList<>();
     for (Resolved source : sources) {

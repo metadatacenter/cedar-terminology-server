@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.metadatacenter.cedar.util.dw.AnonymousAccess;
 import org.metadatacenter.cedar.cache.Cache;
 import org.metadatacenter.cedar.terminology.resources.AbstractTerminologyServerResource;
 import org.metadatacenter.config.CedarConfig;
@@ -71,7 +72,7 @@ public class ClassResource extends AbstractTerminologyServerResource {
       OntologyClass c = terminologyService.findClass(id, ontology, apiKey, lang);
       return Response.ok().entity(JsonMapper.MAPPER.valueToTree(c)).build();
     } catch (HTTPException e) {
-      return Response.status(e.getStatusCode()).build();
+      return relayedBioPortalFailure(e);
     } catch (IOException e) {
       throw new CedarAssertionException(e);
     }
@@ -94,19 +95,18 @@ public class ClassResource extends AbstractTerminologyServerResource {
       @Parameter(description = "Page to be returned. Example: 7.")
       @QueryParam("page") @DefaultValue("1") int page,
       @Parameter(description = "Number of results per page. Example: 10.")
-      @QueryParam("pageSize") int pageSize) throws CedarException {
+      @QueryParam("pageSize") int pageSize,
+      @Parameter(description = "Alias for the page size, accepted in either spelling.")
+      @QueryParam("page_size") int pageSizeAlias) throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
-    // If pageSize not defined, set default value
-    if (pageSize == 0) {
-      pageSize = defaultPageSize;
-    }
+    pageSize = resolvePageSize(pageSize, pageSizeAlias);
     try {
       PagedResults<OntologyClass> classes =
           terminologyService.findAllClassesInOntology(ontology, page, pageSize, apiKey);
       return Response.ok().entity(JsonMapper.MAPPER.valueToTree(classes)).build();
     } catch (HTTPException e) {
-      return Response.status(e.getStatusCode()).build();
+      return relayedBioPortalFailure(e);
     } catch (IOException e) {
       throw new CedarAssertionException(e);
     }
@@ -136,7 +136,7 @@ public class ClassResource extends AbstractTerminologyServerResource {
       List<TreeNode> tree = terminologyService.getClassTree(id, ontology, isFlat, apiKey);
       return Response.ok().entity(JsonMapper.MAPPER.valueToTree(tree)).build();
     } catch (HTTPException e) {
-      return Response.status(e.getStatusCode()).build();
+      return relayedBioPortalFailure(e);
     } catch (IOException | ExecutionException e) {
       throw new CedarAssertionException(e);
     }
@@ -161,20 +161,18 @@ public class ClassResource extends AbstractTerminologyServerResource {
       @Parameter(description = "Page to be returned. Example: 7.")
       @QueryParam("page") @DefaultValue("1") int page,
       @Parameter(description = "Number of results per page. Example: 10.")
-      @QueryParam("pageSize")
-                                        int pageSize) throws CedarException {
+      @QueryParam("pageSize") int pageSize,
+      @Parameter(description = "Alias for the page size, accepted in either spelling.")
+      @QueryParam("page_size") int pageSizeAlias) throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
-    // If pageSize not defined, set default value
-    if (pageSize == 0) {
-      pageSize = defaultPageSize;
-    }
+    pageSize = resolvePageSize(pageSize, pageSizeAlias);
     try {
       PagedResults<OntologyClass> children = terminologyService.getClassChildren(id, ontology, page,
           pageSize, apiKey);
       return Response.ok().entity(JsonMapper.MAPPER.valueToTree(children)).build();
     } catch (HTTPException e) {
-      return Response.status(e.getStatusCode()).build();
+      return relayedBioPortalFailure(e);
     } catch (IOException e) {
       throw new CedarAssertionException(e);
     }
@@ -192,6 +190,7 @@ public class ClassResource extends AbstractTerminologyServerResource {
       @ApiResponse(responseCode = "404", description = "Not found"),
       @ApiResponse(responseCode = "500", description = "Internal server error")
   })
+  @AnonymousAccess
   public Response findClassDescendants(
       @Parameter(description = "Class identifier. Examples: http://data.bioontology.org/provisional_classes/" +
           "4f82a7f0-bbba-0133-b23e-005056010074 (provisional class). " +
@@ -202,19 +201,18 @@ public class ClassResource extends AbstractTerminologyServerResource {
       @Parameter(description = "Page to be returned. Example: 7.")
       @QueryParam("page") @DefaultValue("1") int page,
       @Parameter(description = "Number of results per page. Example: 10.")
-      @QueryParam("pageSize") int pageSize)
+      @QueryParam("pageSize") int pageSize,
+      @Parameter(description = "Alias for the page size, accepted in either spelling.")
+      @QueryParam("page_size") int pageSizeAlias)
       throws CedarException {
     CedarRequestContext ctx = buildAnonymousRequestContext();
-    // If pageSize not defined, set default value
-    if (pageSize == 0) {
-      pageSize = defaultPageSize;
-    }
+    pageSize = resolvePageSize(pageSize, pageSizeAlias);
     try {
       PagedResults<OntologyClass> descendants = terminologyService.getClassDescendants(id, ontology,
           page, pageSize, apiKey);
       return Response.ok().entity(JsonMapper.MAPPER.valueToTree(descendants)).build();
     } catch (HTTPException e) {
-      return Response.status(e.getStatusCode()).build();
+      return relayedBioPortalFailure(e);
     } catch (IOException e) {
       throw new CedarAssertionException(e);
     }
@@ -243,7 +241,7 @@ public class ClassResource extends AbstractTerminologyServerResource {
       List<OntologyClass> descendants = terminologyService.getClassParents(id, ontology, apiKey);
       return Response.ok().entity(JsonMapper.MAPPER.valueToTree(descendants)).build();
     } catch (HTTPException e) {
-      return Response.status(e.getStatusCode()).build();
+      return relayedBioPortalFailure(e);
     } catch (IOException e) {
       throw new CedarAssertionException(e);
     }
@@ -264,13 +262,12 @@ public class ClassResource extends AbstractTerminologyServerResource {
       @Parameter(description = "Page to be returned. Example: 7.")
       @QueryParam("page") @DefaultValue("1") int page,
       @Parameter(description = "Number of results per page. Example: 10.")
-      @QueryParam("pageSize") int pageSize) throws CedarException {
+      @QueryParam("pageSize") int pageSize,
+      @Parameter(description = "Alias for the page size, accepted in either spelling.")
+      @QueryParam("page_size") int pageSizeAlias) throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
-    // If pageSize not defined, set default value
-    if (pageSize == 0) {
-      pageSize = defaultPageSize;
-    }
+    pageSize = resolvePageSize(pageSize, pageSizeAlias);
     try {
       PagedResults<OntologyClass> classes = terminologyService.findAllProvisionalClasses(null, page, pageSize, apiKey);
       // This line ensures that @class type annotations are included for each element in the list
@@ -278,7 +275,7 @@ public class ClassResource extends AbstractTerminologyServerResource {
       //return Response.ok().entity(JsonMapper.MAPPER.readTree(writer.writeValueAsString(classes))).build();
       return Response.ok().entity(JsonMapper.MAPPER.valueToTree(classes)).build();
     } catch (HTTPException e) {
-      return Response.status(e.getStatusCode()).build();
+      return relayedBioPortalFailure(e);
     } catch (IOException e) {
       throw new CedarAssertionException(e);
     }
@@ -302,13 +299,12 @@ public class ClassResource extends AbstractTerminologyServerResource {
       @Parameter(description = "Page to be returned. Example: 7.") @QueryParam
       ("page") @DefaultValue("1") int page,
       @Parameter(description = "Number of results per page. Example: 10.")
-      @QueryParam("pageSize") int pageSize) throws CedarException {
+      @QueryParam("pageSize") int pageSize,
+      @Parameter(description = "Alias for the page size, accepted in either spelling.")
+      @QueryParam("page_size") int pageSizeAlias) throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
-    // If pageSize not defined, set default value
-    if (pageSize == 0) {
-      pageSize = defaultPageSize;
-    }
+    pageSize = resolvePageSize(pageSize, pageSizeAlias);
     try {
       PagedResults<OntologyClass> classes =
           terminologyService.findAllProvisionalClasses(ontology, page, pageSize, apiKey);
@@ -317,7 +313,7 @@ public class ClassResource extends AbstractTerminologyServerResource {
       });
       return Response.ok().entity(JsonMapper.MAPPER.readTree(writer.writeValueAsString(classes))).build();
     } catch (HTTPException e) {
-      return Response.status(e.getStatusCode()).build();
+      return relayedBioPortalFailure(e);
     } catch (IOException e) {
       throw new CedarAssertionException(e);
     }
