@@ -2,6 +2,8 @@ package org.metadatacenter.cedar.terminology.resources;
 
 import com.codahale.metrics.annotation.Timed;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.ws.rs.Consumes;
@@ -13,6 +15,7 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import org.metadatacenter.util.http.CedarError;
 import org.metadatacenter.config.CedarConfig;
 import org.metadatacenter.error.CedarErrorKey;
 import org.metadatacenter.exception.CedarException;
@@ -69,8 +72,8 @@ public class VersionAwareSearchResource extends AbstractTerminologyServerResourc
       tags = {"Search"})
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "Results, and the sources that produced them"),
-      @ApiResponse(responseCode = "400", description = "A request the server will not answer"),
-      @ApiResponse(responseCode = "503", description = "No local terminology store is configured")
+      @ApiResponse(responseCode = "400", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "A request the server will not answer"),
+      @ApiResponse(responseCode = "503", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "No local terminology store is configured")
   })
   public Response search(SearchRequest request) throws CedarException {
     // Deliberately not authenticated, matching integrated-search: both are read paths a CEDAR
@@ -116,9 +119,9 @@ public class VersionAwareSearchResource extends AbstractTerminologyServerResourc
       tags = {"Search"})
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "The term's ancestors and children"),
-      @ApiResponse(responseCode = "400", description = "A request naming no term"),
-      @ApiResponse(responseCode = "404", description = "No such release, a release without that term, or a term the index does not hold"),
-      @ApiResponse(responseCode = "503", description = "No local terminology store is configured")
+      @ApiResponse(responseCode = "400", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "A request naming no term"),
+      @ApiResponse(responseCode = "404", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "No such release, a release without that term, or a term the index does not hold"),
+      @ApiResponse(responseCode = "503", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "No local terminology store is configured")
   })
   public Response hierarchy(@QueryParam("sourceAcronym") String sourceAcronym,
                             @QueryParam("termIri") String termIri,
