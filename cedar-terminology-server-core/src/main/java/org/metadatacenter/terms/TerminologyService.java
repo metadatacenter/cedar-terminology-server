@@ -183,13 +183,21 @@ public class TerminologyService implements ITerminologyService {
     // Sort 'move' actions
     moveActions.sort(Comparator.comparing(Action::getTo));
 
-    // Now, insert the classes referenced by 'move' actions into the right position
+    // Now, insert the classes referenced by 'move' actions into the right position.
+    // The position is clamped to the list rather than the insertion being skipped: every
+    // action's term was removed above, so skipping it dropped the term from the results
+    // instead of moving it. The list a position is measured against is one page, so any
+    // 'to' at or beyond the current page size did that.
     for (Action action : moveActions) {
-      SearchResult actionSearchResult = generateSearchResultFromAction(action, results.getCollection(),
+      SearchResult actionSearchResult = resolveActionTerm(action, results.getCollection(),
           valueConstraints.getClasses(), apiKey);
-      if (action.getTo() < updatedResults.size()) {
-        updatedResults.add(action.getTo(), actionSearchResult);
+      // A term the source no longer serves costs its own action's effect and nothing more.
+      // It was not among the results, so the removal above took nothing out of the list.
+      if (actionSearchResult == null) {
+        continue;
       }
+      int position = Math.max(0, Math.min(action.getTo(), updatedResults.size()));
+      updatedResults.add(position, actionSearchResult);
     }
 
     // If needed, adjust the number of results to match the pageSize
@@ -202,18 +210,33 @@ public class TerminologyService implements ITerminologyService {
       // not perform this call. We'll just adjust the pagination information to match the current pageSize.
     }
 
-    // Update pagination information
+    // Update pagination information.
+    //
+    // Every declared delete is subtracted, because a deleted term missing from this page is
+    // usually present on another and the total covers them all. An action may also name a term
+    // the source no longer has, though, and subtracting for that one reported a total smaller
+    // than the page it arrived with — negative, once the stale actions outnumbered the results.
+    // The page returned is the floor: whatever the true total is, it is not less than this.
     int numberOfDeleteActions = actionTermUris.size() - moveActions.size();
+    int totalCount = Math.max(results.getTotalCount() - numberOfDeleteActions, updatedResults.size());
 
     results = Util.generatePaginatedResultsInvalidPagination(updatedResults, updatedResults.size(),
-        results.getTotalCount() - numberOfDeleteActions);
+        totalCount);
 
     return results;
   }
 
-  private SearchResult generateSearchResultFromAction(Action action, List<SearchResult> results,
-                                                      List<ClassValueConstraint> enumeratedClasses,
-                                                      String apiKey) throws IOException {
+  /**
+   * The term a 'move' action names, or null when the source no longer serves it.
+   *
+   * A constraint outlives the vocabulary it was written against: an ontology resubmitted
+   * under different identifiers leaves every arrangement naming a term that has gone. This
+   * used to relay BioPortal's failure for that term as the answer to the whole search, so
+   * one stale arrangement cost the field every value it offers rather than its own position.
+   */
+  private SearchResult resolveActionTerm(Action action, List<SearchResult> results,
+                                         List<ClassValueConstraint> enumeratedClasses,
+                                         String apiKey) throws IOException {
 
     // 1. Try to find the result in the search results
     for (SearchResult result : results) {
@@ -231,14 +254,41 @@ public class TerminologyService implements ITerminologyService {
           return ObjectConverter.toSearchResult(c);
         }
       }
-      OntologyClass c = findClass(action.getTermUri(), action.getSource(), apiKey);
-      return ObjectConverter.toSearchResult(c);
+      try {
+        OntologyClass c = findClass(action.getTermUri(), action.getSource(), apiKey);
+        return ObjectConverter.toSearchResult(c);
+      } catch (HTTPException e) {
+        return nullIfTermIsGone(action, e);
+      }
     } else if (action.getType().equals(BP_TYPE_VALUE)) {
-      Value v = findValue(action.getTermUri(), action.getSource(), apiKey);
-      return ObjectConverter.toSearchResult(v);
+      try {
+        Value v = findValue(action.getTermUri(), action.getSource(), apiKey);
+        return ObjectConverter.toSearchResult(v);
+      } catch (HTTPException e) {
+        return nullIfTermIsGone(action, e);
+      }
     } else {
       throw new BadRequestException("Invalid type: " + action.getType());
     }
+  }
+
+  /**
+   * Null for a term the source does not have, and BioPortal's failure otherwise.
+   *
+   * The two are different problems and only one of them is the arrangement's. A refused
+   * API key or an outage is a fault the caller has to hear about, and answering it as
+   * though a constraint had gone stale would bury it. The statuses that count as a fault
+   * are the ones the resource layer already relays as one.
+   */
+  private SearchResult nullIfTermIsGone(Action action, HTTPException failure) {
+    int status = failure.getStatusCode();
+    if (status == 401 || status == 403 || status >= 500) {
+      throw failure;
+    }
+    log.warn("The '{}' action on {} in {} names a term BioPortal answered {} for; that action is "
+        + "ignored and the rest of the search stands", action.getAction(), action.getTermUri(),
+        action.getSource(), status);
+    return null;
   }
 
   private PagedResults<SearchResult> integratedSearchSingleSource(Optional<String> q, ValueConstraints valueConstraints,
