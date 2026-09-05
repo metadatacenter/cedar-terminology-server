@@ -2,10 +2,13 @@ package org.metadatacenter.cedar.terminology.resources.bioportal;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.metadatacenter.util.http.CedarError;
 import org.metadatacenter.cedar.terminology.resources.AbstractTerminologyServerResource;
 import org.metadatacenter.config.CedarConfig;
 import org.metadatacenter.exception.CedarException;
@@ -39,11 +42,11 @@ public class RelationResource extends AbstractTerminologyServerResource {
   @Operation(summary = "Find provisional relation by id", description = "Find provisional relation by id.")
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "Successful operation"),
-      @ApiResponse(responseCode = "400", description = "Bad request"),
-      @ApiResponse(responseCode = "401", description = "Unauthorized"),
-      @ApiResponse(responseCode = "403", description = "Forbidden"),
-      @ApiResponse(responseCode = "404", description = "Not found"),
-      @ApiResponse(responseCode = "500", description = "Internal server error")
+      @ApiResponse(responseCode = "400", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Bad request"),
+      @ApiResponse(responseCode = "401", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Unauthorized"),
+      @ApiResponse(responseCode = "403", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Forbidden"),
+      @ApiResponse(responseCode = "404", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Not found"),
+      @ApiResponse(responseCode = "500", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Internal server error")
   })
   public Response findRelation(
       @Parameter(description = "Provisional relation short identifier. Examples: 720f50f0-ae6f-0133-848f-005056010073.", required = true)

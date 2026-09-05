@@ -2,10 +2,13 @@ package org.metadatacenter.cedar.terminology.resources.bioportal;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.metadatacenter.util.http.CedarError;
 import org.metadatacenter.cedar.terminology.resources.AbstractTerminologyServerResource;
 import org.metadatacenter.config.CedarConfig;
 import org.metadatacenter.exception.CedarException;
@@ -40,11 +43,11 @@ public class ValueSetCollectionResource extends AbstractTerminologyServerResourc
   @Operation(summary = "Find all value set collections", description = "Find all value set collections.")
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "Successful operation"),
-      @ApiResponse(responseCode = "400", description = "Bad request"),
-      @ApiResponse(responseCode = "401", description = "Unauthorized"),
-      @ApiResponse(responseCode = "403", description = "Forbidden"),
-      @ApiResponse(responseCode = "404", description = "Not found"),
-      @ApiResponse(responseCode = "500", description = "Internal server error")
+      @ApiResponse(responseCode = "400", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Bad request"),
+      @ApiResponse(responseCode = "401", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Unauthorized"),
+      @ApiResponse(responseCode = "403", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Forbidden"),
+      @ApiResponse(responseCode = "404", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Not found"),
+      @ApiResponse(responseCode = "500", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Internal server error")
   })
   public Response findAllVSCollections(
       @Parameter(description = "If true, additional details about each value set collection will be included in the " +
@@ -72,9 +75,9 @@ public class ValueSetCollectionResource extends AbstractTerminologyServerResourc
           + "404 when the collection is not ingested and served locally.")
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "Successful operation"),
-      @ApiResponse(responseCode = "401", description = "Unauthorized"),
-      @ApiResponse(responseCode = "404", description = "Value-set collection not resolvable locally"),
-      @ApiResponse(responseCode = "500", description = "Internal server error")
+      @ApiResponse(responseCode = "401", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Unauthorized"),
+      @ApiResponse(responseCode = "404", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Value-set collection not resolvable locally"),
+      @ApiResponse(responseCode = "500", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Internal server error")
   })
   public Response resolveCurrentVersionForValueSetCollection(
       @Parameter(description = "Value-set collection acronym. Example: CEDARVS.", required = true)

@@ -2,10 +2,13 @@ package org.metadatacenter.cedar.terminology.resources.bioportal;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.metadatacenter.util.http.CedarError;
 import org.metadatacenter.cedar.cache.Cache;
 import org.metadatacenter.cedar.terminology.resources.AbstractTerminologyServerResource;
 import org.metadatacenter.config.CedarConfig;
@@ -49,11 +52,11 @@ public class OntologyResource extends AbstractTerminologyServerResource {
   @Operation(summary = "Find all ontologies", description = "Find all ontologies.")
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "Successful operation"),
-      @ApiResponse(responseCode = "400", description = "Bad request"),
-      @ApiResponse(responseCode = "401", description = "Unauthorized"),
-      @ApiResponse(responseCode = "403", description = "Forbidden"),
-      @ApiResponse(responseCode = "404", description = "Not found"),
-      @ApiResponse(responseCode = "500", description = "Internal server error")
+      @ApiResponse(responseCode = "400", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Bad request"),
+      @ApiResponse(responseCode = "401", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Unauthorized"),
+      @ApiResponse(responseCode = "403", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Forbidden"),
+      @ApiResponse(responseCode = "404", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Not found"),
+      @ApiResponse(responseCode = "500", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Internal server error")
   })
   public Response findAllOntologies() throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
@@ -73,11 +76,11 @@ public class OntologyResource extends AbstractTerminologyServerResource {
   @Operation(summary = "Find ontology by id", description = "Find ontology by id.")
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "Successful operation"),
-      @ApiResponse(responseCode = "400", description = "Bad request"),
-      @ApiResponse(responseCode = "401", description = "Unauthorized"),
-      @ApiResponse(responseCode = "403", description = "Forbidden"),
-      @ApiResponse(responseCode = "404", description = "Not found"),
-      @ApiResponse(responseCode = "500", description = "Internal server error")
+      @ApiResponse(responseCode = "400", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Bad request"),
+      @ApiResponse(responseCode = "401", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Unauthorized"),
+      @ApiResponse(responseCode = "403", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Forbidden"),
+      @ApiResponse(responseCode = "404", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Not found"),
+      @ApiResponse(responseCode = "500", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Internal server error")
   })
   public Response findOntology(
       @Parameter(description = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
@@ -107,8 +110,8 @@ public class OntologyResource extends AbstractTerminologyServerResource {
       tags = {"Ontologies"})
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "Successful operation"),
-      @ApiResponse(responseCode = "401", description = "Unauthorized"),
-      @ApiResponse(responseCode = "500", description = "Internal server error")
+      @ApiResponse(responseCode = "401", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Unauthorized"),
+      @ApiResponse(responseCode = "500", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Internal server error")
   })
   public Response getVersions(
       @Parameter(description = "Ontology acronym. Examples: DOID, INCENTIVE.", required = true)
@@ -134,9 +137,9 @@ public class OntologyResource extends AbstractTerminologyServerResource {
       tags = {"Ontologies"})
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "Successful operation"),
-      @ApiResponse(responseCode = "401", description = "Unauthorized"),
-      @ApiResponse(responseCode = "404", description = "Ontology not served locally"),
-      @ApiResponse(responseCode = "500", description = "Internal server error")
+      @ApiResponse(responseCode = "401", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Unauthorized"),
+      @ApiResponse(responseCode = "404", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Ontology not served locally"),
+      @ApiResponse(responseCode = "500", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Internal server error")
   })
   public Response resolveCurrentVersion(
       @Parameter(description = "Ontology acronym. Examples: DOID, INCENTIVE.", required = true)
@@ -165,9 +168,9 @@ public class OntologyResource extends AbstractTerminologyServerResource {
       tags = {"Classes"})
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "Successful operation"),
-      @ApiResponse(responseCode = "401", description = "Unauthorized"),
-      @ApiResponse(responseCode = "404", description = "Ontology for the class not resolvable locally"),
-      @ApiResponse(responseCode = "500", description = "Internal server error")
+      @ApiResponse(responseCode = "401", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Unauthorized"),
+      @ApiResponse(responseCode = "404", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Ontology for the class not resolvable locally"),
+      @ApiResponse(responseCode = "500", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Internal server error")
   })
   public Response resolveCurrentVersionForClass(
       @Parameter(description = "Class/term IRI. Example: http://purl.obolibrary.org/obo/DOID_9351.",
@@ -195,9 +198,9 @@ public class OntologyResource extends AbstractTerminologyServerResource {
       tags = {"Ontologies"})
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "Successful operation"),
-      @ApiResponse(responseCode = "401", description = "Unauthorized"),
-      @ApiResponse(responseCode = "404", description = "Ontology or version not found locally"),
-      @ApiResponse(responseCode = "500", description = "Internal server error")
+      @ApiResponse(responseCode = "401", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Unauthorized"),
+      @ApiResponse(responseCode = "404", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Ontology or version not found locally"),
+      @ApiResponse(responseCode = "500", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Internal server error")
   })
   public Response diffVersions(
       @Parameter(description = "Ontology acronym.", required = true) @PathParam("id") String id,
@@ -224,11 +227,11 @@ public class OntologyResource extends AbstractTerminologyServerResource {
           "will be returned.", tags = {"Classes", "Ontologies"})
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "Successful operation"),
-      @ApiResponse(responseCode = "400", description = "Bad request"),
-      @ApiResponse(responseCode = "401", description = "Unauthorized"),
-      @ApiResponse(responseCode = "403", description = "Forbidden"),
-      @ApiResponse(responseCode = "404", description = "Not found"),
-      @ApiResponse(responseCode = "500", description = "Internal server error")
+      @ApiResponse(responseCode = "400", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Bad request"),
+      @ApiResponse(responseCode = "401", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Unauthorized"),
+      @ApiResponse(responseCode = "403", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Forbidden"),
+      @ApiResponse(responseCode = "404", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Not found"),
+      @ApiResponse(responseCode = "500", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Internal server error")
   })
   public Response findRootClasses(
       @Parameter(description = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
@@ -251,11 +254,11 @@ public class OntologyResource extends AbstractTerminologyServerResource {
   @Operation(summary = "Get root properties", description = "Get root properties in a particular ontology.", tags = {"Properties", "Ontologies"})
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "Successful operation"),
-      @ApiResponse(responseCode = "400", description = "Bad request"),
-      @ApiResponse(responseCode = "401", description = "Unauthorized"),
-      @ApiResponse(responseCode = "403", description = "Forbidden"),
-      @ApiResponse(responseCode = "404", description = "Not found"),
-      @ApiResponse(responseCode = "500", description = "Internal server error")
+      @ApiResponse(responseCode = "400", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Bad request"),
+      @ApiResponse(responseCode = "401", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Unauthorized"),
+      @ApiResponse(responseCode = "403", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Forbidden"),
+      @ApiResponse(responseCode = "404", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Not found"),
+      @ApiResponse(responseCode = "500", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Internal server error")
   })
   public Response findRootProperties(
       @Parameter(description = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)

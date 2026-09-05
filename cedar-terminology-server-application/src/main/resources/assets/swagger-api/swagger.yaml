@@ -2,7 +2,7 @@ openapi: 3.0.1
 info:
   description: CEDAR Terminology Server API
   title: CEDAR Terminology Server API
-  version: 2.9.7
+  version: 2.9.8
 paths:
   /bioportal/classes/provisional:
     get:
@@ -33,14 +33,34 @@ paths:
         "200":
           description: Successful operation
         "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Bad request
         "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Unauthorized
         "403":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Forbidden
         "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Not found
         "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Internal server error
       security:
       - api_key: []
@@ -66,10 +86,22 @@ paths:
         "200":
           description: Successful operation
         "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Unauthorized
         "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Ontology for the class not resolvable locally
         "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Internal server error
       security:
       - api_key: []
@@ -109,10 +141,22 @@ paths:
                 $ref: "#/components/schemas/IntegratedRetrieveResults"
           description: A paginated list of search results
         "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Bad request
         "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Not found
         "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Internal server error
       security:
       - api_key: []
@@ -161,12 +205,24 @@ paths:
                 $ref: "#/components/schemas/IntegratedSearchResults"
           description: A paginated list of search results
         "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Bad request
         "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Not found
         "422":
           description: A constraint pins a vocabulary version that cannot be served
         "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Internal server error
       security:
       - api_key: []
@@ -183,14 +239,34 @@ paths:
         "200":
           description: Successful operation
         "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Bad request
         "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Unauthorized
         "403":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Forbidden
         "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Not found
         "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Internal server error
       security:
       - api_key: []
@@ -212,14 +288,34 @@ paths:
         "200":
           description: Successful operation
         "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Bad request
         "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Unauthorized
         "403":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Forbidden
         "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Not found
         "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Internal server error
       security:
       - api_key: []
@@ -245,8 +341,16 @@ paths:
         "200":
           description: Successful operation
         "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Unauthorized
         "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Internal server error
       security:
       - api_key: []
@@ -273,10 +377,22 @@ paths:
         "200":
           description: Successful operation
         "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Unauthorized
         "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Ontology not served locally
         "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Internal server error
       security:
       - api_key: []
@@ -313,10 +429,22 @@ paths:
         "200":
           description: Successful operation
         "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Unauthorized
         "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Ontology or version not found locally
         "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Internal server error
       security:
       - api_key: []
@@ -358,14 +486,34 @@ paths:
         "200":
           description: Successful operation
         "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Bad request
         "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Unauthorized
         "403":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Forbidden
         "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Not found
         "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Internal server error
       security:
       - api_key: []
@@ -407,14 +555,34 @@ paths:
         "200":
           description: Successful operation
         "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Bad request
         "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Unauthorized
         "403":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Forbidden
         "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Not found
         "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Internal server error
       security:
       - api_key: []
@@ -437,14 +605,34 @@ paths:
         "200":
           description: Successful operation
         "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Bad request
         "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Unauthorized
         "403":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Forbidden
         "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Not found
         "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Internal server error
       security:
       - api_key: []
@@ -482,14 +670,34 @@ paths:
         "200":
           description: Successful operation
         "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Bad request
         "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Unauthorized
         "403":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Forbidden
         "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Not found
         "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Internal server error
       security:
       - api_key: []
@@ -536,14 +744,34 @@ paths:
         "200":
           description: Successful operation
         "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Bad request
         "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Unauthorized
         "403":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Forbidden
         "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Not found
         "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Internal server error
       security:
       - api_key: []
@@ -592,14 +820,34 @@ paths:
         "200":
           description: Successful operation
         "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Bad request
         "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Unauthorized
         "403":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Forbidden
         "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Not found
         "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Internal server error
       security:
       - api_key: []
@@ -627,14 +875,34 @@ paths:
         "200":
           description: Successful operation
         "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Bad request
         "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Unauthorized
         "403":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Forbidden
         "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Not found
         "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Internal server error
       security:
       - api_key: []
@@ -662,14 +930,34 @@ paths:
         "200":
           description: Successful operation
         "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Bad request
         "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Unauthorized
         "403":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Forbidden
         "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Not found
         "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Internal server error
       security:
       - api_key: []
@@ -691,14 +979,34 @@ paths:
         "200":
           description: Successful operation
         "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Bad request
         "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Unauthorized
         "403":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Forbidden
         "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Not found
         "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Internal server error
       security:
       - api_key: []
@@ -720,14 +1028,34 @@ paths:
         "200":
           description: Successful operation
         "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Bad request
         "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Unauthorized
         "403":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Forbidden
         "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Not found
         "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Internal server error
       security:
       - api_key: []
@@ -756,14 +1084,34 @@ paths:
         "200":
           description: Successful operation
         "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Bad request
         "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Unauthorized
         "403":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Forbidden
         "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Not found
         "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Internal server error
       security:
       - api_key: []
@@ -791,14 +1139,34 @@ paths:
         "200":
           description: Successful operation
         "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Bad request
         "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Unauthorized
         "403":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Forbidden
         "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Not found
         "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Internal server error
       security:
       - api_key: []
@@ -826,14 +1194,34 @@ paths:
         "200":
           description: Successful operation
         "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Bad request
         "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Unauthorized
         "403":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Forbidden
         "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Not found
         "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Internal server error
       security:
       - api_key: []
@@ -861,14 +1249,34 @@ paths:
         "200":
           description: Successful operation
         "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Bad request
         "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Unauthorized
         "403":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Forbidden
         "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Not found
         "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Internal server error
       security:
       - api_key: []
@@ -896,14 +1304,34 @@ paths:
         "200":
           description: Successful operation
         "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Bad request
         "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Unauthorized
         "403":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Forbidden
         "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Not found
         "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Internal server error
       security:
       - api_key: []
@@ -964,14 +1392,34 @@ paths:
         "200":
           description: Successful operation
         "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Bad request
         "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Unauthorized
         "403":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Forbidden
         "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Not found
         "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Internal server error
       security:
       - api_key: []
@@ -994,14 +1442,34 @@ paths:
         "200":
           description: Successful operation
         "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Bad request
         "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Unauthorized
         "403":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Forbidden
         "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Not found
         "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Internal server error
       security:
       - api_key: []
@@ -1084,14 +1552,34 @@ paths:
         "200":
           description: Successful operation
         "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Bad request
         "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Unauthorized
         "403":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Forbidden
         "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Not found
         "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Internal server error
       security:
       - api_key: []
@@ -1108,14 +1596,34 @@ paths:
         "200":
           description: Successful operation
         "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Bad request
         "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Unauthorized
         "403":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Forbidden
         "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Not found
         "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Internal server error
       security:
       - api_key: []
@@ -1138,14 +1646,34 @@ paths:
         "200":
           description: Successful operation
         "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Bad request
         "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Unauthorized
         "403":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Forbidden
         "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Not found
         "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Internal server error
       security:
       - api_key: []
@@ -1171,10 +1699,22 @@ paths:
         "200":
           description: Successful operation
         "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Unauthorized
         "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Value-set collection not resolvable locally
         "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Internal server error
       security:
       - api_key: []
@@ -1215,14 +1755,34 @@ paths:
         "200":
           description: Successful operation
         "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Bad request
         "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Unauthorized
         "403":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Forbidden
         "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Not found
         "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Internal server error
       security:
       - api_key: []
@@ -1250,14 +1810,34 @@ paths:
         "200":
           description: Successful operation
         "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Bad request
         "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Unauthorized
         "403":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Forbidden
         "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Not found
         "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Internal server error
       security:
       - api_key: []
@@ -1285,14 +1865,34 @@ paths:
         "200":
           description: Successful operation
         "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Bad request
         "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Unauthorized
         "403":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Forbidden
         "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Not found
         "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Internal server error
       security:
       - api_key: []
@@ -1339,14 +1939,34 @@ paths:
         "200":
           description: Successful operation
         "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Bad request
         "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Unauthorized
         "403":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Forbidden
         "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Not found
         "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Internal server error
       security:
       - api_key: []
@@ -1374,14 +1994,34 @@ paths:
         "200":
           description: Successful operation
         "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Bad request
         "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Unauthorized
         "403":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Forbidden
         "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Not found
         "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Internal server error
       security:
       - api_key: []
@@ -1428,14 +2068,34 @@ paths:
         "200":
           description: Successful operation
         "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Bad request
         "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Unauthorized
         "403":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Forbidden
         "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Not found
         "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Internal server error
       security:
       - api_key: []
@@ -1463,14 +2123,34 @@ paths:
         "200":
           description: Successful operation
         "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Bad request
         "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Unauthorized
         "403":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Forbidden
         "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Not found
         "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Internal server error
       security:
       - api_key: []
@@ -1498,14 +2178,34 @@ paths:
         "200":
           description: Successful operation
         "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Bad request
         "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Unauthorized
         "403":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Forbidden
         "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Not found
         "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: Internal server error
       security:
       - api_key: []
@@ -1529,8 +2229,16 @@ paths:
         "200":
           description: "Results, and the sources that produced them"
         "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: A request the server will not answer
         "503":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: No local terminology store is configured
       summary: Version-aware search
       tags:
@@ -1569,11 +2277,23 @@ paths:
         "200":
           description: The term's ancestors and children
         "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: A request naming no term
         "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: "No such release, a release without that term, or a term the\
             \ index does not hold"
         "503":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
           description: No local terminology store is configured
       summary: Where a term sits in its ontology
       tags:
@@ -1637,6 +2357,244 @@ components:
       required:
       - acronym
       - uri
+    CedarError:
+      type: object
+      additionalProperties: true
+      description: A CEDAR error response. Diagnostic fields are populated only when
+        they are relevant to the failure.
+      properties:
+        entities:
+          type: object
+          additionalProperties:
+            type: object
+            description: Named domain entities associated with exception-mapped errors.
+            nullable: true
+          description: Named domain entities associated with exception-mapped errors.
+          nullable: true
+        errorId:
+          type: string
+          format: uuid
+          description: Correlation identifier for an internal error recorded in server
+            logs.
+          nullable: true
+        errorKey:
+          type: string
+          description: Stable machine-readable error identifier.
+          enum:
+          - templateElementNotCreated
+          - templateElementNotFound
+          - templateElementNotDeleted
+          - templateElementNotUpdated
+          - templateElementsNotListed
+          - templateFieldNotCreated
+          - templateFieldNotFound
+          - templateFieldNotDeleted
+          - templateFieldNotUpdated
+          - templateFieldsNotListed
+          - templateNotCreated
+          - templateNotFound
+          - templateNotDeleted
+          - templateNotUpdated
+          - templatesNotListed
+          - templateInstanceNotCreated
+          - templateInstanceNotFound
+          - templateInstanceNotDeleted
+          - templateInstanceNotUpdated
+          - templateInstancesNotListed
+          - noReadAccessToResource
+          - noWriteAccessToResource
+          - noReadAccessToFolder
+          - noWriteAccessToFolder
+          - noReadAccessToTemplate
+          - noWriteAccessToTemplate
+          - noReadAccessToTemplateElement
+          - noWriteAccessToTemplateElement
+          - noReadAccessToTemplateField
+          - noWriteAccessToTemplateField
+          - noReadAccessToTemplateInstance
+          - noWriteAccessToTemplateInstance
+          - noReadAccessToArtifact
+          - noWriteAccessToArtifact
+          - noWriteAccessToCategory
+          - folderNotFound
+          - artifactNotFound
+          - artifactPreconditionRequired
+          - artifactHasMovedOn
+          - verbatimWriteRefused
+          - nodeNotFound
+          - unknownResourceType
+          - missingParameter
+          - invalidInput
+          - sourceFolderNotFound
+          - sourceResourceNotFound
+          - targetFolderNotFound
+          - nodeNotMoved
+          - groupNotFound
+          - userNotFound
+          - uniqueConstraintCollision
+          - invalidData
+          - notAuthorized
+          - permissionMissing
+          - tokenInvalid
+          - userInfoLoadByTokenFailed
+          - userInfoLoadByApiKeyFailed
+          - cedarUserNotFound
+          - authorizationNotFound
+          - permissionNotOwned
+          - authorizationTypeUnknown
+          - apiKeyNotFound
+          - tokenMissing
+          - tokenExpired
+          - parentFolderNotSpecified
+          - parentFolderSpecifiedTwice
+          - pathNotNormalized
+          - parentFolderNotFound
+          - updateInvalidFolderName
+          - createInvalidFolderName
+          - nodeAlreadyPresent
+          - folderNotCreated
+          - missingNameAndDescription
+          - missingData
+          - folderNotDeleted
+          - artifactNotDeleted
+          - resourceNotCreated
+          - invalidResourceType
+          - invalidArtifactType
+          - readOtherProfileForbidden
+          - updateOtherProfileForbidden
+          - folderCanNotBeDeleted
+          - folderCanNotBeChanged
+          - groupAlreadyPresent
+          - groupCanBeModifiedOnlyByGroupAdmin
+          - groupCanBeDeletedOnlyByGroupAdmin
+          - groupUsersNotUpdated
+          - specialGroupCanNotBeDeleted
+          - folderPermissionsCanNotBeChanged
+          - unknownInstanceOutputFormat
+          - folderCopyNotAllowed
+          - methodNotImplemented
+          - upstreamServerError
+          - nothingToDo
+          - parentCategoryNotFound
+          - categoryAlreadyPresent
+          - categoryNotFound
+          - categoryCanNotBeDeleted
+          - rootCategoryCanNotBeDeleted
+          - unableToAttachCategory
+          - unableToDetachCategory
+          - noCategoriesWereAttached
+          - malformedJsonRequestBody
+          - malformedSearchTerm
+          - publishedArtifactCanNotBeChanged
+          - publishedArtifactCanNotBeDeleted
+          - versioningOnlyOnLatest
+          - versioningOnlyByOwner
+          - nonVersionedArtifactType
+          - createDraftOnlyFromPublished
+          - publishOnlyDraft
+          - draftNotCreated
+          - contentNotValid
+          - doiNotSupportedByResourceType
+          - doiCanNotBeSetForEmptyAtId
+          - doiCanNotBeAltered
+          - doiCanNotBeSet
+          - doiAlreadyExists
+          - dataCiteDOIDisabled
+          - resourceNotFound
+          - internalError
+          nullable: true
+        errorMessage:
+          type: string
+          description: Alias of message retained for compatibility.
+          nullable: true
+        errorReasonKey:
+          type: string
+          description: More specific machine-readable reason for the error.
+          enum:
+          - nonEmptyFolder
+          - nonEmptyCategory
+          - userHomeFolder
+          - systemFolder
+          - templateReferencedInInstances
+          - validationError
+          - continuationExpired
+          nullable: true
+        errorType:
+          type: string
+          description: Broad category of the error.
+          enum:
+          - notFound
+          - invalidArgument
+          - authorization
+          - permission
+          - server
+          - validationError
+          nullable: true
+        message:
+          type: string
+          description: Human-readable error message.
+          nullable: true
+        objects:
+          type: object
+          additionalProperties:
+            type: object
+            description: Named structured values associated with the error.
+          description: Named structured values associated with the error.
+        operation:
+          type: object
+          additionalProperties:
+            type: object
+            description: Operation that failed. Its fields depend on the operation
+              type.
+            nullable: true
+          description: Operation that failed. Its fields depend on the operation type.
+          nullable: true
+        parameters:
+          type: object
+          additionalProperties:
+            type: object
+            description: Named scalar values associated with the error.
+          description: Named scalar values associated with the error.
+        status:
+          type: string
+          description: Symbolic HTTP response status.
+          enum:
+          - BAD_REQUEST
+          - UNAUTHORIZED
+          - FORBIDDEN
+          - NOT_FOUND
+          - METHOD_NOT_ALLOWED
+          - NOT_ACCEPTABLE
+          - CONFLICT
+          - PRECONDITION_FAILED
+          - UNSUPPORTED_MEDIA_TYPE
+          - UNPROCESSABLE_ENTITY
+          - PRECONDITION_REQUIRED
+          - INTERNAL_SERVER_ERROR
+          - NOT_IMPLEMENTED
+          - BAD_GATEWAY
+          - SERVICE_UNAVAILABLE
+          - HTTP_VERSION_NOT_SUPPORTED
+        statusCode:
+          type: integer
+          format: int32
+          description: Numeric HTTP response status.
+          maximum: 599
+          minimum: 400
+        suggestedAction:
+          type: string
+          description: Recovery action suggested to the client.
+          enum:
+          - none
+          - requestRole
+          - logout
+          - logoutImmediately
+          - provideAuthorizationHeader
+          - refreshToken
+          nullable: true
+      required:
+      - status
+      - statusCode
     ClassValueConstraint:
       type: object
       properties:
