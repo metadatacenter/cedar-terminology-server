@@ -1,10 +1,10 @@
 server:
   applicationConnectors:
   - type: http
-    port: 3333
+    port: 0
   adminConnectors:
   - type: http
-    port: 3433
+    port: 0
 logging:
   level: INFO
   loggers:
