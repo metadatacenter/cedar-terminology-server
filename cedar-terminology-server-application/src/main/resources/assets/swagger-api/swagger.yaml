@@ -2,7 +2,7 @@ openapi: 3.0.1
 info:
   description: CEDAR Terminology Server API
   title: CEDAR Terminology Server API
-  version: 2.9.8
+  version: 2.9.9
 paths:
   /bioportal/classes/provisional:
     get:
@@ -2415,6 +2415,7 @@ components:
           - noWriteAccessToTemplateInstance
           - noReadAccessToArtifact
           - noWriteAccessToArtifact
+          - noReadAccessToCategory
           - noWriteAccessToCategory
           - folderNotFound
           - artifactNotFound
@@ -2467,6 +2468,7 @@ components:
           - groupAlreadyPresent
           - groupCanBeModifiedOnlyByGroupAdmin
           - groupCanBeDeletedOnlyByGroupAdmin
+          - groupRequiresAdministrator
           - groupUsersNotUpdated
           - specialGroupCanNotBeDeleted
           - folderPermissionsCanNotBeChanged

@@ -46,6 +46,10 @@ import static org.metadatacenter.constant.HttpConstants.HTTP_HEADER_AUTHORIZATIO
 public abstract class AbstractTerminologyServerResourceTest {
 
   static {
+    redirectEnvironment();
+  }
+
+  private static void redirectEnvironment() {
     // Must run before the test support boots the server, which reads the port env vars.
     // OS-assigned server ports, so the test instance never collides with a running dev server.
     java.util.Map<String, String> environment =
@@ -101,7 +105,8 @@ public abstract class AbstractTerminologyServerResourceTest {
    */
   @BeforeAll
   public static void oneTimeSetUpAbstract() throws Exception {
-
+    // Concrete subclasses share this abstract harness, so restore its redirect for each class.
+    redirectEnvironment();
     RULE.before();
 
     SystemComponent systemComponent = SystemComponent.SERVER_TERMINOLOGY;
