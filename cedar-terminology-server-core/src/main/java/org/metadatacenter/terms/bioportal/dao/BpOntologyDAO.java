@@ -19,6 +19,7 @@ import java.util.List;
 
 import static org.metadatacenter.cedar.terminology.util.Constants.*;
 import static org.metadatacenter.util.json.JsonMapper.MAPPER;
+import static org.metadatacenter.util.json.JsonMapper.TOLERANT_MAPPER;
 
 public class BpOntologyDAO {
 
@@ -44,7 +45,7 @@ public class BpOntologyDAO {
     // The ontology was successfully retrieved
     if (statusCode == Status.OK.getStatusCode()) {
       JsonNode bpResult = MAPPER.readTree(response.getEntity().getContent());
-      return MAPPER.convertValue(bpResult, BpOntology.class);
+      return TOLERANT_MAPPER.convertValue(bpResult, BpOntology.class);
     } else {
       throw BioPortalFailure.relay(statusCode, url);
     }
@@ -62,7 +63,7 @@ public class BpOntologyDAO {
     // The ontology was successfully retrieved
     if (statusCode == Status.OK.getStatusCode()) {
       JsonNode bpResult = MAPPER.readTree(response.getEntity().getContent());
-      return MAPPER.convertValue(bpResult, BpOntologySubmission.class);
+      return TOLERANT_MAPPER.convertValue(bpResult, BpOntologySubmission.class);
     } else {
       throw BioPortalFailure.relay(statusCode, url);
     }
@@ -82,7 +83,7 @@ public class BpOntologyDAO {
       JsonNode bpResult = MAPPER.readTree(response.getEntity().getContent());
       List<BpOntology> ontologies = new ArrayList<>();
       for (JsonNode n : bpResult) {
-        ontologies.add(MAPPER.convertValue(n, BpOntology.class));
+        ontologies.add(TOLERANT_MAPPER.convertValue(n, BpOntology.class));
       }
       return ontologies;
     } else {
@@ -102,7 +103,7 @@ public class BpOntologyDAO {
     // The ontology was successfully retrieved
     if (statusCode == Status.OK.getStatusCode()) {
       JsonNode bpResult = MAPPER.readTree(response.getEntity().getContent());
-      return MAPPER.convertValue(bpResult, BpOntologyMetrics.class);
+      return TOLERANT_MAPPER.convertValue(bpResult, BpOntologyMetrics.class);
     } else {
       throw BioPortalFailure.relay(statusCode, url);
     }
@@ -122,7 +123,7 @@ public class BpOntologyDAO {
       JsonNode bpResult = MAPPER.readTree(response.getEntity().getContent());
       List<BpOntologyCategory> categories = new ArrayList<>();
       for (JsonNode n : bpResult) {
-        categories.add(MAPPER.convertValue(n, BpOntologyCategory.class));
+        categories.add(TOLERANT_MAPPER.convertValue(n, BpOntologyCategory.class));
       }
       return categories;
     } else {
@@ -144,7 +145,7 @@ public class BpOntologyDAO {
       JsonNode bpResult = MAPPER.readTree(response.getEntity().getContent());
       List<BpClass> roots = new ArrayList<>();
       for (JsonNode n : bpResult) {
-        roots.add(MAPPER.convertValue(n, BpClass.class));
+        roots.add(TOLERANT_MAPPER.convertValue(n, BpClass.class));
       }
       return roots;
     } else {
@@ -166,7 +167,7 @@ public class BpOntologyDAO {
       JsonNode bpResult = MAPPER.readTree(response.getEntity().getContent());
       List<BpProperty> roots = new ArrayList<>();
       for (JsonNode n : bpResult) {
-        roots.add(MAPPER.convertValue(n, BpProperty.class));
+        roots.add(TOLERANT_MAPPER.convertValue(n, BpProperty.class));
       }
       return roots;
     } else {
