@@ -3,6 +3,7 @@ package org.metadatacenter.terms.search;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.JsonNode;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.util.List;
 
@@ -76,6 +77,9 @@ public record SearchRequest(
    * one delegating creator because the alternative, two creators on one type, is where Jackson
    * starts choosing for you.
    */
+  @Schema(description = "A pinned version, written either as this object carrying the content hash or as "
+      + "the string \"latest\", which is how the constraint spec spells an unpinned entry. Null, an empty "
+      + "id and \"latest\" all mean the current version.")
   public record VersionSelector(String id) {
 
     @JsonCreator

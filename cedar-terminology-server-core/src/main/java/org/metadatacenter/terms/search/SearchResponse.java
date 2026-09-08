@@ -1,6 +1,8 @@
 package org.metadatacenter.terms.search;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.util.List;
 import java.util.Map;
@@ -95,6 +97,13 @@ public record SearchResponse(String query, List<SourceBlock> sources, Map<String
       Boolean distinctLabelCountCapped,
       int page,
       int pageSize,
+      /**
+       * The page itself. Which hit shape it holds follows from the type this block answers for, so
+       * the schema names all four rather than the interface they share: {@link Hit} declares only
+       * the three fields every hit carries, and a client model built from it would drop the rest.
+       */
+      @ArraySchema(schema = @Schema(oneOf = {OntologyHit.class, BranchHit.class, ClassHit.class,
+          ValueSetHit.class}))
       List<? extends Hit> collection) {
 
     public TypeResults(int totalCount, boolean countCapped, int page, int pageSize,

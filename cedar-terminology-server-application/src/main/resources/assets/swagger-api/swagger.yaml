@@ -31,7 +31,11 @@ paths:
           format: int32
       responses:
         "200":
-          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PagedOntologyClasses"
+          description: One page of provisional classes
         "400":
           content:
             application/json:
@@ -84,7 +88,11 @@ paths:
           type: string
       responses:
         "200":
-          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionTriple"
+          description: The version triple of the ontology that owns the class
         "401":
           content:
             application/json:
@@ -217,6 +225,10 @@ paths:
                 $ref: "#/components/schemas/CedarError"
           description: Not found
         "422":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PinnedVersionUnavailableError"
           description: A constraint pins a vocabulary version that cannot be served
         "500":
           content:
@@ -237,7 +249,13 @@ paths:
       operationId: findAllOntologies
       responses:
         "200":
-          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Ontology"
+          description: Every ontology the server serves
         "400":
           content:
             application/json:
@@ -286,7 +304,11 @@ paths:
           type: string
       responses:
         "200":
-          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Ontology"
+          description: The ontology
         "400":
           content:
             application/json:
@@ -339,7 +361,13 @@ paths:
           type: string
       responses:
         "200":
-          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OntologyVersion"
+          description: "The versions held locally, newest state marked latest"
         "401":
           content:
             application/json:
@@ -375,7 +403,11 @@ paths:
           type: string
       responses:
         "200":
-          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionTriple"
+          description: The current version triple
         "401":
           content:
             application/json:
@@ -427,7 +459,11 @@ paths:
           type: string
       responses:
         "200":
-          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionDiff"
+          description: The vocabulary diff between the two versions
         "401":
           content:
             application/json:
@@ -484,7 +520,11 @@ paths:
           format: int32
       responses:
         "200":
-          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PagedOntologyClasses"
+          description: One page of the ontology's classes
         "400":
           content:
             application/json:
@@ -553,7 +593,11 @@ paths:
           format: int32
       responses:
         "200":
-          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PagedOntologyClasses"
+          description: One page of the ontology's provisional classes
         "400":
           content:
             application/json:
@@ -603,7 +647,13 @@ paths:
           type: string
       responses:
         "200":
-          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OntologyClass"
+          description: The ontology's root classes
         "400":
           content:
             application/json:
@@ -668,7 +718,11 @@ paths:
           type: string
       responses:
         "200":
-          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OntologyClass"
+          description: The class
         "400":
           content:
             application/json:
@@ -742,7 +796,11 @@ paths:
           format: int32
       responses:
         "200":
-          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PagedOntologyClasses"
+          description: One page of the class's children
         "400":
           content:
             application/json:
@@ -818,7 +876,11 @@ paths:
           format: int32
       responses:
         "200":
-          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PagedOntologyClasses"
+          description: One page of the class's descendants
         "400":
           content:
             application/json:
@@ -873,7 +935,13 @@ paths:
           type: string
       responses:
         "200":
-          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OntologyClass"
+          description: The class's parents
         "400":
           content:
             application/json:
@@ -928,7 +996,13 @@ paths:
           type: string
       responses:
         "200":
-          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TreeNode"
+          description: The paths from the ontology's roots down to the class
         "400":
           content:
             application/json:
@@ -977,7 +1051,13 @@ paths:
           type: string
       responses:
         "200":
-          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OntologyProperty"
+          description: Every property in the ontology
         "400":
           content:
             application/json:
@@ -1026,7 +1106,13 @@ paths:
           type: string
       responses:
         "200":
-          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OntologyProperty"
+          description: The ontology's root properties
         "400":
           content:
             application/json:
@@ -1082,7 +1168,11 @@ paths:
           type: string
       responses:
         "200":
-          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OntologyProperty"
+          description: The property
         "400":
           content:
             application/json:
@@ -1137,7 +1227,13 @@ paths:
           type: string
       responses:
         "200":
-          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OntologyProperty"
+          description: The property's children
         "400":
           content:
             application/json:
@@ -1192,7 +1288,13 @@ paths:
           type: string
       responses:
         "200":
-          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OntologyProperty"
+          description: The property's descendants
         "400":
           content:
             application/json:
@@ -1247,7 +1349,13 @@ paths:
           type: string
       responses:
         "200":
-          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OntologyProperty"
+          description: The property's parents
         "400":
           content:
             application/json:
@@ -1302,7 +1410,13 @@ paths:
           type: string
       responses:
         "200":
-          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TreeNode"
+          description: The paths from the ontology's roots down to the property
         "400":
           content:
             application/json:
@@ -1390,7 +1504,11 @@ paths:
           format: int32
       responses:
         "200":
-          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PagedSearchResults"
+          description: One page of matching properties
         "400":
           content:
             application/json:
@@ -1440,7 +1558,11 @@ paths:
           type: string
       responses:
         "200":
-          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Relation"
+          description: The provisional relation
         "400":
           content:
             application/json:
@@ -1550,7 +1672,11 @@ paths:
           format: int32
       responses:
         "200":
-          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PagedSearchResults"
+          description: "One page of matching classes, value sets and values"
         "400":
           content:
             application/json:
@@ -1594,7 +1720,13 @@ paths:
       operationId: findAllValueSets
       responses:
         "200":
-          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ValueSet"
+          description: Every value set the server serves
         "400":
           content:
             application/json:
@@ -1644,7 +1776,14 @@ paths:
           default: false
       responses:
         "200":
-          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ValueSetCollection"
+          description: "Every value set collection, with details only when they were\
+            \ asked for"
         "400":
           content:
             application/json:
@@ -1697,7 +1836,11 @@ paths:
           type: string
       responses:
         "200":
-          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionTriple"
+          description: The collection's current version triple
         "401":
           content:
             application/json:
@@ -1753,7 +1896,11 @@ paths:
           format: int32
       responses:
         "200":
-          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PagedValueSets"
+          description: One page of the collection's value sets
         "400":
           content:
             application/json:
@@ -1808,7 +1955,11 @@ paths:
           type: string
       responses:
         "200":
-          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValueSet"
+          description: The value set
         "400":
           content:
             application/json:
@@ -1863,7 +2014,11 @@ paths:
           type: string
       responses:
         "200":
-          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TreeNode"
+          description: The value set and its values
         "400":
           content:
             application/json:
@@ -1937,7 +2092,11 @@ paths:
           format: int32
       responses:
         "200":
-          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PagedValues"
+          description: One page of the value set's values
         "400":
           content:
             application/json:
@@ -1992,7 +2151,11 @@ paths:
           type: string
       responses:
         "200":
-          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Value"
+          description: The value
         "400":
           content:
             application/json:
@@ -2066,7 +2229,12 @@ paths:
           format: int32
       responses:
         "200":
-          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PagedValues"
+          description: One page of the values in the value set the given value belongs
+            to
         "400":
           content:
             application/json:
@@ -2121,7 +2289,11 @@ paths:
           type: string
       responses:
         "200":
-          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TreeNode"
+          description: The value and the values around it in its value set
         "400":
           content:
             application/json:
@@ -2176,7 +2348,11 @@ paths:
           type: string
       responses:
         "200":
-          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValueSet"
+          description: The value set that contains the value
         "400":
           content:
             application/json:
@@ -2225,8 +2401,17 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/SearchRequest"
+        description: "The query, the constraint types to answer, and the sources to\
+          \ search. A source names the version to search it at, or none to search\
+          \ the current one. Keys are the versioned value-constraint specification's,\
+          \ so a result can become a constraint entry without translation."
+        required: true
       responses:
         "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SearchResponse"
           description: "Results, and the sources that produced them"
         "400":
           content:
@@ -2275,6 +2460,10 @@ paths:
           default: 0
       responses:
         "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HierarchyResponse"
           description: The term's ancestors and children
         "400":
           content:
@@ -2330,6 +2519,42 @@ components:
       - source
       - termUri
       - type
+    BranchHit:
+      type: object
+      properties:
+        descendantCount:
+          type: integer
+          format: int32
+        examples:
+          type: array
+          items:
+            $ref: "#/components/schemas/TermRef"
+        matchType:
+          type: string
+        matchedLabels:
+          type: array
+          items:
+            $ref: "#/components/schemas/MatchedLabel"
+        names:
+          type: array
+          items:
+            $ref: "#/components/schemas/MatchedLabel"
+        obsolete:
+          type: boolean
+        path:
+          type: array
+          items:
+            $ref: "#/components/schemas/TermRef"
+        sourceAcronym:
+          type: string
+        sourceSystem:
+          type: string
+        termBaseIri:
+          type: string
+        termBaseLabel:
+          type: string
+        type:
+          type: string
     BranchValueConstraint:
       type: object
       properties:
@@ -2468,6 +2693,7 @@ components:
           - groupAlreadyPresent
           - groupCanBeModifiedOnlyByGroupAdmin
           - groupCanBeDeletedOnlyByGroupAdmin
+          - groupMembersCanBeReadOnlyByGroupAdmin
           - groupRequiresAdministrator
           - groupUsersNotUpdated
           - specialGroupCanNotBeDeleted
@@ -2597,6 +2823,60 @@ components:
       required:
       - status
       - statusCode
+    Child:
+      type: object
+      properties:
+        definition:
+          type: string
+        descendantCount:
+          type: integer
+          format: int32
+        hasChildren:
+          type: boolean
+        termIri:
+          type: string
+        termLabel:
+          type: string
+    ClassHit:
+      type: object
+      properties:
+        definition:
+          type: string
+        descendantCount:
+          type: integer
+          format: int32
+        hasChildren:
+          type: boolean
+        matchType:
+          type: string
+        matchedLabels:
+          type: array
+          items:
+            $ref: "#/components/schemas/MatchedLabel"
+        names:
+          type: array
+          items:
+            $ref: "#/components/schemas/MatchedLabel"
+        obsolete:
+          type: boolean
+        path:
+          type: array
+          items:
+            $ref: "#/components/schemas/TermRef"
+        replacedBy:
+          $ref: "#/components/schemas/TermRef"
+        sourceAcronym:
+          type: string
+        sourceSystem:
+          type: string
+        termIri:
+          type: string
+        termLabel:
+          type: string
+        termType:
+          type: string
+        type:
+          type: string
     ClassValueConstraint:
       type: object
       properties:
@@ -2629,6 +2909,61 @@ components:
       - source
       - type
       - uri
+    ControlledTermDefaultValue:
+      type: object
+      description: "The default value of a controlled-term field: the term to pre-select,\
+        \ and the label to show for it. Accepted as part of a posted value-constraints\
+        \ object and not read."
+      properties:
+        rdfs:label:
+          type: string
+          description: Label to show for the pre-selected term.
+        termUri:
+          type: string
+          format: uri
+          description: IRI of the term to pre-select.
+      required:
+      - rdfs:label
+      - termUri
+    HierarchyResponse:
+      type: object
+      properties:
+        childCount:
+          type: integer
+          format: int32
+        children:
+          type: array
+          items:
+            $ref: "#/components/schemas/Child"
+        definition:
+          type: string
+        descendantCount:
+          type: integer
+          format: int32
+        offset:
+          type: integer
+          format: int32
+        path:
+          type: array
+          items:
+            $ref: "#/components/schemas/TermRef"
+        source:
+          $ref: "#/components/schemas/SourceBlock"
+        sourceAcronym:
+          type: string
+        sourceSystem:
+          type: string
+        termIri:
+          type: string
+        termLabel:
+          type: string
+    Hit:
+      type: object
+      oneOf:
+      - $ref: "#/components/schemas/OntologyHit"
+      - $ref: "#/components/schemas/BranchHit"
+      - $ref: "#/components/schemas/ClassHit"
+      - $ref: "#/components/schemas/ValueSetHit"
     IntegratedRetrieveBody:
       type: object
       properties:
@@ -3079,8 +3414,141 @@ components:
       - classes
       - ontologies
       - valueSets
-    JsonNode:
+    MatchedLabel:
       type: object
+      properties:
+        label:
+          type: string
+        language:
+          type: string
+    Ontology:
+      type: object
+      properties:
+        '@id':
+          type: string
+        '@type':
+          type: string
+        details:
+          $ref: "#/components/schemas/OntologyDetails"
+        flat:
+          type: boolean
+        id:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+    OntologyClass:
+      type: object
+      properties:
+        '@id':
+          type: string
+        '@type':
+          type: string
+        created:
+          type: string
+        creator:
+          type: string
+        definitions:
+          type: array
+          items:
+            type: string
+        hasChildren:
+          type: boolean
+        id:
+          type: string
+        ontology:
+          type: string
+        prefLabel:
+          type: string
+        provisional:
+          type: boolean
+        relations:
+          type: array
+          items:
+            $ref: "#/components/schemas/Relation"
+        subclassOf:
+          type: string
+        synonyms:
+          type: array
+          items:
+            type: string
+        type:
+          type: string
+    OntologyDetails:
+      type: object
+      properties:
+        categories:
+          type: array
+          items:
+            type: string
+        creationDate:
+          type: string
+        description:
+          type: string
+        documentation:
+          type: string
+        hasOntologyLanguage:
+          type: string
+        hasSubmissions:
+          type: boolean
+        homepage:
+          type: string
+        metricsAvailable:
+          type: boolean
+        numberOfClasses:
+          type: integer
+          format: int32
+        publication:
+          type: array
+          items:
+            type: string
+        released:
+          type: string
+        version:
+          type: string
+    OntologyHit:
+      type: object
+      properties:
+        matchCount:
+          type: integer
+          format: int32
+        matchType:
+          type: string
+        sourceAcronym:
+          type: string
+        sourceSystem:
+          type: string
+        termCount:
+          type: integer
+          format: int32
+        type:
+          type: string
+    OntologyProperty:
+      type: object
+      properties:
+        '@id':
+          type: string
+        '@type':
+          type: string
+        definitions:
+          type: array
+          items:
+            type: string
+        hasChildren:
+          type: boolean
+        id:
+          type: string
+        labels:
+          type: array
+          items:
+            type: string
+        ontology:
+          type: string
+        prefLabel:
+          type: string
+        type:
+          type: string
     OntologyValueConstraint:
       type: object
       properties:
@@ -3103,6 +3571,123 @@ components:
           type: string
       required:
       - acronym
+    OntologyVersion:
+      type: object
+      properties:
+        effectiveDate:
+          type: string
+        latest:
+          type: boolean
+        released:
+          type: string
+        version:
+          type: string
+        versionId:
+          type: string
+    PagedOntologyClasses:
+      type: object
+      description: One page of ontology classes.
+      properties:
+        collection:
+          type: array
+          items:
+            $ref: "#/components/schemas/OntologyClass"
+        nextPage:
+          type: integer
+          format: int32
+        page:
+          type: integer
+          format: int32
+        pageCount:
+          type: integer
+          format: int32
+        pageSize:
+          type: integer
+          format: int32
+        prevPage:
+          type: integer
+          format: int32
+        totalCount:
+          type: integer
+          format: int32
+    PagedSearchResults:
+      type: object
+      description: One page of search results.
+      properties:
+        collection:
+          type: array
+          items:
+            $ref: "#/components/schemas/SearchResult"
+        nextPage:
+          type: integer
+          format: int32
+        page:
+          type: integer
+          format: int32
+        pageCount:
+          type: integer
+          format: int32
+        pageSize:
+          type: integer
+          format: int32
+        prevPage:
+          type: integer
+          format: int32
+        totalCount:
+          type: integer
+          format: int32
+    PagedValueSets:
+      type: object
+      description: One page of value sets.
+      properties:
+        collection:
+          type: array
+          items:
+            $ref: "#/components/schemas/ValueSet"
+        nextPage:
+          type: integer
+          format: int32
+        page:
+          type: integer
+          format: int32
+        pageCount:
+          type: integer
+          format: int32
+        pageSize:
+          type: integer
+          format: int32
+        prevPage:
+          type: integer
+          format: int32
+        totalCount:
+          type: integer
+          format: int32
+    PagedValues:
+      type: object
+      description: One page of value-set values.
+      properties:
+        collection:
+          type: array
+          items:
+            $ref: "#/components/schemas/Value"
+        nextPage:
+          type: integer
+          format: int32
+        page:
+          type: integer
+          format: int32
+        pageCount:
+          type: integer
+          format: int32
+        pageSize:
+          type: integer
+          format: int32
+        prevPage:
+          type: integer
+          format: int32
+        totalCount:
+          type: integer
+          format: int32
     ParameterObject:
       type: object
       properties:
@@ -3112,6 +3697,45 @@ components:
           $ref: "#/components/schemas/ValueConstraints"
       required:
       - valueConstraints
+    PinnedVersionUnavailableError:
+      type: object
+      additionalProperties: false
+      description: "A constraint pins a vocabulary version the store cannot serve.\
+        \ The read fails rather than resolving against the current version, so a published\
+        \ template never silently changes what it offers."
+      properties:
+        errorType:
+          type: string
+          enum:
+          - PinnedVersionUnavailable
+        message:
+          type: string
+      required:
+      - errorType
+      - message
+    Relation:
+      type: object
+      properties:
+        '@id':
+          type: string
+        '@type':
+          type: string
+        created:
+          type: string
+        creator:
+          type: string
+        id:
+          type: string
+        relationType:
+          type: string
+        sourceClassId:
+          type: string
+        targetClassId:
+          type: string
+        targetClassOntology:
+          type: string
+        type:
+          type: string
     SearchRequest:
       type: object
       properties:
@@ -3137,6 +3761,74 @@ components:
           type: array
           items:
             type: string
+    SearchResponse:
+      type: object
+      properties:
+        query:
+          type: string
+        results:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/TypeResults"
+        sources:
+          type: array
+          items:
+            $ref: "#/components/schemas/SourceBlock"
+    SearchResult:
+      type: object
+      properties:
+        '@id':
+          type: string
+        '@type':
+          type: string
+        definition:
+          type: string
+        id:
+          type: string
+        matchType:
+          type: string
+        matchedSynonyms:
+          type: array
+          items:
+            type: string
+        notation:
+          type: string
+        prefLabel:
+          type: string
+        source:
+          type: string
+        type:
+          type: string
+    SourceBlock:
+      type: object
+      properties:
+        authority:
+          type: string
+        pinnable:
+          type: boolean
+        reason:
+          type: string
+        requestedVersion:
+          $ref: "#/components/schemas/VersionSelector"
+        served:
+          type: string
+        sourceAcronym:
+          type: string
+        sourceIri:
+          type: string
+        sourceName:
+          type: string
+        sourceSystem:
+          type: string
+        version:
+          $ref: "#/components/schemas/VersionInfo"
+        versionCount:
+          type: integer
+          format: int32
+        versions:
+          type: array
+          items:
+            $ref: "#/components/schemas/VersionInfo"
     SourceSelector:
       type: object
       properties:
@@ -3146,6 +3838,98 @@ components:
           type: string
         version:
           $ref: "#/components/schemas/VersionSelector"
+    TermRef:
+      type: object
+      properties:
+        termIri:
+          type: string
+        termLabel:
+          type: string
+    TreeNode:
+      type: object
+      properties:
+        '@id':
+          type: string
+        '@type':
+          type: string
+        children:
+          type: array
+          items:
+            $ref: "#/components/schemas/TreeNode"
+        hasChildren:
+          type: boolean
+        id:
+          type: string
+        obsolete:
+          type: boolean
+        ontology:
+          type: string
+        prefLabel:
+          type: string
+        type:
+          type: string
+    TypeResults:
+      type: object
+      properties:
+        collection:
+          type: array
+          items:
+            $ref: "#/components/schemas/Hit"
+        countCapped:
+          type: boolean
+        distinctLabelCount:
+          type: integer
+          format: int32
+        distinctLabelCountCapped:
+          type: boolean
+        page:
+          type: integer
+          format: int32
+        pageSize:
+          type: integer
+          format: int32
+        totalCount:
+          type: integer
+          format: int32
+    Value:
+      type: object
+      properties:
+        '@id':
+          type: string
+        '@type':
+          type: string
+        created:
+          type: string
+        creator:
+          type: string
+        definitions:
+          type: array
+          items:
+            type: string
+        id:
+          type: string
+        notation:
+          type: string
+        prefLabel:
+          type: string
+        provisional:
+          type: boolean
+        relatedMatch:
+          type: string
+        relations:
+          type: array
+          items:
+            $ref: "#/components/schemas/Relation"
+        synonyms:
+          type: array
+          items:
+            type: string
+        type:
+          type: string
+        vsCollection:
+          type: string
+        vsId:
+          type: string
     ValueConstraints:
       type: object
       properties:
@@ -3162,7 +3946,7 @@ components:
           items:
             $ref: "#/components/schemas/ClassValueConstraint"
         defaultValue:
-          $ref: "#/components/schemas/JsonNode"
+          $ref: "#/components/schemas/ControlledTermDefaultValue"
         multipleChoice:
           type: boolean
         ontologies:
@@ -3182,6 +3966,104 @@ components:
       - classes
       - ontologies
       - valueSets
+    ValueSet:
+      type: object
+      properties:
+        '@id':
+          type: string
+        '@type':
+          type: string
+        created:
+          type: string
+        creator:
+          type: string
+        definitions:
+          type: array
+          items:
+            type: string
+        id:
+          type: string
+        prefLabel:
+          type: string
+        provisional:
+          type: boolean
+        relations:
+          type: array
+          items:
+            $ref: "#/components/schemas/Relation"
+        synonyms:
+          type: array
+          items:
+            type: string
+        type:
+          type: string
+        vsCollection:
+          type: string
+    ValueSetCollection:
+      type: object
+      properties:
+        '@id':
+          type: string
+        '@type':
+          type: string
+        details:
+          $ref: "#/components/schemas/ValueSetCollectionDetails"
+        id:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+    ValueSetCollectionDetails:
+      type: object
+      properties:
+        categories:
+          type: array
+          items:
+            type: string
+        creationDate:
+          type: string
+        description:
+          type: string
+        documentation:
+          type: string
+        hasOntologyLanguage:
+          type: string
+        homepage:
+          type: string
+        numberOfClasses:
+          type: integer
+          format: int32
+        publication:
+          type: array
+          items:
+            type: string
+        released:
+          type: string
+        version:
+          type: string
+    ValueSetHit:
+      type: object
+      properties:
+        matchType:
+          type: string
+        matchedTerms:
+          type: array
+          items:
+            $ref: "#/components/schemas/TermRef"
+        sourceAcronym:
+          type: string
+        sourceSystem:
+          type: string
+        termBaseIri:
+          type: string
+        termBaseLabel:
+          type: string
+        termCount:
+          type: integer
+          format: int32
+        type:
+          type: string
     ValueSetValueConstraint:
       type: object
       properties:
@@ -3207,9 +4089,96 @@ components:
       required:
       - uri
       - vsCollection
-    VersionSelector:
+    VersionDiff:
       type: object
       properties:
+        conceptsAdded:
+          type: integer
+          format: int32
+        conceptsAfter:
+          type: integer
+          format: int32
+        conceptsBefore:
+          type: integer
+          format: int32
+        conceptsChanged:
+          type: integer
+          format: int32
+        conceptsRemoved:
+          type: integer
+          format: int32
+        edgesAdded:
+          type: integer
+          format: int32
+        edgesAfter:
+          type: integer
+          format: int32
+        edgesBefore:
+          type: integer
+          format: int32
+        edgesRemoved:
+          type: integer
+          format: int32
+        fromVersion:
+          type: string
+        newlyObsoleted:
+          type: integer
+          format: int32
+        relationsAdded:
+          type: integer
+          format: int32
+        relationsAfter:
+          type: integer
+          format: int32
+        relationsBefore:
+          type: integer
+          format: int32
+        relationsRemoved:
+          type: integer
+          format: int32
+        sampleAddedConcepts:
+          type: array
+          items:
+            type: string
+        sampleChangedConcepts:
+          type: array
+          items:
+            type: string
+        sampleRemovedConcepts:
+          type: array
+          items:
+            type: string
+        summary:
+          type: string
+        toVersion:
+          type: string
+    VersionInfo:
+      type: object
+      properties:
+        declaredVersion:
+          type: string
+        effectiveDate:
+          type: string
+        id:
+          type: string
+        superseded:
+          type: boolean
+    VersionSelector:
+      type: object
+      description: "A pinned version, written either as this object carrying the content\
+        \ hash or as the string \"latest\", which is how the constraint spec spells\
+        \ an unpinned entry. Null, an empty id and \"latest\" all mean the current\
+        \ version."
+      properties:
+        id:
+          type: string
+    VersionTriple:
+      type: object
+      properties:
+        declaredVersion:
+          type: string
+        effectiveDate:
+          type: string
         id:
           type: string
   securitySchemes:

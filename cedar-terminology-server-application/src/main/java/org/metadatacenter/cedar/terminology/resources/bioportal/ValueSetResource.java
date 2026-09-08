@@ -3,6 +3,7 @@ package org.metadatacenter.cedar.terminology.resources.bioportal;
 import com.fasterxml.jackson.databind.JsonNode;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -12,6 +13,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.metadatacenter.util.http.CedarError;
 import org.metadatacenter.cedar.cache.Cache;
 import org.metadatacenter.cedar.terminology.resources.AbstractTerminologyServerResource;
+import org.metadatacenter.cedar.terminology.resources.bioportal.swaggermodel.PagedValueSets;
 import org.metadatacenter.config.CedarConfig;
 import org.metadatacenter.exception.CedarException;
 import org.metadatacenter.exception.CedarProcessingException;
@@ -50,7 +52,7 @@ public class ValueSetResource extends AbstractTerminologyServerResource {
   @Operation(summary = "Find value set by id", description = "Find provisional value set by id (either provisional or " +
       "regular).")
   @ApiResponses({
-      @ApiResponse(responseCode = "200", description = "Successful operation"),
+      @ApiResponse(responseCode = "200", description = "The value set", content = @Content(schema = @Schema(implementation = ValueSet.class))),
       @ApiResponse(responseCode = "400", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Bad request"),
       @ApiResponse(responseCode = "401", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Unauthorized"),
       @ApiResponse(responseCode = "403", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Forbidden"),
@@ -79,7 +81,7 @@ public class ValueSetResource extends AbstractTerminologyServerResource {
   @Path("vs-collections/{vs_collection}/value-sets")
   @Operation(summary = "Get all value sets in a value set collection", description = "Get all value sets in a value set collection.")
   @ApiResponses({
-      @ApiResponse(responseCode = "200", description = "Successful operation"),
+      @ApiResponse(responseCode = "200", description = "One page of the collection's value sets", content = @Content(schema = @Schema(implementation = PagedValueSets.class))),
       @ApiResponse(responseCode = "400", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Bad request"),
       @ApiResponse(responseCode = "401", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Unauthorized"),
       @ApiResponse(responseCode = "403", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Forbidden"),
@@ -116,7 +118,7 @@ public class ValueSetResource extends AbstractTerminologyServerResource {
   @Path("vs-collections/{vs_collection}/values/{id}/value-set")
   @Operation(summary = "Find the value set that contains a particular value", description = "Find the value set that contains a particular value.")
   @ApiResponses({
-      @ApiResponse(responseCode = "200", description = "Successful operation"),
+      @ApiResponse(responseCode = "200", description = "The value set that contains the value", content = @Content(schema = @Schema(implementation = ValueSet.class))),
       @ApiResponse(responseCode = "400", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Bad request"),
       @ApiResponse(responseCode = "401", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Unauthorized"),
       @ApiResponse(responseCode = "403", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Forbidden"),
@@ -144,7 +146,7 @@ public class ValueSetResource extends AbstractTerminologyServerResource {
   @Path("vs-collections/{vs_collection}/value-sets/{id}/tree")
   @Operation(summary = "Get value set tree", description = "Get value set tree (only for regular value sets).")
   @ApiResponses({
-      @ApiResponse(responseCode = "200", description = "Successful operation"),
+      @ApiResponse(responseCode = "200", description = "The value set and its values", content = @Content(schema = @Schema(implementation = TreeNode.class))),
       @ApiResponse(responseCode = "400", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Bad request"),
       @ApiResponse(responseCode = "401", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Unauthorized"),
       @ApiResponse(responseCode = "403", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Forbidden"),
@@ -173,7 +175,7 @@ public class ValueSetResource extends AbstractTerminologyServerResource {
   @Path("value-sets")
   @Operation(summary = "Find all value sets", description = "Find all value sets.")
   @ApiResponses({
-      @ApiResponse(responseCode = "200", description = "Successful operation"),
+      @ApiResponse(responseCode = "200", description = "Every value set the server serves", content = @Content(array = @ArraySchema(schema = @Schema(implementation = ValueSet.class)))),
       @ApiResponse(responseCode = "400", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Bad request"),
       @ApiResponse(responseCode = "401", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Unauthorized"),
       @ApiResponse(responseCode = "403", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Forbidden"),

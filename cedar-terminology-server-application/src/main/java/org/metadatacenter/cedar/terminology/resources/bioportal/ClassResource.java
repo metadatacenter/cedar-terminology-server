@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -15,6 +16,7 @@ import org.metadatacenter.util.http.CedarError;
 import org.metadatacenter.cedar.util.dw.AnonymousAccess;
 import org.metadatacenter.cedar.cache.Cache;
 import org.metadatacenter.cedar.terminology.resources.AbstractTerminologyServerResource;
+import org.metadatacenter.cedar.terminology.resources.bioportal.swaggermodel.PagedOntologyClasses;
 import org.metadatacenter.config.CedarConfig;
 import org.metadatacenter.exception.CedarException;
 import org.metadatacenter.exception.CedarProcessingException;
@@ -51,7 +53,7 @@ public class ClassResource extends AbstractTerminologyServerResource {
   @Path("ontologies/{ontology}/classes/{id}")
   @Operation(summary = "Find class", description = "Find class (either regular or provisional) by ontology and class id.")
   @ApiResponses({
-      @ApiResponse(responseCode = "200", description = "Successful operation"),
+      @ApiResponse(responseCode = "200", description = "The class", content = @Content(schema = @Schema(implementation = OntologyClass.class))),
       @ApiResponse(responseCode = "400", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Bad request"),
       @ApiResponse(responseCode = "401", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Unauthorized"),
       @ApiResponse(responseCode = "403", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Forbidden"),
@@ -85,7 +87,7 @@ public class ClassResource extends AbstractTerminologyServerResource {
   @Path("ontologies/{ontology}/classes")
   @Operation(summary = "Get classes", description = "Get all classes from a specific ontology (including both regular and provisional classes).")
   @ApiResponses({
-      @ApiResponse(responseCode = "200", description = "Successful operation"),
+      @ApiResponse(responseCode = "200", description = "One page of the ontology's classes", content = @Content(schema = @Schema(implementation = PagedOntologyClasses.class))),
       @ApiResponse(responseCode = "400", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Bad request"),
       @ApiResponse(responseCode = "401", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Unauthorized"),
       @ApiResponse(responseCode = "403", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Forbidden"),
@@ -119,7 +121,7 @@ public class ClassResource extends AbstractTerminologyServerResource {
   @Path("ontologies/{ontology}/classes/{id}/tree")
   @Operation(summary = "Get class tree", description = "Get class tree (only for regular classes).")
   @ApiResponses({
-      @ApiResponse(responseCode = "200", description = "Successful operation"),
+      @ApiResponse(responseCode = "200", description = "The paths from the ontology's roots down to the class", content = @Content(array = @ArraySchema(schema = @Schema(implementation = TreeNode.class)))),
       @ApiResponse(responseCode = "400", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Bad request"),
       @ApiResponse(responseCode = "401", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Unauthorized"),
       @ApiResponse(responseCode = "403", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Forbidden"),
@@ -149,7 +151,7 @@ public class ClassResource extends AbstractTerminologyServerResource {
   @Path("ontologies/{ontology}/classes/{id}/children")
   @Operation(summary = "Get class children", description = "Get class children (only for regular classes).")
   @ApiResponses({
-      @ApiResponse(responseCode = "200", description = "Successful operation"),
+      @ApiResponse(responseCode = "200", description = "One page of the class's children", content = @Content(schema = @Schema(implementation = PagedOntologyClasses.class))),
       @ApiResponse(responseCode = "400", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Bad request"),
       @ApiResponse(responseCode = "401", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Unauthorized"),
       @ApiResponse(responseCode = "403", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Forbidden"),
@@ -186,7 +188,7 @@ public class ClassResource extends AbstractTerminologyServerResource {
   @Path("ontologies/{ontology}/classes/{id}/descendants")
   @Operation(summary = "Get class descendants", description = "Get class descendants.")
   @ApiResponses({
-      @ApiResponse(responseCode = "200", description = "Successful operation"),
+      @ApiResponse(responseCode = "200", description = "One page of the class's descendants", content = @Content(schema = @Schema(implementation = PagedOntologyClasses.class))),
       @ApiResponse(responseCode = "400", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Bad request"),
       @ApiResponse(responseCode = "401", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Unauthorized"),
       @ApiResponse(responseCode = "403", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Forbidden"),
@@ -225,7 +227,7 @@ public class ClassResource extends AbstractTerminologyServerResource {
   @Path("ontologies/{ontology}/classes/{id}/parents")
   @Operation(summary = "Get class parents", description = "Get class parents.")
   @ApiResponses({
-      @ApiResponse(responseCode = "200", description = "Successful operation"),
+      @ApiResponse(responseCode = "200", description = "The class's parents", content = @Content(array = @ArraySchema(schema = @Schema(implementation = OntologyClass.class)))),
       @ApiResponse(responseCode = "400", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Bad request"),
       @ApiResponse(responseCode = "401", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Unauthorized"),
       @ApiResponse(responseCode = "403", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Forbidden"),
@@ -254,7 +256,7 @@ public class ClassResource extends AbstractTerminologyServerResource {
   @Path("classes/provisional")
   @Operation(summary = "Get provisional classes", description = "Get provisional classes (including provisional value sets and provisional values).")
   @ApiResponses({
-      @ApiResponse(responseCode = "200", description = "Successful operation"),
+      @ApiResponse(responseCode = "200", description = "One page of provisional classes", content = @Content(schema = @Schema(implementation = PagedOntologyClasses.class))),
       @ApiResponse(responseCode = "400", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Bad request"),
       @ApiResponse(responseCode = "401", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Unauthorized"),
       @ApiResponse(responseCode = "403", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Forbidden"),
@@ -289,7 +291,7 @@ public class ClassResource extends AbstractTerminologyServerResource {
   @Operation(summary = "Get all provisional classes in a particular ontology", description = "Get all provisional classes in a particular ontology (including provisional value sets and " +
           "provisional values)")
   @ApiResponses({
-      @ApiResponse(responseCode = "200", description = "Successful operation"),
+      @ApiResponse(responseCode = "200", description = "One page of the ontology's provisional classes", content = @Content(schema = @Schema(implementation = PagedOntologyClasses.class))),
       @ApiResponse(responseCode = "400", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Bad request"),
       @ApiResponse(responseCode = "401", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Unauthorized"),
       @ApiResponse(responseCode = "403", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Forbidden"),

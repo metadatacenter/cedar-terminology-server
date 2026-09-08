@@ -80,6 +80,15 @@
       <artifactId>jackson-annotations</artifactId>
     </dependency>
 
+    <!-- Swagger v3 annotations, for the request models the generated OpenAPI spec describes. A
+         Jackson tree node introspects into an object with no properties, which documents nothing, so
+         the models that hold one say what the wire really carries. Documentation only: no runtime
+         code reads them. -->
+    <dependency>
+      <groupId>io.swagger.core.v3</groupId>
+      <artifactId>swagger-annotations-jakarta</artifactId>
+    </dependency>
+
     <!-- Google Guava -->
     <dependency>
       <groupId>com.google.guava</groupId>

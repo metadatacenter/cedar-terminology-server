@@ -41,7 +41,7 @@ public class RelationResource extends AbstractTerminologyServerResource {
   @Path("relations/{id}")
   @Operation(summary = "Find provisional relation by id", description = "Find provisional relation by id.")
   @ApiResponses({
-      @ApiResponse(responseCode = "200", description = "Successful operation"),
+      @ApiResponse(responseCode = "200", description = "The provisional relation", content = @Content(schema = @Schema(implementation = Relation.class))),
       @ApiResponse(responseCode = "400", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Bad request"),
       @ApiResponse(responseCode = "401", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Unauthorized"),
       @ApiResponse(responseCode = "403", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Forbidden"),

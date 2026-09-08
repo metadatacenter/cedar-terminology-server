@@ -72,6 +72,15 @@
       <artifactId>jackson-annotations</artifactId>
     </dependency>
 
+    <!-- Swagger v3 annotations, for the wire models the generated OpenAPI spec describes. Jackson
+         introspection alone cannot express a polymorphic collection or a value written two ways, so
+         those models carry the annotation that says what the wire really holds. Documentation only:
+         no runtime code reads them. -->
+    <dependency>
+      <groupId>io.swagger.core.v3</groupId>
+      <artifactId>swagger-annotations-jakarta</artifactId>
+    </dependency>
+
     <dependency>
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter</artifactId>

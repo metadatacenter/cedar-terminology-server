@@ -66,7 +66,7 @@ public class IntegratedSearchResource extends AbstractTerminologyServerResource 
       @ApiResponse(responseCode = "200", description = "A paginated list of search results", content = @Content(schema = @Schema(implementation = IntegratedSearchResults.class))),
       @ApiResponse(responseCode = "400", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Bad request"),
       @ApiResponse(responseCode = "404", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Not found"),
-      @ApiResponse(responseCode = "422", description = "A constraint pins a vocabulary version that cannot be served"),
+      @ApiResponse(responseCode = "422", description = "A constraint pins a vocabulary version that cannot be served", content = @Content(schema = @Schema(ref = "#/components/schemas/PinnedVersionUnavailableError"))),
       @ApiResponse(responseCode = "500", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Internal server error")
   })
   public Response cedarIntegratedSearch(@Valid IntegratedSearchBody body,

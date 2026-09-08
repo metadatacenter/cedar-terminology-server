@@ -2,6 +2,7 @@ package org.metadatacenter.cedar.terminology.resources.bioportal;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -41,7 +42,7 @@ public class PropertyResource extends AbstractTerminologyServerResource {
   @Path("ontologies/{ontology}/properties/{id}")
   @Operation(summary = "Find property", description = "Find property by id.")
   @ApiResponses({
-      @ApiResponse(responseCode = "200", description = "Successful operation"),
+      @ApiResponse(responseCode = "200", description = "The property", content = @Content(schema = @Schema(implementation = OntologyProperty.class))),
       @ApiResponse(responseCode = "400", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Bad request"),
       @ApiResponse(responseCode = "401", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Unauthorized"),
       @ApiResponse(responseCode = "403", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Forbidden"),
@@ -70,7 +71,7 @@ public class PropertyResource extends AbstractTerminologyServerResource {
   @Path("ontologies/{ontology}/properties")
   @Operation(summary = "Get properties", description = "Get all properties from a specific ontology.")
   @ApiResponses({
-      @ApiResponse(responseCode = "200", description = "Successful operation"),
+      @ApiResponse(responseCode = "200", description = "Every property in the ontology", content = @Content(array = @ArraySchema(schema = @Schema(implementation = OntologyProperty.class)))),
       @ApiResponse(responseCode = "400", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Bad request"),
       @ApiResponse(responseCode = "401", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Unauthorized"),
       @ApiResponse(responseCode = "403", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Forbidden"),
@@ -97,7 +98,7 @@ public class PropertyResource extends AbstractTerminologyServerResource {
   @Path("ontologies/{ontology}/properties/{id}/tree")
   @Operation(summary = "Get property tree", description = "Get property tree.")
   @ApiResponses({
-      @ApiResponse(responseCode = "200", description = "Successful operation"),
+      @ApiResponse(responseCode = "200", description = "The paths from the ontology's roots down to the property", content = @Content(array = @ArraySchema(schema = @Schema(implementation = TreeNode.class)))),
       @ApiResponse(responseCode = "400", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Bad request"),
       @ApiResponse(responseCode = "401", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Unauthorized"),
       @ApiResponse(responseCode = "403", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Forbidden"),
@@ -126,7 +127,7 @@ public class PropertyResource extends AbstractTerminologyServerResource {
   @Path("ontologies/{ontology}/properties/{id}/children")
   @Operation(summary = "Get property children", description = "Get property children (only for regular classes).")
   @ApiResponses({
-      @ApiResponse(responseCode = "200", description = "Successful operation"),
+      @ApiResponse(responseCode = "200", description = "The property's children", content = @Content(array = @ArraySchema(schema = @Schema(implementation = OntologyProperty.class)))),
       @ApiResponse(responseCode = "400", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Bad request"),
       @ApiResponse(responseCode = "401", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Unauthorized"),
       @ApiResponse(responseCode = "403", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Forbidden"),
@@ -155,7 +156,7 @@ public class PropertyResource extends AbstractTerminologyServerResource {
   @Path("ontologies/{ontology}/properties/{id}/descendants")
   @Operation(summary = "Get property descendants", description = "Get property descendants.")
   @ApiResponses({
-      @ApiResponse(responseCode = "200", description = "Successful operation"),
+      @ApiResponse(responseCode = "200", description = "The property's descendants", content = @Content(array = @ArraySchema(schema = @Schema(implementation = OntologyProperty.class)))),
       @ApiResponse(responseCode = "400", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Bad request"),
       @ApiResponse(responseCode = "401", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Unauthorized"),
       @ApiResponse(responseCode = "403", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Forbidden"),
@@ -184,7 +185,7 @@ public class PropertyResource extends AbstractTerminologyServerResource {
   @Path("ontologies/{ontology}/properties/{id}/parents")
   @Operation(summary = "Get property parents", description = "Get property parents.")
   @ApiResponses({
-      @ApiResponse(responseCode = "200", description = "Successful operation"),
+      @ApiResponse(responseCode = "200", description = "The property's parents", content = @Content(array = @ArraySchema(schema = @Schema(implementation = OntologyProperty.class)))),
       @ApiResponse(responseCode = "400", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Bad request"),
       @ApiResponse(responseCode = "401", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Unauthorized"),
       @ApiResponse(responseCode = "403", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Forbidden"),
