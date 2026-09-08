@@ -7,25 +7,6 @@ info:
   description: CEDAR Terminology Server API
   version: ${project.version}
 components:
-  schemas:
-    # An envelope the generator cannot see: the integrated-search handler builds this one by hand
-    # rather than through CedarResponse.
-    PinnedVersionUnavailableError:
-      type: object
-      description: >-
-        A constraint pins a vocabulary version the store cannot serve. The read fails rather than
-        resolving against the current version, so a published template never silently changes what
-        it offers.
-      required:
-        - errorType
-        - message
-      properties:
-        errorType:
-          type: string
-          enum: [PinnedVersionUnavailable]
-        message:
-          type: string
-      additionalProperties: false
   securitySchemes:
     api_key:
       type: apiKey

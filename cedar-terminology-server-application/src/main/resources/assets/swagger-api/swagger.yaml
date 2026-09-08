@@ -241,7 +241,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PinnedVersionUnavailableError"
+                $ref: "#/components/schemas/CedarError"
           description: A constraint pins a vocabulary version that cannot be served
         "500":
           content:
@@ -2978,11 +2978,6 @@ components:
           description: Named structured values associated with the error.
         operation:
           type: object
-          additionalProperties:
-            type: object
-            description: Operation that failed. Its fields depend on the operation
-              type.
-            nullable: true
           description: Operation that failed. Its fields depend on the operation type.
           nullable: true
         parameters:
@@ -3905,22 +3900,6 @@ components:
           $ref: "#/components/schemas/ValueConstraints"
       required:
       - valueConstraints
-    PinnedVersionUnavailableError:
-      type: object
-      additionalProperties: false
-      description: "A constraint pins a vocabulary version the store cannot serve.\
-        \ The read fails rather than resolving against the current version, so a published\
-        \ template never silently changes what it offers."
-      properties:
-        errorType:
-          type: string
-          enum:
-          - PinnedVersionUnavailable
-        message:
-          type: string
-      required:
-      - errorType
-      - message
     Relation:
       type: object
       properties:
