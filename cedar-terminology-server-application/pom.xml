@@ -195,6 +195,7 @@
         <configuration>
           <resourcePackages>
             <package>org.metadatacenter.cedar.terminology.resources</package>
+            <package>org.metadatacenter.cedar.util.dw</package>
           </resourcePackages>
         </configuration>
       </plugin>
