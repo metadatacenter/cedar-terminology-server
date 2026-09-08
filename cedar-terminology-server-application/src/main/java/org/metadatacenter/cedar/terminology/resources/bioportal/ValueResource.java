@@ -1,5 +1,6 @@
 package org.metadatacenter.cedar.terminology.resources.bioportal;
 
+import com.codahale.metrics.annotation.Timed;
 import com.fasterxml.jackson.databind.JsonNode;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -42,6 +43,7 @@ public class ValueResource extends AbstractTerminologyServerResource {
   }
 
   @GET
+  @Timed
   @Path("vs-collections/{vs_collection}/values/{id}")
   @Operation(summary = "Find value by id", description = "Find value by id.")
   @ApiResponses({
@@ -71,6 +73,7 @@ public class ValueResource extends AbstractTerminologyServerResource {
   }
 
   @GET
+  @Timed
   @Path("vs-collections/{vs_collection}/values/{id}/tree")
   @Operation(summary = "Get value tree", description = "Get value tree (only for regular values).")
   @ApiResponses({
@@ -100,6 +103,7 @@ public class ValueResource extends AbstractTerminologyServerResource {
   }
 
   @GET
+  @Timed
   @Path("vs-collections/{vs_collection}/value-sets/{vs}/values")
   @Operation(summary = "Find all values in a value set", description = "Find all values in a value set (either regular or provisional).")
   @ApiResponses({
@@ -136,6 +140,7 @@ public class ValueResource extends AbstractTerminologyServerResource {
   }
 
   @GET
+  @Timed
   @Path("vs-collections/{vs_collection}/values/{id}/all-values")
   @Operation(summary = "Find all values in the value set that the given value belongs to", description = "Find all values in the value set that the given value belongs to.")
   @ApiResponses({

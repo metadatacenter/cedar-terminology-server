@@ -1,5 +1,6 @@
 package org.metadatacenter.cedar.terminology.resources.bioportal;
 
+import com.codahale.metrics.annotation.Timed;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
@@ -39,6 +40,7 @@ public class PropertyResource extends AbstractTerminologyServerResource {
   }
 
   @GET
+  @Timed
   @Path("ontologies/{ontology}/properties/{id}")
   @Operation(summary = "Find property", description = "Find property by id.")
   @ApiResponses({
@@ -68,6 +70,7 @@ public class PropertyResource extends AbstractTerminologyServerResource {
   }
 
   @GET
+  @Timed
   @Path("ontologies/{ontology}/properties")
   @Operation(summary = "Get properties", description = "Get all properties from a specific ontology.")
   @ApiResponses({
@@ -95,6 +98,7 @@ public class PropertyResource extends AbstractTerminologyServerResource {
   }
 
   @GET
+  @Timed
   @Path("ontologies/{ontology}/properties/{id}/tree")
   @Operation(summary = "Get property tree", description = "Get property tree.")
   @ApiResponses({
@@ -124,6 +128,7 @@ public class PropertyResource extends AbstractTerminologyServerResource {
   }
 
   @GET
+  @Timed
   @Path("ontologies/{ontology}/properties/{id}/children")
   @Operation(summary = "Get property children", description = "Get property children (only for regular classes).")
   @ApiResponses({
@@ -153,6 +158,7 @@ public class PropertyResource extends AbstractTerminologyServerResource {
   }
 
   @GET
+  @Timed
   @Path("ontologies/{ontology}/properties/{id}/descendants")
   @Operation(summary = "Get property descendants", description = "Get property descendants.")
   @ApiResponses({
@@ -182,6 +188,7 @@ public class PropertyResource extends AbstractTerminologyServerResource {
   }
 
   @GET
+  @Timed
   @Path("ontologies/{ontology}/properties/{id}/parents")
   @Operation(summary = "Get property parents", description = "Get property parents.")
   @ApiResponses({

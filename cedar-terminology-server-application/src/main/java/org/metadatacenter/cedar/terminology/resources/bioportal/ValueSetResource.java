@@ -1,5 +1,6 @@
 package org.metadatacenter.cedar.terminology.resources.bioportal;
 
+import com.codahale.metrics.annotation.Timed;
 import com.fasterxml.jackson.databind.JsonNode;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -47,6 +48,7 @@ public class ValueSetResource extends AbstractTerminologyServerResource {
   }
 
   @GET
+  @Timed
   @Path("vs-collections/{vs_collection}/value-sets/{id}")
   @Operation(summary = "Find value set by id", description = "Find provisional value set by id (either provisional or " +
       "regular).")
@@ -77,6 +79,7 @@ public class ValueSetResource extends AbstractTerminologyServerResource {
   }
 
   @GET
+  @Timed
   @Path("vs-collections/{vs_collection}/value-sets")
   @Operation(summary = "Get all value sets in a value set collection", description = "Get all value sets in a value set collection.")
   @ApiResponses({
@@ -114,6 +117,7 @@ public class ValueSetResource extends AbstractTerminologyServerResource {
   }
 
   @GET
+  @Timed
   @Path("vs-collections/{vs_collection}/values/{id}/value-set")
   @Operation(summary = "Find the value set that contains a particular value", description = "Find the value set that contains a particular value.")
   @ApiResponses({
@@ -142,6 +146,7 @@ public class ValueSetResource extends AbstractTerminologyServerResource {
   }
 
   @GET
+  @Timed
   @Path("vs-collections/{vs_collection}/value-sets/{id}/tree")
   @Operation(summary = "Get value set tree", description = "Get value set tree (only for regular value sets).")
   @ApiResponses({
@@ -171,6 +176,7 @@ public class ValueSetResource extends AbstractTerminologyServerResource {
   }
 
   @GET
+  @Timed
   @Path("value-sets")
   @Operation(summary = "Find all value sets", description = "Find all value sets.")
   @ApiResponses({

@@ -1,5 +1,6 @@
 package org.metadatacenter.cedar.terminology.resources.bioportal;
 
+import com.codahale.metrics.annotation.Timed;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
@@ -50,6 +51,7 @@ public class OntologyResource extends AbstractTerminologyServerResource {
   }
 
   @GET
+  @Timed
   @Path("ontologies")
   @Operation(summary = "Find all ontologies", description = "Find all ontologies.")
   @ApiResponses({
@@ -74,6 +76,7 @@ public class OntologyResource extends AbstractTerminologyServerResource {
   }
 
   @GET
+  @Timed
   @Path("ontologies/{id}")
   @Operation(summary = "Find ontology by id", description = "Find ontology by id.")
   @ApiResponses({
@@ -103,6 +106,7 @@ public class OntologyResource extends AbstractTerminologyServerResource {
   }
 
   @GET
+  @Timed
   @Path("ontologies/{id}/versions")
   @Operation(summary = "List local versions of an ontology",
       description = "Versions of an ontology available in the local, version-pinned store, each with "
@@ -129,6 +133,7 @@ public class OntologyResource extends AbstractTerminologyServerResource {
   }
 
   @GET
+  @Timed
   @Path("ontologies/{id}/versions/current")
   @Operation(summary = "Resolve the current version triple of an ontology",
       description = "The version triple {id (content hash), effectiveDate, declaredVersion} of the "
@@ -160,6 +165,7 @@ public class OntologyResource extends AbstractTerminologyServerResource {
   }
 
   @GET
+  @Timed
   @Path("classes/version-current")
   @Operation(summary = "Resolve the current version triple for a class IRI",
       description = "The version triple of the ontology that owns the given class/term IRI — the "
@@ -192,6 +198,7 @@ public class OntologyResource extends AbstractTerminologyServerResource {
   }
 
   @GET
+  @Timed
   @Path("ontologies/{id}/versions/diff")
   @Operation(summary = "Diff two local versions of an ontology",
       description = "The vocabulary diff (concept and subsumption-edge additions/removals, newly "
@@ -224,6 +231,7 @@ public class OntologyResource extends AbstractTerminologyServerResource {
   }
 
   @GET
+  @Timed
   @Path("ontologies/{ontology}/classes/roots")
   @Operation(summary = "Get root classes", description = "Get root classes in a particular ontology. For the CEDARPC ontology, all provisional classes in it " +
           "will be returned.", tags = {"Classes", "Ontologies"})
@@ -252,6 +260,7 @@ public class OntologyResource extends AbstractTerminologyServerResource {
   }
 
   @GET
+  @Timed
   @Path("ontologies/{ontology}/properties/roots")
   @Operation(summary = "Get root properties", description = "Get root properties in a particular ontology.", tags = {"Properties", "Ontologies"})
   @ApiResponses({

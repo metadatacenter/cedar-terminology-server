@@ -1,5 +1,6 @@
 package org.metadatacenter.cedar.terminology.resources.bioportal;
 
+import com.codahale.metrics.annotation.Timed;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
@@ -40,6 +41,7 @@ public class ValueSetCollectionResource extends AbstractTerminologyServerResourc
   }
 
   @GET
+  @Timed
   @Path("vs-collections")
   @Operation(summary = "Find all value set collections", description = "Find all value set collections.")
   @ApiResponses({
@@ -68,6 +70,7 @@ public class ValueSetCollectionResource extends AbstractTerminologyServerResourc
   }
 
   @GET
+  @Timed
   @Path("vs-collections/version-current")
   @Operation(summary = "Resolve the current version triple for a value-set collection",
       description = "The version triple of a value-set collection's current (\"latest\") locally-stored "

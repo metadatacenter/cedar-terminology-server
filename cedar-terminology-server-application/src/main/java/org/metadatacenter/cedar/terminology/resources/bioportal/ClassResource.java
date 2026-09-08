@@ -1,5 +1,6 @@
 package org.metadatacenter.cedar.terminology.resources.bioportal;
 
+import com.codahale.metrics.annotation.Timed;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectWriter;
@@ -49,6 +50,7 @@ public class ClassResource extends AbstractTerminologyServerResource {
   }
 
   @GET
+  @Timed
   @Path("ontologies/{ontology}/classes/{id}")
   @Operation(summary = "Find class", description = "Find class (either regular or provisional) by ontology and class id.")
   @ApiResponses({
@@ -83,6 +85,7 @@ public class ClassResource extends AbstractTerminologyServerResource {
   }
 
   @GET
+  @Timed
   @Path("ontologies/{ontology}/classes")
   @Operation(summary = "Get classes", description = "Get all classes from a specific ontology (including both regular and provisional classes).")
   @ApiResponses({
@@ -117,6 +120,7 @@ public class ClassResource extends AbstractTerminologyServerResource {
   }
 
   @GET
+  @Timed
   @Path("ontologies/{ontology}/classes/{id}/tree")
   @Operation(summary = "Get class tree", description = "Get class tree (only for regular classes).")
   @ApiResponses({
@@ -147,6 +151,7 @@ public class ClassResource extends AbstractTerminologyServerResource {
   }
 
   @GET
+  @Timed
   @Path("ontologies/{ontology}/classes/{id}/children")
   @Operation(summary = "Get class children", description = "Get class children (only for regular classes).")
   @ApiResponses({
@@ -184,6 +189,7 @@ public class ClassResource extends AbstractTerminologyServerResource {
 
 
   @GET
+  @Timed
   @Path("ontologies/{ontology}/classes/{id}/descendants")
   @Operation(summary = "Get class descendants", description = "Get class descendants.")
   @ApiResponses({
@@ -223,6 +229,7 @@ public class ClassResource extends AbstractTerminologyServerResource {
   }
 
   @GET
+  @Timed
   @Path("ontologies/{ontology}/classes/{id}/parents")
   @Operation(summary = "Get class parents", description = "Get class parents.")
   @ApiResponses({
@@ -252,6 +259,7 @@ public class ClassResource extends AbstractTerminologyServerResource {
   }
 
   @GET
+  @Timed
   @Path("classes/provisional")
   @Operation(summary = "Get provisional classes", description = "Get provisional classes (including provisional value sets and provisional values).")
   @ApiResponses({
@@ -286,6 +294,7 @@ public class ClassResource extends AbstractTerminologyServerResource {
   }
 
   @GET
+  @Timed
   @Path("ontologies/{ontology}/classes/provisional")
   @Operation(summary = "Get all provisional classes in a particular ontology", description = "Get all provisional classes in a particular ontology (including provisional value sets and " +
           "provisional values)")

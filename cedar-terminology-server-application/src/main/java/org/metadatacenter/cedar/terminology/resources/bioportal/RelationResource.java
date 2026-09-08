@@ -1,5 +1,6 @@
 package org.metadatacenter.cedar.terminology.resources.bioportal;
 
+import com.codahale.metrics.annotation.Timed;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -37,6 +38,7 @@ public class RelationResource extends AbstractTerminologyServerResource {
   }
 
   @GET
+  @Timed
   @Path("relations/{id}")
   @Operation(summary = "Find provisional relation by id", description = "Find provisional relation by id.")
   @ApiResponses({
