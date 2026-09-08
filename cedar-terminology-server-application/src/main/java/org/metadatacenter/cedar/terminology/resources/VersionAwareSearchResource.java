@@ -16,17 +16,17 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import org.metadatacenter.util.http.CedarError;
 import org.metadatacenter.config.CedarConfig;
 import org.metadatacenter.error.CedarErrorKey;
 import org.metadatacenter.exception.CedarException;
+import org.metadatacenter.exception.CedarProcessingException;
 import org.metadatacenter.http.CedarResponseStatus;
-import org.metadatacenter.rest.exception.CedarAssertionException;
 import org.metadatacenter.terms.search.HierarchyLookup;
 import org.metadatacenter.terms.search.HierarchyResponse;
 import org.metadatacenter.terms.search.SearchRequest;
 import org.metadatacenter.terms.search.SearchResponse;
 import org.metadatacenter.terms.search.VersionAwareSearchService;
+import org.metadatacenter.util.http.CedarError;
 import org.metadatacenter.util.http.CedarResponse;
 import org.metadatacenter.util.json.JsonMapper;
 
@@ -106,7 +106,7 @@ public class VersionAwareSearchResource extends AbstractTerminologyServerResourc
           .errorMessage(e.getMessage())
           .build();
     } catch (SQLException e) {
-      throw new CedarAssertionException(e);
+      throw new CedarProcessingException(e);
     }
   }
 
@@ -185,10 +185,10 @@ public class VersionAwareSearchResource extends AbstractTerminologyServerResourc
       // Every permitted case is handled above, so this is a case added to the sealed type without a
       // message of its own. A guard for each rather than a cast for the last: the cast would compile
       // for exactly as long as the assumption held and then fail here at runtime instead.
-      throw new CedarAssertionException(
+      throw new CedarProcessingException(
           new IllegalStateException("unhandled hierarchy lookup: " + lookup));
     } catch (SQLException e) {
-      throw new CedarAssertionException(e);
+      throw new CedarProcessingException(e);
     }
   }
 }
