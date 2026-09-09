@@ -70,7 +70,7 @@ public class ValueSetResource extends AbstractTerminologyServerResource {
     ctx.must(ctx.user()).be(LoggedIn);
     try {
       ValueSet vs = terminologyService.findValueSet(id, vsCollection, apiKey);
-      return Response.ok().entity(JsonMapper.MAPPER.valueToTree(vs)).build();
+      return Response.ok().entity(JsonMapper.STRICT_MAPPER.valueToTree(vs)).build();
     } catch (HTTPException e) {
       return relayedBioPortalFailure(e);
     } catch (IOException e) {
@@ -106,9 +106,9 @@ public class ValueSetResource extends AbstractTerminologyServerResource {
       PagedResults<ValueSet> valueSets =
           terminologyService.findValueSetsByVsCollection(vsCollection, page, pageSize, apiKey);
       // This line ensures that @class type annotations are included for each element in the collection
-      //ObjectWriter writer = JsonMapper.MAPPER.writerFor(new TypeReference<PagedResults<ValueSet>>() {});
-      //return Response.ok().entity(JsonMapper.MAPPER.valueToTree(writer.writeValueAsString(valueSets))).build();
-      return Response.ok().entity(JsonMapper.MAPPER.valueToTree(valueSets)).build();
+      //ObjectWriter writer = JsonMapper.STRICT_MAPPER.writerFor(new TypeReference<PagedResults<ValueSet>>() {});
+      //return Response.ok().entity(JsonMapper.STRICT_MAPPER.valueToTree(writer.writeValueAsString(valueSets))).build();
+      return Response.ok().entity(JsonMapper.STRICT_MAPPER.valueToTree(valueSets)).build();
     } catch (HTTPException e) {
       return relayedBioPortalFailure(e);
     } catch (IOException e) {
@@ -137,7 +137,7 @@ public class ValueSetResource extends AbstractTerminologyServerResource {
     ctx.must(ctx.user()).be(LoggedIn);
     try {
       ValueSet vs = terminologyService.findValueSetByValue(id, vsCollection, apiKey);
-      return Response.ok().entity(JsonMapper.MAPPER.valueToTree(vs)).build();
+      return Response.ok().entity(JsonMapper.STRICT_MAPPER.valueToTree(vs)).build();
     } catch (HTTPException e) {
       return relayedBioPortalFailure(e);
     } catch (IOException e) {
@@ -167,7 +167,7 @@ public class ValueSetResource extends AbstractTerminologyServerResource {
     ctx.must(ctx.user()).be(LoggedIn);
     try {
       TreeNode tree = terminologyService.getValueSetTree(id, vsCollection, apiKey);
-      return Response.ok().entity(JsonMapper.MAPPER.valueToTree(tree)).build();
+      return Response.ok().entity(JsonMapper.STRICT_MAPPER.valueToTree(tree)).build();
     } catch (HTTPException e) {
       return relayedBioPortalFailure(e);
     } catch (IOException e) {
@@ -192,7 +192,7 @@ public class ValueSetResource extends AbstractTerminologyServerResource {
     ctx.must(ctx.user()).be(LoggedIn);
     try {
       List<ValueSet> valueSets = new ArrayList<>(Cache.getValueSets().values());
-      return Response.ok().entity(JsonMapper.MAPPER.valueToTree(valueSets)).build();
+      return Response.ok().entity(JsonMapper.STRICT_MAPPER.valueToTree(valueSets)).build();
     } catch (HTTPException e) {
       return relayedBioPortalFailure(e);
     } catch (ExecutionException e) {

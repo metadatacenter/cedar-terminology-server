@@ -19,7 +19,7 @@ import java.io.IOException;
 
 import static org.metadatacenter.cedar.terminology.util.Constants.BP_API_BASE;
 import static org.metadatacenter.cedar.terminology.util.Constants.BP_PROVISIONAL_RELATIONS;
-import static org.metadatacenter.util.json.JsonMapper.MAPPER;
+import static org.metadatacenter.util.json.JsonMapper.STRICT_MAPPER;
 import static org.metadatacenter.util.json.JsonMapper.TOLERANT_MAPPER;
 
 public class BpProvisionalRelationDAO {
@@ -41,14 +41,14 @@ public class BpProvisionalRelationDAO {
     ClassicHttpResponse response = HttpUtil.makeHttpRequest(Request.post(url)
         .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
         connectTimeout(Timeout.ofMilliseconds(connectTimeout)).responseTimeout(Timeout.ofMilliseconds(socketTimeout))
-        .bodyString(MAPPER.writeValueAsString(relation), ContentType.APPLICATION_JSON));
+        .bodyString(STRICT_MAPPER.writeValueAsString(relation), ContentType.APPLICATION_JSON));
 
     // TODO: return the message returned by BioPortal to the top layers. response.getEntity() could be used for that:
     //EntityUtils.toString(response.getEntity(), "UTF-8");
     int statusCode = response.getCode();
     // The relation was successfully created
     if (statusCode == Status.CREATED.getStatusCode()) {
-      JsonNode bpResult = MAPPER.readTree(response.getEntity().getContent());
+      JsonNode bpResult = STRICT_MAPPER.readTree(response.getEntity().getContent());
       return TOLERANT_MAPPER.convertValue(bpResult, BpProvisionalRelation.class);
     } else {
       throw BioPortalFailure.relay(statusCode, url);
@@ -66,7 +66,7 @@ public class BpProvisionalRelationDAO {
     int statusCode = response.getCode();
     // The relation was successfully retrieved
     if (statusCode == Status.OK.getStatusCode()) {
-      JsonNode bpResult = MAPPER.readTree(response.getEntity().getContent());
+      JsonNode bpResult = STRICT_MAPPER.readTree(response.getEntity().getContent());
       return TOLERANT_MAPPER.convertValue(bpResult, BpProvisionalRelation.class);
     } else {
       throw BioPortalFailure.relay(statusCode, url);

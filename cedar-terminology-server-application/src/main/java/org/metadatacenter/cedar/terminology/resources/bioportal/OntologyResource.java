@@ -67,7 +67,7 @@ public class OntologyResource extends AbstractTerminologyServerResource {
     ctx.must(ctx.user()).be(LoggedIn);
     try {
       List<Ontology> ontologies = new ArrayList<>(Cache.getOntologies().values());
-      return Response.ok().entity(JsonMapper.MAPPER.valueToTree(ontologies)).build();
+      return Response.ok().entity(JsonMapper.STRICT_MAPPER.valueToTree(ontologies)).build();
     } catch (HTTPException e) {
       return relayedBioPortalFailure(e);
     } catch (ExecutionException e) {
@@ -97,7 +97,7 @@ public class OntologyResource extends AbstractTerminologyServerResource {
       if (ontologies == null) {
         return CedarResponse.notFound().build();
       }
-      return Response.ok().entity(JsonMapper.MAPPER.valueToTree(ontologies)).build();
+      return Response.ok().entity(JsonMapper.STRICT_MAPPER.valueToTree(ontologies)).build();
     } catch (HTTPException e) {
       return relayedBioPortalFailure(e);
     } catch (ExecutionException e) {
@@ -126,7 +126,7 @@ public class OntologyResource extends AbstractTerminologyServerResource {
     ctx.must(ctx.user()).be(LoggedIn);
     try {
       List<OntologyVersion> versions = terminologyService.getVersions(id);
-      return Response.ok().entity(JsonMapper.MAPPER.valueToTree(versions)).build();
+      return Response.ok().entity(JsonMapper.STRICT_MAPPER.valueToTree(versions)).build();
     } catch (IOException e) {
       throw new CedarProcessingException(e);
     }
@@ -158,7 +158,7 @@ public class OntologyResource extends AbstractTerminologyServerResource {
       if (triple == null) {
         return CedarResponse.notFound().build();
       }
-      return Response.ok().entity(JsonMapper.MAPPER.valueToTree(triple)).build();
+      return Response.ok().entity(JsonMapper.STRICT_MAPPER.valueToTree(triple)).build();
     } catch (IOException e) {
       throw new CedarProcessingException(e);
     }
@@ -191,7 +191,7 @@ public class OntologyResource extends AbstractTerminologyServerResource {
       if (triple == null) {
         return CedarResponse.notFound().build();
       }
-      return Response.ok().entity(JsonMapper.MAPPER.valueToTree(triple)).build();
+      return Response.ok().entity(JsonMapper.STRICT_MAPPER.valueToTree(triple)).build();
     } catch (IOException e) {
       throw new CedarProcessingException(e);
     }
@@ -224,7 +224,7 @@ public class OntologyResource extends AbstractTerminologyServerResource {
       if (diff == null) {
         return CedarResponse.notFound().build();
       }
-      return Response.ok().entity(JsonMapper.MAPPER.valueToTree(diff)).build();
+      return Response.ok().entity(JsonMapper.STRICT_MAPPER.valueToTree(diff)).build();
     } catch (IOException e) {
       throw new CedarProcessingException(e);
     }
@@ -251,7 +251,7 @@ public class OntologyResource extends AbstractTerminologyServerResource {
     try {
       boolean isFlat = Cache.isFlat(ontology);
       List<OntologyClass> roots = terminologyService.getRootClasses(ontology, isFlat, apiKey);
-      return Response.ok().entity(JsonMapper.MAPPER.valueToTree(roots)).build();
+      return Response.ok().entity(JsonMapper.STRICT_MAPPER.valueToTree(roots)).build();
     } catch (HTTPException e) {
       return relayedBioPortalFailure(e);
     } catch (IOException | ExecutionException e) {
@@ -278,7 +278,7 @@ public class OntologyResource extends AbstractTerminologyServerResource {
     ctx.must(ctx.user()).be(LoggedIn);
     try {
       List<OntologyProperty> roots = terminologyService.getRootProperties(ontology, apiKey);
-      return Response.ok().entity(JsonMapper.MAPPER.valueToTree(roots)).build();
+      return Response.ok().entity(JsonMapper.STRICT_MAPPER.valueToTree(roots)).build();
     } catch (HTTPException e) {
       return relayedBioPortalFailure(e);
     } catch (IOException e) {

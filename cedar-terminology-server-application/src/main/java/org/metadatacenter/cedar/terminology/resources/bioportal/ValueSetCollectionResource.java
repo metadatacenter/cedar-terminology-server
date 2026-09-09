@@ -61,7 +61,7 @@ public class ValueSetCollectionResource extends AbstractTerminologyServerResourc
     ctx.must(ctx.user()).be(LoggedIn);
     try {
       List<ValueSetCollection> vsCollections = terminologyService.findAllVSCollections(includeDetails, apiKey);
-      return Response.ok().entity(JsonMapper.MAPPER.valueToTree(vsCollections)).build();
+      return Response.ok().entity(JsonMapper.STRICT_MAPPER.valueToTree(vsCollections)).build();
     } catch (HTTPException e) {
       return relayedBioPortalFailure(e);
     } catch (IOException e) {
@@ -93,7 +93,7 @@ public class ValueSetCollectionResource extends AbstractTerminologyServerResourc
       if (triple == null) {
         return CedarResponse.notFound().build();
       }
-      return Response.ok().entity(JsonMapper.MAPPER.valueToTree(triple)).build();
+      return Response.ok().entity(JsonMapper.STRICT_MAPPER.valueToTree(triple)).build();
     } catch (IOException e) {
       throw new CedarProcessingException(e);
     }

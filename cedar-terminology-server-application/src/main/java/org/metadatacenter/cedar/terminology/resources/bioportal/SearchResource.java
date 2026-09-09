@@ -118,7 +118,7 @@ public class SearchResource extends AbstractTerminologyServerResource {
       // collection, and a search whose results are all ontology classes never has to ask.
       PagedResults results = terminologyService.search(q, scopeList, sourcesList, suggest, source, subtreeRootId,
           maxDepth, page, pageSize, false, true, apiKey, Cache::getValueSetIds);
-      JsonNode output = JsonMapper.MAPPER.valueToTree(results);
+      JsonNode output = JsonMapper.STRICT_MAPPER.valueToTree(results);
       return Response.ok().entity(output).build();
     } catch (HTTPException e) {
       return relayedBioPortalFailure(e);
@@ -172,7 +172,7 @@ public class SearchResource extends AbstractTerminologyServerResource {
       }
       PagedResults results = terminologyService.propertySearch(q, sourcesList, exactMatch, requireDefinitions,
           page, pageSize, false, true, apiKey);
-      JsonNode output = JsonMapper.MAPPER.valueToTree(results);
+      JsonNode output = JsonMapper.STRICT_MAPPER.valueToTree(results);
       return Response.ok().entity(output).build();
     } catch (HTTPException e) {
       return relayedBioPortalFailure(e);

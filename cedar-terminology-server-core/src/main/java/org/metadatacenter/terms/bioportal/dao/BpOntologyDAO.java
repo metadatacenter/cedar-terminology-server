@@ -18,7 +18,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.metadatacenter.cedar.terminology.util.Constants.*;
-import static org.metadatacenter.util.json.JsonMapper.MAPPER;
+import static org.metadatacenter.util.json.JsonMapper.STRICT_MAPPER;
 import static org.metadatacenter.util.json.JsonMapper.TOLERANT_MAPPER;
 
 public class BpOntologyDAO {
@@ -44,7 +44,7 @@ public class BpOntologyDAO {
     int statusCode = response.getCode();
     // The ontology was successfully retrieved
     if (statusCode == Status.OK.getStatusCode()) {
-      JsonNode bpResult = MAPPER.readTree(response.getEntity().getContent());
+      JsonNode bpResult = STRICT_MAPPER.readTree(response.getEntity().getContent());
       return TOLERANT_MAPPER.convertValue(bpResult, BpOntology.class);
     } else {
       throw BioPortalFailure.relay(statusCode, url);
@@ -62,7 +62,7 @@ public class BpOntologyDAO {
     int statusCode = response.getCode();
     // The ontology was successfully retrieved
     if (statusCode == Status.OK.getStatusCode()) {
-      JsonNode bpResult = MAPPER.readTree(response.getEntity().getContent());
+      JsonNode bpResult = STRICT_MAPPER.readTree(response.getEntity().getContent());
       return TOLERANT_MAPPER.convertValue(bpResult, BpOntologySubmission.class);
     } else {
       throw BioPortalFailure.relay(statusCode, url);
@@ -80,7 +80,7 @@ public class BpOntologyDAO {
     int statusCode = response.getCode();
     // The ontologies were successfully retrieved
     if (statusCode == Status.OK.getStatusCode()) {
-      JsonNode bpResult = MAPPER.readTree(response.getEntity().getContent());
+      JsonNode bpResult = STRICT_MAPPER.readTree(response.getEntity().getContent());
       List<BpOntology> ontologies = new ArrayList<>();
       for (JsonNode n : bpResult) {
         ontologies.add(TOLERANT_MAPPER.convertValue(n, BpOntology.class));
@@ -102,7 +102,7 @@ public class BpOntologyDAO {
     int statusCode = response.getCode();
     // The ontology was successfully retrieved
     if (statusCode == Status.OK.getStatusCode()) {
-      JsonNode bpResult = MAPPER.readTree(response.getEntity().getContent());
+      JsonNode bpResult = STRICT_MAPPER.readTree(response.getEntity().getContent());
       return TOLERANT_MAPPER.convertValue(bpResult, BpOntologyMetrics.class);
     } else {
       throw BioPortalFailure.relay(statusCode, url);
@@ -120,7 +120,7 @@ public class BpOntologyDAO {
     int statusCode = response.getCode();
     // The ontology was successfully retrieved
     if (statusCode == Status.OK.getStatusCode()) {
-      JsonNode bpResult = MAPPER.readTree(response.getEntity().getContent());
+      JsonNode bpResult = STRICT_MAPPER.readTree(response.getEntity().getContent());
       List<BpOntologyCategory> categories = new ArrayList<>();
       for (JsonNode n : bpResult) {
         categories.add(TOLERANT_MAPPER.convertValue(n, BpOntologyCategory.class));
@@ -142,7 +142,7 @@ public class BpOntologyDAO {
     int statusCode = response.getCode();
     // Success
     if (statusCode == Status.OK.getStatusCode()) {
-      JsonNode bpResult = MAPPER.readTree(response.getEntity().getContent());
+      JsonNode bpResult = STRICT_MAPPER.readTree(response.getEntity().getContent());
       List<BpClass> roots = new ArrayList<>();
       for (JsonNode n : bpResult) {
         roots.add(TOLERANT_MAPPER.convertValue(n, BpClass.class));
@@ -164,7 +164,7 @@ public class BpOntologyDAO {
     int statusCode = response.getCode();
     // Success
     if (statusCode == Status.OK.getStatusCode()) {
-      JsonNode bpResult = MAPPER.readTree(response.getEntity().getContent());
+      JsonNode bpResult = STRICT_MAPPER.readTree(response.getEntity().getContent());
       List<BpProperty> roots = new ArrayList<>();
       for (JsonNode n : bpResult) {
         roots.add(TOLERANT_MAPPER.convertValue(n, BpProperty.class));

@@ -64,7 +64,7 @@ public class ValueResource extends AbstractTerminologyServerResource {
     ctx.must(ctx.user()).be(LoggedIn);
     try {
       Value v = terminologyService.findValue(id, vsCollection, apiKey);
-      return Response.ok().entity(JsonMapper.MAPPER.valueToTree(v)).build();
+      return Response.ok().entity(JsonMapper.STRICT_MAPPER.valueToTree(v)).build();
     } catch (HTTPException e) {
       return relayedBioPortalFailure(e);
     } catch (IOException e) {
@@ -94,7 +94,7 @@ public class ValueResource extends AbstractTerminologyServerResource {
     ctx.must(ctx.user()).be(LoggedIn);
     try {
       TreeNode tree = terminologyService.getValueTree(id, vsCollection, apiKey);
-      return Response.ok().entity(JsonMapper.MAPPER.valueToTree(tree)).build();
+      return Response.ok().entity(JsonMapper.STRICT_MAPPER.valueToTree(tree)).build();
     } catch (HTTPException e) {
       return relayedBioPortalFailure(e);
     } catch (IOException e) {
@@ -131,7 +131,7 @@ public class ValueResource extends AbstractTerminologyServerResource {
     pageSize = resolvePageSize(pageSize, pageSizeAlias);
     try {
       PagedResults<Value> values = terminologyService.findValuesByValueSet(vsId, vsCollection, page, pageSize, apiKey);
-      return Response.ok().entity(JsonMapper.MAPPER.valueToTree(values)).build();
+      return Response.ok().entity(JsonMapper.STRICT_MAPPER.valueToTree(values)).build();
     } catch (HTTPException e) {
       return relayedBioPortalFailure(e);
     } catch (IOException e) {
@@ -168,7 +168,7 @@ public class ValueResource extends AbstractTerminologyServerResource {
     try {
       PagedResults<Value> values =
           terminologyService.findAllValuesInValueSetByValue(id, vsCollection, page, pageSize, apiKey);
-      return Response.ok().entity(JsonMapper.MAPPER.valueToTree(values)).build();
+      return Response.ok().entity(JsonMapper.STRICT_MAPPER.valueToTree(values)).build();
     } catch (HTTPException e) {
       return relayedBioPortalFailure(e);
     } catch (IOException e) {

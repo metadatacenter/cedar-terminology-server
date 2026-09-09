@@ -24,7 +24,7 @@ import java.util.List;
 
 import static org.metadatacenter.cedar.terminology.util.Constants.*;
 
-import static org.metadatacenter.util.json.JsonMapper.MAPPER;
+import static org.metadatacenter.util.json.JsonMapper.STRICT_MAPPER;
 import static org.metadatacenter.util.json.JsonMapper.TOLERANT_MAPPER;
 
 public class BpClassDAO
@@ -51,7 +51,7 @@ public class BpClassDAO
     int statusCode = response.getCode();
     // The class was successfully retrieved
     if (statusCode == Status.OK.getStatusCode()) {
-      JsonNode bpResult = MAPPER.readTree(response.getEntity().getContent());
+      JsonNode bpResult = STRICT_MAPPER.readTree(response.getEntity().getContent());
       return TOLERANT_MAPPER.convertValue(bpResult, BpClass.class);
     } else {
       throw BioPortalFailure.relay(statusCode, url);
@@ -70,8 +70,8 @@ public class BpClassDAO
     int statusCode = response.getCode();
     // The classes were successfully retrieved
     if (statusCode == Status.OK.getStatusCode()) {
-      JsonNode bpResult = MAPPER.readTree(response.getEntity().getContent());
-      return TOLERANT_MAPPER.readValue(MAPPER.treeAsTokens(bpResult),
+      JsonNode bpResult = STRICT_MAPPER.readTree(response.getEntity().getContent());
+      return TOLERANT_MAPPER.readValue(STRICT_MAPPER.treeAsTokens(bpResult),
           new TypeReference<BpPagedResults<BpClass>>() {});
     } else {
       throw BioPortalFailure.relay(statusCode, url);
@@ -89,7 +89,7 @@ public class BpClassDAO
     int statusCode = response.getCode();
     // The tree was successfully retrieved
     if (statusCode == Status.OK.getStatusCode()) {
-      JsonNode bpResult = MAPPER.readTree(response.getEntity().getContent());
+      JsonNode bpResult = STRICT_MAPPER.readTree(response.getEntity().getContent());
       return ObjectConverter.toBpTreeNodeList(bpResult);
     } else {
       throw BioPortalFailure.relay(statusCode, url);
@@ -109,8 +109,8 @@ public class BpClassDAO
     int statusCode = response.getCode();
     // Success
     if (statusCode == Status.OK.getStatusCode()) {
-      JsonNode bpResult = MAPPER.readTree(response.getEntity().getContent());
-      return TOLERANT_MAPPER.readValue(MAPPER.treeAsTokens(bpResult),
+      JsonNode bpResult = STRICT_MAPPER.readTree(response.getEntity().getContent());
+      return TOLERANT_MAPPER.readValue(STRICT_MAPPER.treeAsTokens(bpResult),
           new TypeReference<BpPagedResults<BpClass>>() {});
     } else {
       throw BioPortalFailure.relay(statusCode, url);
@@ -129,8 +129,8 @@ public class BpClassDAO
     int statusCode = response.getCode();
     // The class was successfully retrieved
     if (statusCode == Status.OK.getStatusCode()) {
-      JsonNode bpResult = MAPPER.readTree(response.getEntity().getContent());
-      return TOLERANT_MAPPER.readValue(MAPPER.treeAsTokens(bpResult),
+      JsonNode bpResult = STRICT_MAPPER.readTree(response.getEntity().getContent());
+      return TOLERANT_MAPPER.readValue(STRICT_MAPPER.treeAsTokens(bpResult),
           new TypeReference<BpPagedResults<BpClass>>() {});
     } else {
       throw BioPortalFailure.relay(statusCode, url);
@@ -150,7 +150,7 @@ public class BpClassDAO
     int statusCode = response.getCode();
     // Success
     if (statusCode == Status.OK.getStatusCode()) {
-      JsonNode bpResult = MAPPER.readTree(response.getEntity().getContent());
+      JsonNode bpResult = STRICT_MAPPER.readTree(response.getEntity().getContent());
       List<BpClass> children = new ArrayList<>();
       for (JsonNode n : bpResult) {
         children.add(TOLERANT_MAPPER.convertValue(n, BpClass.class));
@@ -176,8 +176,8 @@ public class BpClassDAO
     int statusCode = response.getCode();
     // Success
     if (statusCode == Status.OK.getStatusCode()) {
-      JsonNode bpResult = MAPPER.readTree(response.getEntity().getContent());
-      return TOLERANT_MAPPER.readValue(MAPPER.treeAsTokens(bpResult),
+      JsonNode bpResult = STRICT_MAPPER.readTree(response.getEntity().getContent());
+      return TOLERANT_MAPPER.readValue(STRICT_MAPPER.treeAsTokens(bpResult),
           new TypeReference<BpPagedResults<BpClass>>() {});
     } else {
       throw BioPortalFailure.relay(statusCode, url);
@@ -204,8 +204,8 @@ public class BpClassDAO
     int statusCode = response.getCode();
     // Success
     if (statusCode == Status.OK.getStatusCode()) {
-      JsonNode bpResult = MAPPER.readTree(response.getEntity().getContent());
-      return TOLERANT_MAPPER.readValue(MAPPER.treeAsTokens(bpResult),
+      JsonNode bpResult = STRICT_MAPPER.readTree(response.getEntity().getContent());
+      return TOLERANT_MAPPER.readValue(STRICT_MAPPER.treeAsTokens(bpResult),
           new TypeReference<BpPagedResults<BpClass>>() {});
     } else {
       throw BioPortalFailure.relay(statusCode, url);

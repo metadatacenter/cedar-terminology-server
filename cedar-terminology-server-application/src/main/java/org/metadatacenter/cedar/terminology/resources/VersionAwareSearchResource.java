@@ -99,7 +99,7 @@ public class VersionAwareSearchResource extends AbstractTerminologyServerResourc
     }
     try {
       SearchResponse response = searchService.search(request);
-      return Response.ok().entity(JsonMapper.MAPPER.valueToTree(response)).build();
+      return Response.ok().entity(JsonMapper.STRICT_MAPPER.valueToTree(response)).build();
     } catch (VersionAwareSearchService.BadSearchRequestException e) {
       return CedarResponse.badRequest()
           .errorKey(CedarErrorKey.INVALID_INPUT)
@@ -157,7 +157,7 @@ public class VersionAwareSearchResource extends AbstractTerminologyServerResourc
       // fifth were added — the sealed declaration is where to look for the full list.
       HierarchyLookup lookup = searchService.hierarchy(sourceAcronym, termIri, versionId, offset);
       if (lookup instanceof HierarchyLookup.Found found) {
-        return Response.ok().entity(JsonMapper.MAPPER.valueToTree(found.hierarchy())).build();
+        return Response.ok().entity(JsonMapper.STRICT_MAPPER.valueToTree(found.hierarchy())).build();
       }
       if (lookup instanceof HierarchyLookup.ReleaseNotHeld unheld) {
         return CedarResponse.notFound()

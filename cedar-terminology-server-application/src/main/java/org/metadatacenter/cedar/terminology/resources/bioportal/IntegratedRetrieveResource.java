@@ -80,7 +80,7 @@ public class IntegratedRetrieveResource extends AbstractTerminologyServerResourc
       PagedResults results =
         terminologyService.integratedRetrieve(body.getValueConstraints(), page, pageSize, apiKey);
 
-      return Response.ok().entity(JsonMapper.MAPPER.valueToTree(results)).build();
+      return Response.ok().entity(JsonMapper.STRICT_MAPPER.valueToTree(results)).build();
 
     } catch (HTTPException e) {
       return relayedBioPortalFailure(e);

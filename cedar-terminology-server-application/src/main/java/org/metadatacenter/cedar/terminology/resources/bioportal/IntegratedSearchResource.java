@@ -92,7 +92,7 @@ public class IntegratedSearchResource extends AbstractTerminologyServerResource 
           terminologyService.integratedSearch(q, body.getParameterObject().getValueConstraints(),
               page, pageSize, apiKey, lang);
 
-      return Response.ok().entity(JsonMapper.MAPPER.valueToTree(results)).build();
+      return Response.ok().entity(JsonMapper.STRICT_MAPPER.valueToTree(results)).build();
 
     } catch (PinnedVersionUnavailableException e) {
       // A frozen constraint pins a vocabulary version that cannot be served; the server fails the read
