@@ -20,6 +20,7 @@ import java.io.IOException;
 import static org.metadatacenter.cedar.terminology.util.Constants.BP_API_BASE;
 import static org.metadatacenter.cedar.terminology.util.Constants.BP_PROVISIONAL_RELATIONS;
 import static org.metadatacenter.util.json.JsonMapper.MAPPER;
+import static org.metadatacenter.util.json.JsonMapper.TOLERANT_MAPPER;
 
 public class BpProvisionalRelationDAO {
   private final int connectTimeout;
@@ -48,7 +49,7 @@ public class BpProvisionalRelationDAO {
     // The relation was successfully created
     if (statusCode == Status.CREATED.getStatusCode()) {
       JsonNode bpResult = MAPPER.readTree(response.getEntity().getContent());
-      return MAPPER.convertValue(bpResult, BpProvisionalRelation.class);
+      return TOLERANT_MAPPER.convertValue(bpResult, BpProvisionalRelation.class);
     } else {
       throw BioPortalFailure.relay(statusCode, url);
     }
@@ -66,7 +67,7 @@ public class BpProvisionalRelationDAO {
     // The relation was successfully retrieved
     if (statusCode == Status.OK.getStatusCode()) {
       JsonNode bpResult = MAPPER.readTree(response.getEntity().getContent());
-      return MAPPER.convertValue(bpResult, BpProvisionalRelation.class);
+      return TOLERANT_MAPPER.convertValue(bpResult, BpProvisionalRelation.class);
     } else {
       throw BioPortalFailure.relay(statusCode, url);
     }

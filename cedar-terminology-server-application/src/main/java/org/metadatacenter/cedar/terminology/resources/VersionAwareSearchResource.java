@@ -4,6 +4,7 @@ import com.codahale.metrics.annotation.Timed;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.ws.rs.Consumes;
@@ -15,16 +16,17 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import org.metadatacenter.util.http.CedarError;
 import org.metadatacenter.config.CedarConfig;
 import org.metadatacenter.error.CedarErrorKey;
 import org.metadatacenter.exception.CedarException;
+import org.metadatacenter.exception.CedarProcessingException;
 import org.metadatacenter.http.CedarResponseStatus;
-import org.metadatacenter.rest.exception.CedarAssertionException;
 import org.metadatacenter.terms.search.HierarchyLookup;
+import org.metadatacenter.terms.search.HierarchyResponse;
 import org.metadatacenter.terms.search.SearchRequest;
 import org.metadatacenter.terms.search.SearchResponse;
 import org.metadatacenter.terms.search.VersionAwareSearchService;
+import org.metadatacenter.util.http.CedarError;
 import org.metadatacenter.util.http.CedarResponse;
 import org.metadatacenter.util.json.JsonMapper;
 
@@ -70,8 +72,12 @@ public class VersionAwareSearchResource extends AbstractTerminologyServerResourc
           + "Returns per-type counts and each type's first page, and describes every source it searched — "
           + "the version that answered, and whether a constraint on it can be pinned.",
       tags = {"Search"})
+  @RequestBody(description = "The query, the constraint types to answer, and the sources to search. A source "
+      + "names the version to search it at, or none to search the current one. Keys are the versioned "
+      + "value-constraint specification's, so a result can become a constraint entry without translation.",
+      required = true, content = @Content(schema = @Schema(implementation = SearchRequest.class)))
   @ApiResponses({
-      @ApiResponse(responseCode = "200", description = "Results, and the sources that produced them"),
+      @ApiResponse(responseCode = "200", description = "Results, and the sources that produced them", content = @Content(schema = @Schema(implementation = SearchResponse.class))),
       @ApiResponse(responseCode = "400", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "A request the server will not answer"),
       @ApiResponse(responseCode = "503", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "No local terminology store is configured")
   })
@@ -100,7 +106,7 @@ public class VersionAwareSearchResource extends AbstractTerminologyServerResourc
           .errorMessage(e.getMessage())
           .build();
     } catch (SQLException e) {
-      throw new CedarAssertionException(e);
+      throw new CedarProcessingException(e);
     }
   }
 
@@ -118,7 +124,7 @@ public class VersionAwareSearchResource extends AbstractTerminologyServerResourc
           + "Children are alphabetical and capped; offset asks for the next page of them.",
       tags = {"Search"})
   @ApiResponses({
-      @ApiResponse(responseCode = "200", description = "The term's ancestors and children"),
+      @ApiResponse(responseCode = "200", description = "The term's ancestors and children", content = @Content(schema = @Schema(implementation = HierarchyResponse.class))),
       @ApiResponse(responseCode = "400", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "A request naming no term"),
       @ApiResponse(responseCode = "404", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "No such release, a release without that term, or a term the index does not hold"),
       @ApiResponse(responseCode = "503", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "No local terminology store is configured")
@@ -179,10 +185,10 @@ public class VersionAwareSearchResource extends AbstractTerminologyServerResourc
       // Every permitted case is handled above, so this is a case added to the sealed type without a
       // message of its own. A guard for each rather than a cast for the last: the cast would compile
       // for exactly as long as the assumption held and then fail here at runtime instead.
-      throw new CedarAssertionException(
+      throw new CedarProcessingException(
           new IllegalStateException("unhandled hierarchy lookup: " + lookup));
     } catch (SQLException e) {
-      throw new CedarAssertionException(e);
+      throw new CedarProcessingException(e);
     }
   }
 }

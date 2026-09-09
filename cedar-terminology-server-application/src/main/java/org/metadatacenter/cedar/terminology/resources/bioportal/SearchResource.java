@@ -11,16 +11,17 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.hibernate.validator.constraints.NotEmpty;
-import org.metadatacenter.util.http.CedarError;
-import org.metadatacenter.cedar.util.dw.AnonymousAccess;
 import org.metadatacenter.cedar.cache.Cache;
 import org.metadatacenter.cedar.terminology.resources.AbstractTerminologyServerResource;
+import org.metadatacenter.cedar.terminology.resources.bioportal.swaggermodel.PagedSearchResults;
+import org.metadatacenter.cedar.util.dw.AnonymousAccess;
 import org.metadatacenter.config.CedarConfig;
 import org.metadatacenter.error.CedarErrorKey;
 import org.metadatacenter.exception.CedarException;
+import org.metadatacenter.exception.CedarProcessingException;
 import org.metadatacenter.rest.context.CedarRequestContext;
-import org.metadatacenter.rest.exception.CedarAssertionException;
 import org.metadatacenter.terms.customObjects.PagedResults;
+import org.metadatacenter.util.http.CedarError;
 import org.metadatacenter.util.http.CedarResponse;
 import org.metadatacenter.util.json.JsonMapper;
 
@@ -54,7 +55,7 @@ public class SearchResource extends AbstractTerminologyServerResource {
   @Path("/search")
   @Operation(summary = "Search", description = "Search for ontology classes, value sets, and values.", tags = {"Classes", "Value sets", "Values"})
   @ApiResponses({
-      @ApiResponse(responseCode = "200", description = "Successful operation"),
+      @ApiResponse(responseCode = "200", description = "One page of matching classes, value sets and values", content = @Content(schema = @Schema(implementation = PagedSearchResults.class))),
       @ApiResponse(responseCode = "400", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Bad request"),
       @ApiResponse(responseCode = "401", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Unauthorized"),
       @ApiResponse(responseCode = "403", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Forbidden"),
@@ -122,7 +123,7 @@ public class SearchResource extends AbstractTerminologyServerResource {
     } catch (HTTPException e) {
       return relayedBioPortalFailure(e);
     } catch (IOException e) {
-      throw new CedarAssertionException(e);
+      throw new CedarProcessingException(e);
     }
   }
 
@@ -134,7 +135,7 @@ public class SearchResource extends AbstractTerminologyServerResource {
   @Path("/property_search")
   @Operation(summary = "Property search", description = "Search for properties.", tags = {"Properties"})
   @ApiResponses({
-      @ApiResponse(responseCode = "200", description = "Successful operation"),
+      @ApiResponse(responseCode = "200", description = "One page of matching properties", content = @Content(schema = @Schema(implementation = PagedSearchResults.class))),
       @ApiResponse(responseCode = "400", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Bad request"),
       @ApiResponse(responseCode = "401", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Unauthorized"),
       @ApiResponse(responseCode = "403", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Forbidden"),
@@ -176,7 +177,7 @@ public class SearchResource extends AbstractTerminologyServerResource {
     } catch (HTTPException e) {
       return relayedBioPortalFailure(e);
     } catch (IOException e) {
-      throw new CedarAssertionException(e);
+      throw new CedarProcessingException(e);
     }
   }
 }

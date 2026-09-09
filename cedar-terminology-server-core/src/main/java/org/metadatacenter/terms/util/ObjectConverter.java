@@ -15,14 +15,14 @@ import java.util.Objects;
 import java.util.Set;
 
 import static org.metadatacenter.cedar.terminology.util.Constants.*;
-import static org.metadatacenter.util.json.JsonMapper.MAPPER;
+import static org.metadatacenter.util.json.JsonMapper.TOLERANT_MAPPER;
 
 public class ObjectConverter {
 
   public static List<BpTreeNode> toBpTreeNodeList(JsonNode nodes) {
     List<BpTreeNode> treeNodes = new ArrayList<>();
     for (JsonNode node : nodes) {
-      treeNodes.add(MAPPER.convertValue(node, BpTreeNode.class));
+      treeNodes.add(TOLERANT_MAPPER.convertValue(node, BpTreeNode.class));
     }
     return treeNodes;
   }

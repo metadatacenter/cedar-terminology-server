@@ -5,7 +5,7 @@
   <parent>
     <groupId>org.metadatacenter</groupId>
     <artifactId>cedar-terminology-server</artifactId>
-    <version>2.9.9</version>
+    <version>2.9.10</version>
   </parent>
 
   <groupId>org.metadatacenter</groupId>
@@ -78,6 +78,15 @@
     <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
       <artifactId>jackson-annotations</artifactId>
+    </dependency>
+
+    <!-- Swagger v3 annotations, for the request models the generated OpenAPI spec describes. A
+         Jackson tree node introspects into an object with no properties, which documents nothing, so
+         the models that hold one say what the wire really carries. Documentation only: no runtime
+         code reads them. -->
+    <dependency>
+      <groupId>io.swagger.core.v3</groupId>
+      <artifactId>swagger-annotations-jakarta</artifactId>
     </dependency>
 
     <!-- Google Guava -->

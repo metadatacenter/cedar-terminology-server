@@ -1,5 +1,6 @@
 package org.metadatacenter.cedar.terminology.resources.bioportal;
 
+import com.codahale.metrics.annotation.Timed;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -8,14 +9,13 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.metadatacenter.util.http.CedarError;
 import org.metadatacenter.cedar.terminology.resources.AbstractTerminologyServerResource;
 import org.metadatacenter.config.CedarConfig;
 import org.metadatacenter.exception.CedarException;
 import org.metadatacenter.exception.CedarProcessingException;
 import org.metadatacenter.rest.context.CedarRequestContext;
-import org.metadatacenter.rest.exception.CedarAssertionException;
 import org.metadatacenter.terms.domainObjects.Relation;
+import org.metadatacenter.util.http.CedarError;
 import org.metadatacenter.util.json.JsonMapper;
 
 import jakarta.ws.rs.*;
@@ -38,10 +38,11 @@ public class RelationResource extends AbstractTerminologyServerResource {
   }
 
   @GET
+  @Timed
   @Path("relations/{id}")
   @Operation(summary = "Find provisional relation by id", description = "Find provisional relation by id.")
   @ApiResponses({
-      @ApiResponse(responseCode = "200", description = "Successful operation"),
+      @ApiResponse(responseCode = "200", description = "The provisional relation", content = @Content(schema = @Schema(implementation = Relation.class))),
       @ApiResponse(responseCode = "400", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Bad request"),
       @ApiResponse(responseCode = "401", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Unauthorized"),
       @ApiResponse(responseCode = "403", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Forbidden"),
@@ -59,7 +60,7 @@ public class RelationResource extends AbstractTerminologyServerResource {
     } catch (HTTPException e) {
       return relayedBioPortalFailure(e);
     } catch (IOException e) {
-      throw new CedarAssertionException(e);
+      throw new CedarProcessingException(e);
     }
   }
 

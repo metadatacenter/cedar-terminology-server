@@ -1,21 +1,23 @@
 package org.metadatacenter.cedar.terminology.resources.bioportal;
 
+import com.codahale.metrics.annotation.Timed;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.metadatacenter.util.http.CedarError;
 import org.metadatacenter.cedar.terminology.resources.AbstractTerminologyServerResource;
 import org.metadatacenter.config.CedarConfig;
 import org.metadatacenter.exception.CedarException;
+import org.metadatacenter.exception.CedarProcessingException;
 import org.metadatacenter.rest.context.CedarRequestContext;
-import org.metadatacenter.rest.exception.CedarAssertionException;
 import org.metadatacenter.terms.domainObjects.ValueSetCollection;
 import org.metadatacenter.terms.domainObjects.VersionTriple;
+import org.metadatacenter.util.http.CedarError;
 import org.metadatacenter.util.http.CedarResponse;
 import org.metadatacenter.util.json.JsonMapper;
 
@@ -39,10 +41,11 @@ public class ValueSetCollectionResource extends AbstractTerminologyServerResourc
   }
 
   @GET
+  @Timed
   @Path("vs-collections")
   @Operation(summary = "Find all value set collections", description = "Find all value set collections.")
   @ApiResponses({
-      @ApiResponse(responseCode = "200", description = "Successful operation"),
+      @ApiResponse(responseCode = "200", description = "Every value set collection, with details only when they were asked for", content = @Content(array = @ArraySchema(schema = @Schema(implementation = ValueSetCollection.class)))),
       @ApiResponse(responseCode = "400", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Bad request"),
       @ApiResponse(responseCode = "401", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Unauthorized"),
       @ApiResponse(responseCode = "403", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Forbidden"),
@@ -62,11 +65,12 @@ public class ValueSetCollectionResource extends AbstractTerminologyServerResourc
     } catch (HTTPException e) {
       return relayedBioPortalFailure(e);
     } catch (IOException e) {
-      throw new CedarAssertionException(e);
+      throw new CedarProcessingException(e);
     }
   }
 
   @GET
+  @Timed
   @Path("vs-collections/version-current")
   @Operation(summary = "Resolve the current version triple for a value-set collection",
       description = "The version triple of a value-set collection's current (\"latest\") locally-stored "
@@ -74,7 +78,7 @@ public class ValueSetCollectionResource extends AbstractTerminologyServerResourc
           + "collections are ingested and versioned by the same content-hash mechanism as ontologies. "
           + "404 when the collection is not ingested and served locally.")
   @ApiResponses({
-      @ApiResponse(responseCode = "200", description = "Successful operation"),
+      @ApiResponse(responseCode = "200", description = "The collection's current version triple", content = @Content(schema = @Schema(implementation = VersionTriple.class))),
       @ApiResponse(responseCode = "401", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Unauthorized"),
       @ApiResponse(responseCode = "404", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Value-set collection not resolvable locally"),
       @ApiResponse(responseCode = "500", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Internal server error")
@@ -91,7 +95,7 @@ public class ValueSetCollectionResource extends AbstractTerminologyServerResourc
       }
       return Response.ok().entity(JsonMapper.MAPPER.valueToTree(triple)).build();
     } catch (IOException e) {
-      throw new CedarAssertionException(e);
+      throw new CedarProcessingException(e);
     }
   }
 

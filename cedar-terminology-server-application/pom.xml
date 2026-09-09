@@ -5,7 +5,7 @@
   <parent>
     <groupId>org.metadatacenter</groupId>
     <artifactId>cedar-terminology-server</artifactId>
-    <version>2.9.9</version>
+    <version>2.9.10</version>
   </parent>
 
   <groupId>org.metadatacenter</groupId>
@@ -184,35 +184,20 @@
       </plugin>
 
       <!--
-        Generates the OpenAPI 3.0 spec from the JAX-RS (jakarta.ws.rs) resource annotations into
-        src/main/resources/assets/swagger-api/ as swagger.json + swagger.yaml (committed; Maven
-        copies it onto the classpath that the Dropwizard AssetsBundle serves). The official
-        io.swagger.core.v3 plugin (jakarta line) resolves with the project classpath so resource
-        classes that extend cedar-* base classes are introspected. sortOutput keeps the spec
-        byte-stable. Info and the api_key security scheme come from the filtered openapi-base.yaml.
+        Generates the OpenAPI 3.0 spec from the JAX-RS (jakarta.ws.rs) resource annotations. The
+        phase, output locations and format come from cedar-parent; this module names only the
+        package to scan. Info and the api_key security scheme come from the filtered
+        openapi-base.yaml.
       -->
       <plugin>
         <groupId>io.swagger.core.v3</groupId>
         <artifactId>swagger-maven-plugin-jakarta</artifactId>
         <configuration>
-          <outputPath>${project.basedir}/src/main/resources/assets/swagger-api</outputPath>
-          <outputFileName>swagger</outputFileName>
-          <outputFormat>JSONANDYAML</outputFormat>
-          <prettyPrint>true</prettyPrint>
-          <sortOutput>true</sortOutput>
           <resourcePackages>
             <package>org.metadatacenter.cedar.terminology.resources</package>
+            <package>org.metadatacenter.cedar.util.dw</package>
           </resourcePackages>
-          <openapiFilePath>${project.build.directory}/generated-swagger/openapi-base.yaml</openapiFilePath>
         </configuration>
-        <executions>
-          <execution>
-            <phase>prepare-package</phase>
-            <goals>
-              <goal>resolve</goal>
-            </goals>
-          </execution>
-        </executions>
       </plugin>
 
       <plugin>

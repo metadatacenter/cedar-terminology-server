@@ -1,5 +1,6 @@
 package org.metadatacenter.cedar.terminology.resources.bioportal;
 
+import com.codahale.metrics.annotation.Timed;
 import com.fasterxml.jackson.databind.JsonNode;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -9,16 +10,16 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.metadatacenter.util.http.CedarError;
 import org.metadatacenter.cedar.terminology.resources.AbstractTerminologyServerResource;
+import org.metadatacenter.cedar.terminology.resources.bioportal.swaggermodel.PagedValues;
 import org.metadatacenter.config.CedarConfig;
 import org.metadatacenter.exception.CedarException;
 import org.metadatacenter.exception.CedarProcessingException;
 import org.metadatacenter.rest.context.CedarRequestContext;
-import org.metadatacenter.rest.exception.CedarAssertionException;
 import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.terms.domainObjects.TreeNode;
 import org.metadatacenter.terms.domainObjects.Value;
+import org.metadatacenter.util.http.CedarError;
 import org.metadatacenter.util.json.JsonMapper;
 
 import jakarta.ws.rs.*;
@@ -42,10 +43,11 @@ public class ValueResource extends AbstractTerminologyServerResource {
   }
 
   @GET
+  @Timed
   @Path("vs-collections/{vs_collection}/values/{id}")
   @Operation(summary = "Find value by id", description = "Find value by id.")
   @ApiResponses({
-      @ApiResponse(responseCode = "200", description = "Successful operation"),
+      @ApiResponse(responseCode = "200", description = "The value", content = @Content(schema = @Schema(implementation = Value.class))),
       @ApiResponse(responseCode = "400", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Bad request"),
       @ApiResponse(responseCode = "401", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Unauthorized"),
       @ApiResponse(responseCode = "403", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Forbidden"),
@@ -66,15 +68,16 @@ public class ValueResource extends AbstractTerminologyServerResource {
     } catch (HTTPException e) {
       return relayedBioPortalFailure(e);
     } catch (IOException e) {
-      throw new CedarAssertionException(e);
+      throw new CedarProcessingException(e);
     }
   }
 
   @GET
+  @Timed
   @Path("vs-collections/{vs_collection}/values/{id}/tree")
   @Operation(summary = "Get value tree", description = "Get value tree (only for regular values).")
   @ApiResponses({
-      @ApiResponse(responseCode = "200", description = "Successful operation"),
+      @ApiResponse(responseCode = "200", description = "The value and the values around it in its value set", content = @Content(schema = @Schema(implementation = TreeNode.class))),
       @ApiResponse(responseCode = "400", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Bad request"),
       @ApiResponse(responseCode = "401", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Unauthorized"),
       @ApiResponse(responseCode = "403", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Forbidden"),
@@ -95,15 +98,16 @@ public class ValueResource extends AbstractTerminologyServerResource {
     } catch (HTTPException e) {
       return relayedBioPortalFailure(e);
     } catch (IOException e) {
-      throw new CedarAssertionException(e);
+      throw new CedarProcessingException(e);
     }
   }
 
   @GET
+  @Timed
   @Path("vs-collections/{vs_collection}/value-sets/{vs}/values")
   @Operation(summary = "Find all values in a value set", description = "Find all values in a value set (either regular or provisional).")
   @ApiResponses({
-      @ApiResponse(responseCode = "200", description = "Successful operation"),
+      @ApiResponse(responseCode = "200", description = "One page of the value set's values", content = @Content(schema = @Schema(implementation = PagedValues.class))),
       @ApiResponse(responseCode = "400", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Bad request"),
       @ApiResponse(responseCode = "401", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Unauthorized"),
       @ApiResponse(responseCode = "403", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Forbidden"),
@@ -131,15 +135,16 @@ public class ValueResource extends AbstractTerminologyServerResource {
     } catch (HTTPException e) {
       return relayedBioPortalFailure(e);
     } catch (IOException e) {
-      throw new CedarAssertionException(e);
+      throw new CedarProcessingException(e);
     }
   }
 
   @GET
+  @Timed
   @Path("vs-collections/{vs_collection}/values/{id}/all-values")
   @Operation(summary = "Find all values in the value set that the given value belongs to", description = "Find all values in the value set that the given value belongs to.")
   @ApiResponses({
-      @ApiResponse(responseCode = "200", description = "Successful operation"),
+      @ApiResponse(responseCode = "200", description = "One page of the values in the value set the given value belongs to", content = @Content(schema = @Schema(implementation = PagedValues.class))),
       @ApiResponse(responseCode = "400", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Bad request"),
       @ApiResponse(responseCode = "401", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Unauthorized"),
       @ApiResponse(responseCode = "403", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Forbidden"),
@@ -167,7 +172,7 @@ public class ValueResource extends AbstractTerminologyServerResource {
     } catch (HTTPException e) {
       return relayedBioPortalFailure(e);
     } catch (IOException e) {
-      throw new CedarAssertionException(e);
+      throw new CedarProcessingException(e);
     }
   }
 

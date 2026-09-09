@@ -23,6 +23,7 @@ import java.util.List;
 
 import static org.metadatacenter.cedar.terminology.util.Constants.*;
 import static org.metadatacenter.util.json.JsonMapper.MAPPER;
+import static org.metadatacenter.util.json.JsonMapper.TOLERANT_MAPPER;
 
 public class BpProvisionalClassDAO {
   private final int connectTimeout;
@@ -47,7 +48,7 @@ public class BpProvisionalClassDAO {
     // The class was successfully created
     if (statusCode == Status.CREATED.getStatusCode()) {
       JsonNode bpResult = MAPPER.readTree(response.getEntity().getContent());
-      return MAPPER.convertValue(bpResult, BpProvisionalClass.class);
+      return TOLERANT_MAPPER.convertValue(bpResult, BpProvisionalClass.class);
     } else {
       throw BioPortalFailure.relay(statusCode, url);
     }
@@ -66,7 +67,7 @@ public class BpProvisionalClassDAO {
     // The class was successfully retrieved
     if (statusCode == Status.OK.getStatusCode()) {
       JsonNode bpResult = MAPPER.readTree(response.getEntity().getContent());
-      return MAPPER.convertValue(bpResult, BpProvisionalClass.class);
+      return TOLERANT_MAPPER.convertValue(bpResult, BpProvisionalClass.class);
     } else {
       throw BioPortalFailure.relay(statusCode, url);
     }
@@ -93,13 +94,14 @@ public class BpProvisionalClassDAO {
       if (ontology != null) {
         // If the ontology is specified, BioPortal does not return paged results, so we have to build them.
         // TODO: task for the BioPortal team: provide paged results when the ontology is specified
-        List<BpProvisionalClass> provClasses = MAPPER.readValue(MAPPER.treeAsTokens(bpResult),
+        List<BpProvisionalClass> provClasses = TOLERANT_MAPPER.readValue(MAPPER.treeAsTokens(bpResult),
             new TypeReference<List<BpProvisionalClass>>() {
         });
         results = new BpPagedResults<>(1, 1, provClasses.size(), null, null, provClasses);
         return results;
       } else {
-        return MAPPER.readValue(MAPPER.treeAsTokens(bpResult), new TypeReference<BpPagedResults<BpProvisionalClass>>() {
+        return TOLERANT_MAPPER.readValue(MAPPER.treeAsTokens(bpResult),
+            new TypeReference<BpPagedResults<BpProvisionalClass>>() {
         });
       }
     } else {

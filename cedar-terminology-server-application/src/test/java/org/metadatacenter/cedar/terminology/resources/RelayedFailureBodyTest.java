@@ -2,6 +2,7 @@ package org.metadatacenter.cedar.terminology.resources;
 
 import jakarta.ws.rs.core.Response;
 import javax.xml.ws.http.HTTPException;
+import org.metadatacenter.util.http.CedarError;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -54,9 +55,10 @@ class RelayedFailureBodyTest {
   void bodyNamesTheUpstream() throws Exception {
     Response response = relay(401);
     assertNotNull(response.getEntity(), "the point of the change is that there is a body");
-    String rendered = response.getEntity().toString();
-    assertTrue(rendered.contains("BioPortal"), "the body should name the upstream: " + rendered);
-    assertTrue(rendered.contains("401"), "the body should carry the upstream status: " + rendered);
+    CedarError error = (CedarError) response.getEntity();
+    assertTrue(error.message.contains("BioPortal"), "the body should name the upstream: " + error.message);
+    assertEquals(401, error.parameters.get("upstreamStatusCode"),
+        "the body should carry the upstream status in its structured parameters");
   }
 
   @Test

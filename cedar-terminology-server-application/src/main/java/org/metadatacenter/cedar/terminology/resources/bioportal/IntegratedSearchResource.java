@@ -10,15 +10,16 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.metadatacenter.util.http.CedarError;
 import org.metadatacenter.cedar.terminology.resources.AbstractTerminologyServerResource;
 import org.metadatacenter.cedar.terminology.resources.bioportal.swaggermodel.IntegratedSearchResults;
 import org.metadatacenter.cedar.terminology.validation.integratedsearch.IntegratedSearchBody;
 import org.metadatacenter.config.CedarConfig;
 import org.metadatacenter.exception.CedarException;
-import org.metadatacenter.rest.exception.CedarAssertionException;
+import org.metadatacenter.exception.CedarProcessingException;
 import org.metadatacenter.terms.PinnedVersionUnavailableException;
 import org.metadatacenter.terms.customObjects.PagedResults;
+import org.metadatacenter.util.http.CedarError;
+import org.metadatacenter.util.http.CedarResponse;
 import org.metadatacenter.util.json.JsonMapper;
 
 import jakarta.validation.Valid;
@@ -66,7 +67,7 @@ public class IntegratedSearchResource extends AbstractTerminologyServerResource 
       @ApiResponse(responseCode = "200", description = "A paginated list of search results", content = @Content(schema = @Schema(implementation = IntegratedSearchResults.class))),
       @ApiResponse(responseCode = "400", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Bad request"),
       @ApiResponse(responseCode = "404", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Not found"),
-      @ApiResponse(responseCode = "422", description = "A constraint pins a vocabulary version that cannot be served"),
+      @ApiResponse(responseCode = "422", description = "A constraint pins a vocabulary version that cannot be served", content = @Content(schema = @Schema(implementation = CedarError.class))),
       @ApiResponse(responseCode = "500", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Internal server error")
   })
   public Response cedarIntegratedSearch(@Valid IntegratedSearchBody body,
@@ -97,16 +98,14 @@ public class IntegratedSearchResource extends AbstractTerminologyServerResource 
       // A frozen constraint pins a vocabulary version that cannot be served; the server fails the read
       // rather than resolving against latest. 422 Unprocessable Entity: the request is well-formed but
       // the pinned snapshot is unavailable.
-      return Response.status(422)
-          .entity(JsonMapper.MAPPER.createObjectNode()
-              .put("errorType", "PinnedVersionUnavailable")
-              .put("message", e.getMessage()))
-          .type(MediaType.APPLICATION_JSON)
+      return CedarResponse.status(org.metadatacenter.http.CedarResponseStatus.UNPROCESSABLE_ENTITY)
+          .legacyErrorType("PinnedVersionUnavailable")
+          .errorMessage(e.getMessage())
           .build();
     } catch (HTTPException e) {
       return relayedBioPortalFailure(e);
     } catch (IOException /*| ExecutionException*/ e) {
-      throw new CedarAssertionException(e);
+      throw new CedarProcessingException(e);
     }
   }
 

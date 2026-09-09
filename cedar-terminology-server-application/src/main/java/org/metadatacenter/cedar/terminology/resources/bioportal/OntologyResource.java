@@ -1,25 +1,28 @@
 package org.metadatacenter.cedar.terminology.resources.bioportal;
 
+import com.codahale.metrics.annotation.Timed;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.metadatacenter.util.http.CedarError;
 import org.metadatacenter.cedar.cache.Cache;
 import org.metadatacenter.cedar.terminology.resources.AbstractTerminologyServerResource;
 import org.metadatacenter.config.CedarConfig;
 import org.metadatacenter.exception.CedarException;
+import org.metadatacenter.exception.CedarProcessingException;
 import org.metadatacenter.rest.context.CedarRequestContext;
-import org.metadatacenter.rest.exception.CedarAssertionException;
 import org.metadatacenter.terms.domainObjects.Ontology;
 import org.metadatacenter.terms.domainObjects.OntologyClass;
-import org.metadatacenter.terms.domainObjects.OntologyVersion;
-import org.metadatacenter.terms.domainObjects.VersionTriple;
 import org.metadatacenter.terms.domainObjects.OntologyProperty;
+import org.metadatacenter.terms.domainObjects.OntologyVersion;
+import org.metadatacenter.terms.domainObjects.VersionDiff;
+import org.metadatacenter.terms.domainObjects.VersionTriple;
+import org.metadatacenter.util.http.CedarError;
 import org.metadatacenter.util.http.CedarResponse;
 import org.metadatacenter.util.json.JsonMapper;
 
@@ -48,10 +51,11 @@ public class OntologyResource extends AbstractTerminologyServerResource {
   }
 
   @GET
+  @Timed
   @Path("ontologies")
   @Operation(summary = "Find all ontologies", description = "Find all ontologies.")
   @ApiResponses({
-      @ApiResponse(responseCode = "200", description = "Successful operation"),
+      @ApiResponse(responseCode = "200", description = "Every ontology the server serves", content = @Content(array = @ArraySchema(schema = @Schema(implementation = Ontology.class)))),
       @ApiResponse(responseCode = "400", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Bad request"),
       @ApiResponse(responseCode = "401", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Unauthorized"),
       @ApiResponse(responseCode = "403", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Forbidden"),
@@ -67,15 +71,16 @@ public class OntologyResource extends AbstractTerminologyServerResource {
     } catch (HTTPException e) {
       return relayedBioPortalFailure(e);
     } catch (ExecutionException e) {
-      throw new CedarAssertionException(e);
+      throw new CedarProcessingException(e);
     }
   }
 
   @GET
+  @Timed
   @Path("ontologies/{id}")
   @Operation(summary = "Find ontology by id", description = "Find ontology by id.")
   @ApiResponses({
-      @ApiResponse(responseCode = "200", description = "Successful operation"),
+      @ApiResponse(responseCode = "200", description = "The ontology", content = @Content(schema = @Schema(implementation = Ontology.class))),
       @ApiResponse(responseCode = "400", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Bad request"),
       @ApiResponse(responseCode = "401", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Unauthorized"),
       @ApiResponse(responseCode = "403", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Forbidden"),
@@ -96,11 +101,12 @@ public class OntologyResource extends AbstractTerminologyServerResource {
     } catch (HTTPException e) {
       return relayedBioPortalFailure(e);
     } catch (ExecutionException e) {
-      throw new CedarAssertionException(e);
+      throw new CedarProcessingException(e);
     }
   }
 
   @GET
+  @Timed
   @Path("ontologies/{id}/versions")
   @Operation(summary = "List local versions of an ontology",
       description = "Versions of an ontology available in the local, version-pinned store, each with "
@@ -109,7 +115,7 @@ public class OntologyResource extends AbstractTerminologyServerResource {
           + "current one. Empty when the ontology is served from BioPortal (which has no equivalent).",
       tags = {"Ontologies"})
   @ApiResponses({
-      @ApiResponse(responseCode = "200", description = "Successful operation"),
+      @ApiResponse(responseCode = "200", description = "The versions held locally, newest state marked latest", content = @Content(array = @ArraySchema(schema = @Schema(implementation = OntologyVersion.class)))),
       @ApiResponse(responseCode = "401", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Unauthorized"),
       @ApiResponse(responseCode = "500", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Internal server error")
   })
@@ -122,11 +128,12 @@ public class OntologyResource extends AbstractTerminologyServerResource {
       List<OntologyVersion> versions = terminologyService.getVersions(id);
       return Response.ok().entity(JsonMapper.MAPPER.valueToTree(versions)).build();
     } catch (IOException e) {
-      throw new CedarAssertionException(e);
+      throw new CedarProcessingException(e);
     }
   }
 
   @GET
+  @Timed
   @Path("ontologies/{id}/versions/current")
   @Operation(summary = "Resolve the current version triple of an ontology",
       description = "The version triple {id (content hash), effectiveDate, declaredVersion} of the "
@@ -136,7 +143,7 @@ public class OntologyResource extends AbstractTerminologyServerResource {
           + "(BioPortal has no content-hash triple to freeze).",
       tags = {"Ontologies"})
   @ApiResponses({
-      @ApiResponse(responseCode = "200", description = "Successful operation"),
+      @ApiResponse(responseCode = "200", description = "The current version triple", content = @Content(schema = @Schema(implementation = VersionTriple.class))),
       @ApiResponse(responseCode = "401", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Unauthorized"),
       @ApiResponse(responseCode = "404", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Ontology not served locally"),
       @ApiResponse(responseCode = "500", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Internal server error")
@@ -153,11 +160,12 @@ public class OntologyResource extends AbstractTerminologyServerResource {
       }
       return Response.ok().entity(JsonMapper.MAPPER.valueToTree(triple)).build();
     } catch (IOException e) {
-      throw new CedarAssertionException(e);
+      throw new CedarProcessingException(e);
     }
   }
 
   @GET
+  @Timed
   @Path("classes/version-current")
   @Operation(summary = "Resolve the current version triple for a class IRI",
       description = "The version triple of the ontology that owns the given class/term IRI — the "
@@ -167,7 +175,7 @@ public class OntologyResource extends AbstractTerminologyServerResource {
           + "served locally.",
       tags = {"Classes"})
   @ApiResponses({
-      @ApiResponse(responseCode = "200", description = "Successful operation"),
+      @ApiResponse(responseCode = "200", description = "The version triple of the ontology that owns the class", content = @Content(schema = @Schema(implementation = VersionTriple.class))),
       @ApiResponse(responseCode = "401", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Unauthorized"),
       @ApiResponse(responseCode = "404", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Ontology for the class not resolvable locally"),
       @ApiResponse(responseCode = "500", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Internal server error")
@@ -185,11 +193,12 @@ public class OntologyResource extends AbstractTerminologyServerResource {
       }
       return Response.ok().entity(JsonMapper.MAPPER.valueToTree(triple)).build();
     } catch (IOException e) {
-      throw new CedarAssertionException(e);
+      throw new CedarProcessingException(e);
     }
   }
 
   @GET
+  @Timed
   @Path("ontologies/{id}/versions/diff")
   @Operation(summary = "Diff two local versions of an ontology",
       description = "The vocabulary diff (concept and subsumption-edge additions/removals, newly "
@@ -197,7 +206,7 @@ public class OntologyResource extends AbstractTerminologyServerResource {
           + "version_id or tag. 404 when the ontology or a version is not served locally.",
       tags = {"Ontologies"})
   @ApiResponses({
-      @ApiResponse(responseCode = "200", description = "Successful operation"),
+      @ApiResponse(responseCode = "200", description = "The vocabulary diff between the two versions", content = @Content(schema = @Schema(implementation = VersionDiff.class))),
       @ApiResponse(responseCode = "401", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Unauthorized"),
       @ApiResponse(responseCode = "404", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Ontology or version not found locally"),
       @ApiResponse(responseCode = "500", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Internal server error")
@@ -217,16 +226,17 @@ public class OntologyResource extends AbstractTerminologyServerResource {
       }
       return Response.ok().entity(JsonMapper.MAPPER.valueToTree(diff)).build();
     } catch (IOException e) {
-      throw new CedarAssertionException(e);
+      throw new CedarProcessingException(e);
     }
   }
 
   @GET
+  @Timed
   @Path("ontologies/{ontology}/classes/roots")
   @Operation(summary = "Get root classes", description = "Get root classes in a particular ontology. For the CEDARPC ontology, all provisional classes in it " +
           "will be returned.", tags = {"Classes", "Ontologies"})
   @ApiResponses({
-      @ApiResponse(responseCode = "200", description = "Successful operation"),
+      @ApiResponse(responseCode = "200", description = "The ontology's root classes", content = @Content(array = @ArraySchema(schema = @Schema(implementation = OntologyClass.class)))),
       @ApiResponse(responseCode = "400", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Bad request"),
       @ApiResponse(responseCode = "401", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Unauthorized"),
       @ApiResponse(responseCode = "403", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Forbidden"),
@@ -245,15 +255,16 @@ public class OntologyResource extends AbstractTerminologyServerResource {
     } catch (HTTPException e) {
       return relayedBioPortalFailure(e);
     } catch (IOException | ExecutionException e) {
-      throw new CedarAssertionException(e);
+      throw new CedarProcessingException(e);
     }
   }
 
   @GET
+  @Timed
   @Path("ontologies/{ontology}/properties/roots")
   @Operation(summary = "Get root properties", description = "Get root properties in a particular ontology.", tags = {"Properties", "Ontologies"})
   @ApiResponses({
-      @ApiResponse(responseCode = "200", description = "Successful operation"),
+      @ApiResponse(responseCode = "200", description = "The ontology's root properties", content = @Content(array = @ArraySchema(schema = @Schema(implementation = OntologyProperty.class)))),
       @ApiResponse(responseCode = "400", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Bad request"),
       @ApiResponse(responseCode = "401", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Unauthorized"),
       @ApiResponse(responseCode = "403", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Forbidden"),
@@ -271,7 +282,7 @@ public class OntologyResource extends AbstractTerminologyServerResource {
     } catch (HTTPException e) {
       return relayedBioPortalFailure(e);
     } catch (IOException e) {
-      throw new CedarAssertionException(e);
+      throw new CedarProcessingException(e);
     }
   }
 
