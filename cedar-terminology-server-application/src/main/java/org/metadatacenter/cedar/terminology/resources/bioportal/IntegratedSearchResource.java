@@ -16,6 +16,7 @@ import org.metadatacenter.cedar.terminology.validation.integratedsearch.Integrat
 import org.metadatacenter.config.CedarConfig;
 import org.metadatacenter.exception.CedarException;
 import org.metadatacenter.exception.CedarProcessingException;
+import org.metadatacenter.error.CedarErrorKey;
 import org.metadatacenter.terms.PinnedVersionUnavailableException;
 import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.util.http.CedarError;
@@ -98,9 +99,10 @@ public class IntegratedSearchResource extends AbstractTerminologyServerResource 
       // A frozen constraint pins a vocabulary version that cannot be served; the server fails the read
       // rather than resolving against latest. 422 Unprocessable Entity: the request is well-formed but
       // the pinned snapshot is unavailable.
+      // errorKey is how a client recognizes this failure.
       return CedarResponse.status(org.metadatacenter.http.CedarResponseStatus.UNPROCESSABLE_ENTITY)
-          .legacyErrorType("PinnedVersionUnavailable")
-          .errorMessage(e.getMessage())
+          .errorKey(CedarErrorKey.PINNED_VERSION_UNAVAILABLE)
+          .message(e.getMessage())
           .build();
     } catch (HTTPException e) {
       return relayedBioPortalFailure(e);

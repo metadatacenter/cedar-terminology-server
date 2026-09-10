@@ -101,7 +101,7 @@ public class SearchResource extends AbstractTerminologyServerResource {
         if (!referenceScopeList.contains(s)) {
           return CedarResponse.badRequest()
               .errorKey(CedarErrorKey.INVALID_INPUT)
-              .errorMessage("Wrong scope. Accepted values = {all, classes, value_sets, values}")
+              .message("Wrong scope. Accepted values = {all, classes, value_sets, values}")
               .build();
         } else {
           scopeList.add(s);
