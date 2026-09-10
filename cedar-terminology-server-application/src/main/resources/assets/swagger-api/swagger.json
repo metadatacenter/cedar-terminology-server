@@ -4449,6 +4449,7 @@
       },
       "IntegratedRetrieveRequestBody" : {
         "type" : "object",
+        "additionalProperties" : false,
         "description" : "Object that encapsulates the information needed to run the integrated-retrieve query.",
         "properties" : {
           "inputText" : {
@@ -4712,6 +4713,7 @@
       },
       "IntegratedSearchRequestBody" : {
         "type" : "object",
+        "additionalProperties" : false,
         "description" : "Object that encapsulates the information needed to run the integrated-search query.",
         "properties" : {
           "page" : {
@@ -5298,6 +5300,7 @@
       },
       "SearchRequest" : {
         "type" : "object",
+        "additionalProperties" : false,
         "properties" : {
           "includeVersions" : {
             "type" : "boolean"

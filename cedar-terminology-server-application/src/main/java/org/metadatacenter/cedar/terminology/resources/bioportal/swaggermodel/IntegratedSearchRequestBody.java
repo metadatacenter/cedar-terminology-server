@@ -13,7 +13,8 @@ import java.util.List;
  * input text) plus optional pagination fields.</p>
  */
 @Schema(name = "IntegratedSearchRequestBody", description = "Object that encapsulates the information needed to " +
-    "run the integrated-search query.")
+    "run the integrated-search query.",
+    additionalProperties = Schema.AdditionalPropertiesValue.FALSE)
 public class IntegratedSearchRequestBody {
 
   @Schema(description = "Object that encapsulates the value constraints and the input text used to run the " +

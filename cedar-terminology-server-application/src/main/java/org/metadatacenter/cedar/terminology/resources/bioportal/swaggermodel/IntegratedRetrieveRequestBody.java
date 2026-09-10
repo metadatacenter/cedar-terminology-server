@@ -12,7 +12,8 @@ import java.util.List;
  * and the user-supplied input text, plus optional pagination fields.</p>
  */
 @Schema(name = "IntegratedRetrieveRequestBody", description = "Object that encapsulates the information needed to " +
-    "run the integrated-retrieve query.")
+    "run the integrated-retrieve query.",
+    additionalProperties = Schema.AdditionalPropertiesValue.FALSE)
 public class IntegratedRetrieveRequestBody {
 
   @Schema(description = "The value constraints field specification. Based on CEDAR's '_valueConstraints' field.", requiredMode = Schema.RequiredMode.REQUIRED)

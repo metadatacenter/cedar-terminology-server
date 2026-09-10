@@ -3256,6 +3256,7 @@ components:
       - vsCollection
     IntegratedRetrieveRequestBody:
       type: object
+      additionalProperties: false
       description: Object that encapsulates the information needed to run the integrated-retrieve
         query.
       properties:
@@ -3490,6 +3491,7 @@ components:
       - valueConstraints
     IntegratedSearchRequestBody:
       type: object
+      additionalProperties: false
       description: Object that encapsulates the information needed to run the integrated-search
         query.
       properties:
@@ -3922,6 +3924,7 @@ components:
           type: string
     SearchRequest:
       type: object
+      additionalProperties: false
       properties:
         includeVersions:
           type: boolean

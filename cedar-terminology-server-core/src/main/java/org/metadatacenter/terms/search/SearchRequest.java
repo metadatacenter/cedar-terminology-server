@@ -14,6 +14,7 @@ import java.util.List;
  * entry without translation. The design, including what a response carries, is in
  * {@code cedar-development/ops/VERSIONING-ROADMAP.md}, "The Search API".
  */
+@Schema(additionalProperties = Schema.AdditionalPropertiesValue.FALSE)
 public record SearchRequest(
     String query,
     List<String> types,
