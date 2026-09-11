@@ -73,7 +73,7 @@ public abstract class AbstractTerminologyServerResource extends CedarMicroservic
 
     return CedarResponse.status(status)
         .errorKey(CedarErrorKey.UPSTREAM_SERVER_ERROR)
-        .errorMessage(explanation)
+        .message(explanation)
         .parameter("upstreamStatusCode", upstreamStatus)
         .parameter("upstreamService", "BioPortal")
         .build();

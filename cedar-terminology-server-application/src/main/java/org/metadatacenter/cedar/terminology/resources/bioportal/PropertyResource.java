@@ -61,7 +61,7 @@ public class PropertyResource extends AbstractTerminologyServerResource {
     ctx.must(ctx.user()).be(LoggedIn);
     try {
       OntologyProperty p = terminologyService.findProperty(id, ontology, apiKey);
-      return Response.ok().entity(JsonMapper.MAPPER.valueToTree(p)).build();
+      return Response.ok().entity(JsonMapper.STRICT_MAPPER.valueToTree(p)).build();
     } catch (HTTPException e) {
       return relayedBioPortalFailure(e);
     } catch (IOException e) {
@@ -89,7 +89,7 @@ public class PropertyResource extends AbstractTerminologyServerResource {
     ctx.must(ctx.user()).be(LoggedIn);
     try {
       List<OntologyProperty> properties = terminologyService.findAllPropertiesInOntology(ontology, apiKey);
-      return Response.ok().entity(JsonMapper.MAPPER.valueToTree(properties)).build();
+      return Response.ok().entity(JsonMapper.STRICT_MAPPER.valueToTree(properties)).build();
     } catch (HTTPException e) {
       return relayedBioPortalFailure(e);
     } catch (IOException e) {
@@ -119,7 +119,7 @@ public class PropertyResource extends AbstractTerminologyServerResource {
     ctx.must(ctx.user()).be(LoggedIn);
     try {
       List<TreeNode> tree = terminologyService.getPropertyTree(id, ontology, apiKey);
-      return Response.ok().entity(JsonMapper.MAPPER.valueToTree(tree)).build();
+      return Response.ok().entity(JsonMapper.STRICT_MAPPER.valueToTree(tree)).build();
     } catch (HTTPException e) {
       return relayedBioPortalFailure(e);
     } catch (IOException e) {
@@ -149,7 +149,7 @@ public class PropertyResource extends AbstractTerminologyServerResource {
     ctx.must(ctx.user()).be(LoggedIn);
     try {
       List<OntologyProperty> children = terminologyService.getPropertyChildren(id, ontology, apiKey);
-      return Response.ok().entity(JsonMapper.MAPPER.valueToTree(children)).build();
+      return Response.ok().entity(JsonMapper.STRICT_MAPPER.valueToTree(children)).build();
     } catch (HTTPException e) {
       return relayedBioPortalFailure(e);
     } catch (IOException e) {
@@ -179,7 +179,7 @@ public class PropertyResource extends AbstractTerminologyServerResource {
     ctx.must(ctx.user()).be(LoggedIn);
     try {
       List<OntologyProperty> descendants = terminologyService.getPropertyDescendants(id, ontology, apiKey);
-      return Response.ok().entity(JsonMapper.MAPPER.valueToTree(descendants)).build();
+      return Response.ok().entity(JsonMapper.STRICT_MAPPER.valueToTree(descendants)).build();
     } catch (HTTPException e) {
       return relayedBioPortalFailure(e);
     } catch (IOException e) {
@@ -209,7 +209,7 @@ public class PropertyResource extends AbstractTerminologyServerResource {
     ctx.must(ctx.user()).be(LoggedIn);
     try {
       List<OntologyProperty> descendants = terminologyService.getPropertyParents(id, ontology, apiKey);
-      return Response.ok().entity(JsonMapper.MAPPER.valueToTree(descendants)).build();
+      return Response.ok().entity(JsonMapper.STRICT_MAPPER.valueToTree(descendants)).build();
     } catch (HTTPException e) {
       return relayedBioPortalFailure(e);
     } catch (IOException e) {

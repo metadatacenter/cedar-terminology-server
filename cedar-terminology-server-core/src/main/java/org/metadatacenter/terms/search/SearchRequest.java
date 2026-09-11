@@ -1,7 +1,6 @@
 package org.metadatacenter.terms.search;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.JsonNode;
 import io.swagger.v3.oas.annotations.media.Schema;
 
@@ -15,7 +14,7 @@ import java.util.List;
  * entry without translation. The design, including what a response carries, is in
  * {@code cedar-development/ops/VERSIONING-ROADMAP.md}, "The Search API".
  */
-@JsonIgnoreProperties(ignoreUnknown = true)
+@Schema(additionalProperties = Schema.AdditionalPropertiesValue.FALSE)
 public record SearchRequest(
     String query,
     List<String> types,
@@ -60,7 +59,6 @@ public record SearchRequest(
   }
 
   /** A source to search, and the version to search it at. */
-  @JsonIgnoreProperties(ignoreUnknown = true)
   public record SourceSelector(String sourceSystem, String sourceAcronym, VersionSelector version) {
 
     /** The system, defaulted. Absent or blank means BioPortal, as the constraint spec defines it. */

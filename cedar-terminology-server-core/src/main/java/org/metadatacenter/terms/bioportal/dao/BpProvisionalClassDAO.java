@@ -22,7 +22,7 @@ import java.io.IOException;
 import java.util.List;
 
 import static org.metadatacenter.cedar.terminology.util.Constants.*;
-import static org.metadatacenter.util.json.JsonMapper.MAPPER;
+import static org.metadatacenter.util.json.JsonMapper.STRICT_MAPPER;
 import static org.metadatacenter.util.json.JsonMapper.TOLERANT_MAPPER;
 
 public class BpProvisionalClassDAO {
@@ -42,12 +42,12 @@ public class BpProvisionalClassDAO {
     ClassicHttpResponse response = HttpUtil.makeHttpRequest(Request.post(url)
         .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
         connectTimeout(Timeout.ofMilliseconds(connectTimeout)).responseTimeout(Timeout.ofMilliseconds(socketTimeout))
-        .bodyString(MAPPER.writeValueAsString(c), ContentType.APPLICATION_JSON));
+        .bodyString(STRICT_MAPPER.writeValueAsString(c), ContentType.APPLICATION_JSON));
 
     int statusCode = response.getCode();
     // The class was successfully created
     if (statusCode == Status.CREATED.getStatusCode()) {
-      JsonNode bpResult = MAPPER.readTree(response.getEntity().getContent());
+      JsonNode bpResult = STRICT_MAPPER.readTree(response.getEntity().getContent());
       return TOLERANT_MAPPER.convertValue(bpResult, BpProvisionalClass.class);
     } else {
       throw BioPortalFailure.relay(statusCode, url);
@@ -66,7 +66,7 @@ public class BpProvisionalClassDAO {
     int statusCode = response.getCode();
     // The class was successfully retrieved
     if (statusCode == Status.OK.getStatusCode()) {
-      JsonNode bpResult = MAPPER.readTree(response.getEntity().getContent());
+      JsonNode bpResult = STRICT_MAPPER.readTree(response.getEntity().getContent());
       return TOLERANT_MAPPER.convertValue(bpResult, BpProvisionalClass.class);
     } else {
       throw BioPortalFailure.relay(statusCode, url);
@@ -90,17 +90,17 @@ public class BpProvisionalClassDAO {
 
     int statusCode = response.getCode();
     if (statusCode == Status.OK.getStatusCode()) {
-      JsonNode bpResult = MAPPER.readTree(response.getEntity().getContent());
+      JsonNode bpResult = STRICT_MAPPER.readTree(response.getEntity().getContent());
       if (ontology != null) {
         // If the ontology is specified, BioPortal does not return paged results, so we have to build them.
         // TODO: task for the BioPortal team: provide paged results when the ontology is specified
-        List<BpProvisionalClass> provClasses = TOLERANT_MAPPER.readValue(MAPPER.treeAsTokens(bpResult),
+        List<BpProvisionalClass> provClasses = TOLERANT_MAPPER.readValue(STRICT_MAPPER.treeAsTokens(bpResult),
             new TypeReference<List<BpProvisionalClass>>() {
         });
         results = new BpPagedResults<>(1, 1, provClasses.size(), null, null, provClasses);
         return results;
       } else {
-        return TOLERANT_MAPPER.readValue(MAPPER.treeAsTokens(bpResult),
+        return TOLERANT_MAPPER.readValue(STRICT_MAPPER.treeAsTokens(bpResult),
             new TypeReference<BpPagedResults<BpProvisionalClass>>() {
         });
       }
@@ -117,7 +117,7 @@ public class BpProvisionalClassDAO {
     HttpResponse response = HttpUtil.makeHttpRequest(Request.patch(url)
         .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
         connectTimeout(Timeout.ofMilliseconds(connectTimeout)).responseTimeout(Timeout.ofMilliseconds(socketTimeout))
-        .bodyString(MAPPER.writeValueAsString(c), ContentType.APPLICATION_JSON));
+        .bodyString(STRICT_MAPPER.writeValueAsString(c), ContentType.APPLICATION_JSON));
 
     int statusCode = response.getCode();
     throw BioPortalFailure.relay(statusCode, url);

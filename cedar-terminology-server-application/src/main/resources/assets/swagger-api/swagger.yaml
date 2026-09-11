@@ -2,7 +2,7 @@ openapi: 3.0.1
 info:
   description: CEDAR Terminology Server API
   title: CEDAR Terminology Server API
-  version: 2.9.10
+  version: 2.9.11
 paths:
   /:
     get:
@@ -2792,7 +2792,7 @@ components:
       - uri
     CedarError:
       type: object
-      additionalProperties: true
+      additionalProperties: false
       description: A CEDAR error response. Diagnostic fields are populated only when
         they are relevant to the failure.
       properties:
@@ -2936,12 +2936,9 @@ components:
           - doiCanNotBeSet
           - doiAlreadyExists
           - dataCiteDOIDisabled
+          - pinnedVersionUnavailable
           - resourceNotFound
           - internalError
-          nullable: true
-        errorMessage:
-          type: string
-          description: Alias of message retained for compatibility.
           nullable: true
         errorReasonKey:
           type: string
@@ -3259,6 +3256,7 @@ components:
       - vsCollection
     IntegratedRetrieveRequestBody:
       type: object
+      additionalProperties: false
       description: Object that encapsulates the information needed to run the integrated-retrieve
         query.
       properties:
@@ -3493,6 +3491,7 @@ components:
       - valueConstraints
     IntegratedSearchRequestBody:
       type: object
+      additionalProperties: false
       description: Object that encapsulates the information needed to run the integrated-search
         query.
       properties:
@@ -3925,6 +3924,7 @@ components:
           type: string
     SearchRequest:
       type: object
+      additionalProperties: false
       properties:
         includeVersions:
           type: boolean

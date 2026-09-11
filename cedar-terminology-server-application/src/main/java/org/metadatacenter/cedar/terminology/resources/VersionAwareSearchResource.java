@@ -88,22 +88,22 @@ public class VersionAwareSearchResource extends AbstractTerminologyServerResourc
     if (searchService == null) {
       return CedarResponse.status(CedarResponseStatus.SERVICE_UNAVAILABLE)
           .errorKey(CedarErrorKey.INVALID_INPUT)
-          .errorMessage("Version-aware search needs the local terminology store, and no catalog is configured.")
+          .message("Version-aware search needs the local terminology store, and no catalog is configured.")
           .build();
     }
     if (request == null) {
       return CedarResponse.badRequest()
           .errorKey(CedarErrorKey.INVALID_INPUT)
-          .errorMessage("A search needs a JSON body.")
+          .message("A search needs a JSON body.")
           .build();
     }
     try {
       SearchResponse response = searchService.search(request);
-      return Response.ok().entity(JsonMapper.MAPPER.valueToTree(response)).build();
+      return Response.ok().entity(JsonMapper.STRICT_MAPPER.valueToTree(response)).build();
     } catch (VersionAwareSearchService.BadSearchRequestException e) {
       return CedarResponse.badRequest()
           .errorKey(CedarErrorKey.INVALID_INPUT)
-          .errorMessage(e.getMessage())
+          .message(e.getMessage())
           .build();
     } catch (SQLException e) {
       throw new CedarProcessingException(e);
@@ -136,13 +136,13 @@ public class VersionAwareSearchResource extends AbstractTerminologyServerResourc
     if (searchService == null) {
       return CedarResponse.status(CedarResponseStatus.SERVICE_UNAVAILABLE)
           .errorKey(CedarErrorKey.INVALID_INPUT)
-          .errorMessage("A hierarchy comes from the local terminology store, and no catalog is configured.")
+          .message("A hierarchy comes from the local terminology store, and no catalog is configured.")
           .build();
     }
     if (sourceAcronym == null || sourceAcronym.isBlank() || termIri == null || termIri.isBlank()) {
       return CedarResponse.badRequest()
           .errorKey(CedarErrorKey.INVALID_INPUT)
-          .errorMessage("A hierarchy needs sourceAcronym and termIri. An IRI addresses a term only within a source.")
+          .message("A hierarchy needs sourceAcronym and termIri. An IRI addresses a term only within a source.")
           .build();
     }
     try {
@@ -157,12 +157,12 @@ public class VersionAwareSearchResource extends AbstractTerminologyServerResourc
       // fifth were added — the sealed declaration is where to look for the full list.
       HierarchyLookup lookup = searchService.hierarchy(sourceAcronym, termIri, versionId, offset);
       if (lookup instanceof HierarchyLookup.Found found) {
-        return Response.ok().entity(JsonMapper.MAPPER.valueToTree(found.hierarchy())).build();
+        return Response.ok().entity(JsonMapper.STRICT_MAPPER.valueToTree(found.hierarchy())).build();
       }
       if (lookup instanceof HierarchyLookup.ReleaseNotHeld unheld) {
         return CedarResponse.notFound()
             .errorKey(CedarErrorKey.INVALID_INPUT)
-            .errorMessage("No release of " + unheld.acronym() + " held locally answers to "
+            .message("No release of " + unheld.acronym() + " held locally answers to "
                 + unheld.versionId() + ", so nothing was read. A release is named by the whole "
                 + "content hash the catalog reports, not an abbreviation of it.")
             .build();
@@ -170,7 +170,7 @@ public class VersionAwareSearchResource extends AbstractTerminologyServerResourc
       if (lookup instanceof HierarchyLookup.TermNotInRelease absent) {
         return CedarResponse.notFound()
             .errorKey(CedarErrorKey.INVALID_INPUT)
-            .errorMessage("Release " + absent.versionId() + " of " + absent.acronym()
+            .message("Release " + absent.versionId() + " of " + absent.acronym()
                 + " does not contain " + absent.termIri()
                 + ". Another release of the same source may contain it.")
             .build();
@@ -178,7 +178,7 @@ public class VersionAwareSearchResource extends AbstractTerminologyServerResourc
       if (lookup instanceof HierarchyLookup.TermNotInIndex absent) {
         return CedarResponse.notFound()
             .errorKey(CedarErrorKey.INVALID_INPUT)
-            .errorMessage("The store holds no term " + absent.termIri() + " in "
+            .message("The store holds no term " + absent.termIri() + " in "
                 + absent.acronym() + ".")
             .build();
       }

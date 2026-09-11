@@ -22,7 +22,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import static org.metadatacenter.cedar.terminology.util.Constants.*;
-import static org.metadatacenter.util.json.JsonMapper.MAPPER;
+import static org.metadatacenter.util.json.JsonMapper.STRICT_MAPPER;
 import static org.metadatacenter.util.json.JsonMapper.TOLERANT_MAPPER;
 
 
@@ -147,8 +147,8 @@ public class BioPortalService implements IBioPortalService {
     int statusCode = response.getCode();
     // The request has succeeded
     if (statusCode == CedarResponseStatus.OK.getStatusCode()) {
-      JsonNode bpResult = MAPPER.readTree(response.getEntity().getContent());
-      return TOLERANT_MAPPER.readValue(MAPPER.treeAsTokens(bpResult),
+      JsonNode bpResult = STRICT_MAPPER.readTree(response.getEntity().getContent());
+      return TOLERANT_MAPPER.readValue(STRICT_MAPPER.treeAsTokens(bpResult),
           new TypeReference<BpPagedResults<BpClass>>() {
       });
     } else {
@@ -197,8 +197,8 @@ public class BioPortalService implements IBioPortalService {
     int statusCode = response.getCode();
     // The request has succeeded
     if (statusCode == CedarResponseStatus.OK.getStatusCode()) {
-      JsonNode bpResult = MAPPER.readTree(response.getEntity().getContent());
-      return TOLERANT_MAPPER.readValue(MAPPER.treeAsTokens(bpResult),
+      JsonNode bpResult = STRICT_MAPPER.readTree(response.getEntity().getContent());
+      return TOLERANT_MAPPER.readValue(STRICT_MAPPER.treeAsTokens(bpResult),
           new TypeReference<BpPagedResults<BpProperty>>() {
       });
     } else {

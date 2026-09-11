@@ -1,12 +1,10 @@
 package org.metadatacenter.terms.bioportal.domainObjects;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.List;
 import java.util.Map;
 
-@JsonIgnoreProperties(ignoreUnknown = true)
 public class BpClass {
   @JsonProperty("@id")
   private String id;

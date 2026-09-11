@@ -1,8 +1,6 @@
 package org.metadatacenter.terms.bioportal.domainObjects;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
-@JsonIgnoreProperties(ignoreUnknown = true)
 public class BpLinks
 {
 

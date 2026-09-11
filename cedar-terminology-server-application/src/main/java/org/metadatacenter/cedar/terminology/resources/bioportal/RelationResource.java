@@ -56,7 +56,7 @@ public class RelationResource extends AbstractTerminologyServerResource {
     ctx.must(ctx.user()).be(LoggedIn);
     try {
       Relation r = terminologyService.findProvisionalRelation(id, apiKey);
-      return Response.ok().entity(JsonMapper.MAPPER.valueToTree(r)).build();
+      return Response.ok().entity(JsonMapper.STRICT_MAPPER.valueToTree(r)).build();
     } catch (HTTPException e) {
       return relayedBioPortalFailure(e);
     } catch (IOException e) {

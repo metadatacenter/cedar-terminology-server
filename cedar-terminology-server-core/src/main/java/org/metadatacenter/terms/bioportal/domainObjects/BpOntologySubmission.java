@@ -1,10 +1,8 @@
 package org.metadatacenter.terms.bioportal.domainObjects;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import java.util.List;
 
-@JsonIgnoreProperties(ignoreUnknown = true)
 public class BpOntologySubmission {
 
   private String hasOntologyLanguage;

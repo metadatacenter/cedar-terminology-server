@@ -76,7 +76,7 @@ public class ClassResource extends AbstractTerminologyServerResource {
     ctx.must(ctx.user()).be(LoggedIn);
     try {
       OntologyClass c = terminologyService.findClass(id, ontology, apiKey, lang);
-      return Response.ok().entity(JsonMapper.MAPPER.valueToTree(c)).build();
+      return Response.ok().entity(JsonMapper.STRICT_MAPPER.valueToTree(c)).build();
     } catch (HTTPException e) {
       return relayedBioPortalFailure(e);
     } catch (IOException e) {
@@ -111,7 +111,7 @@ public class ClassResource extends AbstractTerminologyServerResource {
     try {
       PagedResults<OntologyClass> classes =
           terminologyService.findAllClassesInOntology(ontology, page, pageSize, apiKey);
-      return Response.ok().entity(JsonMapper.MAPPER.valueToTree(classes)).build();
+      return Response.ok().entity(JsonMapper.STRICT_MAPPER.valueToTree(classes)).build();
     } catch (HTTPException e) {
       return relayedBioPortalFailure(e);
     } catch (IOException e) {
@@ -142,7 +142,7 @@ public class ClassResource extends AbstractTerminologyServerResource {
     try {
       boolean isFlat = Cache.isFlat(ontology);
       List<TreeNode> tree = terminologyService.getClassTree(id, ontology, isFlat, apiKey);
-      return Response.ok().entity(JsonMapper.MAPPER.valueToTree(tree)).build();
+      return Response.ok().entity(JsonMapper.STRICT_MAPPER.valueToTree(tree)).build();
     } catch (HTTPException e) {
       return relayedBioPortalFailure(e);
     } catch (IOException | ExecutionException e) {
@@ -179,7 +179,7 @@ public class ClassResource extends AbstractTerminologyServerResource {
     try {
       PagedResults<OntologyClass> children = terminologyService.getClassChildren(id, ontology, page,
           pageSize, apiKey);
-      return Response.ok().entity(JsonMapper.MAPPER.valueToTree(children)).build();
+      return Response.ok().entity(JsonMapper.STRICT_MAPPER.valueToTree(children)).build();
     } catch (HTTPException e) {
       return relayedBioPortalFailure(e);
     } catch (IOException e) {
@@ -220,7 +220,7 @@ public class ClassResource extends AbstractTerminologyServerResource {
     try {
       PagedResults<OntologyClass> descendants = terminologyService.getClassDescendants(id, ontology,
           page, pageSize, apiKey);
-      return Response.ok().entity(JsonMapper.MAPPER.valueToTree(descendants)).build();
+      return Response.ok().entity(JsonMapper.STRICT_MAPPER.valueToTree(descendants)).build();
     } catch (HTTPException e) {
       return relayedBioPortalFailure(e);
     } catch (IOException e) {
@@ -250,7 +250,7 @@ public class ClassResource extends AbstractTerminologyServerResource {
     ctx.must(ctx.user()).be(LoggedIn);
     try {
       List<OntologyClass> descendants = terminologyService.getClassParents(id, ontology, apiKey);
-      return Response.ok().entity(JsonMapper.MAPPER.valueToTree(descendants)).build();
+      return Response.ok().entity(JsonMapper.STRICT_MAPPER.valueToTree(descendants)).build();
     } catch (HTTPException e) {
       return relayedBioPortalFailure(e);
     } catch (IOException e) {
@@ -283,9 +283,9 @@ public class ClassResource extends AbstractTerminologyServerResource {
     try {
       PagedResults<OntologyClass> classes = terminologyService.findAllProvisionalClasses(null, page, pageSize, apiKey);
       // This line ensures that @class type annotations are included for each element in the list
-      //ObjectWriter writer = JsonMapper.MAPPER.writerFor(new TypeReference<PagedResults<OntologyClass>>() {});
-      //return Response.ok().entity(JsonMapper.MAPPER.readTree(writer.writeValueAsString(classes))).build();
-      return Response.ok().entity(JsonMapper.MAPPER.valueToTree(classes)).build();
+      //ObjectWriter writer = JsonMapper.STRICT_MAPPER.writerFor(new TypeReference<PagedResults<OntologyClass>>() {});
+      //return Response.ok().entity(JsonMapper.STRICT_MAPPER.readTree(writer.writeValueAsString(classes))).build();
+      return Response.ok().entity(JsonMapper.STRICT_MAPPER.valueToTree(classes)).build();
     } catch (HTTPException e) {
       return relayedBioPortalFailure(e);
     } catch (IOException e) {
@@ -322,9 +322,9 @@ public class ClassResource extends AbstractTerminologyServerResource {
       PagedResults<OntologyClass> classes =
           terminologyService.findAllProvisionalClasses(ontology, page, pageSize, apiKey);
       // This line ensures that @class type annotations are included for each element in the list
-      ObjectWriter writer = JsonMapper.MAPPER.writerFor(new TypeReference<PagedResults<OntologyClass>>() {
+      ObjectWriter writer = JsonMapper.STRICT_MAPPER.writerFor(new TypeReference<PagedResults<OntologyClass>>() {
       });
-      return Response.ok().entity(JsonMapper.MAPPER.readTree(writer.writeValueAsString(classes))).build();
+      return Response.ok().entity(JsonMapper.STRICT_MAPPER.readTree(writer.writeValueAsString(classes))).build();
     } catch (HTTPException e) {
       return relayedBioPortalFailure(e);
     } catch (IOException e) {
