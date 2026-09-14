@@ -55,6 +55,9 @@ public class SnapshotStore implements AutoCloseable {
   /** One captured definition read back, without the concept IRI. */
   public record DefinitionEntry(String property, String lang, String value) {}
 
+  /** Property tables share this snapshot's connection and version identity. */
+  public SnapshotProperties properties() { return new SnapshotProperties(this::connection); }
+
   private final Connection connection;
   private Boolean labelTablePresent; // cached: a snapshot ingested before label capture has no label table
 
@@ -649,6 +652,7 @@ public class SnapshotStore implements AutoCloseable {
         md.update(line.getBytes(java.nio.charset.StandardCharsets.UTF_8));
       }
     }
+    properties().updateHash(md);
     byte[] digest = md.digest();
     StringBuilder hex = new StringBuilder(digest.length * 2);
     for (byte b : digest) {

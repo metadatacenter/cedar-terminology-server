@@ -250,6 +250,8 @@ public class SearchIndexStore implements AutoCloseable {
   /**
    * The connection this call should use: the caller's thread has its own when the store serves.
    */
+  public PropertySearchIndex properties() { return new PropertySearchIndex(this::connection); }
+
   private Connection connection() throws SQLException {
     return reads == null ? connection : reads.get();
   }

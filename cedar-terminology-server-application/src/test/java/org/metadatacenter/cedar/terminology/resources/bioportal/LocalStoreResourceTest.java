@@ -99,6 +99,9 @@ public class LocalStoreResourceTest {
         s.addConcept(BASE + "cancer", "Cancer");
         s.addConcept(BASE + "melanoma", "Melanoma");
         s.addConcept(BASE + "infection", "Infection");
+        s.properties().write(java.util.List.of(
+            new org.metadatacenter.terms.store.SnapshotProperties.Property(BASE + "relatedTo", "object", "related to", false, java.util.List.of(), java.util.List.of()),
+            new org.metadatacenter.terms.store.SnapshotProperties.Property(BASE + "hasDisease", "object", "has disease", false, java.util.List.of(), java.util.List.of(BASE + "relatedTo"))));
         s.addEdge(BASE + "cancer", BASE + "disease", "rdfs:subClassOf");
         s.addEdge(BASE + "melanoma", BASE + "cancer", "rdfs:subClassOf");
         s.addEdge(BASE + "infection", BASE + "disease", "rdfs:subClassOf");
@@ -440,6 +443,31 @@ public class LocalStoreResourceTest {
     JsonNode json = response.readEntity(JsonNode.class);
     response.close();
     return json;
+  }
+
+  @Test
+  public void propertiesUseTheSameOntologyVersionThroughRealHttp() {
+    String root = "http://localhost:" + RULE.getLocalPort() + "/properties";
+    try (Response response = clientBuilder.build().target(root + "/search").request().post(Entity.json(
+        "{\"query\":\"disease\",\"sources\":[{\"sourceAcronym\":\"LOCALTEST\",\"versionId\":\"v2\"}]}"))) {
+      Assertions.assertEquals(200, response.getStatus());
+      JsonNode json = response.readEntity(JsonNode.class);
+      Assertions.assertEquals(1, json.get("total").asInt());
+      Assertions.assertEquals("v2", json.get("items").get(0).get("versionId").asText());
+    }
+    try (Response response = clientBuilder.build().target(root + "/hierarchy")
+        .queryParam("sourceAcronym", ONT).queryParam("versionId", "v2")
+        .queryParam("propertyIri", BASE + "hasDisease").queryParam("kind", "object").request().get()) {
+      Assertions.assertEquals(200, response.getStatus());
+      JsonNode json = response.readEntity(JsonNode.class);
+      Assertions.assertEquals(BASE + "relatedTo", json.get("ancestors").get(0).get("iri").asText());
+      Assertions.assertEquals("v2", json.get("selected").get("versionId").asText());
+    }
+    try (Response response = clientBuilder.build().target(root)
+        .queryParam("sourceAcronym", ONT).queryParam("versionId", "v1")
+        .queryParam("propertyIri", BASE + "hasDisease").queryParam("kind", "object").request().get()) {
+      Assertions.assertEquals(503, response.getStatus(), "Legacy snapshot must not pretend its properties were extracted");
+    }
   }
 
   @Test

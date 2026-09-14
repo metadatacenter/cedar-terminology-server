@@ -2344,7 +2344,7 @@
     "/bioportal/search" : {
       "get" : {
         "description" : "Search for ontology classes, value sets, and values.",
-        "operationId" : "search",
+        "operationId" : "search_1",
         "parameters" : [ {
           "description" : "Search query. Example: melanoma.",
           "in" : "query",
@@ -3809,6 +3809,200 @@
         "tags" : [ "Service diagnostics" ]
       }
     },
+    "/properties" : {
+      "get" : {
+        "operationId" : "find",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "sourceAcronym",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "versionId",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "propertyIri",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "kind",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Detail"
+                }
+              }
+            },
+            "description" : "Local ontology property data"
+          }
+        },
+        "summary" : "Find a property at an ontology version"
+      }
+    },
+    "/properties/hierarchy" : {
+      "get" : {
+        "operationId" : "hierarchy",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "sourceAcronym",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "versionId",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "propertyIri",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "kind",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "offset",
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 0
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Hierarchy"
+                }
+              }
+            },
+            "description" : "Local ontology property data"
+          }
+        },
+        "summary" : "Property ancestors and paged children at an ontology version"
+      }
+    },
+    "/properties/roots" : {
+      "get" : {
+        "operationId" : "roots",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "sourceAcronym",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "versionId",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "kind",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "offset",
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 0
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Roots"
+                }
+              }
+            },
+            "description" : "Local ontology property data"
+          }
+        },
+        "summary" : "Paged root properties at an ontology version"
+      }
+    },
+    "/properties/search" : {
+      "post" : {
+        "operationId" : "search",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/Request"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Result"
+                }
+              }
+            },
+            "description" : "Local ontology property data"
+          }
+        },
+        "summary" : "Search properties in local ontology snapshots"
+      }
+    },
+    "/properties/versions" : {
+      "get" : {
+        "operationId" : "versions",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "sourceAcronym",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/Version"
+                  }
+                }
+              }
+            },
+            "description" : "Ontology versions"
+          }
+        },
+        "summary" : "Ontology releases and their property extraction availability"
+      }
+    },
     "/search" : {
       "post" : {
         "description" : "Search the local terminology store at a named version or the current one, across the constraint types a controlled-term field can carry: ontology, branch, class and valueSet. Returns per-type counts and each type's first page, and describes every source it searched — the version that answered, and whether a constraint on it can be pinned.",
@@ -4284,6 +4478,44 @@
         },
         "required" : [ "rdfs:label", "termUri" ]
       },
+      "Detail" : {
+        "type" : "object",
+        "properties" : {
+          "property" : {
+            "$ref" : "#/components/schemas/Property"
+          },
+          "sourceAcronym" : {
+            "type" : "string"
+          },
+          "versionId" : {
+            "type" : "string"
+          }
+        }
+      },
+      "Hierarchy" : {
+        "type" : "object",
+        "properties" : {
+          "ancestors" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Property"
+            }
+          },
+          "children" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Summary"
+            }
+          },
+          "offset" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "selected" : {
+            "$ref" : "#/components/schemas/Detail"
+          }
+        }
+      },
       "HierarchyResponse" : {
         "type" : "object",
         "properties" : {
@@ -4333,15 +4565,17 @@
       },
       "Hit" : {
         "type" : "object",
-        "oneOf" : [ {
-          "$ref" : "#/components/schemas/OntologyHit"
-        }, {
-          "$ref" : "#/components/schemas/BranchHit"
-        }, {
-          "$ref" : "#/components/schemas/ClassHit"
-        }, {
-          "$ref" : "#/components/schemas/ValueSetHit"
-        } ]
+        "properties" : {
+          "property" : {
+            "$ref" : "#/components/schemas/Summary"
+          },
+          "sourceAcronym" : {
+            "type" : "string"
+          },
+          "versionId" : {
+            "type" : "string"
+          }
+        }
       },
       "IntegratedRetrieveBody" : {
         "type" : "object",
@@ -4853,6 +5087,20 @@
         },
         "required" : [ "branches", "classes", "ontologies", "valueSets" ]
       },
+      "Literal" : {
+        "type" : "object",
+        "properties" : {
+          "lang" : {
+            "type" : "string"
+          },
+          "predicate" : {
+            "type" : "string"
+          },
+          "value" : {
+            "type" : "string"
+          }
+        }
+      },
       "MatchedLabel" : {
         "type" : "object",
         "properties" : {
@@ -5263,6 +5511,35 @@
         },
         "required" : [ "valueConstraints" ]
       },
+      "Property" : {
+        "type" : "object",
+        "properties" : {
+          "iri" : {
+            "type" : "string"
+          },
+          "kind" : {
+            "type" : "string"
+          },
+          "label" : {
+            "type" : "string"
+          },
+          "literals" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Literal"
+            }
+          },
+          "obsolete" : {
+            "type" : "boolean"
+          },
+          "parents" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          }
+        }
+      },
       "Relation" : {
         "type" : "object",
         "properties" : {
@@ -5294,6 +5571,78 @@
             "type" : "string"
           },
           "type" : {
+            "type" : "string"
+          }
+        }
+      },
+      "Request" : {
+        "type" : "object",
+        "properties" : {
+          "kinds" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "page" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "pageSize" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "query" : {
+            "type" : "string"
+          },
+          "sources" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Source"
+            }
+          }
+        }
+      },
+      "Result" : {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Hit"
+            }
+          },
+          "page" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "pageSize" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "total" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        }
+      },
+      "Roots" : {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Summary"
+            }
+          },
+          "offset" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "sourceAcronym" : {
+            "type" : "string"
+          },
+          "versionId" : {
             "type" : "string"
           }
         }
@@ -5394,6 +5743,17 @@
           }
         }
       },
+      "Source" : {
+        "type" : "object",
+        "properties" : {
+          "sourceAcronym" : {
+            "type" : "string"
+          },
+          "versionId" : {
+            "type" : "string"
+          }
+        }
+      },
       "SourceBlock" : {
         "type" : "object",
         "properties" : {
@@ -5450,6 +5810,26 @@
           },
           "version" : {
             "$ref" : "#/components/schemas/VersionSelector"
+          }
+        }
+      },
+      "Summary" : {
+        "type" : "object",
+        "properties" : {
+          "hasChildren" : {
+            "type" : "boolean"
+          },
+          "iri" : {
+            "type" : "string"
+          },
+          "kind" : {
+            "type" : "string"
+          },
+          "label" : {
+            "type" : "string"
+          },
+          "obsolete" : {
+            "type" : "boolean"
           }
         }
       },
@@ -5818,6 +6198,23 @@
           }
         },
         "required" : [ "uri", "vsCollection" ]
+      },
+      "Version" : {
+        "type" : "object",
+        "properties" : {
+          "declaredVersion" : {
+            "type" : "string"
+          },
+          "effectiveDate" : {
+            "type" : "string"
+          },
+          "id" : {
+            "type" : "string"
+          },
+          "propertiesAvailable" : {
+            "type" : "boolean"
+          }
+        }
       },
       "VersionDiff" : {
         "type" : "object",

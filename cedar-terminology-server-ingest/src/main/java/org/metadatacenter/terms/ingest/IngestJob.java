@@ -182,9 +182,9 @@ public class IngestJob {
       Files.deleteIfExists(tempFile);
       throw new IOException("Extraction failed for " + acronym + " submission " + sub.submissionId(), e);
     }
-    if (extracted.classCount() == 0) {
+    if (extracted.classCount() == 0 && exPropertyCount(tempFile) == 0) {
       Files.deleteIfExists(tempFile);
-      throw new IOException("Extraction produced 0 classes for " + acronym + " submission "
+      throw new IOException("Extraction produced 0 classes and 0 properties for " + acronym + " submission "
           + sub.submissionId() + "; refusing to overwrite the existing snapshot with an empty one");
     }
     Path snapshotFile = ontoDir.resolve(versionId + ".sqlite");
@@ -298,10 +298,17 @@ public class IngestJob {
     // so label-less ontologies are searchable/browsable rather than blank. After the prune, which keys
     // on the genuinely-unlabeled state.
     store.fillMissingLabelsFromIri();
-    // Identity = the normalized served model, independent of the source bytes/serialization.
+    store.properties().write(new PropertyExtractor().extract(loadable));
+    // Identity includes the classes and properties of this ontology release.
     String versionId = store.normalizedContentHash(true);
     String ownNamespace = store.dominantOwnIdspace(acronym).orElse(null);
     return new Extraction(extracted, versionId, ownNamespace);
+  }
+
+  private static long exPropertyCount(Path snapshot) throws SQLException {
+    try (SnapshotStore store = SnapshotStore.openForRead(snapshot.toString())) {
+      return store.properties().count();
+    }
   }
 
   /** Tally of a label backfill run. */
