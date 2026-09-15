@@ -373,6 +373,26 @@ public class CatalogStore implements AutoCloseable {
     }
   }
 
+  /** Records an enrichment without removing the old version a template may still pin. */
+  public void recordPropertyEnrichment(String acronym, String oldVersion, String newVersion) throws SQLException {
+    try (Statement s = connection().createStatement()) {
+      s.execute("CREATE TABLE IF NOT EXISTS snapshot_property_enrichment(acronym TEXT,old_version TEXT,new_version TEXT NOT NULL,PRIMARY KEY(acronym,old_version))");
+    }
+    try (PreparedStatement p = connection().prepareStatement("INSERT INTO snapshot_property_enrichment VALUES(?,?,?) ON CONFLICT(acronym,old_version) DO UPDATE SET new_version=excluded.new_version")) {
+      p.setString(1, acronym); p.setString(2, oldVersion); p.setString(3, newVersion); p.executeUpdate();
+    }
+  }
+
+  public Optional<String> propertyEnrichment(String acronym, String oldVersion) throws SQLException {
+    try (Statement s = connection().createStatement(); ResultSet r = s.executeQuery("SELECT name FROM sqlite_master WHERE type='table' AND name='snapshot_property_enrichment'")) {
+      if (!r.next()) return Optional.empty();
+    }
+    try (PreparedStatement p = connection().prepareStatement("SELECT new_version FROM snapshot_property_enrichment WHERE acronym=? AND old_version=?")) {
+      p.setString(1, acronym); p.setString(2, oldVersion);
+      try (ResultSet r = p.executeQuery()) { return r.next() ? Optional.of(r.getString(1)) : Optional.empty(); }
+    }
+  }
+
   /**
    * Records an ingested snapshot. Idempotent on {@code (version_id, acronym)}: re-ingesting the same
    * content for the same ontology (same content-hash id) updates the existing row rather than

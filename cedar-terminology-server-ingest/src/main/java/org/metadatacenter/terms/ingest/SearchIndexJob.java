@@ -66,7 +66,8 @@ public class SearchIndexJob {
       return new Outcome(acronym, null, 0, 0, "no current snapshot");
     }
     CatalogStore.SnapshotInfo snapshot = latest.get();
-    if (!force && snapshot.versionId().equals(index.indexedVersion(acronym).orElse(null))) {
+    if (!force && snapshot.versionId().equals(index.indexedVersion(acronym).orElse(null))
+        && snapshot.versionId().equals(index.properties().version(acronym).orElse(null))) {
       return new Outcome(acronym, snapshot.versionId(), 0, 0, "already current");
     }
     if (skipLargerThan > 0 && snapshot.classCount() != null && snapshot.classCount() > skipLargerThan) {
@@ -130,6 +131,11 @@ public class SearchIndexJob {
       }
     }
     index.replaceOntology(acronym, snapshot.versionId(), Instant.now().toString(), terms, names);
+    try (SnapshotStore store = SnapshotStore.openForRead(file.toString())) {
+      if (store.properties().available()) {
+        index.properties().replace(acronym, snapshot.versionId(), store.properties().all());
+      }
+    }
     return new Outcome(acronym, snapshot.versionId(), terms.size(), nameCount, null);
   }
 
@@ -144,9 +150,9 @@ public class SearchIndexJob {
     return null;
   }
 
-  private static Path resolve(String filePath) {
+  private Path resolve(String filePath) {
     Path path = Paths.get(filePath);
-    return path.isAbsolute() ? path : Paths.get(System.getProperty("user.dir")).resolve(path);
+    return path.isAbsolute() ? path : catalog.baseDir().orElse(Paths.get(System.getProperty("user.dir"))).resolve(path);
   }
 
   public static void main(String[] args) throws Exception {

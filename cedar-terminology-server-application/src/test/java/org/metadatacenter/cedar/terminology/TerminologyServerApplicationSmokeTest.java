@@ -185,6 +185,9 @@ public class TerminologyServerApplicationSmokeTest {
    * covered by {@code ClassResourceTest} and {@code SearchResourceTest} under the bioportal tag.
    */
   private static final java.util.Set<String> UNAUTHENTICATED_ROUTES = java.util.Set.of(
+      // Local property reads follow the same public-read contract as local class search.
+      "POST /properties/search", "GET /properties", "GET /properties/hierarchy",
+      "GET /properties/roots", "GET /properties/versions",
       "POST /search",
       "GET /search/hierarchy",
       "POST /bioportal/integrated-search",
