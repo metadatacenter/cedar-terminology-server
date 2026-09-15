@@ -28,6 +28,12 @@
 
     <dependency>
       <groupId>org.metadatacenter</groupId>
+      <!-- For HttpTimeouts: BioPortal is a registry CEDAR does not operate, so its calls belong to
+           the shared external class of outbound call rather than to a pool of their own. -->
+      <artifactId>cedar-server-rest-library</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.metadatacenter</groupId>
       <artifactId>cedar-server-globals-library</artifactId>
     </dependency>
 

@@ -21,7 +21,7 @@ import org.metadatacenter.terms.TerminologyService;
 import org.metadatacenter.terms.search.VersionAwareSearchService;
 import org.metadatacenter.terms.store.CatalogStore;
 import org.metadatacenter.terms.store.SearchIndexStore;
-import org.metadatacenter.terms.util.HttpClientFactory;
+import org.metadatacenter.terms.util.HttpUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -74,8 +74,10 @@ public class TerminologyServerApplication extends CedarMicroserviceApplication<T
 
   @Override
   public void initializeApp() {
-    // Force the HttpClientFactory static block to run and build the shared client:
-    HttpClientFactory.client();
+    // BioPortal's own connect and response timeouts, over the shared external class of outbound
+    // call. Done before the service below makes its first request.
+    HttpUtil.install(cedarConfig.getTerminologyConfig().getBioPortal().getConnectTimeout(),
+        cedarConfig.getTerminologyConfig().getBioPortal().getSocketTimeout());
 
     TerminologyService bioPortalService =
         new TerminologyService(cedarConfig.getTerminologyConfig().getBioPortal().getBasePath(),
