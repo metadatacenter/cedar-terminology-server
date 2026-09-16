@@ -3,6 +3,18 @@ server:
   - type: http
   adminConnectors:
   - type: http
+  # Every timeout in force was arithmetic against nginx's proxy_read_timeout rather than a
+  # measured p99, because the default access log format records no duration. %D is the elapsed
+  # milliseconds, so a week of this is what a chosen response timeout can come from.
+  requestLog:
+    appenders:
+      - type: file
+        currentLogFilename: ${CEDAR_HOME}/log/cedar-terminology-server/access.log
+        archive: true
+        archivedLogFilenamePattern: ${CEDAR_HOME}/log/cedar-terminology-server/access-%d.log
+        archivedFileCount: 30
+        timeZone: UTC
+        logFormat: '%h %l %u [%t] "%r" %s %b "%i{Referer}" "%i{User-Agent}" %D'
 logging:
   level: INFO
   loggers:
