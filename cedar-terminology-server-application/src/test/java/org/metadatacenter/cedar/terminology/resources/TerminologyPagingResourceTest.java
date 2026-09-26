@@ -192,6 +192,33 @@ public class TerminologyPagingResourceTest {
         + constraint + ",\"inputText\":\"child\"},\"page\":2,\"limit\":4}"));
   }
 
+  @Test
+  public void aLocallyServedFieldKeepsItsExclusionsAndMoves() throws Exception {
+    String ontology = "{\"uri\":\"https://data.bioontology.org/ontologies/" + ONT + "\",\"acronym\":\"" + ONT
+        + "\",\"name\":\"" + ONT + "\"}";
+    String plain = "{\"ontologies\":[" + ontology + "],\"branches\":[],\"valueSets\":[],\"classes\":[]}";
+    List<String> before = labels(post("/bioportal/integrated-search", "{\"parameterObject\":{\"valueConstraints\":"
+        + plain + ",\"inputText\":\"child\"},\"limit\":100}"));
+    String first = before.get(0);
+    String second = before.get(1);
+    String firstIri = BASE + "c" + Integer.parseInt(first.substring(first.length() - 3));
+    String secondIri = BASE + "c" + Integer.parseInt(second.substring(second.length() - 3));
+    String arranged = "{\"ontologies\":[" + ontology + "],\"branches\":[],\"valueSets\":[],\"classes\":[],"
+        + "\"actions\":[{\"action\":\"delete\",\"termUri\":\"" + firstIri + "\",\"type\":\"OntologyClass\","
+        + "\"source\":\"" + ONT + "\"},{\"to\":7,\"action\":\"move\",\"termUri\":\"" + secondIri
+        + "\",\"type\":\"OntologyClass\",\"source\":\"" + ONT + "\"}]}";
+
+    List<String> walked = new ArrayList<>();
+    for (int offset = 0; offset < CHILDREN; offset += 5) {
+      walked.addAll(labels(post("/bioportal/integrated-search", "{\"parameterObject\":{\"valueConstraints\":"
+          + arranged + ",\"inputText\":\"child\"},\"limit\":5,\"offset\":" + offset + "}")));
+    }
+
+    assertEquals(CHILDREN - 1, walked.size(), "the deleted term is gone and nothing else is");
+    assertFalse(walked.contains(first));
+    assertEquals(second, walked.get(7), "the moved term is at its position, on the second page");
+  }
+
   // ---- the versioned search and its hierarchy ----------------------------------------------------
 
   @Test

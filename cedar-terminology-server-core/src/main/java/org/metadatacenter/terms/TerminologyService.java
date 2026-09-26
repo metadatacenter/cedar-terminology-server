@@ -210,96 +210,31 @@ public class TerminologyService implements ITerminologyService {
     return pagedResults;
   }
 
-  /**
-   * The results with a field's actions applied: every term an action names removed, then each 'move'
-   * term inserted at its position. The positions are into the whole window, so a move puts a term
-   * where it says on whichever page that is, and a removed term is gone from every page rather than
-   * leaving a hole in one.
-   */
+  /** The results with a field's actions applied, a moved term missing from them fetched from BioPortal. */
   private List<SearchResult> applyActions(List<SearchResult> results, ValueConstraints valueConstraints,
                                           String apiKey) throws IOException {
-
-    List<SearchResult> updatedResults = new ArrayList<>();
-
-    // Sort actions to apply them in the right order. First, we will apply the 'delete' actions. Then, move actions
-    // must be applied in order, from highest to lowest rank
-    List<Action> moveActions = new ArrayList<>();
-    List<String> actionTermUris = new ArrayList<>();
-    for (Action action : valueConstraints.getActions()) {
-      if (action.getAction().equals(CEDAR_VALUE_ARRANGEMENTS_ACTION_MOVE)) {
-        moveActions.add(action);
-      } else if (action.getAction().equals(CEDAR_VALUE_ARRANGEMENTS_ACTION_DELETE)) {
-        // Do nothing
-      } else {
-        throw new BadRequestException("Invalid action: " + action.getAction());
-      }
-      actionTermUris.add(action.getTermUri());
-    }
-
-    // Ignore classes referenced by actions
-    for (SearchResult result : results) {
-      if (!actionTermUris.contains(result.getLdId())) {
-        updatedResults.add(result);
-      }
-    }
-
-    // Sort 'move' actions
-    moveActions.sort(Comparator.comparing(Action::getTo));
-
-    // Now, insert the classes referenced by 'move' actions into the right position, clamped to the
-    // list: every action's term was removed above, so skipping an out-of-range one would drop the
-    // term rather than move it.
-    for (Action action : moveActions) {
-      SearchResult actionSearchResult = resolveActionTerm(action, results, valueConstraints.getClasses(), apiKey);
-      // A term the source no longer serves costs its own action's effect and nothing more.
-      // It was not among the results, so the removal above took nothing out of the list.
-      if (actionSearchResult == null) {
-        continue;
-      }
-      int position = Math.max(0, Math.min(action.getTo(), updatedResults.size()));
-      updatedResults.add(position, actionSearchResult);
-    }
-    return updatedResults;
+    return ResultActions.apply(results, valueConstraints, action -> bioPortalTerm(action, apiKey));
   }
 
   /**
-   * The term a 'move' action names, or null when the source no longer serves it.
+   * A moved term that is not among the results, fetched from its source, or null when the source no
+   * longer serves it.
    *
-   * A constraint outlives the vocabulary it was written against: an ontology resubmitted
-   * under different identifiers leaves every arrangement naming a term that has gone. This
-   * used to relay BioPortal's failure for that term as the answer to the whole search, so
-   * one stale arrangement cost the field every value it offers rather than its own position.
+   * A constraint outlives the vocabulary it was written against: an ontology resubmitted under
+   * different identifiers leaves every arrangement naming a term that has gone. This used to relay
+   * BioPortal's failure for that term as the answer to the whole search, so one stale arrangement cost
+   * the field every value it offers rather than its own position.
    */
-  private SearchResult resolveActionTerm(Action action, List<SearchResult> results,
-                                         List<ClassValueConstraint> enumeratedClasses,
-                                         String apiKey) throws IOException {
-
-    // 1. Try to find the result in the search results
-    for (SearchResult result : results) {
-      if (result.getLdId().equals(action.getTermUri())) { // found
-        return result;
-      }
-    }
-    // 2. If #1 didn't work, make a call to retrieve the class/value and generate a search results based on it. For
-    // enumerated classes I don't need to make a call, I can just get them from the enumerated list
+  private SearchResult bioPortalTerm(Action action, String apiKey) throws IOException {
     if (action.getType().equals(BP_TYPE_CLASS)) {
-      // First, try to find it in the list of enumerated classes. If it's not found, make a call to retrieve it from
-      // the source ontology
-      for (ClassValueConstraint c : enumeratedClasses) {
-        if (c.getUri().equals(action.getTermUri())) {
-          return ObjectConverter.toSearchResult(c);
-        }
-      }
       try {
-        OntologyClass c = findClass(action.getTermUri(), action.getSource(), apiKey);
-        return ObjectConverter.toSearchResult(c);
+        return ObjectConverter.toSearchResult(findClass(action.getTermUri(), action.getSource(), apiKey));
       } catch (HTTPException e) {
         return nullIfTermIsGone(action, e);
       }
     } else if (action.getType().equals(BP_TYPE_VALUE)) {
       try {
-        Value v = findValue(action.getTermUri(), action.getSource(), apiKey);
-        return ObjectConverter.toSearchResult(v);
+        return ObjectConverter.toSearchResult(findValue(action.getTermUri(), action.getSource(), apiKey));
       } catch (HTTPException e) {
         return nullIfTermIsGone(action, e);
       }
