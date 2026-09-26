@@ -5,6 +5,7 @@ import org.metadatacenter.cedar.terminology.validation.integratedsearch.*;
 import org.metadatacenter.terms.util.IntegratedSearchUtil.SourceType;
 import org.metadatacenter.http.CedarResponseStatus;
 import org.metadatacenter.terms.bioportal.BioPortalService;
+import org.metadatacenter.terms.bioportal.IBioPortalService;
 import org.metadatacenter.terms.bioportal.customObjects.BpPagedResults;
 import org.metadatacenter.terms.bioportal.domainObjects.*;
 import org.metadatacenter.terms.customObjects.PagedResults;
@@ -26,11 +27,16 @@ public class TerminologyService implements ITerminologyService {
 
   private static final Logger log = LoggerFactory.getLogger(TerminologyService.class);
 
-  private BioPortalService bpService;
+  private final IBioPortalService bpService;
 
   public TerminologyService(String bpApiBasePath, int connectTimeout, int socketTimeout) {
     BP_API_BASE = bpApiBasePath;
     this.bpService = new BioPortalService(connectTimeout, socketTimeout);
+  }
+
+  /** A service answering from the given BioPortal, so a test can supply one it scripts. */
+  TerminologyService(IBioPortalService bpService) {
+    this.bpService = bpService;
   }
 
   /**
@@ -116,25 +122,75 @@ public class TerminologyService implements ITerminologyService {
   public PagedResults<SearchResult> integratedSearch(Optional<String> q, ValueConstraints valueConstraints,
                                                      int page, int pageSize, String apiKey, String lang) throws IOException {
 
-    PagedResults<SearchResult> results;
+    boolean multipleSources = IntegratedSearchUtil.hasMultipleSources(valueConstraints);
+    boolean hasActions = valueConstraints.getActions() != null && !valueConstraints.getActions().isEmpty();
+    boolean classesOnly = valueConstraints.getOntologies().isEmpty() && valueConstraints.getBranches().isEmpty()
+        && valueConstraints.getValueSets().isEmpty();
 
-    if (!IntegratedSearchUtil.hasMultipleSources(valueConstraints)) { // Single source
-
-      results = integratedSearchSingleSource(q, valueConstraints, page, pageSize, apiKey);
-
-    } else { // Multiple sources
-      // In this case, we will always sort the results before returning them, so proper pagination cannot be calculated.
-      // Therefore, we will always set page=1 independently of the page requested by the user. This issue could be fixed
-      // by implementing sorting of results from multiple sources in BioPortal
-      results = integratedSearchMultipleSources(q, valueConstraints, 1, pageSize, apiKey);
+    // A single source searched by name, or a list of enumerated classes, keeps the order its source
+    // gives it, so the source's own paging is exact.
+    if (!multipleSources && !hasActions && (q.isPresent() || classesOnly)) {
+      return integratedSearchSingleSource(q, valueConstraints, page, pageSize, apiKey);
     }
 
-    // Apply class arrangements
-    if (valueConstraints.getActions() != null && valueConstraints.getActions().size() > 0) {
-      results = applyActions(results, valueConstraints, apiKey);
+    // Everything else is reordered: several sources are sorted together, a source listed without a
+    // query is sorted alphabetically, and actions remove and move terms. A page is cut from the
+    // whole reordered window, never from one upstream page.
+    IntegratedSearchWindow.Window window = IntegratedSearchWindow.collect(windowSources(q, valueConstraints, apiKey));
+    List<SearchResult> ordered = window.results();
+    if (q.isEmpty()) {
+      ordered = Util.sortByPrefLabel(ordered);
+    } else if (multipleSources) {
+      ordered = Util.sortByClosestMatch(q.get(), ordered);
     }
-
+    if (hasActions) {
+      ordered = applyActions(ordered, valueConstraints, apiKey);
+    }
+    PagedResults<SearchResult> results = Util.generatePaginatedResults(ordered, page, pageSize, Optional.empty());
+    if (window.truncated()) {
+      results.setCountCapped(true);
+    }
     return results;
+  }
+
+  /**
+   * Every source a constraint draws on, each read a page at a time for the window. Several
+   * ontologies searched by name are one source, since BioPortal searches them in one request.
+   */
+  private List<IntegratedSearchWindow.Source> windowSources(Optional<String> q, ValueConstraints valueConstraints,
+                                                           String apiKey) {
+    List<IntegratedSearchWindow.Source> sources = new ArrayList<>();
+    if (!valueConstraints.getClasses().isEmpty()) {
+      sources.add((page, size) -> integratedSearchEnumeratedClasses(q, valueConstraints.getClasses(), page, size));
+    }
+    if (!valueConstraints.getOntologies().isEmpty()) {
+      if (q.isPresent()) {
+        sources.add((page, size) -> integratedSearchOntologies(q, valueConstraints.getOntologies(), page, size, apiKey));
+      } else {
+        for (OntologyValueConstraint ontology : valueConstraints.getOntologies()) {
+          sources.add((page, size) -> ObjectConverter.classResultsToSearchResults(
+              findAllClassesInOntology(ontology.getAcronym(), page, size, apiKey)));
+        }
+      }
+    }
+    for (BranchValueConstraint branch : valueConstraints.getBranches()) {
+      if (q.isPresent()) {
+        sources.add((page, size) -> integratedSearchBranches(q, branch, page, size, apiKey));
+      } else {
+        sources.add((page, size) -> ObjectConverter.classResultsToSearchResults(
+            getClassDescendants(branch.getUri(), branch.getAcronym(), page, size, apiKey)));
+      }
+    }
+    for (ValueSetValueConstraint valueSet : valueConstraints.getValueSets()) {
+      if (q.isPresent()) {
+        sources.add((page, size) -> searchValuesByValueSet(q.get(), valueSet.getUri(), valueSet.getVsCollection(),
+            page, size, apiKey));
+      } else {
+        sources.add((page, size) -> ObjectConverter.valueResultsToSearchResults(
+            findValuesByValueSet(valueSet.getUri(), valueSet.getVsCollection(), page, size, apiKey)));
+      }
+    }
+    return sources;
   }
 
   /**
@@ -154,7 +210,14 @@ public class TerminologyService implements ITerminologyService {
     return pagedResults;
   }
 
-  private PagedResults<SearchResult> applyActions(PagedResults<SearchResult> results, ValueConstraints valueConstraints, String apiKey) throws IOException {
+  /**
+   * The results with a field's actions applied: every term an action names removed, then each 'move'
+   * term inserted at its position. The positions are into the whole window, so a move puts a term
+   * where it says on whichever page that is, and a removed term is gone from every page rather than
+   * leaving a hole in one.
+   */
+  private List<SearchResult> applyActions(List<SearchResult> results, ValueConstraints valueConstraints,
+                                          String apiKey) throws IOException {
 
     List<SearchResult> updatedResults = new ArrayList<>();
 
@@ -174,7 +237,7 @@ public class TerminologyService implements ITerminologyService {
     }
 
     // Ignore classes referenced by actions
-    for (SearchResult result : results.getCollection()) {
+    for (SearchResult result : results) {
       if (!actionTermUris.contains(result.getLdId())) {
         updatedResults.add(result);
       }
@@ -183,14 +246,11 @@ public class TerminologyService implements ITerminologyService {
     // Sort 'move' actions
     moveActions.sort(Comparator.comparing(Action::getTo));
 
-    // Now, insert the classes referenced by 'move' actions into the right position.
-    // The position is clamped to the list rather than the insertion being skipped: every
-    // action's term was removed above, so skipping it dropped the term from the results
-    // instead of moving it. The list a position is measured against is one page, so any
-    // 'to' at or beyond the current page size did that.
+    // Now, insert the classes referenced by 'move' actions into the right position, clamped to the
+    // list: every action's term was removed above, so skipping an out-of-range one would drop the
+    // term rather than move it.
     for (Action action : moveActions) {
-      SearchResult actionSearchResult = resolveActionTerm(action, results.getCollection(),
-          valueConstraints.getClasses(), apiKey);
+      SearchResult actionSearchResult = resolveActionTerm(action, results, valueConstraints.getClasses(), apiKey);
       // A term the source no longer serves costs its own action's effect and nothing more.
       // It was not among the results, so the removal above took nothing out of the list.
       if (actionSearchResult == null) {
@@ -199,31 +259,7 @@ public class TerminologyService implements ITerminologyService {
       int position = Math.max(0, Math.min(action.getTo(), updatedResults.size()));
       updatedResults.add(position, actionSearchResult);
     }
-
-    // If needed, adjust the number of results to match the pageSize
-    if (updatedResults.size() > results.getPageSize()) {
-      updatedResults = updatedResults.subList(0, results.getPageSize());
-    }
-    else if (updatedResults.size() < results.getPageSize()) {
-      // Here we could make an additional call to integratedSearch to fill the gaps with some extra results, but this
-      // additional call, which can derive in multiple calls to BioPortal will affect performance. Therefore, we will
-      // not perform this call. We'll just adjust the pagination information to match the current pageSize.
-    }
-
-    // Update pagination information.
-    //
-    // Every declared delete is subtracted, because a deleted term missing from this page is
-    // usually present on another and the total covers them all. An action may also name a term
-    // the source no longer has, though, and subtracting for that one reported a total smaller
-    // than the page it arrived with — negative, once the stale actions outnumbered the results.
-    // The page returned is the floor: whatever the true total is, it is not less than this.
-    int numberOfDeleteActions = actionTermUris.size() - moveActions.size();
-    int totalCount = Math.max(results.getTotalCount() - numberOfDeleteActions, updatedResults.size());
-
-    results = Util.generatePaginatedResultsInvalidPagination(updatedResults, updatedResults.size(),
-        totalCount);
-
-    return results;
+    return updatedResults;
   }
 
   /**
@@ -294,6 +330,8 @@ public class TerminologyService implements ITerminologyService {
   private PagedResults<SearchResult> integratedSearchSingleSource(Optional<String> q, ValueConstraints valueConstraints,
                                                                   int page, int pageSize, String apiKey) throws IOException {
 
+    // Reached only for a source searched by name, or for enumerated classes, whose order is the
+    // source's own; everything reordered goes through the window.
     PagedResults<SearchResult> results = null;
     /* Class constraints */
     if (valueConstraints.getClasses().size() > 0) {
@@ -301,11 +339,7 @@ public class TerminologyService implements ITerminologyService {
     }
     /* Ontology constraints */
     if (valueConstraints.getOntologies().size() > 0) {
-      if (q.isEmpty()) {
-        results = integratedSearchOntologiesEmptyQuery(valueConstraints.getOntologies().get(0), pageSize, apiKey);
-      } else {
-        results = integratedSearchOntologies(q, valueConstraints.getOntologies(), page, pageSize, apiKey);
-      }
+      results = integratedSearchOntologies(q, valueConstraints.getOntologies(), page, pageSize, apiKey);
     }
     /* Branch constraints */
     if (valueConstraints.getBranches().size() > 0) {
@@ -315,64 +349,6 @@ public class TerminologyService implements ITerminologyService {
     if (valueConstraints.getValueSets().size() > 0) {
       results = integratedSearchValueSets(q, valueConstraints.getValueSets().get(0), page, pageSize, apiKey);
     }
-    return results;
-  }
-
-  private PagedResults<SearchResult> integratedSearchMultipleSources(Optional<String> q,
-                                                                     ValueConstraints valueConstraints,
-                                                                     int page, int pageSize, String apiKey) throws IOException {
-    if (q.isEmpty()) {
-      return integratedSearchMultipleSourcesEmptyQuery(valueConstraints, page, pageSize, apiKey);
-    } else {
-      return integratedSearchMultipleSourcesNonEmptyQuery(q.get(), valueConstraints, page, pageSize, apiKey);
-    }
-  }
-
-  private PagedResults<SearchResult> integratedSearchMultipleSourcesEmptyQuery(ValueConstraints valueConstraints,
-    int page, int pageSize, String apiKey) throws IOException {
-
-    List<SearchResult> allResults = new ArrayList<>();
-    int totalCount = 0;
-    /* Class constraints */
-    if (valueConstraints.getClasses().size() > 0) {
-      PagedResults<SearchResult> partialResults = integratedSearchEnumeratedClasses(Optional.empty(),
-        valueConstraints.getClasses(), page, pageSize);
-      allResults.addAll(partialResults.getCollection());
-      totalCount += partialResults.getTotalCount();
-    }
-    /* Ontology constraints */
-    if ((valueConstraints.getOntologies().size() > 0)) {
-      for (OntologyValueConstraint ontologyVC : valueConstraints.getOntologies()) {
-        PagedResults<SearchResult> partialResults = integratedSearchOntologiesEmptyQuery(ontologyVC, pageSize, apiKey);
-        allResults.addAll(partialResults.getCollection());
-        totalCount += partialResults.getTotalCount();
-      }
-    }
-    /* Branch constraints */
-    if ((valueConstraints.getBranches().size() > 0)) {
-      for (BranchValueConstraint branchValueConstraint : valueConstraints.getBranches()) {
-        PagedResults<SearchResult> partialResults = integratedSearchBranches(Optional.empty(), branchValueConstraint,
-          page, pageSize, apiKey);
-        allResults.addAll(partialResults.getCollection());
-        totalCount += partialResults.getTotalCount();
-      }
-    }
-    /* Value set constraints */
-    if ((valueConstraints.getValueSets().size() > 0)) {
-      for (ValueSetValueConstraint valueSetConstraint : valueConstraints.getValueSets()) {
-        PagedResults<SearchResult> partialResults = integratedSearchValueSets(Optional.empty(), valueSetConstraint,
-          page, pageSize, apiKey);
-        allResults.addAll(partialResults.getCollection());
-        totalCount += partialResults.getTotalCount();
-      }
-    }
-
-    // Re-sort results by prefLabel
-    allResults = Util.sortByPrefLabel(allResults);
-
-    // Generate paginated results
-    PagedResults<SearchResult> results = Util.generatePaginatedResultsInvalidPagination(allResults, pageSize, totalCount);
-
     return results;
   }
 
@@ -478,50 +454,6 @@ public class TerminologyService implements ITerminologyService {
     Integer nextPage = (page * pageSize <= totalNumberOfResults) ? (page + 1) : null;
 
     return new PagedResults(page, pageCount, allResults.size(), totalCount, prevPage, nextPage, allResults);
-  }
-
-  private PagedResults<SearchResult> integratedSearchMultipleSourcesNonEmptyQuery(String q,
-                                                                                  ValueConstraints valueConstraints,
-                                                                                  int page, int pageSize,
-                                                                                  String apiKey) throws IOException {
-
-    List<SearchResult> allResults = new ArrayList<>();
-    int totalCount = 0;
-    /* Class constraints */
-    if (valueConstraints.getClasses().size() > 0) {
-      PagedResults<SearchResult> partialResults = integratedSearchEnumeratedClasses(Optional.of(q), valueConstraints.getClasses(), page, pageSize);
-      allResults.addAll(partialResults.getCollection());
-      totalCount += partialResults.getTotalCount();
-    }
-    /* Ontology constraints */
-    if ((valueConstraints.getOntologies().size() > 0)) {
-      PagedResults<SearchResult> partialResults = integratedSearchOntologies(Optional.of(q), valueConstraints.getOntologies(), page, pageSize, apiKey);
-      allResults.addAll(partialResults.getCollection());
-      totalCount += partialResults.getTotalCount();
-    }
-    /* Branch constraints */
-    if ((valueConstraints.getBranches().size() > 0)) {
-      for (BranchValueConstraint branchValueConstraint : valueConstraints.getBranches()) {
-        PagedResults<SearchResult> partialResults = integratedSearchBranches(Optional.of(q), branchValueConstraint, page, pageSize, apiKey);
-        allResults.addAll(partialResults.getCollection());
-        totalCount += partialResults.getTotalCount();
-      }
-    }
-    /* Value set constraints */
-    if ((valueConstraints.getValueSets().size() > 0)) {
-      for (ValueSetValueConstraint valueSetConstraint : valueConstraints.getValueSets()) {
-        PagedResults<SearchResult> partialResults = integratedSearchValueSets(Optional.of(q), valueSetConstraint, page, pageSize, apiKey);
-        allResults.addAll(partialResults.getCollection());
-        totalCount += partialResults.getTotalCount();
-      }
-    }
-
-    // Re-sort results by length so that the closer matches are ranked higher. We don't need to filter them out by
-    // label at this point because we've done it already when retrieving the results.
-    allResults = Util.sortByClosestMatch(q, allResults);
-    // Generate paginated results
-    PagedResults<SearchResult> results = Util.generatePaginatedResultsInvalidPagination(allResults, pageSize, totalCount);
-    return results;
   }
 
   private PagedResults<SearchResult> integratedSearchEnumeratedClasses(Optional<String> q,

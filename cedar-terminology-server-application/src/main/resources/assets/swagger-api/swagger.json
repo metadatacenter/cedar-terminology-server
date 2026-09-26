@@ -252,7 +252,7 @@
     },
     "/bioportal/integrated-search" : {
       "post" : {
-        "description" : "Search for ontology classes, value sets, and values based on CEDAR value constraints. This endpoint takes a controlled term field specification and any user-supplied initial characters and returns conforming values. <br /> <br /> Some sample calls in Insomnia (https://insomnia.rest/) format are available at https://github.com/metadatacenter/cedar-util/blob/master/api-calls/CEDAR_Insomnia_API_calls.json. <br /> <br />Note that in some cases, the server will need to sort the results obtained from BioPortal and the original pagination information will not be valid any more. In those situations, the values of some of the pagination fields returned as part of the results (e.g., pageCount, nextPage, etc.) cannot be computed consistently, and the server will assign a 'null' value to those fields.",
+        "description" : "Search for ontology classes, value sets, and values based on CEDAR value constraints. This endpoint takes a controlled term field specification and any user-supplied initial characters and returns conforming values. <br /> <br /> Some sample calls in Insomnia (https://insomnia.rest/) format are available at https://github.com/metadatacenter/cedar-util/blob/master/api-calls/CEDAR_Insomnia_API_calls.json. <br /> <br />When the server reorders what BioPortal returns (several sources sorted together, one source listed without a query and sorted by label, or a field's actions applied), it reads up to the first 1,000 results of each source, reorders them as one list and pages that list exactly. A source holding more is truncated, and the answer then carries countCapped: true, with totalCount counting what was read.",
         "operationId" : "cedarIntegratedSearch",
         "parameters" : [ {
           "description" : "Optional BCP-47 language for result labels (e.g. fr). Honored for locally-served, single-source constraints; ignored for BioPortal-proxied ones.",
@@ -5012,6 +5012,10 @@
               "$ref" : "#/components/schemas/IntegratedSearchResult"
             }
           },
+          "countCapped" : {
+            "type" : "boolean",
+            "description" : "Present and true when a reordered search read only the first 1,000 results of some source, so totalCount counts what was read rather than everything that matches."
+          },
           "nextPage" : {
             "type" : "integer",
             "format" : "int32",
@@ -5365,6 +5369,9 @@
               "$ref" : "#/components/schemas/OntologyClass"
             }
           },
+          "countCapped" : {
+            "type" : "boolean"
+          },
           "nextPage" : {
             "type" : "integer",
             "format" : "int32"
@@ -5400,6 +5407,9 @@
             "items" : {
               "$ref" : "#/components/schemas/SearchResult"
             }
+          },
+          "countCapped" : {
+            "type" : "boolean"
           },
           "nextPage" : {
             "type" : "integer",
@@ -5437,6 +5447,9 @@
               "$ref" : "#/components/schemas/ValueSet"
             }
           },
+          "countCapped" : {
+            "type" : "boolean"
+          },
           "nextPage" : {
             "type" : "integer",
             "format" : "int32"
@@ -5472,6 +5485,9 @@
             "items" : {
               "$ref" : "#/components/schemas/Value"
             }
+          },
+          "countCapped" : {
+            "type" : "boolean"
           },
           "nextPage" : {
             "type" : "integer",

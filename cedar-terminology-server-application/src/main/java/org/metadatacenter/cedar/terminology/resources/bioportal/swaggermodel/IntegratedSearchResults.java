@@ -36,6 +36,10 @@ public class IntegratedSearchResults {
   @Schema(description = "The results contained in this page.", requiredMode = Schema.RequiredMode.REQUIRED)
   private List<Result> collection;
 
+  @Schema(description = "Present and true when a reordered search read only the first 1,000 results of some "
+      + "source, so totalCount counts what was read rather than everything that matches.")
+  private Boolean countCapped;
+
   public Integer getPage() {
     return page;
   }
@@ -86,6 +90,10 @@ public class IntegratedSearchResults {
 
   public List<Result> getCollection() {
     return collection;
+  }
+
+  public Boolean getCountCapped() {
+    return countCapped;
   }
 
   public void setCollection(List<Result> collection) {

@@ -1,7 +1,14 @@
 package org.metadatacenter.terms.customObjects;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+
 import java.util.List;
 
+/**
+ * A page of results with BioPortal's paging fields. {@code countCapped} is present, and true, only
+ * when the results were read from a window that did not hold them all: {@code totalCount} is then
+ * the number the window reached rather than the whole.
+ */
 public class PagedResults<T>
 {
 
@@ -12,6 +19,8 @@ public class PagedResults<T>
   private Integer prevPage;
   private Integer nextPage;
   private List<T> collection;
+  @JsonInclude(JsonInclude.Include.NON_NULL)
+  private Boolean countCapped;
 
   public PagedResults() {}
 
@@ -82,5 +91,13 @@ public class PagedResults<T>
   public void setCollection(List<T> collection)
   {
     this.collection = collection;
+  }
+
+  public Boolean getCountCapped() {
+    return countCapped;
+  }
+
+  public void setCountCapped(Boolean countCapped) {
+    this.countCapped = countCapped;
   }
 }

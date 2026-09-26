@@ -56,11 +56,11 @@ public class IntegratedSearchResource extends AbstractTerminologyServerResource 
           "takes a controlled term field specification and any user-supplied initial characters and returns " +
           "conforming values. <br /> <br /> Some sample calls in Insomnia (https://insomnia.rest/) format are " +
           "available at https://github.com/metadatacenter/cedar-util/blob/master/api-calls/" +
-          "CEDAR_Insomnia_API_calls.json. <br /> <br />Note that in some cases, the server will need to sort the " +
-          "results obtained from BioPortal and the original pagination information will not be valid any more. In " +
-          "those situations, the values of some of the pagination fields returned as part of the results (e.g., " +
-          "pageCount, nextPage, etc.) cannot be computed consistently, and the server will assign a 'null' value to " +
-          "those fields.", tags = {"Classes", "Value sets", "Values"})
+          "CEDAR_Insomnia_API_calls.json. <br /> <br />When the server reorders what BioPortal returns (several " +
+          "sources sorted together, one source listed without a query and sorted by label, or a field's actions " +
+          "applied), it reads up to the first 1,000 results of each source, reorders them as one list and pages " +
+          "that list exactly. A source holding more is truncated, and the answer then carries countCapped: true, " +
+          "with totalCount counting what was read.", tags = {"Classes", "Value sets", "Values"})
   @RequestBody(description = "Object that encapsulates the information needed to run the " +
           "search query. The \"valueConstraints\" field specification is based on CEDAR's \"_valueConstraints\" " +
           "field. See https://more.metadatacenter.org/tools-training/outreach/cedar-template-model for more details.", required = true, content = @Content(schema = @Schema(implementation = org.metadatacenter.cedar.terminology.resources.bioportal.swaggermodel.IntegratedSearchRequestBody.class)))
