@@ -30,13 +30,12 @@
         "description" : "Get provisional classes (including provisional value sets and provisional values).",
         "operationId" : "findAllProvisionalClasses",
         "parameters" : [ {
-          "description" : "Page to be returned. Example: 7.",
+          "description" : "Page to be returned, counting from 1, for clients that page by number. Cannot be sent with limit or offset. Example: 7.",
           "in" : "query",
           "name" : "page",
           "schema" : {
             "type" : "integer",
-            "format" : "int32",
-            "default" : 1
+            "format" : "int32"
           }
         }, {
           "description" : "Number of results per page. Example: 10.",
@@ -50,6 +49,22 @@
           "description" : "Alias for the page size, accepted in either spelling.",
           "in" : "query",
           "name" : "page_size",
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }, {
+          "description" : "How many results to return, from 1 to 1000. Defaults to the configured page size.",
+          "in" : "query",
+          "name" : "limit",
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }, {
+          "description" : "How many results to skip. Defaults to 0.",
+          "in" : "query",
+          "name" : "offset",
           "schema" : {
             "type" : "integer",
             "format" : "int32"
@@ -698,13 +713,12 @@
             "type" : "string"
           }
         }, {
-          "description" : "Page to be returned. Example: 7.",
+          "description" : "Page to be returned, counting from 1, for clients that page by number. Cannot be sent with limit or offset. Example: 7.",
           "in" : "query",
           "name" : "page",
           "schema" : {
             "type" : "integer",
-            "format" : "int32",
-            "default" : 1
+            "format" : "int32"
           }
         }, {
           "description" : "Number of results per page. Example: 10.",
@@ -718,6 +732,22 @@
           "description" : "Alias for the page size, accepted in either spelling.",
           "in" : "query",
           "name" : "page_size",
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }, {
+          "description" : "How many results to return, from 1 to 1000. Defaults to the configured page size.",
+          "in" : "query",
+          "name" : "limit",
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }, {
+          "description" : "How many results to skip. Defaults to 0.",
+          "in" : "query",
+          "name" : "offset",
           "schema" : {
             "type" : "integer",
             "format" : "int32"
@@ -805,13 +835,12 @@
             "type" : "string"
           }
         }, {
-          "description" : "Page to be returned. Example: 7.",
+          "description" : "Page to be returned, counting from 1, for clients that page by number. Cannot be sent with limit or offset. Example: 7.",
           "in" : "query",
           "name" : "page",
           "schema" : {
             "type" : "integer",
-            "format" : "int32",
-            "default" : 1
+            "format" : "int32"
           }
         }, {
           "description" : "Number of results per page. Example: 10.",
@@ -825,6 +854,22 @@
           "description" : "Alias for the page size, accepted in either spelling.",
           "in" : "query",
           "name" : "page_size",
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }, {
+          "description" : "How many results to return, from 1 to 1000. Defaults to the configured page size.",
+          "in" : "query",
+          "name" : "limit",
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }, {
+          "description" : "How many results to skip. Defaults to 0.",
+          "in" : "query",
+          "name" : "offset",
           "schema" : {
             "type" : "integer",
             "format" : "int32"
@@ -1102,13 +1147,12 @@
             "type" : "string"
           }
         }, {
-          "description" : "Page to be returned. Example: 7.",
+          "description" : "Page to be returned, counting from 1, for clients that page by number. Cannot be sent with limit or offset. Example: 7.",
           "in" : "query",
           "name" : "page",
           "schema" : {
             "type" : "integer",
-            "format" : "int32",
-            "default" : 1
+            "format" : "int32"
           }
         }, {
           "description" : "Number of results per page. Example: 10.",
@@ -1122,6 +1166,22 @@
           "description" : "Alias for the page size, accepted in either spelling.",
           "in" : "query",
           "name" : "page_size",
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }, {
+          "description" : "How many results to return, from 1 to 1000. Defaults to the configured page size.",
+          "in" : "query",
+          "name" : "limit",
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }, {
+          "description" : "How many results to skip. Defaults to 0.",
+          "in" : "query",
+          "name" : "offset",
           "schema" : {
             "type" : "integer",
             "format" : "int32"
@@ -1217,13 +1277,12 @@
             "type" : "string"
           }
         }, {
-          "description" : "Page to be returned. Example: 7.",
+          "description" : "Page to be returned, counting from 1, for clients that page by number. Cannot be sent with limit or offset. Example: 7.",
           "in" : "query",
           "name" : "page",
           "schema" : {
             "type" : "integer",
-            "format" : "int32",
-            "default" : 1
+            "format" : "int32"
           }
         }, {
           "description" : "Number of results per page. Example: 10.",
@@ -1237,6 +1296,22 @@
           "description" : "Alias for the page size, accepted in either spelling.",
           "in" : "query",
           "name" : "page_size",
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }, {
+          "description" : "How many results to return, from 1 to 1000. Defaults to the configured page size.",
+          "in" : "query",
+          "name" : "limit",
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }, {
+          "description" : "How many results to skip. Defaults to 0.",
+          "in" : "query",
+          "name" : "offset",
           "schema" : {
             "type" : "integer",
             "format" : "int32"
@@ -2165,13 +2240,12 @@
             "type" : "boolean"
           }
         }, {
-          "description" : "Page to be returned. Example: 7.",
+          "description" : "Page to be returned, counting from 1, for clients that page by number. Cannot be sent with limit or offset. Example: 7.",
           "in" : "query",
           "name" : "page",
           "schema" : {
             "type" : "integer",
-            "format" : "int32",
-            "default" : 1
+            "format" : "int32"
           }
         }, {
           "description" : "Number of results per page. Example: 10.",
@@ -2185,6 +2259,22 @@
           "description" : "Alias for the page size, accepted in either spelling.",
           "in" : "query",
           "name" : "pageSize",
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }, {
+          "description" : "How many results to return, from 1 to 1000. Defaults to the configured page size.",
+          "in" : "query",
+          "name" : "limit",
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }, {
+          "description" : "How many results to skip. Defaults to 0.",
+          "in" : "query",
+          "name" : "offset",
           "schema" : {
             "type" : "integer",
             "format" : "int32"
@@ -2401,13 +2491,12 @@
             "default" : 1
           }
         }, {
-          "description" : "Page to be returned. Example: 7.",
+          "description" : "Page to be returned, counting from 1, for clients that page by number. Cannot be sent with limit or offset. Example: 7.",
           "in" : "query",
           "name" : "page",
           "schema" : {
             "type" : "integer",
-            "format" : "int32",
-            "default" : 1
+            "format" : "int32"
           }
         }, {
           "description" : "Number of results per page. Example: 10.",
@@ -2421,6 +2510,22 @@
           "description" : "Alias for the page size, accepted in either spelling.",
           "in" : "query",
           "name" : "pageSize",
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }, {
+          "description" : "How many results to return, from 1 to 1000. Defaults to the configured page size.",
+          "in" : "query",
+          "name" : "limit",
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }, {
+          "description" : "How many results to skip. Defaults to 0.",
+          "in" : "query",
+          "name" : "offset",
           "schema" : {
             "type" : "integer",
             "format" : "int32"
@@ -2731,13 +2836,12 @@
             "type" : "string"
           }
         }, {
-          "description" : "Page to be returned. Example: 7.",
+          "description" : "Page to be returned, counting from 1, for clients that page by number. Cannot be sent with limit or offset. Example: 7.",
           "in" : "query",
           "name" : "page",
           "schema" : {
             "type" : "integer",
-            "format" : "int32",
-            "default" : 1
+            "format" : "int32"
           }
         }, {
           "description" : "Number of results per page. Example: 10.",
@@ -2751,6 +2855,22 @@
           "description" : "Alias for the page size, accepted in either spelling.",
           "in" : "query",
           "name" : "page_size",
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }, {
+          "description" : "How many results to return, from 1 to 1000. Defaults to the configured page size.",
+          "in" : "query",
+          "name" : "limit",
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }, {
+          "description" : "How many results to skip. Defaults to 0.",
+          "in" : "query",
+          "name" : "offset",
           "schema" : {
             "type" : "integer",
             "format" : "int32"
@@ -3026,13 +3146,12 @@
             "type" : "string"
           }
         }, {
-          "description" : "Page to be returned. Example: 7.",
+          "description" : "Page to be returned, counting from 1, for clients that page by number. Cannot be sent with limit or offset. Example: 7.",
           "in" : "query",
           "name" : "page",
           "schema" : {
             "type" : "integer",
-            "format" : "int32",
-            "default" : 1
+            "format" : "int32"
           }
         }, {
           "description" : "Number of results per page. Example: 10.",
@@ -3046,6 +3165,22 @@
           "description" : "Alias for the page size, accepted in either spelling.",
           "in" : "query",
           "name" : "page_size",
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }, {
+          "description" : "How many results to return, from 1 to 1000. Defaults to the configured page size.",
+          "in" : "query",
+          "name" : "limit",
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }, {
+          "description" : "How many results to skip. Defaults to 0.",
+          "in" : "query",
+          "name" : "offset",
           "schema" : {
             "type" : "integer",
             "format" : "int32"
@@ -3231,13 +3366,12 @@
             "type" : "string"
           }
         }, {
-          "description" : "Page to be returned. Example: 7.",
+          "description" : "Page to be returned, counting from 1, for clients that page by number. Cannot be sent with limit or offset. Example: 7.",
           "in" : "query",
           "name" : "page",
           "schema" : {
             "type" : "integer",
-            "format" : "int32",
-            "default" : 1
+            "format" : "int32"
           }
         }, {
           "description" : "Number of results per page. Example: 10.",
@@ -3251,6 +3385,22 @@
           "description" : "Alias for the page size, accepted in either spelling.",
           "in" : "query",
           "name" : "page_size",
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }, {
+          "description" : "How many results to return, from 1 to 1000. Defaults to the configured page size.",
+          "in" : "query",
+          "name" : "limit",
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }, {
+          "description" : "How many results to skip. Defaults to 0.",
+          "in" : "query",
+          "name" : "offset",
           "schema" : {
             "type" : "integer",
             "format" : "int32"
@@ -3887,6 +4037,13 @@
             "format" : "int32",
             "default" : 0
           }
+        }, {
+          "in" : "query",
+          "name" : "limit",
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
         } ],
         "responses" : {
           "200" : {
@@ -3931,6 +4088,13 @@
             "type" : "integer",
             "format" : "int32",
             "default" : 0
+          }
+        }, {
+          "in" : "query",
+          "name" : "limit",
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
           }
         } ],
         "responses" : {
@@ -4077,12 +4241,21 @@
             "type" : "string"
           }
         }, {
+          "description" : "How many children to skip. Defaults to 0.",
           "in" : "query",
           "name" : "offset",
           "schema" : {
             "type" : "integer",
             "format" : "int32",
             "default" : 0
+          }
+        }, {
+          "description" : "How many children to return, from 1 to 500. Defaults to 50.",
+          "in" : "query",
+          "name" : "limit",
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
           }
         } ],
         "responses" : {
@@ -4507,12 +4680,32 @@
               "$ref" : "#/components/schemas/Summary"
             }
           },
+          "countCapped" : {
+            "type" : "boolean"
+          },
+          "currentOffset" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
           "offset" : {
             "type" : "integer",
             "format" : "int32"
           },
+          "paging" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "type" : "string"
+            }
+          },
+          "request" : {
+            "$ref" : "#/components/schemas/PageRequest"
+          },
           "selected" : {
             "$ref" : "#/components/schemas/Detail"
+          },
+          "totalCount" : {
+            "type" : "integer",
+            "format" : "int64"
           }
         }
       },
@@ -4529,6 +4722,10 @@
               "$ref" : "#/components/schemas/Child"
             }
           },
+          "currentOffset" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
           "definition" : {
             "type" : "string"
           },
@@ -4540,11 +4737,20 @@
             "type" : "integer",
             "format" : "int32"
           },
+          "paging" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "type" : "string"
+            }
+          },
           "path" : {
             "type" : "array",
             "items" : {
               "$ref" : "#/components/schemas/TermRef"
             }
+          },
+          "request" : {
+            "$ref" : "#/components/schemas/PageRequest"
           },
           "source" : {
             "$ref" : "#/components/schemas/SourceBlock"
@@ -4560,6 +4766,10 @@
           },
           "termLabel" : {
             "type" : "string"
+          },
+          "totalCount" : {
+            "type" : "integer",
+            "format" : "int32"
           }
         }
       },
@@ -4580,6 +4790,14 @@
       "IntegratedRetrieveBody" : {
         "type" : "object",
         "properties" : {
+          "limit" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "offset" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
           "page" : {
             "type" : "integer",
             "format" : "int32"
@@ -4693,7 +4911,7 @@
           "page" : {
             "type" : "integer",
             "format" : "int32",
-            "description" : "Page to be returned. Example: 7."
+            "description" : "Page to be returned, counting from 1. Cannot be sent with limit or offset. Example: 7."
           },
           "pageSize" : {
             "type" : "integer",
@@ -4752,6 +4970,15 @@
               "$ref" : "#/components/schemas/IntegratedRetrieveResult"
             }
           },
+          "countCapped" : {
+            "type" : "boolean",
+            "description" : "Present and true when totalCount counts only what could be read rather than everything that matches."
+          },
+          "currentOffset" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "The offset of the first result on this page."
+          },
           "nextPage" : {
             "type" : "integer",
             "format" : "int32",
@@ -4776,6 +5003,9 @@
             "type" : "integer",
             "format" : "int32",
             "description" : "Previous page."
+          },
+          "request" : {
+            "$ref" : "#/components/schemas/TerminologyPageRequest"
           },
           "totalCount" : {
             "type" : "integer",
@@ -4830,6 +5060,14 @@
       "IntegratedSearchBody" : {
         "type" : "object",
         "properties" : {
+          "limit" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "offset" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
           "page" : {
             "type" : "integer",
             "format" : "int32"
@@ -4953,7 +5191,7 @@
           "page" : {
             "type" : "integer",
             "format" : "int32",
-            "description" : "Page to be returned. Example: 7."
+            "description" : "Page to be returned, counting from 1. Cannot be sent with limit or offset. Example: 7."
           },
           "pageSize" : {
             "type" : "integer",
@@ -5016,6 +5254,11 @@
             "type" : "boolean",
             "description" : "Present and true when a reordered search read only the first 1,000 results of some source, so totalCount counts what was read rather than everything that matches."
           },
+          "currentOffset" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "The offset of the first result on this page."
+          },
           "nextPage" : {
             "type" : "integer",
             "format" : "int32",
@@ -5040,6 +5283,9 @@
             "type" : "integer",
             "format" : "int32",
             "description" : "Previous page."
+          },
+          "request" : {
+            "$ref" : "#/components/schemas/TerminologyPageRequest"
           },
           "totalCount" : {
             "type" : "integer",
@@ -5359,6 +5605,19 @@
           }
         }
       },
+      "PageRequest" : {
+        "type" : "object",
+        "properties" : {
+          "limit" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "offset" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }
+      },
       "PagedOntologyClasses" : {
         "type" : "object",
         "description" : "One page of ontology classes.",
@@ -5371,6 +5630,10 @@
           },
           "countCapped" : {
             "type" : "boolean"
+          },
+          "currentOffset" : {
+            "type" : "integer",
+            "format" : "int64"
           },
           "nextPage" : {
             "type" : "integer",
@@ -5388,9 +5651,18 @@
             "type" : "integer",
             "format" : "int32"
           },
+          "paging" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "type" : "string"
+            }
+          },
           "prevPage" : {
             "type" : "integer",
             "format" : "int32"
+          },
+          "request" : {
+            "$ref" : "#/components/schemas/PageRequest"
           },
           "totalCount" : {
             "type" : "integer",
@@ -5411,6 +5683,10 @@
           "countCapped" : {
             "type" : "boolean"
           },
+          "currentOffset" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
           "nextPage" : {
             "type" : "integer",
             "format" : "int32"
@@ -5427,9 +5703,18 @@
             "type" : "integer",
             "format" : "int32"
           },
+          "paging" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "type" : "string"
+            }
+          },
           "prevPage" : {
             "type" : "integer",
             "format" : "int32"
+          },
+          "request" : {
+            "$ref" : "#/components/schemas/PageRequest"
           },
           "totalCount" : {
             "type" : "integer",
@@ -5450,6 +5735,10 @@
           "countCapped" : {
             "type" : "boolean"
           },
+          "currentOffset" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
           "nextPage" : {
             "type" : "integer",
             "format" : "int32"
@@ -5466,9 +5755,18 @@
             "type" : "integer",
             "format" : "int32"
           },
+          "paging" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "type" : "string"
+            }
+          },
           "prevPage" : {
             "type" : "integer",
             "format" : "int32"
+          },
+          "request" : {
+            "$ref" : "#/components/schemas/PageRequest"
           },
           "totalCount" : {
             "type" : "integer",
@@ -5489,6 +5787,10 @@
           "countCapped" : {
             "type" : "boolean"
           },
+          "currentOffset" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
           "nextPage" : {
             "type" : "integer",
             "format" : "int32"
@@ -5505,9 +5807,18 @@
             "type" : "integer",
             "format" : "int32"
           },
+          "paging" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "type" : "string"
+            }
+          },
           "prevPage" : {
             "type" : "integer",
             "format" : "int32"
+          },
+          "request" : {
+            "$ref" : "#/components/schemas/PageRequest"
           },
           "totalCount" : {
             "type" : "integer",
@@ -5600,6 +5911,14 @@
               "type" : "string"
             }
           },
+          "limit" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "offset" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
           "page" : {
             "type" : "integer",
             "format" : "int32"
@@ -5622,6 +5941,10 @@
       "Result" : {
         "type" : "object",
         "properties" : {
+          "currentOffset" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
           "items" : {
             "type" : "array",
             "items" : {
@@ -5636,7 +5959,14 @@
             "type" : "integer",
             "format" : "int32"
           },
+          "request" : {
+            "$ref" : "#/components/schemas/PageRequest"
+          },
           "total" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "totalCount" : {
             "type" : "integer",
             "format" : "int64"
           }
@@ -5645,6 +5975,13 @@
       "Roots" : {
         "type" : "object",
         "properties" : {
+          "countCapped" : {
+            "type" : "boolean"
+          },
+          "currentOffset" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
           "items" : {
             "type" : "array",
             "items" : {
@@ -5655,8 +5992,21 @@
             "type" : "integer",
             "format" : "int32"
           },
+          "paging" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "type" : "string"
+            }
+          },
+          "request" : {
+            "$ref" : "#/components/schemas/PageRequest"
+          },
           "sourceAcronym" : {
             "type" : "string"
+          },
+          "totalCount" : {
+            "type" : "integer",
+            "format" : "int64"
           },
           "versionId" : {
             "type" : "string"
@@ -5672,6 +6022,14 @@
           },
           "lang" : {
             "type" : "string"
+          },
+          "limit" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "offset" : {
+            "type" : "integer",
+            "format" : "int32"
           },
           "ontologyOrder" : {
             "type" : "string"
@@ -5860,6 +6218,20 @@
           }
         }
       },
+      "TerminologyPageRequest" : {
+        "type" : "object",
+        "description" : "The page that was asked for, as a limit and an offset, after defaults were applied.",
+        "properties" : {
+          "limit" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "offset" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }
+      },
       "TreeNode" : {
         "type" : "object",
         "properties" : {
@@ -5907,6 +6279,10 @@
           "countCapped" : {
             "type" : "boolean"
           },
+          "currentOffset" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
           "distinctLabelCount" : {
             "type" : "integer",
             "format" : "int32"
@@ -5921,6 +6297,9 @@
           "pageSize" : {
             "type" : "integer",
             "format" : "int32"
+          },
+          "request" : {
+            "$ref" : "#/components/schemas/PageRequest"
           },
           "totalCount" : {
             "type" : "integer",

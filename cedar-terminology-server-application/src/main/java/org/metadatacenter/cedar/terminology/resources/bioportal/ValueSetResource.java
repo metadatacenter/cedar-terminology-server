@@ -1,5 +1,6 @@
 package org.metadatacenter.cedar.terminology.resources.bioportal;
 
+import org.metadatacenter.terms.util.OffsetPaging;
 import com.codahale.metrics.annotation.Timed;
 import com.fasterxml.jackson.databind.JsonNode;
 import io.swagger.v3.oas.annotations.Operation;
@@ -93,18 +94,24 @@ public class ValueSetResource extends AbstractTerminologyServerResource {
   public Response findValueSetsByVsCollection(
       @Parameter(description = "Value set collection. Example: CEDARVS.", required = true)
       @PathParam("vs_collection") String vsCollection,
-      @Parameter(description = "Page to be returned. Example: 7.")
-      @QueryParam("page") @DefaultValue("1") int page,
+      @Parameter(description = "Page to be returned, counting from 1, for clients that page by number. Cannot be "
+          + "sent with limit or offset. Example: 7.")
+      @QueryParam("page") Integer page,
       @Parameter(description = "Number of results per page. Example: 10.")
       @QueryParam("pageSize") int pageSize,
       @Parameter(description = "Alias for the page size, accepted in either spelling.")
-      @QueryParam("page_size") int pageSizeAlias) throws CedarException {
+      @QueryParam("page_size") int pageSizeAlias,
+      @Parameter(description = "How many results to return, from 1 to 1000. Defaults to the configured page size.")
+      @QueryParam("limit") Integer limit,
+      @Parameter(description = "How many results to skip. Defaults to 0.")
+      @QueryParam("offset") Integer offset) throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
-    pageSize = resolvePageSize(pageSize, pageSizeAlias);
+    OffsetPaging.Request paging = pagingOf(page, pageSize, pageSizeAlias, limit, offset);
     try {
       PagedResults<ValueSet> valueSets =
-          terminologyService.findValueSetsByVsCollection(vsCollection, page, pageSize, apiKey);
+          enveloped(OffsetPaging.fetch(paging, (p, s) ->
+          terminologyService.findValueSetsByVsCollection(vsCollection, p, s, apiKey)), paging);
       // This line ensures that @class type annotations are included for each element in the collection
       //ObjectWriter writer = JsonMapper.STRICT_MAPPER.writerFor(new TypeReference<PagedResults<ValueSet>>() {});
       //return Response.ok().entity(JsonMapper.STRICT_MAPPER.valueToTree(writer.writeValueAsString(valueSets))).build();

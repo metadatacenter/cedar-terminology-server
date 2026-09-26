@@ -1,5 +1,7 @@
 package org.metadatacenter.cedar.terminology.resources;
 
+import jakarta.ws.rs.core.Context;
+import jakarta.ws.rs.core.UriInfo;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -15,6 +17,10 @@ import org.metadatacenter.terms.search.VersionedPropertyService;
 @Path("/properties")
 @Produces(MediaType.APPLICATION_JSON)
 public class VersionedPropertyResource {
+
+  /** The request being answered, whose URL a page's links are built from. */
+  @Context
+  UriInfo uriInfo;
   private static VersionedPropertyService service;
 
   public static void injectService(VersionedPropertyService value) {
@@ -98,8 +104,10 @@ public class VersionedPropertyResource {
       @QueryParam("versionId") String version,
       @QueryParam("propertyIri") String iri,
       @QueryParam("kind") String kind,
-      @QueryParam("offset") @DefaultValue("0") int offset) {
-    return read(() -> service.hierarchy(acronym, version, iri, kind, offset));
+      @QueryParam("offset") @DefaultValue("0") int offset,
+      @QueryParam("limit") Integer limit) {
+    return read(() -> service.hierarchy(acronym, version, iri, kind, offset, childLimit(limit, offset))
+        .paged(uriInfo.getRequestUri().toString()));
   }
 
   @GET
@@ -113,7 +121,19 @@ public class VersionedPropertyResource {
       @QueryParam("sourceAcronym") String acronym,
       @QueryParam("versionId") String version,
       @QueryParam("kind") String kind,
-      @QueryParam("offset") @DefaultValue("0") int offset) {
-    return read(() -> service.roots(acronym, version, kind, offset));
+      @QueryParam("offset") @DefaultValue("0") int offset,
+      @QueryParam("limit") Integer limit) {
+    return read(() -> service.roots(acronym, version, kind, offset, childLimit(limit, offset))
+        .paged(uriInfo.getRequestUri().toString()));
+  }
+
+  /** The page size a hierarchy or roots request asks for, refused when out of range. */
+  private static int childLimit(Integer limit, int offset) {
+    int value = limit == null ? VersionedPropertyService.DEFAULT_CHILD_LIMIT : limit;
+    if (value < 1 || value > VersionedPropertyService.MAX_CHILD_LIMIT || offset < 0) {
+      throw new IllegalArgumentException("limit must be 1–" + VersionedPropertyService.MAX_CHILD_LIMIT
+          + " and offset must not be negative");
+    }
+    return value;
   }
 }

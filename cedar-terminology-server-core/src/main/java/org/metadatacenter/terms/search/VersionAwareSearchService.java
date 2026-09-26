@@ -83,7 +83,9 @@ public class VersionAwareSearchService {
   private static final int MAX_ANCESTOR_DEPTH = 32;
 
   /** Children shown at once. A SNOMED node can have hundreds; the count says how many were left. */
-  private static final int CHILD_LIMIT = 50;
+  static final int CHILD_LIMIT = 50;
+  /** The most children one request may ask for. */
+  public static final int MAX_CHILD_LIMIT = 500;
 
   /** How many descendants a branch row illustrates. */
   private static final int EXAMPLE_COUNT = 3;
@@ -117,8 +119,9 @@ public class VersionAwareSearchService {
   public SearchResponse search(SearchRequest request) throws SQLException {
     List<String> types = validatedTypes(request.typesOrAll());
     String query = request.queryOrEmpty();
-    int page = Math.max(1, request.page() == null ? 1 : request.page());
-    int pageSize = clampPageSize(request.pageSize());
+    int[] range = pagingOf(request);
+    int offset = range[0];
+    int limit = range[1];
 
     List<Resolved> resolved = resolveSources(request.sourcesOrEmpty(), request.wantsVersions());
     // Keyed by acronym so an ontology hit can add the source it names without duplicating a block
@@ -182,9 +185,9 @@ public class VersionAwareSearchService {
       List<? extends Hit> all = switch (type) {
         case SearchRequest.TYPE_ONTOLOGY -> ontologyHits(query, resolved, request.ordersOntologiesByMatches());
         case SearchRequest.TYPE_CLASS -> useIndex
-            ? corpusHits(query, false, page, pageSize, scope) : classHits(query, searchable, request.lang());
+            ? corpusHits(query, false, offset, limit, scope) : classHits(query, searchable, request.lang());
         case SearchRequest.TYPE_BRANCH -> useIndex
-            ? corpusHits(query, true, page, pageSize, scope) : branchHits(query, searchable, request.lang());
+            ? corpusHits(query, true, offset, limit, scope) : branchHits(query, searchable, request.lang());
         case SearchRequest.TYPE_VALUE_SET -> valueSetHits(query, corpusWide ? collections : searchable);
         default -> List.of();
       };
@@ -212,8 +215,8 @@ public class VersionAwareSearchService {
       boolean facetable = useIndex
           && (SearchRequest.TYPE_CLASS.equals(type) || SearchRequest.TYPE_BRANCH.equals(type));
       results.put(type, facetable
-          ? facetedPage(query, SearchRequest.TYPE_BRANCH.equals(type), all, page, pageSize, scope)
-          : paged(all, page, pageSize));
+          ? facetedPage(query, SearchRequest.TYPE_BRANCH.equals(type), all, offset, limit, scope)
+          : paged(all, offset, limit));
     }
     return new SearchResponse(query, List.copyOf(blocks.values()), results);
   }
@@ -505,7 +508,7 @@ public class VersionAwareSearchService {
    * choose the label. Absent fields rather than wrong ones — a client can tell the difference, and
    * an author who has narrowed to a source gets both back.
    */
-  private List<? extends Hit> corpusHits(String query, boolean branchesOnly, int page, int pageSize,
+  private List<? extends Hit> corpusHits(String query, boolean branchesOnly, int offset, int limit,
                                          List<String> scope) throws SQLException {
     // Fetch the page, not a thousand rows to slice one page out of. Ranking a broad match is where
     // the time goes — "ce" cost 2.2 seconds fetching a thousand and 0.2 fetching twenty, measured
@@ -519,7 +522,7 @@ public class VersionAwareSearchService {
     // repetition needs the whole group, not the part that fitted on a page of hits.
     List<Hit> hits = new ArrayList<>();
     List<SearchIndexStore.IndexHit> found =
-        index.searchByLabelPage(query, scope, branchesOnly, page, pageSize);
+        index.searchByLabelRange(query, scope, branchesOnly, offset, limit);
     Map<String, List<SearchIndexStore.IndexedName>> namesByTerm =
         index.namesOf(found.stream().map(hit -> hit.term().iri()).toList());
     for (SearchIndexStore.IndexHit hit : found) {
@@ -615,7 +618,7 @@ public class VersionAwareSearchService {
    * will render — for "melanoma" that is 5,439 and 2,552.
    */
   private TypeResults facetedPage(String query, boolean branchesOnly, List<? extends Hit> hits,
-                                  int page, int pageSize, List<String> scope) throws SQLException {
+                                  int offset, int limit, List<String> scope) throws SQLException {
     int total = index.matchCount(query, scope, false, branchesOnly, FACET_CAP);
     // Only the terms results carry a collapsed count. It is what that tab's badge shows, and each
     // facet is a second pass over the match: computing one nobody reads doubles the cost of a broad
@@ -626,9 +629,9 @@ public class VersionAwareSearchService {
     // folding a partial group.
     // Already the page: it holds every hit of the page's labels, which is more rows than pageSize on
     // purpose. Slicing again would cut a label in half and leave a client folding a partial group.
-    return new TypeResults(total, total >= FACET_CAP,
+    return TypeResults.at(total, total >= FACET_CAP,
         labels, labels == null ? null : labels >= FACET_CAP,
-        page, pageSize, List.copyOf(hits));
+        offset, limit, List.copyOf(hits));
   }
 
   /**
@@ -650,12 +653,18 @@ public class VersionAwareSearchService {
    */
   public HierarchyLookup hierarchy(String acronym, String termIri, String versionId,
                                    int offset) throws SQLException {
+    return hierarchy(acronym, termIri, versionId, offset, CHILD_LIMIT);
+  }
+
+  /** The hierarchy, with at most {@code limit} children from {@code offset} on. */
+  public HierarchyLookup hierarchy(String acronym, String termIri, String versionId,
+                                   int offset, int limit) throws SQLException {
     if (acronym == null || acronym.isBlank() || termIri == null || termIri.isBlank()) {
       return new HierarchyLookup.TermNotInIndex(acronym, termIri);
     }
     int from = Math.max(0, offset);
     if (versionId != null && !versionId.isBlank()) {
-      return snapshotHierarchy(acronym, termIri, versionId, from);
+      return snapshotHierarchy(acronym, termIri, versionId, from, limit);
     }
     if (index == null) {
       return new HierarchyLookup.TermNotInIndex(acronym, termIri);
@@ -670,19 +679,19 @@ public class VersionAwareSearchService {
       path.add(new TermRef(step.iri(), step.prefLabel()));
     }
     List<HierarchyResponse.Child> children = new ArrayList<>();
-    for (SearchIndexStore.IndexedTerm child : index.children(acronym, termIri, from, CHILD_LIMIT)) {
+    for (SearchIndexStore.IndexedTerm child : index.children(acronym, termIri, from, limit)) {
       children.add(new HierarchyResponse.Child(child.iri(), child.prefLabel(), child.hasChildren(),
           child.descendantCount(), child.definition()));
     }
     return new HierarchyLookup.Found(new HierarchyResponse(SearchRequest.BIOPORTAL, acronym,
         indexedSourceBlock(acronym), path.isEmpty() ? null : path, term.iri(), term.prefLabel(),
         children.isEmpty() ? null : children, index.childCount(acronym, termIri), from,
-        term.descendantCount(), term.definition()));
+        term.descendantCount(), term.definition(), null, null, null, null).paged(limit, null));
   }
 
   /** The hierarchy as one snapshot records it, for a request that named a release. */
   private HierarchyLookup snapshotHierarchy(String acronym, String termIri, String versionId,
-                                            int offset) throws SQLException {
+                                            int offset, int limit) throws SQLException {
     Resolved resolved = resolveSource(
         new SourceSelector(null, acronym, new SearchRequest.VersionSelector(versionId)));
     if (!resolved.isLocal()) {
@@ -704,7 +713,7 @@ public class VersionAwareSearchService {
     // "African horse sickness" while showing "African swine fever" two rows on. It also matches how
     // the index answers this for the current release, so pinning changes the release read, nothing else.
     List<HierarchyResponse.Child> children = new ArrayList<>();
-    for (SnapshotStore.LabelledConcept child : store.childrenByLabel(termIri, offset, CHILD_LIMIT)) {
+    for (SnapshotStore.LabelledConcept child : store.childrenByLabel(termIri, offset, limit)) {
       children.add(new HierarchyResponse.Child(child.iri(), child.prefLabel(),
           !store.children(child.iri()).isEmpty(), store.descendantCount(child.iri()),
           SnapshotStore.servedDefinition(store.definitions(child.iri()))));
@@ -713,7 +722,7 @@ public class VersionAwareSearchService {
     return new HierarchyLookup.Found(new HierarchyResponse(SearchRequest.BIOPORTAL, acronym,
         resolved.block(), path, termIri, label.orElse(null), children.isEmpty() ? null : children,
         store.childCount(termIri), offset, store.descendantCount(termIri),
-        SnapshotStore.servedDefinition(store.definitions(termIri))));
+        SnapshotStore.servedDefinition(store.definitions(termIri)), null, null, null, null).paged(limit, null));
   }
 
   /** The whole chain above an indexed term, root first, or null where it is a root itself. */
@@ -913,12 +922,38 @@ public class VersionAwareSearchService {
     return 2;
   }
 
-  private static TypeResults paged(List<? extends Hit> all, int page, int pageSize) {
+  private static TypeResults paged(List<? extends Hit> all, int offset, int limit) {
     int total = all.size();
     boolean capped = total >= COUNT_CAP;
-    int from = Math.min((page - 1) * pageSize, total);
-    int to = Math.min(from + pageSize, total);
-    return new TypeResults(total, capped, page, pageSize, List.copyOf(all.subList(from, to)));
+    int from = Math.min(offset, total);
+    int to = Math.min(from + limit, total);
+    return TypeResults.at(total, capped, offset, limit, List.copyOf(all.subList(from, to)));
+  }
+
+  /**
+   * The offset and limit a request asks for, by {@code limit} and {@code offset} or by {@code page}
+   * and {@code pageSize}. A page size out of range is clamped, as it always was; a limit out of range
+   * is refused, as CEDAR's paging refuses one everywhere else.
+   */
+  private static int[] pagingOf(SearchRequest request) {
+    boolean byOffset = request.limit() != null || request.offset() != null;
+    if (byOffset && (request.page() != null || request.pageSize() != null)) {
+      throw new BadSearchRequestException("Send either limit and offset or page and pageSize, not both.");
+    }
+    if (byOffset) {
+      int limit = request.limit() == null ? DEFAULT_PAGE_SIZE : request.limit();
+      if (limit < 1 || limit > MAX_PAGE_SIZE) {
+        throw new BadSearchRequestException("limit must be between 1 and " + MAX_PAGE_SIZE + ".");
+      }
+      int offset = request.offset() == null ? 0 : request.offset();
+      if (offset < 0) {
+        throw new BadSearchRequestException("offset must not be negative.");
+      }
+      return new int[]{offset, limit};
+    }
+    int page = Math.max(1, request.page() == null ? 1 : request.page());
+    int pageSize = clampPageSize(request.pageSize());
+    return new int[]{(page - 1) * pageSize, pageSize};
   }
 
   /* ----------------------------------------------------------------------------------------------

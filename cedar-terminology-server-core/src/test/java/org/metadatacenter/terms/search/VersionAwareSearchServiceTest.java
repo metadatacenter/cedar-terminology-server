@@ -520,6 +520,76 @@ public class VersionAwareSearchServiceTest {
   }
 
   /* ---------------------------------------------------------------------------------------------
+   * Paging by limit and offset.
+   * --------------------------------------------------------------------------------------------- */
+
+  private static SearchRequest byOffset(String query, List<String> types, List<SourceSelector> sources,
+                                        Integer limit, Integer offset) {
+    return new SearchRequest(query, types, sources, null, null, null, null, null, limit, offset);
+  }
+
+  @Test
+  public void anOffsetServesTheSameRowsAsThePagesItFallsBetween() throws Exception {
+    List<? extends SearchResponse.Hit> whole = service.search(request("a", List.of("class"), List.of(ex(null))))
+        .results().get("class").collection();
+    assertTrue(whole.size() >= 3, "the fixture needs at least three matches for 'a': " + whole);
+
+    TypeResults window = service.search(byOffset("a", List.of("class"), List.of(ex(null)), 2, 1))
+        .results().get("class");
+
+    assertEquals(whole.subList(1, 3), window.collection());
+    assertEquals(new org.metadatacenter.util.http.PagedListResponse.PageRequest(2, 1), window.request());
+    assertEquals(1, window.currentOffset());
+    assertEquals(whole.size(), window.totalCount());
+  }
+
+  @Test
+  public void aPageRequestStatesItselfAsAnOffsetToo() throws Exception {
+    TypeResults second = service.search(new SearchRequest("a", List.of("class"), List.of(ex(null)), null, 2, 1))
+        .results().get("class");
+
+    assertEquals(2, second.page());
+    assertEquals(1, second.currentOffset());
+    assertEquals(new org.metadatacenter.util.http.PagedListResponse.PageRequest(1, 1), second.request());
+  }
+
+  @Test
+  public void bothKindsOfPagingTogetherAreRefused() {
+    assertThrows(VersionAwareSearchService.BadSearchRequestException.class, () -> service.search(
+        new SearchRequest("a", List.of("class"), List.of(ex(null)), null, 1, null, null, null, 10, null)));
+  }
+
+  @Test
+  public void aLimitOutOfRangeIsRefusedWhereAPageSizeWasClamped() {
+    assertThrows(VersionAwareSearchService.BadSearchRequestException.class,
+        () -> service.search(byOffset("a", List.of("class"), List.of(ex(null)), 0, 0)));
+    assertThrows(VersionAwareSearchService.BadSearchRequestException.class,
+        () -> service.search(byOffset("a", List.of("class"), List.of(ex(null)), 201, 0)));
+    assertThrows(VersionAwareSearchService.BadSearchRequestException.class,
+        () -> service.search(byOffset("a", List.of("class"), List.of(ex(null)), 10, -1)));
+  }
+
+  @Test
+  public void aHierarchyPagesItsChildrenByLimitAndStatesThePage() throws Exception {
+    HierarchyResponse first = treeOf(service.hierarchy("EX", BASE + "mammal", "hash-v2", 0, 2));
+    HierarchyResponse rest = treeOf(service.hierarchy("EX", BASE + "mammal", "hash-v2", 2, 2));
+
+    assertEquals(2, first.children().size());
+    assertEquals(3, first.totalCount(), "the second release has cat, dog and wolf under mammal");
+    assertEquals(0L, first.currentOffset());
+    assertEquals(new org.metadatacenter.util.http.PagedListResponse.PageRequest(2, 0), first.request());
+    assertEquals(1, rest.children().size());
+    assertEquals("Wolf", rest.children().get(0).termLabel());
+  }
+
+  @Test
+  public void aHierarchyWithoutALimitKeepsItsFiftyChildDefault() throws Exception {
+    HierarchyResponse tree = treeOf(withIndex().hierarchy("EX", BASE + "mammal", null, 0));
+
+    assertEquals(50, tree.request().limit());
+  }
+
+  /* ---------------------------------------------------------------------------------------------
    * Where a term sits, and what it means.
    * --------------------------------------------------------------------------------------------- */
 

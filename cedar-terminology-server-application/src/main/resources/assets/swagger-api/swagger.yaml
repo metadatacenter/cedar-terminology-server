@@ -23,13 +23,13 @@ paths:
         values).
       operationId: findAllProvisionalClasses
       parameters:
-      - description: "Page to be returned. Example: 7."
+      - description: "Page to be returned, counting from 1, for clients that page\
+          \ by number. Cannot be sent with limit or offset. Example: 7."
         in: query
         name: page
         schema:
           type: integer
           format: int32
-          default: 1
       - description: "Number of results per page. Example: 10."
         in: query
         name: pageSize
@@ -39,6 +39,19 @@ paths:
       - description: "Alias for the page size, accepted in either spelling."
         in: query
         name: page_size
+        schema:
+          type: integer
+          format: int32
+      - description: "How many results to return, from 1 to 1000. Defaults to the\
+          \ configured page size."
+        in: query
+        name: limit
+        schema:
+          type: integer
+          format: int32
+      - description: How many results to skip. Defaults to 0.
+        in: query
+        name: offset
         schema:
           type: integer
           format: int32
@@ -512,13 +525,13 @@ paths:
         required: true
         schema:
           type: string
-      - description: "Page to be returned. Example: 7."
+      - description: "Page to be returned, counting from 1, for clients that page\
+          \ by number. Cannot be sent with limit or offset. Example: 7."
         in: query
         name: page
         schema:
           type: integer
           format: int32
-          default: 1
       - description: "Number of results per page. Example: 10."
         in: query
         name: pageSize
@@ -528,6 +541,19 @@ paths:
       - description: "Alias for the page size, accepted in either spelling."
         in: query
         name: page_size
+        schema:
+          type: integer
+          format: int32
+      - description: "How many results to return, from 1 to 1000. Defaults to the\
+          \ configured page size."
+        in: query
+        name: limit
+        schema:
+          type: integer
+          format: int32
+      - description: How many results to skip. Defaults to 0.
+        in: query
+        name: offset
         schema:
           type: integer
           format: int32
@@ -585,13 +611,13 @@ paths:
         required: true
         schema:
           type: string
-      - description: "Page to be returned. Example: 7."
+      - description: "Page to be returned, counting from 1, for clients that page\
+          \ by number. Cannot be sent with limit or offset. Example: 7."
         in: query
         name: page
         schema:
           type: integer
           format: int32
-          default: 1
       - description: "Number of results per page. Example: 10."
         in: query
         name: pageSize
@@ -601,6 +627,19 @@ paths:
       - description: "Alias for the page size, accepted in either spelling."
         in: query
         name: page_size
+        schema:
+          type: integer
+          format: int32
+      - description: "How many results to return, from 1 to 1000. Defaults to the\
+          \ configured page size."
+        in: query
+        name: limit
+        schema:
+          type: integer
+          format: int32
+      - description: How many results to skip. Defaults to 0.
+        in: query
+        name: offset
         schema:
           type: integer
           format: int32
@@ -788,13 +827,13 @@ paths:
         required: true
         schema:
           type: string
-      - description: "Page to be returned. Example: 7."
+      - description: "Page to be returned, counting from 1, for clients that page\
+          \ by number. Cannot be sent with limit or offset. Example: 7."
         in: query
         name: page
         schema:
           type: integer
           format: int32
-          default: 1
       - description: "Number of results per page. Example: 10."
         in: query
         name: pageSize
@@ -804,6 +843,19 @@ paths:
       - description: "Alias for the page size, accepted in either spelling."
         in: query
         name: page_size
+        schema:
+          type: integer
+          format: int32
+      - description: "How many results to return, from 1 to 1000. Defaults to the\
+          \ configured page size."
+        in: query
+        name: limit
+        schema:
+          type: integer
+          format: int32
+      - description: How many results to skip. Defaults to 0.
+        in: query
+        name: offset
         schema:
           type: integer
           format: int32
@@ -868,13 +920,13 @@ paths:
         required: true
         schema:
           type: string
-      - description: "Page to be returned. Example: 7."
+      - description: "Page to be returned, counting from 1, for clients that page\
+          \ by number. Cannot be sent with limit or offset. Example: 7."
         in: query
         name: page
         schema:
           type: integer
           format: int32
-          default: 1
       - description: "Number of results per page. Example: 10."
         in: query
         name: pageSize
@@ -884,6 +936,19 @@ paths:
       - description: "Alias for the page size, accepted in either spelling."
         in: query
         name: page_size
+        schema:
+          type: integer
+          format: int32
+      - description: "How many results to return, from 1 to 1000. Defaults to the\
+          \ configured page size."
+        in: query
+        name: limit
+        schema:
+          type: integer
+          format: int32
+      - description: How many results to skip. Defaults to 0.
+        in: query
+        name: offset
         schema:
           type: integer
           format: int32
@@ -1496,13 +1561,13 @@ paths:
         name: require_definitions
         schema:
           type: boolean
-      - description: "Page to be returned. Example: 7."
+      - description: "Page to be returned, counting from 1, for clients that page\
+          \ by number. Cannot be sent with limit or offset. Example: 7."
         in: query
         name: page
         schema:
           type: integer
           format: int32
-          default: 1
       - description: "Number of results per page. Example: 10."
         in: query
         name: page_size
@@ -1512,6 +1577,19 @@ paths:
       - description: "Alias for the page size, accepted in either spelling."
         in: query
         name: pageSize
+        schema:
+          type: integer
+          format: int32
+      - description: "How many results to return, from 1 to 1000. Defaults to the\
+          \ configured page size."
+        in: query
+        name: limit
+        schema:
+          type: integer
+          format: int32
+      - description: How many results to skip. Defaults to 0.
+        in: query
+        name: offset
         schema:
           type: integer
           format: int32
@@ -1664,13 +1742,13 @@ paths:
           type: integer
           format: int32
           default: 1
-      - description: "Page to be returned. Example: 7."
+      - description: "Page to be returned, counting from 1, for clients that page\
+          \ by number. Cannot be sent with limit or offset. Example: 7."
         in: query
         name: page
         schema:
           type: integer
           format: int32
-          default: 1
       - description: "Number of results per page. Example: 10."
         in: query
         name: page_size
@@ -1680,6 +1758,19 @@ paths:
       - description: "Alias for the page size, accepted in either spelling."
         in: query
         name: pageSize
+        schema:
+          type: integer
+          format: int32
+      - description: "How many results to return, from 1 to 1000. Defaults to the\
+          \ configured page size."
+        in: query
+        name: limit
+        schema:
+          type: integer
+          format: int32
+      - description: How many results to skip. Defaults to 0.
+        in: query
+        name: offset
         schema:
           type: integer
           format: int32
@@ -1888,13 +1979,13 @@ paths:
         required: true
         schema:
           type: string
-      - description: "Page to be returned. Example: 7."
+      - description: "Page to be returned, counting from 1, for clients that page\
+          \ by number. Cannot be sent with limit or offset. Example: 7."
         in: query
         name: page
         schema:
           type: integer
           format: int32
-          default: 1
       - description: "Number of results per page. Example: 10."
         in: query
         name: pageSize
@@ -1904,6 +1995,19 @@ paths:
       - description: "Alias for the page size, accepted in either spelling."
         in: query
         name: page_size
+        schema:
+          type: integer
+          format: int32
+      - description: "How many results to return, from 1 to 1000. Defaults to the\
+          \ configured page size."
+        in: query
+        name: limit
+        schema:
+          type: integer
+          format: int32
+      - description: How many results to skip. Defaults to 0.
+        in: query
+        name: offset
         schema:
           type: integer
           format: int32
@@ -2084,13 +2188,13 @@ paths:
         required: true
         schema:
           type: string
-      - description: "Page to be returned. Example: 7."
+      - description: "Page to be returned, counting from 1, for clients that page\
+          \ by number. Cannot be sent with limit or offset. Example: 7."
         in: query
         name: page
         schema:
           type: integer
           format: int32
-          default: 1
       - description: "Number of results per page. Example: 10."
         in: query
         name: pageSize
@@ -2100,6 +2204,19 @@ paths:
       - description: "Alias for the page size, accepted in either spelling."
         in: query
         name: page_size
+        schema:
+          type: integer
+          format: int32
+      - description: "How many results to return, from 1 to 1000. Defaults to the\
+          \ configured page size."
+        in: query
+        name: limit
+        schema:
+          type: integer
+          format: int32
+      - description: How many results to skip. Defaults to 0.
+        in: query
+        name: offset
         schema:
           type: integer
           format: int32
@@ -2221,13 +2338,13 @@ paths:
         required: true
         schema:
           type: string
-      - description: "Page to be returned. Example: 7."
+      - description: "Page to be returned, counting from 1, for clients that page\
+          \ by number. Cannot be sent with limit or offset. Example: 7."
         in: query
         name: page
         schema:
           type: integer
           format: int32
-          default: 1
       - description: "Number of results per page. Example: 10."
         in: query
         name: pageSize
@@ -2237,6 +2354,19 @@ paths:
       - description: "Alias for the page size, accepted in either spelling."
         in: query
         name: page_size
+        schema:
+          type: integer
+          format: int32
+      - description: "How many results to return, from 1 to 1000. Defaults to the\
+          \ configured page size."
+        in: query
+        name: limit
+        schema:
+          type: integer
+          format: int32
+      - description: How many results to skip. Defaults to 0.
+        in: query
+        name: offset
         schema:
           type: integer
           format: int32
@@ -2650,6 +2780,11 @@ paths:
           type: integer
           format: int32
           default: 0
+      - in: query
+        name: limit
+        schema:
+          type: integer
+          format: int32
       responses:
         "200":
           content:
@@ -2680,6 +2815,11 @@ paths:
           type: integer
           format: int32
           default: 0
+      - in: query
+        name: limit
+        schema:
+          type: integer
+          format: int32
       responses:
         "200":
           content:
@@ -2786,12 +2926,19 @@ paths:
         name: versionId
         schema:
           type: string
-      - in: query
+      - description: How many children to skip. Defaults to 0.
+        in: query
         name: offset
         schema:
           type: integer
           format: int32
           default: 0
+      - description: "How many children to return, from 1 to 500. Defaults to 50."
+        in: query
+        name: limit
+        schema:
+          type: integer
+          format: int32
       responses:
         "200":
           content:
@@ -3271,11 +3418,25 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Summary"
+        countCapped:
+          type: boolean
+        currentOffset:
+          type: integer
+          format: int64
         offset:
           type: integer
           format: int32
+        paging:
+          type: object
+          additionalProperties:
+            type: string
+        request:
+          $ref: "#/components/schemas/PageRequest"
         selected:
           $ref: "#/components/schemas/Detail"
+        totalCount:
+          type: integer
+          format: int64
     HierarchyResponse:
       type: object
       properties:
@@ -3286,6 +3447,9 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Child"
+        currentOffset:
+          type: integer
+          format: int64
         definition:
           type: string
         descendantCount:
@@ -3294,10 +3458,16 @@ components:
         offset:
           type: integer
           format: int32
+        paging:
+          type: object
+          additionalProperties:
+            type: string
         path:
           type: array
           items:
             $ref: "#/components/schemas/TermRef"
+        request:
+          $ref: "#/components/schemas/PageRequest"
         source:
           $ref: "#/components/schemas/SourceBlock"
         sourceAcronym:
@@ -3308,6 +3478,9 @@ components:
           type: string
         termLabel:
           type: string
+        totalCount:
+          type: integer
+          format: int32
     Hit:
       type: object
       properties:
@@ -3320,6 +3493,12 @@ components:
     IntegratedRetrieveBody:
       type: object
       properties:
+        limit:
+          type: integer
+          format: int32
+        offset:
+          type: integer
+          format: int32
         page:
           type: integer
           format: int32
@@ -3420,7 +3599,8 @@ components:
         page:
           type: integer
           format: int32
-          description: "Page to be returned. Example: 7."
+          description: "Page to be returned, counting from 1. Cannot be sent with\
+            \ limit or offset. Example: 7."
         pageSize:
           type: integer
           format: int32
@@ -3471,6 +3651,14 @@ components:
           description: The results contained in this page.
           items:
             $ref: "#/components/schemas/IntegratedRetrieveResult"
+        countCapped:
+          type: boolean
+          description: Present and true when totalCount counts only what could be
+            read rather than everything that matches.
+        currentOffset:
+          type: integer
+          format: int64
+          description: The offset of the first result on this page.
         nextPage:
           type: integer
           format: int32
@@ -3491,6 +3679,8 @@ components:
           type: integer
           format: int32
           description: Previous page.
+        request:
+          $ref: "#/components/schemas/TerminologyPageRequest"
         totalCount:
           type: integer
           format: int32
@@ -3541,6 +3731,12 @@ components:
     IntegratedSearchBody:
       type: object
       properties:
+        limit:
+          type: integer
+          format: int32
+        offset:
+          type: integer
+          format: int32
         page:
           type: integer
           format: int32
@@ -3651,7 +3847,8 @@ components:
         page:
           type: integer
           format: int32
-          description: "Page to be returned. Example: 7."
+          description: "Page to be returned, counting from 1. Cannot be sent with\
+            \ limit or offset. Example: 7."
         pageSize:
           type: integer
           format: int32
@@ -3707,6 +3904,10 @@ components:
           description: "Present and true when a reordered search read only the first\
             \ 1,000 results of some source, so totalCount counts what was read rather\
             \ than everything that matches."
+        currentOffset:
+          type: integer
+          format: int64
+          description: The offset of the first result on this page.
         nextPage:
           type: integer
           format: int32
@@ -3727,6 +3928,8 @@ components:
           type: integer
           format: int32
           description: Previous page.
+        request:
+          $ref: "#/components/schemas/TerminologyPageRequest"
         totalCount:
           type: integer
           format: int32
@@ -3953,6 +4156,15 @@ components:
           type: string
         versionId:
           type: string
+    PageRequest:
+      type: object
+      properties:
+        limit:
+          type: integer
+          format: int32
+        offset:
+          type: integer
+          format: int32
     PagedOntologyClasses:
       type: object
       description: One page of ontology classes.
@@ -3963,6 +4175,9 @@ components:
             $ref: "#/components/schemas/OntologyClass"
         countCapped:
           type: boolean
+        currentOffset:
+          type: integer
+          format: int64
         nextPage:
           type: integer
           format: int32
@@ -3975,9 +4190,15 @@ components:
         pageSize:
           type: integer
           format: int32
+        paging:
+          type: object
+          additionalProperties:
+            type: string
         prevPage:
           type: integer
           format: int32
+        request:
+          $ref: "#/components/schemas/PageRequest"
         totalCount:
           type: integer
           format: int32
@@ -3991,6 +4212,9 @@ components:
             $ref: "#/components/schemas/SearchResult"
         countCapped:
           type: boolean
+        currentOffset:
+          type: integer
+          format: int64
         nextPage:
           type: integer
           format: int32
@@ -4003,9 +4227,15 @@ components:
         pageSize:
           type: integer
           format: int32
+        paging:
+          type: object
+          additionalProperties:
+            type: string
         prevPage:
           type: integer
           format: int32
+        request:
+          $ref: "#/components/schemas/PageRequest"
         totalCount:
           type: integer
           format: int32
@@ -4019,6 +4249,9 @@ components:
             $ref: "#/components/schemas/ValueSet"
         countCapped:
           type: boolean
+        currentOffset:
+          type: integer
+          format: int64
         nextPage:
           type: integer
           format: int32
@@ -4031,9 +4264,15 @@ components:
         pageSize:
           type: integer
           format: int32
+        paging:
+          type: object
+          additionalProperties:
+            type: string
         prevPage:
           type: integer
           format: int32
+        request:
+          $ref: "#/components/schemas/PageRequest"
         totalCount:
           type: integer
           format: int32
@@ -4047,6 +4286,9 @@ components:
             $ref: "#/components/schemas/Value"
         countCapped:
           type: boolean
+        currentOffset:
+          type: integer
+          format: int64
         nextPage:
           type: integer
           format: int32
@@ -4059,9 +4301,15 @@ components:
         pageSize:
           type: integer
           format: int32
+        paging:
+          type: object
+          additionalProperties:
+            type: string
         prevPage:
           type: integer
           format: int32
+        request:
+          $ref: "#/components/schemas/PageRequest"
         totalCount:
           type: integer
           format: int32
@@ -4123,6 +4371,12 @@ components:
           type: array
           items:
             type: string
+        limit:
+          type: integer
+          format: int32
+        offset:
+          type: integer
+          format: int32
         page:
           type: integer
           format: int32
@@ -4138,6 +4392,9 @@ components:
     Result:
       type: object
       properties:
+        currentOffset:
+          type: integer
+          format: int64
         items:
           type: array
           items:
@@ -4148,12 +4405,22 @@ components:
         pageSize:
           type: integer
           format: int32
+        request:
+          $ref: "#/components/schemas/PageRequest"
         total:
+          type: integer
+          format: int64
+        totalCount:
           type: integer
           format: int64
     Roots:
       type: object
       properties:
+        countCapped:
+          type: boolean
+        currentOffset:
+          type: integer
+          format: int64
         items:
           type: array
           items:
@@ -4161,8 +4428,17 @@ components:
         offset:
           type: integer
           format: int32
+        paging:
+          type: object
+          additionalProperties:
+            type: string
+        request:
+          $ref: "#/components/schemas/PageRequest"
         sourceAcronym:
           type: string
+        totalCount:
+          type: integer
+          format: int64
         versionId:
           type: string
     SearchRequest:
@@ -4173,6 +4449,12 @@ components:
           type: boolean
         lang:
           type: string
+        limit:
+          type: integer
+          format: int32
+        offset:
+          type: integer
+          format: int32
         ontologyOrder:
           type: string
         page:
@@ -4295,6 +4577,17 @@ components:
           type: string
         termLabel:
           type: string
+    TerminologyPageRequest:
+      type: object
+      description: "The page that was asked for, as a limit and an offset, after defaults\
+        \ were applied."
+      properties:
+        limit:
+          type: integer
+          format: int32
+        offset:
+          type: integer
+          format: int32
     TreeNode:
       type: object
       properties:
@@ -4327,6 +4620,9 @@ components:
             $ref: "#/components/schemas/Hit"
         countCapped:
           type: boolean
+        currentOffset:
+          type: integer
+          format: int64
         distinctLabelCount:
           type: integer
           format: int32
@@ -4338,6 +4634,8 @@ components:
         pageSize:
           type: integer
           format: int32
+        request:
+          $ref: "#/components/schemas/PageRequest"
         totalCount:
           type: integer
           format: int32

@@ -1,5 +1,6 @@
 package org.metadatacenter.cedar.terminology.resources.bioportal;
 
+import org.metadatacenter.terms.util.OffsetPaging;
 import com.codahale.metrics.annotation.Timed;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -99,18 +100,24 @@ public class ClassResource extends AbstractTerminologyServerResource {
   public Response findAllClassesForOntology(
       @Parameter(description = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
       @PathParam("ontology") String ontology,
-      @Parameter(description = "Page to be returned. Example: 7.")
-      @QueryParam("page") @DefaultValue("1") int page,
+      @Parameter(description = "Page to be returned, counting from 1, for clients that page by number. Cannot be "
+          + "sent with limit or offset. Example: 7.")
+      @QueryParam("page") Integer page,
       @Parameter(description = "Number of results per page. Example: 10.")
       @QueryParam("pageSize") int pageSize,
       @Parameter(description = "Alias for the page size, accepted in either spelling.")
-      @QueryParam("page_size") int pageSizeAlias) throws CedarException {
+      @QueryParam("page_size") int pageSizeAlias,
+      @Parameter(description = "How many results to return, from 1 to 1000. Defaults to the configured page size.")
+      @QueryParam("limit") Integer limit,
+      @Parameter(description = "How many results to skip. Defaults to 0.")
+      @QueryParam("offset") Integer offset) throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
-    pageSize = resolvePageSize(pageSize, pageSizeAlias);
+    OffsetPaging.Request paging = pagingOf(page, pageSize, pageSizeAlias, limit, offset);
     try {
       PagedResults<OntologyClass> classes =
-          terminologyService.findAllClassesInOntology(ontology, page, pageSize, apiKey);
+          enveloped(OffsetPaging.fetch(paging, (p, s) ->
+          terminologyService.findAllClassesInOntology(ontology, p, s, apiKey)), paging);
       return Response.ok().entity(JsonMapper.STRICT_MAPPER.valueToTree(classes)).build();
     } catch (HTTPException e) {
       return relayedBioPortalFailure(e);
@@ -167,18 +174,24 @@ public class ClassResource extends AbstractTerminologyServerResource {
       @PathParam("id") @Encoded String id,
       @Parameter(description = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
       @PathParam("ontology") String ontology,
-      @Parameter(description = "Page to be returned. Example: 7.")
-      @QueryParam("page") @DefaultValue("1") int page,
+      @Parameter(description = "Page to be returned, counting from 1, for clients that page by number. Cannot be "
+          + "sent with limit or offset. Example: 7.")
+      @QueryParam("page") Integer page,
       @Parameter(description = "Number of results per page. Example: 10.")
       @QueryParam("pageSize") int pageSize,
       @Parameter(description = "Alias for the page size, accepted in either spelling.")
-      @QueryParam("page_size") int pageSizeAlias) throws CedarException {
+      @QueryParam("page_size") int pageSizeAlias,
+      @Parameter(description = "How many results to return, from 1 to 1000. Defaults to the configured page size.")
+      @QueryParam("limit") Integer limit,
+      @Parameter(description = "How many results to skip. Defaults to 0.")
+      @QueryParam("offset") Integer offset) throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
-    pageSize = resolvePageSize(pageSize, pageSizeAlias);
+    OffsetPaging.Request paging = pagingOf(page, pageSize, pageSizeAlias, limit, offset);
     try {
-      PagedResults<OntologyClass> children = terminologyService.getClassChildren(id, ontology, page,
-          pageSize, apiKey);
+      PagedResults<OntologyClass> children = enveloped(OffsetPaging.fetch(paging, (p, s) ->
+          terminologyService.getClassChildren(id, ontology, p,
+          s, apiKey)), paging);
       return Response.ok().entity(JsonMapper.STRICT_MAPPER.valueToTree(children)).build();
     } catch (HTTPException e) {
       return relayedBioPortalFailure(e);
@@ -208,18 +221,24 @@ public class ClassResource extends AbstractTerminologyServerResource {
       @PathParam("id") @Encoded String id,
       @Parameter(description = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
       @PathParam("ontology") String ontology,
-      @Parameter(description = "Page to be returned. Example: 7.")
-      @QueryParam("page") @DefaultValue("1") int page,
+      @Parameter(description = "Page to be returned, counting from 1, for clients that page by number. Cannot be "
+          + "sent with limit or offset. Example: 7.")
+      @QueryParam("page") Integer page,
       @Parameter(description = "Number of results per page. Example: 10.")
       @QueryParam("pageSize") int pageSize,
       @Parameter(description = "Alias for the page size, accepted in either spelling.")
-      @QueryParam("page_size") int pageSizeAlias)
+      @QueryParam("page_size") int pageSizeAlias,
+      @Parameter(description = "How many results to return, from 1 to 1000. Defaults to the configured page size.")
+      @QueryParam("limit") Integer limit,
+      @Parameter(description = "How many results to skip. Defaults to 0.")
+      @QueryParam("offset") Integer offset)
       throws CedarException {
     CedarRequestContext ctx = buildAnonymousRequestContext();
-    pageSize = resolvePageSize(pageSize, pageSizeAlias);
+    OffsetPaging.Request paging = pagingOf(page, pageSize, pageSizeAlias, limit, offset);
     try {
-      PagedResults<OntologyClass> descendants = terminologyService.getClassDescendants(id, ontology,
-          page, pageSize, apiKey);
+      PagedResults<OntologyClass> descendants = enveloped(OffsetPaging.fetch(paging, (p, s) ->
+          terminologyService.getClassDescendants(id, ontology,
+          p, s, apiKey)), paging);
       return Response.ok().entity(JsonMapper.STRICT_MAPPER.valueToTree(descendants)).build();
     } catch (HTTPException e) {
       return relayedBioPortalFailure(e);
@@ -271,17 +290,23 @@ public class ClassResource extends AbstractTerminologyServerResource {
       @ApiResponse(responseCode = "500", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Internal server error")
   })
   public Response findAllProvisionalClasses(
-      @Parameter(description = "Page to be returned. Example: 7.")
-      @QueryParam("page") @DefaultValue("1") int page,
+      @Parameter(description = "Page to be returned, counting from 1, for clients that page by number. Cannot be "
+          + "sent with limit or offset. Example: 7.")
+      @QueryParam("page") Integer page,
       @Parameter(description = "Number of results per page. Example: 10.")
       @QueryParam("pageSize") int pageSize,
       @Parameter(description = "Alias for the page size, accepted in either spelling.")
-      @QueryParam("page_size") int pageSizeAlias) throws CedarException {
+      @QueryParam("page_size") int pageSizeAlias,
+      @Parameter(description = "How many results to return, from 1 to 1000. Defaults to the configured page size.")
+      @QueryParam("limit") Integer limit,
+      @Parameter(description = "How many results to skip. Defaults to 0.")
+      @QueryParam("offset") Integer offset) throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
-    pageSize = resolvePageSize(pageSize, pageSizeAlias);
+    OffsetPaging.Request paging = pagingOf(page, pageSize, pageSizeAlias, limit, offset);
     try {
-      PagedResults<OntologyClass> classes = terminologyService.findAllProvisionalClasses(null, page, pageSize, apiKey);
+      PagedResults<OntologyClass> classes = enveloped(OffsetPaging.fetch(paging, (p, s) ->
+          terminologyService.findAllProvisionalClasses(null, p, s, apiKey)), paging);
       // This line ensures that @class type annotations are included for each element in the list
       //ObjectWriter writer = JsonMapper.STRICT_MAPPER.writerFor(new TypeReference<PagedResults<OntologyClass>>() {});
       //return Response.ok().entity(JsonMapper.STRICT_MAPPER.readTree(writer.writeValueAsString(classes))).build();
@@ -309,18 +334,24 @@ public class ClassResource extends AbstractTerminologyServerResource {
   public Response findAllProvisionalClassesForOntology(
       @Parameter(description = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
       @PathParam("ontology") String ontology,
-      @Parameter(description = "Page to be returned. Example: 7.") @QueryParam
-      ("page") @DefaultValue("1") int page,
+      @Parameter(description = "Page to be returned, counting from 1, for clients that page by number. Cannot be "
+          + "sent with limit or offset. Example: 7.")
+      @QueryParam("page") Integer page,
       @Parameter(description = "Number of results per page. Example: 10.")
       @QueryParam("pageSize") int pageSize,
       @Parameter(description = "Alias for the page size, accepted in either spelling.")
-      @QueryParam("page_size") int pageSizeAlias) throws CedarException {
+      @QueryParam("page_size") int pageSizeAlias,
+      @Parameter(description = "How many results to return, from 1 to 1000. Defaults to the configured page size.")
+      @QueryParam("limit") Integer limit,
+      @Parameter(description = "How many results to skip. Defaults to 0.")
+      @QueryParam("offset") Integer offset) throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
-    pageSize = resolvePageSize(pageSize, pageSizeAlias);
+    OffsetPaging.Request paging = pagingOf(page, pageSize, pageSizeAlias, limit, offset);
     try {
       PagedResults<OntologyClass> classes =
-          terminologyService.findAllProvisionalClasses(ontology, page, pageSize, apiKey);
+          enveloped(OffsetPaging.fetch(paging, (p, s) ->
+          terminologyService.findAllProvisionalClasses(ontology, p, s, apiKey)), paging);
       // This line ensures that @class type annotations are included for each element in the list
       ObjectWriter writer = JsonMapper.STRICT_MAPPER.writerFor(new TypeReference<PagedResults<OntologyClass>>() {
       });

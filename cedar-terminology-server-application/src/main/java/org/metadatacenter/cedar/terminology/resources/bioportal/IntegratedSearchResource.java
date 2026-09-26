@@ -1,5 +1,6 @@
 package org.metadatacenter.cedar.terminology.resources.bioportal;
 
+import org.metadatacenter.terms.util.OffsetPaging;
 import com.codahale.metrics.annotation.Timed;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -84,14 +85,17 @@ public class IntegratedSearchResource extends AbstractTerminologyServerResource 
     // c.must(c.user()).be(LoggedIn);
 
     try {
-      int page = extractPage(body);
-      int pageSize = extractPageSize(body);
+      OffsetPaging.Request paging = OffsetPaging.resolve(body.getLimit(), body.getOffset(),
+          body.getPage() > 0 ? body.getPage() : null, extractPageSize(body), body.getPageSize() > 0,
+          defaultPageSize);
       String inputText = extractInputText(body);
       Optional<String> q = inputText != null? Optional.of(inputText) : Optional.empty();
 
-      PagedResults results =
+      // A POST has no URL to link to, so the envelope carries no links: the next page is asked for by
+      // sending the offset.
+      PagedResults<?> results = OffsetPaging.fetch(paging, (p, s) ->
           terminologyService.integratedSearch(q, body.getParameterObject().getValueConstraints(),
-              page, pageSize, apiKey, lang);
+              p, s, apiKey, lang)).envelope(paging.limit(), paging.offset(), null);
 
       return Response.ok().entity(JsonMapper.STRICT_MAPPER.valueToTree(results)).build();
 

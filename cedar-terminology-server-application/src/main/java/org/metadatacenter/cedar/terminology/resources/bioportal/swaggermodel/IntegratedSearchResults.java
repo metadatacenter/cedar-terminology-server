@@ -36,6 +36,17 @@ public class IntegratedSearchResults {
   @Schema(description = "The results contained in this page.", requiredMode = Schema.RequiredMode.REQUIRED)
   private List<Result> collection;
 
+  @Schema(description = "The page that was asked for, as a limit and an offset, after defaults were applied.")
+  private PageRequest request;
+
+  @Schema(description = "The offset of the first result on this page.")
+  private Long currentOffset;
+
+  /** The limit and offset a page was served with. */
+  @Schema(name = "TerminologyPageRequest")
+  public record PageRequest(int limit, int offset) {
+  }
+
   @Schema(description = "Present and true when a reordered search read only the first 1,000 results of some "
       + "source, so totalCount counts what was read rather than everything that matches.")
   private Boolean countCapped;
@@ -90,6 +101,14 @@ public class IntegratedSearchResults {
 
   public List<Result> getCollection() {
     return collection;
+  }
+
+  public PageRequest getRequest() {
+    return request;
+  }
+
+  public Long getCurrentOffset() {
+    return currentOffset;
   }
 
   public Boolean getCountCapped() {

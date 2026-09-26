@@ -1,5 +1,6 @@
 package org.metadatacenter.cedar.terminology.resources;
 
+import io.swagger.v3.oas.annotations.Parameter;
 import com.codahale.metrics.annotation.Timed;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -132,7 +133,10 @@ public class VersionAwareSearchResource extends AbstractTerminologyServerResourc
   public Response hierarchy(@QueryParam("sourceAcronym") String sourceAcronym,
                             @QueryParam("termIri") String termIri,
                             @QueryParam("versionId") String versionId,
-                            @QueryParam("offset") @DefaultValue("0") int offset) throws CedarException {
+                            @Parameter(description = "How many children to skip. Defaults to 0.")
+                            @QueryParam("offset") @DefaultValue("0") int offset,
+                            @Parameter(description = "How many children to return, from 1 to 500. Defaults to 50.")
+                            @QueryParam("limit") Integer limit) throws CedarException {
     if (searchService == null) {
       return CedarResponse.status(CedarResponseStatus.SERVICE_UNAVAILABLE)
           .errorKey(CedarErrorKey.INVALID_INPUT)
@@ -155,9 +159,18 @@ public class VersionAwareSearchResource extends AbstractTerminologyServerResourc
       // preview feature on the Java this stack is pinned to, and a preview flag is not worth one
       // conditional. The chain covers every permitted case, and the compiler would not tell us if a
       // fifth were added — the sealed declaration is where to look for the full list.
-      HierarchyLookup lookup = searchService.hierarchy(sourceAcronym, termIri, versionId, offset);
+      int childLimit = limit == null ? 50 : limit;
+      if (childLimit < 1 || childLimit > VersionAwareSearchService.MAX_CHILD_LIMIT || offset < 0) {
+        return CedarResponse.badRequest()
+            .errorKey(CedarErrorKey.INVALID_INPUT)
+            .message("limit must be between 1 and " + VersionAwareSearchService.MAX_CHILD_LIMIT
+                + ", and offset must not be negative.")
+            .build();
+      }
+      HierarchyLookup lookup = searchService.hierarchy(sourceAcronym, termIri, versionId, offset, childLimit);
       if (lookup instanceof HierarchyLookup.Found found) {
-        return Response.ok().entity(JsonMapper.STRICT_MAPPER.valueToTree(found.hierarchy())).build();
+        return Response.ok().entity(JsonMapper.STRICT_MAPPER.valueToTree(
+            found.hierarchy().paged(childLimit, uriInfo.getRequestUri().toString()))).build();
       }
       if (lookup instanceof HierarchyLookup.ReleaseNotHeld unheld) {
         return CedarResponse.notFound()
