@@ -1,5 +1,6 @@
 package org.metadatacenter.cedar.terminology.resources.bioportal;
 
+import org.metadatacenter.terms.util.OffsetPaging;
 import com.codahale.metrics.annotation.Timed;
 import com.fasterxml.jackson.databind.JsonNode;
 import io.swagger.v3.oas.annotations.Operation;
@@ -82,17 +83,22 @@ public class SearchResource extends AbstractTerminologyServerResource {
       @QueryParam("subtree_root_id") String subtreeRootId,
       @Parameter(description = "Subtree depth.")
       @QueryParam("max_depth") @DefaultValue("1") int maxDepth,
-      @Parameter(description = "Page to be returned. Example: 7.")
-      @QueryParam("page") @DefaultValue("1") int page,
+      @Parameter(description = "Page to be returned, counting from 1, for clients that page by number. Cannot be "
+          + "sent with limit or offset. Example: 7.")
+      @QueryParam("page") Integer page,
       @Parameter(description = "Number of results per page. Example: 10.")
       @QueryParam("page_size") int pageSize,
       @Parameter(description = "Alias for the page size, accepted in either spelling.")
-      @QueryParam("pageSize") int pageSizeAlias) throws CedarException {
+      @QueryParam("pageSize") int pageSizeAlias,
+      @Parameter(description = "How many results to return, from 1 to 1000. Defaults to the configured page size.")
+      @QueryParam("limit") Integer limit,
+      @Parameter(description = "How many results to skip. Defaults to 0.")
+      @QueryParam("offset") Integer offset) throws CedarException {
 
     CedarRequestContext c = buildAnonymousRequestContext();
 
     try {
-      pageSize = resolvePageSize(pageSize, pageSizeAlias);
+      OffsetPaging.Request paging = pagingOf(page, pageSize, pageSizeAlias, limit, offset);
       // Review and clean scope
       List<String> scopeList = new ArrayList<>();
       List<String> referenceScopeList = Arrays
@@ -116,8 +122,10 @@ public class SearchResource extends AbstractTerminologyServerResource {
       // its values, so the service is given the identifiers that settle it. It is passed as something
       // to call rather than as the answer: fetching it costs a BioPortal call per value-set
       // collection, and a search whose results are all ontology classes never has to ask.
-      PagedResults results = terminologyService.search(q, scopeList, sourcesList, suggest, source, subtreeRootId,
-          maxDepth, page, pageSize, false, true, apiKey, Cache::getValueSetIds);
+      List<String> sourceNames = sourcesList;
+      PagedResults results = enveloped(OffsetPaging.fetch(paging, (p, s) ->
+          terminologyService.search(q, scopeList, sourceNames, suggest, source, subtreeRootId,
+          maxDepth, p, s, false, true, apiKey, Cache::getValueSetIds)), paging);
       JsonNode output = JsonMapper.STRICT_MAPPER.valueToTree(results);
       return Response.ok().entity(output).build();
     } catch (HTTPException e) {
@@ -153,25 +161,32 @@ public class SearchResource extends AbstractTerminologyServerResource {
       @QueryParam("exact_match") boolean exactMatch,
       @Parameter(description = "Filter results only to those that include definitions.")
       @QueryParam("require_definitions") boolean requireDefinitions,
-      @Parameter(description = "Page to be returned. Example: 7.")
-      @QueryParam("page") @DefaultValue("1") int page,
+      @Parameter(description = "Page to be returned, counting from 1, for clients that page by number. Cannot be "
+          + "sent with limit or offset. Example: 7.")
+      @QueryParam("page") Integer page,
       @Parameter(description = "Number of results per page. Example: 10.")
       @QueryParam("page_size") int pageSize,
       @Parameter(description = "Alias for the page size, accepted in either spelling.")
-      @QueryParam("pageSize") int pageSizeAlias) throws CedarException {
+      @QueryParam("pageSize") int pageSizeAlias,
+      @Parameter(description = "How many results to return, from 1 to 1000. Defaults to the configured page size.")
+      @QueryParam("limit") Integer limit,
+      @Parameter(description = "How many results to skip. Defaults to 0.")
+      @QueryParam("offset") Integer offset) throws CedarException {
 
     CedarRequestContext c = buildRequestContext();
     c.must(c.user()).be(LoggedIn);
 
     try {
-      pageSize = resolvePageSize(pageSize, pageSizeAlias);
+      OffsetPaging.Request paging = pagingOf(page, pageSize, pageSizeAlias, limit, offset);
       // Sources list
       List<String> sourcesList = new ArrayList<>();
       if (sources != null && sources.length() > 0) {
         sourcesList = Arrays.asList(sources.split("\\s*,\\s*"));
       }
-      PagedResults results = terminologyService.propertySearch(q, sourcesList, exactMatch, requireDefinitions,
-          page, pageSize, false, true, apiKey);
+      List<String> sourceNames = sourcesList;
+      PagedResults results = enveloped(OffsetPaging.fetch(paging, (p, s) ->
+          terminologyService.propertySearch(q, sourceNames, exactMatch, requireDefinitions,
+          p, s, false, true, apiKey)), paging);
       JsonNode output = JsonMapper.STRICT_MAPPER.valueToTree(results);
       return Response.ok().entity(output).build();
     } catch (HTTPException e) {

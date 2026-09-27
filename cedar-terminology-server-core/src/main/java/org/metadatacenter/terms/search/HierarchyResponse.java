@@ -1,5 +1,8 @@
 package org.metadatacenter.terms.search;
 
+import org.metadatacenter.util.http.LinkHeaderUtil;
+import org.metadatacenter.util.http.PagedListResponse;
+import java.util.Map;
 import com.fasterxml.jackson.annotation.JsonInclude;
 
 import java.util.List;
@@ -34,7 +37,24 @@ public record HierarchyResponse(
      * The children carry theirs, and without this the one term the response is about was the one
      * term in the tree with nothing said about it.
      */
-    String definition) {
+    String definition,
+    /** The page of children asked for, as CEDAR's paging states it. */
+    PagedListResponse.PageRequest request,
+    /** How many children there are in all: {@code childCount}, under the name CEDAR's paging uses. */
+    Integer totalCount,
+    /** Where the returned children start: {@code offset}, under the name CEDAR's paging uses. */
+    Long currentOffset,
+    /** Links to the first, previous, next and last pages of children, keyed by relation. */
+    Map<String, String> paging) {
+
+  /** The response with its children's page stated as CEDAR's paging states one. */
+  public HierarchyResponse paged(int limit, String requestUrl) {
+    Map<String, String> links = requestUrl == null ? null
+        : LinkHeaderUtil.getPagingLinkHeaders(requestUrl, (long) childCount, limit, offset);
+    return new HierarchyResponse(sourceSystem, sourceAcronym, source, path, termIri, termLabel, children,
+        childCount, offset, descendantCount, definition, new PagedListResponse.PageRequest(limit, offset),
+        childCount, (long) offset, links);
+  }
 
   /** A step below the term, carrying enough to say whether it is worth opening in turn. */
   @JsonInclude(JsonInclude.Include.NON_NULL)

@@ -1,5 +1,6 @@
 package org.metadatacenter.cedar.terminology.resources.bioportal;
 
+import org.metadatacenter.terms.util.OffsetPaging;
 import com.codahale.metrics.annotation.Timed;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -74,11 +75,13 @@ public class IntegratedRetrieveResource extends AbstractTerminologyServerResourc
     // c.must(c.user()).be(LoggedIn);
 
     try {
-      int page = extractPage(body);
-      int pageSize = extractPageSize(body);
+      OffsetPaging.Request paging = OffsetPaging.resolve(body.getLimit(), body.getOffset(),
+          body.getPage() > 0 ? body.getPage() : null, extractPageSize(body), body.getPageSize() > 0,
+          defaultPageSize);
 
-      PagedResults results =
-        terminologyService.integratedRetrieve(body.getValueConstraints(), page, pageSize, apiKey);
+      PagedResults<?> results = OffsetPaging.fetch(paging, (p, s) ->
+          terminologyService.integratedRetrieve(body.getValueConstraints(), p, s, apiKey))
+          .envelope(paging.limit(), paging.offset(), null);
 
       return Response.ok().entity(JsonMapper.STRICT_MAPPER.valueToTree(results)).build();
 

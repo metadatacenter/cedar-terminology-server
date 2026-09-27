@@ -1,5 +1,6 @@
 package org.metadatacenter.terms.search;
 
+import org.metadatacenter.util.http.PagedListResponse;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -104,11 +105,26 @@ public record SearchResponse(String query, List<SourceBlock> sources, Map<String
        */
       @ArraySchema(schema = @Schema(oneOf = {OntologyHit.class, BranchHit.class, ClassHit.class,
           ValueSetHit.class}))
-      List<? extends Hit> collection) {
+      List<? extends Hit> collection,
+      /** The page asked for, as CEDAR's paging states it: the limit and the offset. */
+      PagedListResponse.PageRequest request,
+      /** Where this page starts, counted as {@code limit} counts: labels for terms and branches. */
+      long currentOffset) {
 
-    public TypeResults(int totalCount, boolean countCapped, int page, int pageSize,
-                       List<? extends Hit> collection) {
-      this(totalCount, countCapped, null, null, page, pageSize, collection);
+    /**
+     * A block for the page at {@code offset} with {@code limit}. {@code page} and {@code pageSize}
+     * are the same page stated by number, for the clients that page that way.
+     */
+    public static TypeResults at(int totalCount, boolean countCapped, Integer distinctLabelCount,
+                                 Boolean distinctLabelCountCapped, int offset, int limit,
+                                 List<? extends Hit> collection) {
+      return new TypeResults(totalCount, countCapped, distinctLabelCount, distinctLabelCountCapped,
+          offset / limit + 1, limit, collection, new PagedListResponse.PageRequest(limit, offset), offset);
+    }
+
+    public static TypeResults at(int totalCount, boolean countCapped, int offset, int limit,
+                                 List<? extends Hit> collection) {
+      return at(totalCount, countCapped, null, null, offset, limit, collection);
     }
   }
 

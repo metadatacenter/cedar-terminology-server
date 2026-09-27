@@ -22,11 +22,17 @@ public class IntegratedRetrieveRequestBody {
   @Schema(description = "The user-supplied initial characters used to filter the conforming values.")
   private String inputText;
 
-  @Schema(description = "Page to be returned. Example: 7.")
+  @Schema(description = "Page to be returned, counting from 1. Cannot be sent with limit or offset. Example: 7.")
   private Integer page;
 
   @Schema(description = "Number of results per page. Example: 10.")
   private Integer pageSize;
+
+  @Schema(description = "How many results to return, from 1 to 1000. Sent instead of page and pageSize.")
+  private Integer limit;
+
+  @Schema(description = "How many results to skip. Sent instead of page and pageSize.")
+  private Integer offset;
 
   public ValueConstraints getValueConstraints() {
     return valueConstraints;

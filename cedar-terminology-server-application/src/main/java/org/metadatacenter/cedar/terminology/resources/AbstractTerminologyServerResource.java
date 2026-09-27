@@ -8,6 +8,9 @@ import org.metadatacenter.http.CedarResponseStatus;
 import org.metadatacenter.util.http.CedarResponse;
 import org.metadatacenter.config.CedarConfig;
 import org.metadatacenter.terms.ITerminologyService;
+import org.metadatacenter.terms.customObjects.PagedResults;
+import org.metadatacenter.terms.util.OffsetPaging;
+import org.metadatacenter.exception.CedarException;
 
 public abstract class AbstractTerminologyServerResource extends CedarMicroserviceResource {
 
@@ -77,6 +80,28 @@ public abstract class AbstractTerminologyServerResource extends CedarMicroservic
         .parameter("upstreamStatusCode", upstreamStatus)
         .parameter("upstreamService", "BioPortal")
         .build();
+  }
+
+  /**
+   * The page a GET request asks for, by {@code limit} and {@code offset} or by the one-based
+   * {@code page} and a page size in either spelling.
+   */
+  protected static OffsetPaging.Request pagingOf(Integer page, int pageSize, int pageSizeAlias, Integer limit,
+                                                 Integer offset) throws CedarException {
+    return OffsetPaging.resolve(limit, offset, page, resolvePageSize(pageSize, pageSizeAlias),
+        pageSize > 0 || pageSizeAlias > 0, defaultPageSize);
+  }
+
+  /**
+   * The page with CEDAR's paging envelope filled in, its links built from this request's own URL.
+   * The page-number parameters are taken out of the links: a link carries {@code offset} and
+   * {@code limit}, and a request sending both kinds of paging is refused.
+   */
+  protected <T> PagedResults<T> enveloped(PagedResults<T> results, OffsetPaging.Request paging) {
+    String url = uriInfo.getRequestUriBuilder()
+        .replaceQueryParam("page").replaceQueryParam("pageSize").replaceQueryParam("page_size")
+        .build().toString();
+    return results.envelope(paging.limit(), paging.offset(), url);
   }
 
   protected static int resolvePageSize(int pageSize, int pageSizeAlias) {

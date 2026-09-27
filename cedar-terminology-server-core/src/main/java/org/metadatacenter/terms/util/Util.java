@@ -129,14 +129,16 @@ public class Util {
     if (allResults.size() > 0) {
       pageCount = (int) Math.ceil((double) allResults.size() / pageSize); // round up
       int startIndex = (page * pageSize) - pageSize;
-      int endIndex = Math.min(startIndex + pageSize, allResults.size());
-      if (startIndex >= endIndex) {
-        page = 1;
-        startIndex = 0;
+      // A page past the end is empty. It used to be reset to page 1 while keeping the end index it
+      // had already computed, which answered every result at once — and a caller walking the pages
+      // until an empty one never found it.
+      if (startIndex < allResults.size()) {
+        int endIndex = Math.min(startIndex + pageSize, allResults.size());
+        relevantResults = allResults.subList(startIndex, endIndex); // Note that endIndex is exclusive
       }
-      relevantResults = allResults.subList(startIndex, endIndex); // Note that endIndex is exclusive
       prevPage = page > 1 ? page - 1 : null;
-      nextPage = (page * pageSize <= allResults.size()) ? (page + 1) : null;
+      // Strictly less: a total that fills its last page exactly has no page after it.
+      nextPage = (page * pageSize < allResults.size()) ? (page + 1) : null;
     } else {
       page = null;
     }

@@ -10,6 +10,10 @@ public class IntegratedSearchBody {
   private ParameterObject parameterObject;
   private int page;
   private int pageSize;
+  /** How many results to return; sent instead of page and pageSize. */
+  private Integer limit;
+  /** How many results to skip; sent instead of page and pageSize. */
+  private Integer offset;
 
   public IntegratedSearchBody() { }
 
@@ -23,6 +27,14 @@ public class IntegratedSearchBody {
 
   public int getPageSize() {
     return pageSize;
+  }
+
+  public Integer getLimit() {
+    return limit;
+  }
+
+  public Integer getOffset() {
+    return offset;
   }
 
 }

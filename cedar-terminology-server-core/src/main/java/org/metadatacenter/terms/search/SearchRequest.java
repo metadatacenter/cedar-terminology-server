@@ -32,12 +32,22 @@ public record SearchRequest(
      * wants — the useful thing to narrow to is where the terms are, and for "melanoma" that is NCIT
      * with 950 rather than MELO with 38, however aptly MELO is named.
      */
-    String ontologyOrder) {
+    String ontologyOrder,
+    /** How many results a block returns; sent instead of page and pageSize. */
+    Integer limit,
+    /** How many results a block skips; sent instead of page and pageSize. */
+    Integer offset) {
 
   /** A request that does not ask for version histories, which is most of them. */
   public SearchRequest(String query, List<String> types, List<SourceSelector> sources, String lang,
                        Integer page, Integer pageSize) {
-    this(query, types, sources, lang, page, pageSize, null, null);
+    this(query, types, sources, lang, page, pageSize, null, null, null, null);
+  }
+
+  /** A request paged by number. */
+  public SearchRequest(String query, List<String> types, List<SourceSelector> sources, String lang,
+                       Integer page, Integer pageSize, Boolean includeVersions, String ontologyOrder) {
+    this(query, types, sources, lang, page, pageSize, includeVersions, ontologyOrder, null, null);
   }
 
   public static final String ORDER_BY_MATCHES = "matches";

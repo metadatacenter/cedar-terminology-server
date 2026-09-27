@@ -672,6 +672,13 @@ public class SearchIndexStore implements AutoCloseable {
    */
   public List<IndexHit> searchByLabelPage(String query, Collection<String> acronyms, boolean branchesOnly,
                                           int page, int pageSize) throws SQLException {
+    int size = Math.max(pageSize, 1);
+    return searchByLabelRange(query, acronyms, branchesOnly, Math.max(page - 1, 0) * size, size);
+  }
+
+  /** The labels from {@code offset} on, at most {@code limit} of them, with every hit of each. */
+  public List<IndexHit> searchByLabelRange(String query, Collection<String> acronyms, boolean branchesOnly,
+                                           int offset, int limit) throws SQLException {
     MatchPlan plan = toMatchPlan(query);
     String match = plan.match();
     if (match.isEmpty()) {
@@ -715,8 +722,8 @@ public class SearchIndexStore implements AutoCloseable {
       if (!plan.residual().isEmpty()) {
         ps.setString(p++, heldTokens);
       }
-      ps.setInt(p++, Math.max(pageSize, 1));
-      ps.setInt(p, Math.max(page - 1, 0) * Math.max(pageSize, 1));
+      ps.setInt(p++, Math.max(limit, 1));
+      ps.setInt(p, Math.max(offset, 0));
       try (ResultSet rs = ps.executeQuery()) {
         while (rs.next()) {
           labels.add(rs.getString(1));

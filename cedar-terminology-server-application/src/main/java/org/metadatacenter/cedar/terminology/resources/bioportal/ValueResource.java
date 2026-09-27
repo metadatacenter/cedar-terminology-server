@@ -1,5 +1,6 @@
 package org.metadatacenter.cedar.terminology.resources.bioportal;
 
+import org.metadatacenter.terms.util.OffsetPaging;
 import com.codahale.metrics.annotation.Timed;
 import com.fasterxml.jackson.databind.JsonNode;
 import io.swagger.v3.oas.annotations.Operation;
@@ -120,17 +121,23 @@ public class ValueResource extends AbstractTerminologyServerResource {
       @Parameter(description = "Value set identifier. Example: http://www.semanticweb.org/jgraybeal/ontologies/2015/7/" +
           "cedarvaluesets#Study_File_Type", required = true)
       @PathParam("vs") @Encoded String vsId,
-      @Parameter(description = "Page to be returned. Example: 7.")
-      @QueryParam("page") @DefaultValue("1") int page,
+      @Parameter(description = "Page to be returned, counting from 1, for clients that page by number. Cannot be "
+          + "sent with limit or offset. Example: 7.")
+      @QueryParam("page") Integer page,
       @Parameter(description = "Number of results per page. Example: 10.")
       @QueryParam("pageSize") int pageSize,
       @Parameter(description = "Alias for the page size, accepted in either spelling.")
-      @QueryParam("page_size") int pageSizeAlias) throws CedarException {
+      @QueryParam("page_size") int pageSizeAlias,
+      @Parameter(description = "How many results to return, from 1 to 1000. Defaults to the configured page size.")
+      @QueryParam("limit") Integer limit,
+      @Parameter(description = "How many results to skip. Defaults to 0.")
+      @QueryParam("offset") Integer offset) throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
-    pageSize = resolvePageSize(pageSize, pageSizeAlias);
+    OffsetPaging.Request paging = pagingOf(page, pageSize, pageSizeAlias, limit, offset);
     try {
-      PagedResults<Value> values = terminologyService.findValuesByValueSet(vsId, vsCollection, page, pageSize, apiKey);
+      PagedResults<Value> values = enveloped(OffsetPaging.fetch(paging, (p, s) ->
+          terminologyService.findValuesByValueSet(vsId, vsCollection, p, s, apiKey)), paging);
       return Response.ok().entity(JsonMapper.STRICT_MAPPER.valueToTree(values)).build();
     } catch (HTTPException e) {
       return relayedBioPortalFailure(e);
@@ -156,18 +163,24 @@ public class ValueResource extends AbstractTerminologyServerResource {
       @PathParam("id") @Encoded String id,
       @Parameter(description = "Value set collection. Example: CEDARVS.", required = true)
       @PathParam("vs_collection") String vsCollection,
-      @Parameter(description = "Page to be returned. Example: 7.")
-      @QueryParam("page") @DefaultValue("1") int page,
+      @Parameter(description = "Page to be returned, counting from 1, for clients that page by number. Cannot be "
+          + "sent with limit or offset. Example: 7.")
+      @QueryParam("page") Integer page,
       @Parameter(description = "Number of results per page. Example: 10.")
       @QueryParam("pageSize") int pageSize,
       @Parameter(description = "Alias for the page size, accepted in either spelling.")
-      @QueryParam("page_size") int pageSizeAlias) throws CedarException {
+      @QueryParam("page_size") int pageSizeAlias,
+      @Parameter(description = "How many results to return, from 1 to 1000. Defaults to the configured page size.")
+      @QueryParam("limit") Integer limit,
+      @Parameter(description = "How many results to skip. Defaults to 0.")
+      @QueryParam("offset") Integer offset) throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
-    pageSize = resolvePageSize(pageSize, pageSizeAlias);
+    OffsetPaging.Request paging = pagingOf(page, pageSize, pageSizeAlias, limit, offset);
     try {
       PagedResults<Value> values =
-          terminologyService.findAllValuesInValueSetByValue(id, vsCollection, page, pageSize, apiKey);
+          enveloped(OffsetPaging.fetch(paging, (p, s) ->
+          terminologyService.findAllValuesInValueSetByValue(id, vsCollection, p, s, apiKey)), paging);
       return Response.ok().entity(JsonMapper.STRICT_MAPPER.valueToTree(values)).build();
     } catch (HTTPException e) {
       return relayedBioPortalFailure(e);

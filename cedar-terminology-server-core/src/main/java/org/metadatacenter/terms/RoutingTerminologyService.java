@@ -1,5 +1,6 @@
 package org.metadatacenter.terms;
 
+import org.metadatacenter.cedar.terminology.validation.integratedsearch.Action;
 import org.metadatacenter.cedar.terminology.validation.integratedsearch.BranchValueConstraint;
 import org.metadatacenter.cedar.terminology.validation.integratedsearch.ClassValueConstraint;
 import org.metadatacenter.cedar.terminology.validation.integratedsearch.OntologyValueConstraint;
@@ -7,6 +8,7 @@ import org.metadatacenter.cedar.terminology.validation.integratedsearch.ValueCon
 import org.metadatacenter.cedar.terminology.validation.integratedsearch.ValueSetValueConstraint;
 import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.terms.domainObjects.*;
+import org.metadatacenter.terms.util.ObjectConverter;
 import org.metadatacenter.terms.util.Util;
 import org.metadatacenter.terms.util.ValueSetIds;
 
@@ -15,6 +17,8 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Optional;
+
+import static org.metadatacenter.cedar.terminology.util.Constants.BP_TYPE_VALUE;
 
 /**
  * An {@link ITerminologyService} that dispatches each call to either a local, version-aware
@@ -180,10 +184,10 @@ public class RoutingTerminologyService implements ITerminologyService {
                                                      int pageSize, String apiKey, String lang) throws IOException {
     if (local != null && integratedSearchServedLocally(valueConstraints)) {
       if (localOnly) {
-        return local.integratedSearch(q, valueConstraints, page, pageSize, apiKey, lang);
+        return localIntegratedSearch(q, valueConstraints, page, pageSize, apiKey, lang);
       }
       try {
-        return local.integratedSearch(q, valueConstraints, page, pageSize, apiKey, lang);
+        return localIntegratedSearch(q, valueConstraints, page, pageSize, apiKey, lang);
       } catch (UnsupportedOperationException notImplementedLocally) {
         // The local backend cannot serve this search *shape* (e.g. multi-source or mixed constraints).
         // Routing to the remote adapter is fine for an unpinned request, but never for a pinned one:
@@ -285,6 +289,51 @@ public class RoutingTerminologyService implements ITerminologyService {
 
   private static boolean isVersionPin(String version) {
     return version != null && !version.isBlank() && !"latest".equalsIgnoreCase(version);
+  }
+
+  /**
+   * An integrated search answered by the local store, with the field's actions applied.
+   *
+   * The local store answers a constraint and knows nothing of actions, so a field served from it lost
+   * its exclusions and moves without any sign that it had. Actions are applied here as the BioPortal
+   * path applies them: the local results are read into the same window, the actions are applied to
+   * the whole of it, and the page is cut from what is left. A field without actions is paged by the
+   * local store directly, as before.
+   */
+  private PagedResults<SearchResult> localIntegratedSearch(Optional<String> q, ValueConstraints valueConstraints,
+                                                           int page, int pageSize, String apiKey, String lang)
+      throws IOException {
+    if (!ResultActions.present(valueConstraints)) {
+      return local.integratedSearch(q, valueConstraints, page, pageSize, apiKey, lang);
+    }
+    IntegratedSearchWindow.Window window = IntegratedSearchWindow.collect(List.of(
+        (p, size) -> local.integratedSearch(q, valueConstraints, p, size, apiKey, lang)));
+    List<SearchResult> arranged =
+        ResultActions.apply(window.results(), valueConstraints, action -> localTerm(action, apiKey, lang));
+    PagedResults<SearchResult> results = Util.generatePaginatedResults(arranged, page, pageSize, Optional.empty());
+    if (window.truncated()) {
+      results.setCountCapped(true);
+    }
+    return results;
+  }
+
+  /**
+   * A moved term that is not among the local results, looked up in the local store, or null when the
+   * store does not hold it. A value lives in its collection's snapshot, so it is looked up there.
+   */
+  private SearchResult localTerm(Action action, String apiKey, String lang) throws IOException {
+    String source = action.getSource();
+    if (source == null || action.getTermUri() == null) {
+      return null;
+    }
+    String acronym = BP_TYPE_VALUE.equals(action.getType())
+        ? vsCollectionAcronym(source) : Util.getShortIdentifier(source);
+    try {
+      OntologyClass found = local.findClass(action.getTermUri(), acronym, apiKey, lang);
+      return found == null ? null : ObjectConverter.toSearchResult(found);
+    } catch (UnsupportedOperationException notServedLocally) {
+      return null;
+    }
   }
 
   /**
