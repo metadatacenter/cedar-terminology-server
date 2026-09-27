@@ -1,6 +1,7 @@
 package org.metadatacenter.terms.search;
 
 import org.metadatacenter.constant.HttpConstants;
+import io.swagger.v3.oas.annotations.media.Schema;
 import org.metadatacenter.util.http.LinkHeaderUtil;
 import org.metadatacenter.util.http.PagedListResponse;
 import java.sql.SQLException;
@@ -19,6 +20,7 @@ public final class VersionedPropertyService {
    * A property search. It is paged either by {@code limit} and {@code offset}, CEDAR's paging, or by
    * {@code page} and {@code pageSize}, not both.
    */
+  @Schema(additionalProperties = Schema.AdditionalPropertiesValue.FALSE)
   public record Request(
       String query, List<Source> sources, List<String> kinds, Integer page, Integer pageSize,
       Integer limit, Integer offset) {

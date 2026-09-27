@@ -5607,6 +5607,7 @@
       },
       "PageRequest" : {
         "type" : "object",
+        "description" : "The page that was asked for, after defaults were applied",
         "properties" : {
           "limit" : {
             "type" : "integer",
@@ -5904,6 +5905,7 @@
       },
       "Request" : {
         "type" : "object",
+        "additionalProperties" : false,
         "properties" : {
           "kinds" : {
             "type" : "array",

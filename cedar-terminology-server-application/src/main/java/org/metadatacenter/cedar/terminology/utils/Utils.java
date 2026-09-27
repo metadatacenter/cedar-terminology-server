@@ -1,5 +1,7 @@
 package org.metadatacenter.cedar.terminology.utils;
 
+import org.metadatacenter.util.json.JsonMapper;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 
@@ -10,7 +12,7 @@ public class Utils
 {
   public static String prettyPrint(Object o) throws IOException
   {
-    ObjectMapper mapper = new ObjectMapper();
+    ObjectMapper mapper = JsonMapper.TOLERANT_MAPPER.copy();
     mapper.enable(SerializationFeature.INDENT_OUTPUT);
     StringWriter sw = new StringWriter();
     mapper.writeValue(sw, o);
