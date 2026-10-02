@@ -2,7 +2,7 @@ openapi: 3.0.1
 info:
   description: CEDAR Terminology Server API
   title: CEDAR Terminology Server API
-  version: 2.9.19
+  version: 2.9.20
 paths:
   /:
     get:
@@ -4158,6 +4158,7 @@ components:
           type: string
     PageRequest:
       type: object
+      description: "The page that was asked for, after defaults were applied"
       properties:
         limit:
           type: integer
@@ -4366,6 +4367,7 @@ components:
           type: string
     Request:
       type: object
+      additionalProperties: false
       properties:
         kinds:
           type: array

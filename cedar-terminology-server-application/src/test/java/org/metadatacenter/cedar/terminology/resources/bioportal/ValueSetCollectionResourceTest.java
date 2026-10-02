@@ -10,7 +10,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.metadatacenter.terms.domainObjects.ValueSetCollection;
 
@@ -21,7 +21,9 @@ import static org.metadatacenter.constant.HttpConstants.HTTP_HEADER_AUTHORIZATIO
 /**
  * Integration tests. They are done by starting a test server that makes it possible to test the real HTTP stack.
  */
-@Disabled("Requires live BioPortal value-set-collection data and is not deterministic in the default build")
+// Exercises live BioPortal; excluded from the default build (surefire excludedGroups).
+// Run with -DexcludedGroups= (or a bioportal profile) when a BioPortal API key is configured.
+@Tag("bioportal")
 public class ValueSetCollectionResourceTest extends AbstractTerminologyServerResourceTest {
 
   /**
@@ -53,7 +55,6 @@ public class ValueSetCollectionResourceTest extends AbstractTerminologyServerRes
     String url = baseUrlBpVSCollections;
     // Service invocation
     Response response = clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
-    response.close();
     Assertions.assertEquals(Status.OK.getStatusCode(), response.getStatus());
     // Check Content-Type
     Assertions.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
