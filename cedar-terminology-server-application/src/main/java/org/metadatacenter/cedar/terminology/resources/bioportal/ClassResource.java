@@ -81,7 +81,7 @@ public class ClassResource extends AbstractTerminologyServerResource {
     } catch (HTTPException e) {
       return relayedBioPortalFailure(e);
     } catch (IOException e) {
-      throw new CedarProcessingException(e);
+      throw bioPortalUnusable(e);
     }
   }
 
@@ -122,7 +122,7 @@ public class ClassResource extends AbstractTerminologyServerResource {
     } catch (HTTPException e) {
       return relayedBioPortalFailure(e);
     } catch (IOException e) {
-      throw new CedarProcessingException(e);
+      throw bioPortalUnusable(e);
     }
   }
 
@@ -152,8 +152,10 @@ public class ClassResource extends AbstractTerminologyServerResource {
       return Response.ok().entity(JsonMapper.STRICT_MAPPER.valueToTree(tree)).build();
     } catch (HTTPException e) {
       return relayedBioPortalFailure(e);
-    } catch (IOException | ExecutionException e) {
-      throw new CedarProcessingException(e);
+    } catch (IOException e) {
+      throw bioPortalUnusable(e);
+    } catch (ExecutionException e) {
+      throw bioPortalUnusable(e);
     }
   }
 
@@ -196,7 +198,7 @@ public class ClassResource extends AbstractTerminologyServerResource {
     } catch (HTTPException e) {
       return relayedBioPortalFailure(e);
     } catch (IOException e) {
-      throw new CedarProcessingException(e);
+      throw bioPortalUnusable(e);
     }
   }
 
@@ -243,7 +245,7 @@ public class ClassResource extends AbstractTerminologyServerResource {
     } catch (HTTPException e) {
       return relayedBioPortalFailure(e);
     } catch (IOException e) {
-      throw new CedarProcessingException(e);
+      throw bioPortalUnusable(e);
     }
   }
 
@@ -273,7 +275,7 @@ public class ClassResource extends AbstractTerminologyServerResource {
     } catch (HTTPException e) {
       return relayedBioPortalFailure(e);
     } catch (IOException e) {
-      throw new CedarProcessingException(e);
+      throw bioPortalUnusable(e);
     }
   }
 
@@ -314,7 +316,7 @@ public class ClassResource extends AbstractTerminologyServerResource {
     } catch (HTTPException e) {
       return relayedBioPortalFailure(e);
     } catch (IOException e) {
-      throw new CedarProcessingException(e);
+      throw bioPortalUnusable(e);
     }
   }
 
@@ -359,7 +361,7 @@ public class ClassResource extends AbstractTerminologyServerResource {
     } catch (HTTPException e) {
       return relayedBioPortalFailure(e);
     } catch (IOException e) {
-      throw new CedarProcessingException(e);
+      throw bioPortalUnusable(e);
     }
   }
 

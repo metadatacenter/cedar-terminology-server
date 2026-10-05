@@ -69,7 +69,7 @@ public class ValueResource extends AbstractTerminologyServerResource {
     } catch (HTTPException e) {
       return relayedBioPortalFailure(e);
     } catch (IOException e) {
-      throw new CedarProcessingException(e);
+      throw bioPortalUnusable(e);
     }
   }
 
@@ -99,7 +99,7 @@ public class ValueResource extends AbstractTerminologyServerResource {
     } catch (HTTPException e) {
       return relayedBioPortalFailure(e);
     } catch (IOException e) {
-      throw new CedarProcessingException(e);
+      throw bioPortalUnusable(e);
     }
   }
 
@@ -142,7 +142,7 @@ public class ValueResource extends AbstractTerminologyServerResource {
     } catch (HTTPException e) {
       return relayedBioPortalFailure(e);
     } catch (IOException e) {
-      throw new CedarProcessingException(e);
+      throw bioPortalUnusable(e);
     }
   }
 
@@ -185,7 +185,7 @@ public class ValueResource extends AbstractTerminologyServerResource {
     } catch (HTTPException e) {
       return relayedBioPortalFailure(e);
     } catch (IOException e) {
-      throw new CedarProcessingException(e);
+      throw bioPortalUnusable(e);
     }
   }
 

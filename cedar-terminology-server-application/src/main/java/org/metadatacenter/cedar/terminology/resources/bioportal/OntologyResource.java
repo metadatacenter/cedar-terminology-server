@@ -71,7 +71,7 @@ public class OntologyResource extends AbstractTerminologyServerResource {
     } catch (HTTPException e) {
       return relayedBioPortalFailure(e);
     } catch (ExecutionException e) {
-      throw new CedarProcessingException(e);
+      throw bioPortalUnusable(e);
     }
   }
 
@@ -101,7 +101,7 @@ public class OntologyResource extends AbstractTerminologyServerResource {
     } catch (HTTPException e) {
       return relayedBioPortalFailure(e);
     } catch (ExecutionException e) {
-      throw new CedarProcessingException(e);
+      throw bioPortalUnusable(e);
     }
   }
 
@@ -128,7 +128,7 @@ public class OntologyResource extends AbstractTerminologyServerResource {
       List<OntologyVersion> versions = terminologyService.getVersions(id);
       return Response.ok().entity(JsonMapper.STRICT_MAPPER.valueToTree(versions)).build();
     } catch (IOException e) {
-      throw new CedarProcessingException(e);
+      throw bioPortalUnusable(e);
     }
   }
 
@@ -160,7 +160,7 @@ public class OntologyResource extends AbstractTerminologyServerResource {
       }
       return Response.ok().entity(JsonMapper.STRICT_MAPPER.valueToTree(triple)).build();
     } catch (IOException e) {
-      throw new CedarProcessingException(e);
+      throw bioPortalUnusable(e);
     }
   }
 
@@ -193,7 +193,7 @@ public class OntologyResource extends AbstractTerminologyServerResource {
       }
       return Response.ok().entity(JsonMapper.STRICT_MAPPER.valueToTree(triple)).build();
     } catch (IOException e) {
-      throw new CedarProcessingException(e);
+      throw bioPortalUnusable(e);
     }
   }
 
@@ -226,7 +226,7 @@ public class OntologyResource extends AbstractTerminologyServerResource {
       }
       return Response.ok().entity(JsonMapper.STRICT_MAPPER.valueToTree(diff)).build();
     } catch (IOException e) {
-      throw new CedarProcessingException(e);
+      throw bioPortalUnusable(e);
     }
   }
 
@@ -254,8 +254,10 @@ public class OntologyResource extends AbstractTerminologyServerResource {
       return Response.ok().entity(JsonMapper.STRICT_MAPPER.valueToTree(roots)).build();
     } catch (HTTPException e) {
       return relayedBioPortalFailure(e);
-    } catch (IOException | ExecutionException e) {
-      throw new CedarProcessingException(e);
+    } catch (IOException e) {
+      throw bioPortalUnusable(e);
+    } catch (ExecutionException e) {
+      throw bioPortalUnusable(e);
     }
   }
 
@@ -282,7 +284,7 @@ public class OntologyResource extends AbstractTerminologyServerResource {
     } catch (HTTPException e) {
       return relayedBioPortalFailure(e);
     } catch (IOException e) {
-      throw new CedarProcessingException(e);
+      throw bioPortalUnusable(e);
     }
   }
 
