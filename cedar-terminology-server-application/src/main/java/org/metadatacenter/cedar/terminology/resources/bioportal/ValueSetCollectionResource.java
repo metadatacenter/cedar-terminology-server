@@ -65,7 +65,7 @@ public class ValueSetCollectionResource extends AbstractTerminologyServerResourc
     } catch (HTTPException e) {
       return relayedBioPortalFailure(e);
     } catch (IOException e) {
-      throw new CedarProcessingException(e);
+      throw bioPortalUnusable(e);
     }
   }
 
@@ -95,7 +95,7 @@ public class ValueSetCollectionResource extends AbstractTerminologyServerResourc
       }
       return Response.ok().entity(JsonMapper.STRICT_MAPPER.valueToTree(triple)).build();
     } catch (IOException e) {
-      throw new CedarProcessingException(e);
+      throw bioPortalUnusable(e);
     }
   }
 

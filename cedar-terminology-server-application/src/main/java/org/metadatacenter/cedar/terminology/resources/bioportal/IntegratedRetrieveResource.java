@@ -87,8 +87,8 @@ public class IntegratedRetrieveResource extends AbstractTerminologyServerResourc
 
     } catch (HTTPException e) {
       return relayedBioPortalFailure(e);
-    } catch (IOException /*| ExecutionException*/ e) {
-      throw new CedarProcessingException(e);
+    } catch (IOException e) {
+      throw bioPortalUnusable(e);
     }
   }
 

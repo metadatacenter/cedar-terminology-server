@@ -1,5 +1,10 @@
 package org.metadatacenter.cedar.terminology.resources;
 
+import java.util.concurrent.ExecutionException;
+import java.io.IOException;
+import org.metadatacenter.exception.CedarProcessingException;
+import org.metadatacenter.exception.CedarDependencyUnavailableException;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import jakarta.ws.rs.core.Response;
 import javax.xml.ws.http.HTTPException;
 import org.metadatacenter.cedar.util.dw.CedarMicroserviceResource;
@@ -80,6 +85,37 @@ public abstract class AbstractTerminologyServerResource extends CedarMicroservic
         .parameter("upstreamStatusCode", upstreamStatus)
         .parameter("upstreamService", "BioPortal")
         .build();
+  }
+
+  /**
+   * A BioPortal call that got no answer this server could use.
+   *
+   * <p>Every route turned this into a 500, which says this server failed. No answer at all, a refused
+   * connection or a timeout, is an outage of the service behind it, so a 503. An answer whose body
+   * could not be read is a gateway's upstream failing, so a 502, as an upstream 5xx already is.
+   */
+  protected static CedarProcessingException bioPortalUnusable(IOException e) {
+    if (e instanceof JsonProcessingException) {
+      CedarProcessingException unreadable =
+          new CedarProcessingException("BioPortal answered with something that could not be read", e);
+      unreadable.getErrorPack().status(CedarResponseStatus.BAD_GATEWAY);
+      return unreadable;
+    }
+    return new CedarDependencyUnavailableException("BioPortal did not answer", e);
+  }
+
+  /**
+   * A failure the cache reports for a BioPortal call it made. It carries an IOException, or a list
+   * that came back far short of the catalogue, which is a load that failed upstream and so a 502.
+   */
+  protected static CedarProcessingException bioPortalUnusable(ExecutionException e) {
+    if (e.getCause() instanceof IOException io) {
+      return bioPortalUnusable(io);
+    }
+    CedarProcessingException failed = new CedarProcessingException(
+        "BioPortal's answer could not be used: " + (e.getCause() == null ? e.getMessage() : e.getCause().getMessage()), e);
+    failed.getErrorPack().status(CedarResponseStatus.BAD_GATEWAY);
+    return failed;
   }
 
   /**

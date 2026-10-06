@@ -110,8 +110,8 @@ public class IntegratedSearchResource extends AbstractTerminologyServerResource 
           .build();
     } catch (HTTPException e) {
       return relayedBioPortalFailure(e);
-    } catch (IOException /*| ExecutionException*/ e) {
-      throw new CedarProcessingException(e);
+    } catch (IOException e) {
+      throw bioPortalUnusable(e);
     }
   }
 
