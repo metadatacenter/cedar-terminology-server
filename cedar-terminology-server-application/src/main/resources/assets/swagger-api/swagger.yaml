@@ -30,7 +30,7 @@ paths:
         schema:
           type: integer
           format: int32
-      - description: "Number of results per page. Example: 10."
+      - description: "Number of results per page, at most 1000. Example: 10."
         in: query
         name: pageSize
         schema:
@@ -532,7 +532,7 @@ paths:
         schema:
           type: integer
           format: int32
-      - description: "Number of results per page. Example: 10."
+      - description: "Number of results per page, at most 1000. Example: 10."
         in: query
         name: pageSize
         schema:
@@ -618,7 +618,7 @@ paths:
         schema:
           type: integer
           format: int32
-      - description: "Number of results per page. Example: 10."
+      - description: "Number of results per page, at most 1000. Example: 10."
         in: query
         name: pageSize
         schema:
@@ -834,7 +834,7 @@ paths:
         schema:
           type: integer
           format: int32
-      - description: "Number of results per page. Example: 10."
+      - description: "Number of results per page, at most 1000. Example: 10."
         in: query
         name: pageSize
         schema:
@@ -927,7 +927,7 @@ paths:
         schema:
           type: integer
           format: int32
-      - description: "Number of results per page. Example: 10."
+      - description: "Number of results per page, at most 1000. Example: 10."
         in: query
         name: pageSize
         schema:
@@ -1568,7 +1568,7 @@ paths:
         schema:
           type: integer
           format: int32
-      - description: "Number of results per page. Example: 10."
+      - description: "Number of results per page, at most 1000. Example: 10."
         in: query
         name: page_size
         schema:
@@ -1749,7 +1749,7 @@ paths:
         schema:
           type: integer
           format: int32
-      - description: "Number of results per page. Example: 10."
+      - description: "Number of results per page, at most 1000. Example: 10."
         in: query
         name: page_size
         schema:
@@ -1986,7 +1986,7 @@ paths:
         schema:
           type: integer
           format: int32
-      - description: "Number of results per page. Example: 10."
+      - description: "Number of results per page, at most 1000. Example: 10."
         in: query
         name: pageSize
         schema:
@@ -2195,7 +2195,7 @@ paths:
         schema:
           type: integer
           format: int32
-      - description: "Number of results per page. Example: 10."
+      - description: "Number of results per page, at most 1000. Example: 10."
         in: query
         name: pageSize
         schema:
@@ -2345,7 +2345,7 @@ paths:
         schema:
           type: integer
           format: int32
-      - description: "Number of results per page. Example: 10."
+      - description: "Number of results per page, at most 1000. Example: 10."
         in: query
         name: pageSize
         schema:
@@ -3604,7 +3604,7 @@ components:
         pageSize:
           type: integer
           format: int32
-          description: "Number of results per page. Example: 10."
+          description: "Number of results per page, at most 1000. Example: 10."
         valueConstraints:
           $ref: "#/components/schemas/IntegratedRetrieveValueConstraints"
       required:
@@ -3852,7 +3852,7 @@ components:
         pageSize:
           type: integer
           format: int32
-          description: "Number of results per page. Example: 10."
+          description: "Number of results per page, at most 1000. Example: 10."
         parameterObject:
           $ref: "#/components/schemas/IntegratedSearchParameterObject"
       required:
