@@ -470,6 +470,21 @@ public class LocalStoreResourceTest {
     }
   }
 
+  @org.junit.jupiter.params.ParameterizedTest(name = "property failure {0}")
+  @org.junit.jupiter.params.provider.CsvSource({"400,LOCALTEST,v2,''", "404,UNKNOWN,v2,x", "503,LOCALTEST,v1,x"})
+  public void propertyFailuresUseTheNativeErrorEnvelope(int status, String acronym, String version, String iri) {
+    try (Response response = clientBuilder.build().target("http://127.0.0.1:" + RULE.getLocalPort() + "/properties")
+        .queryParam("sourceAcronym",acronym).queryParam("versionId",version)
+        .queryParam("propertyIri",iri).queryParam("kind","object").request().get()) {
+      Assertions.assertEquals(status,response.getStatus());
+      JsonNode error = response.readEntity(JsonNode.class);
+      Assertions.assertEquals(status,error.path("statusCode").asInt(),error.toString());
+      Assertions.assertTrue(error.has("errorKey"));
+      Assertions.assertTrue(error.path("parameters").isObject());
+      Assertions.assertFalse(error.path("message").asText().isBlank());
+    }
+  }
+
   @Test
   public void versionAwareSearchIsServedFromTheLocalStore() {
     JsonNode json = postSearch("{\"query\":\"melanoma\",\"types\":[\"class\"],"
