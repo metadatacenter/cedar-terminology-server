@@ -21,6 +21,7 @@ import org.metadatacenter.config.environment.CedarEnvironmentSource;
 import org.metadatacenter.config.environment.CedarEnvironmentVariableProvider;
 import org.metadatacenter.model.SystemComponent;
 import org.metadatacenter.terms.customObjects.PagedResults;
+import org.metadatacenter.terms.util.OffsetPaging;
 import org.metadatacenter.terms.domainObjects.Ontology;
 import org.metadatacenter.terms.domainObjects.OntologyClass;
 import org.metadatacenter.terms.domainObjects.SearchResult;
@@ -149,15 +150,24 @@ public class EquivalenceTest {
     return classes.stream().map(OntologyClass::getId).collect(Collectors.toSet());
   }
 
-  /** GET a paged class relation (children/descendants) and assert its id set equals the golden. */
-  private void assertPagedClassSet(String ontology, String iri, String relation, int pageSize, String golden)
+  /**
+   * GET every page of a class relation (children/descendants) and assert its id set equals the
+   * golden. A page holds at most {@link OffsetPaging#MAX_LIMIT} entries, so a large branch is read
+   * a page at a time.
+   */
+  private void assertPagedClassSet(String ontology, String iri, String relation, String golden)
       throws Exception {
-    Response r = get(baseBp + "/ontologies/" + ontology + "/classes/" + enc(iri) + "/" + relation
-        + "?page=1&pageSize=" + pageSize);
-    Assertions.assertEquals(200, r.getStatus());
-    PagedResults<OntologyClass> pr = r.readEntity(new GenericType<PagedResults<OntologyClass>>() {});
-    r.close();
-    Assertions.assertEquals(loadGoldenIds(golden), shortIds(pr.getCollection()));
+    Set<String> ids = new java.util.HashSet<>();
+    for (Integer page = 1; page != null; ) {
+      Response r = get(baseBp + "/ontologies/" + ontology + "/classes/" + enc(iri) + "/" + relation
+          + "?page=" + page + "&pageSize=" + OffsetPaging.MAX_LIMIT);
+      Assertions.assertEquals(200, r.getStatus());
+      PagedResults<OntologyClass> pr = r.readEntity(new GenericType<PagedResults<OntologyClass>>() {});
+      r.close();
+      ids.addAll(shortIds(pr.getCollection()));
+      page = pr.getNextPage();
+    }
+    Assertions.assertEquals(loadGoldenIds(golden), ids);
   }
 
   /** GET the (unpaged) parents of a class and assert its id set equals the golden. */
@@ -173,13 +183,13 @@ public class EquivalenceTest {
 
   @Test
   public void obi_descendantsOfAssay_matchBioPortalSet() throws Exception {
-    assertPagedClassSet("OBI", OBI_ASSAY, "descendants", 2500, "assay_descendants_ids");
+    assertPagedClassSet("OBI", OBI_ASSAY, "descendants", "assay_descendants_ids");
   }
 
   @Test
   public void obi_childrenOfAssay_matchBioPortalSet() throws Exception {
     // Exact only because the extractor reads the named genus of equivalentClass definitions.
-    assertPagedClassSet("OBI", OBI_ASSAY, "children", 500, "assay_children_ids");
+    assertPagedClassSet("OBI", OBI_ASSAY, "children", "assay_children_ids");
   }
 
   @Test
@@ -191,12 +201,12 @@ public class EquivalenceTest {
 
   @Test
   public void uberon_descendantsOfOrgan_matchBioPortalSet() throws Exception {
-    assertPagedClassSet("UBERON", UBERON_ORGAN, "descendants", 4000, "organ_descendants_ids");
+    assertPagedClassSet("UBERON", UBERON_ORGAN, "descendants", "organ_descendants_ids");
   }
 
   @Test
   public void uberon_childrenOfOrgan_matchBioPortalSet() throws Exception {
-    assertPagedClassSet("UBERON", UBERON_ORGAN, "children", 500, "organ_children_ids");
+    assertPagedClassSet("UBERON", UBERON_ORGAN, "children", "organ_children_ids");
   }
 
   @Test
@@ -208,12 +218,12 @@ public class EquivalenceTest {
 
   @Test
   public void cl_hepatocyteChildren_matchBioPortalSet() throws Exception {
-    assertPagedClassSet("CL", CL_HEPATOCYTE, "children", 500, "hepatocyte_children_ids");
+    assertPagedClassSet("CL", CL_HEPATOCYTE, "children", "hepatocyte_children_ids");
   }
 
   @Test
   public void cl_hepatocyteDescendants_matchBioPortalSet() throws Exception {
-    assertPagedClassSet("CL", CL_HEPATOCYTE, "descendants", 500, "hepatocyte_descendants_ids");
+    assertPagedClassSet("CL", CL_HEPATOCYTE, "descendants", "hepatocyte_descendants_ids");
   }
 
   @Test
@@ -337,19 +347,22 @@ public class EquivalenceTest {
     ObjectNode parameterObject = MAPPER.createObjectNode();
     parameterObject.set("valueConstraints", valueConstraints);
     parameterObject.put("inputText", "assay");
-    ObjectNode body = MAPPER.createObjectNode();
-    body.set("parameterObject", parameterObject);
-    body.put("page", 1);
-    body.put("pageSize", 3000);
-
-    Response r = clientBuilder.build().target(URI.create(baseBp + "/integrated-search")).request()
-        .post(Entity.json(body));
-    Assertions.assertEquals(200, r.getStatus());
-    PagedResults<SearchResult> results = r.readEntity(new GenericType<PagedResults<SearchResult>>() {});
-    r.close();
-
-    Set<String> local = results.getCollection().stream()
-        .map(sr -> sr.getLdId().substring(sr.getLdId().lastIndexOf('/') + 1)).collect(Collectors.toSet());
+    // Read every page, a page holding at most OffsetPaging.MAX_LIMIT results.
+    Set<String> local = new java.util.HashSet<>();
+    for (Integer page = 1; page != null; ) {
+      ObjectNode body = MAPPER.createObjectNode();
+      body.set("parameterObject", parameterObject);
+      body.put("page", page);
+      body.put("pageSize", OffsetPaging.MAX_LIMIT);
+      Response r = clientBuilder.build().target(URI.create(baseBp + "/integrated-search")).request()
+          .post(Entity.json(body));
+      Assertions.assertEquals(200, r.getStatus());
+      PagedResults<SearchResult> results = r.readEntity(new GenericType<PagedResults<SearchResult>>() {});
+      r.close();
+      results.getCollection().stream()
+          .map(sr -> sr.getLdId().substring(sr.getLdId().lastIndexOf('/') + 1)).forEach(local::add);
+      page = results.getNextPage();
+    }
     Set<String> bp = loadGoldenIds("obi_search_assay_bp_ids");
     Set<String> intersection = new java.util.HashSet<>(local);
     intersection.retainAll(bp);

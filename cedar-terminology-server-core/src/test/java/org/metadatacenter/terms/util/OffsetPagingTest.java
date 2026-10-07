@@ -121,6 +121,14 @@ class OffsetPagingTest {
   }
 
   @Test
+  void aPageSizeAboveTheLimitsCeilingIsRefused() throws Exception {
+    assertThrows(CedarAssertionException.class,
+        () -> OffsetPaging.resolve(null, null, 1, OffsetPaging.MAX_LIMIT + 1, true, 50));
+    assertEquals(OffsetPaging.MAX_LIMIT,
+        OffsetPaging.resolve(null, null, 1, OffsetPaging.MAX_LIMIT, true, 50).limit());
+  }
+
+  @Test
   void aLimitOutOfRangeIsRefused() {
     assertThrows(CedarAssertionException.class, () -> OffsetPaging.resolve(0, null, null, 10, false, 50));
     assertThrows(CedarAssertionException.class,

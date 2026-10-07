@@ -103,7 +103,7 @@ public class ClassResource extends AbstractTerminologyServerResource {
       @Parameter(description = "Page to be returned, counting from 1, for clients that page by number. Cannot be "
           + "sent with limit or offset. Example: 7.")
       @QueryParam("page") Integer page,
-      @Parameter(description = "Number of results per page. Example: 10.")
+      @Parameter(description = "Number of results per page, at most 1000. Example: 10.")
       @QueryParam("pageSize") int pageSize,
       @Parameter(description = "Alias for the page size, accepted in either spelling.")
       @QueryParam("page_size") int pageSizeAlias,
@@ -179,7 +179,7 @@ public class ClassResource extends AbstractTerminologyServerResource {
       @Parameter(description = "Page to be returned, counting from 1, for clients that page by number. Cannot be "
           + "sent with limit or offset. Example: 7.")
       @QueryParam("page") Integer page,
-      @Parameter(description = "Number of results per page. Example: 10.")
+      @Parameter(description = "Number of results per page, at most 1000. Example: 10.")
       @QueryParam("pageSize") int pageSize,
       @Parameter(description = "Alias for the page size, accepted in either spelling.")
       @QueryParam("page_size") int pageSizeAlias,
@@ -226,7 +226,7 @@ public class ClassResource extends AbstractTerminologyServerResource {
       @Parameter(description = "Page to be returned, counting from 1, for clients that page by number. Cannot be "
           + "sent with limit or offset. Example: 7.")
       @QueryParam("page") Integer page,
-      @Parameter(description = "Number of results per page. Example: 10.")
+      @Parameter(description = "Number of results per page, at most 1000. Example: 10.")
       @QueryParam("pageSize") int pageSize,
       @Parameter(description = "Alias for the page size, accepted in either spelling.")
       @QueryParam("page_size") int pageSizeAlias,
@@ -295,7 +295,7 @@ public class ClassResource extends AbstractTerminologyServerResource {
       @Parameter(description = "Page to be returned, counting from 1, for clients that page by number. Cannot be "
           + "sent with limit or offset. Example: 7.")
       @QueryParam("page") Integer page,
-      @Parameter(description = "Number of results per page. Example: 10.")
+      @Parameter(description = "Number of results per page, at most 1000. Example: 10.")
       @QueryParam("pageSize") int pageSize,
       @Parameter(description = "Alias for the page size, accepted in either spelling.")
       @QueryParam("page_size") int pageSizeAlias,
@@ -339,7 +339,7 @@ public class ClassResource extends AbstractTerminologyServerResource {
       @Parameter(description = "Page to be returned, counting from 1, for clients that page by number. Cannot be "
           + "sent with limit or offset. Example: 7.")
       @QueryParam("page") Integer page,
-      @Parameter(description = "Number of results per page. Example: 10.")
+      @Parameter(description = "Number of results per page, at most 1000. Example: 10.")
       @QueryParam("pageSize") int pageSize,
       @Parameter(description = "Alias for the page size, accepted in either spelling.")
       @QueryParam("page_size") int pageSizeAlias,

@@ -24,7 +24,7 @@ import java.util.Optional;
  */
 public final class OffsetPaging {
 
-  /** The largest page a client may ask for by limit. */
+  /** The largest page a client may ask for, by limit or by page size. */
   public static final int MAX_LIMIT = 1000;
 
   private OffsetPaging() {
@@ -64,6 +64,11 @@ public final class OffsetPaging {
           .limit(Optional.ofNullable(limit)).offset(Optional.ofNullable(offset));
       query.validate();
       return new Request(query.getOffset(), query.getLimit(), true);
+    }
+    // A page size has the ceiling a limit has. Asked by number, a source could be made to return any
+    // number of entries in one page, where the same request by limit was refused.
+    if (pageSize > MAX_LIMIT) {
+      throw new CedarAssertionException("A page size is at most " + MAX_LIMIT).badRequest();
     }
     int number = page == null ? 1 : Math.max(1, page);
     return new Request((number - 1) * pageSize, pageSize, false);
