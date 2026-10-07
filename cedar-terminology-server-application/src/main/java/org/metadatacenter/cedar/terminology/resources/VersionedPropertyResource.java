@@ -10,7 +10,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.*;
 import java.sql.SQLException;
-import java.util.Map;
+import org.metadatacenter.util.http.CedarResponse;
 import org.metadatacenter.terms.search.VersionedPropertyService;
 
 /** Read-only property API backed by the same ontology snapshots as version-aware class search. */
@@ -34,17 +34,17 @@ public class VersionedPropertyResource {
 
   private Response read(Read read) {
     if (service == null)
-      return Response.status(503)
-          .entity(Map.of("message", "The local terminology store is not configured."))
+      return CedarResponse.status(503)
+          .message("The local terminology store is not configured.")
           .build();
     try {
       return Response.ok(read.get()).build();
     } catch (IllegalArgumentException e) {
-      return Response.status(400).entity(Map.of("message", e.getMessage())).build();
+      return CedarResponse.status(400).message(e.getMessage()).build();
     } catch (VersionedPropertyService.NotHeld e) {
-      return Response.status(404).entity(Map.of("message", e.getMessage())).build();
+      return CedarResponse.status(404).message(e.getMessage()).build();
     } catch (IllegalStateException e) {
-      return Response.status(503).entity(Map.of("message", e.getMessage())).build();
+      return CedarResponse.status(503).message(e.getMessage()).build();
     } catch (SQLException e) {
       throw new InternalServerErrorException("Could not read the ontology snapshot", e);
     }

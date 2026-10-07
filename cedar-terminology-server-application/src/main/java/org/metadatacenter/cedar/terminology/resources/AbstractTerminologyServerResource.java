@@ -61,7 +61,10 @@ public abstract class AbstractTerminologyServerResource extends CedarMicroservic
    */
   protected static Response relayedBioPortalFailure(HTTPException e) {
     int upstreamStatus = e.getStatusCode();
-    boolean upstreamFault = upstreamStatus == 401 || upstreamStatus == 403 || upstreamStatus >= 500;
+    // BioPortal's quota belongs to the deployment's shared account, not this caller. Keep this
+    // policy explicit: adding a status to the common enum must not change gateway classification.
+    boolean upstreamFault = upstreamStatus == 401 || upstreamStatus == 403 || upstreamStatus == 429
+        || upstreamStatus >= 500;
 
     CedarResponseStatus status;
     String explanation;
