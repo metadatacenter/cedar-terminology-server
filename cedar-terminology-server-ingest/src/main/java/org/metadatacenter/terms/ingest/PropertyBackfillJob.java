@@ -67,11 +67,10 @@ public final class PropertyBackfillJob {
         version = snapshot.normalizedContentHash(true);
       }
       Path enriched = original.resolveSibling(version + ".sqlite");
-      if (!Files.exists(enriched)) Files.move(temp, enriched);
-      // File first, then catalog + latest atomically. An interrupted run can leave only an orphan
-      // file.
-      catalog.inTransaction(
+      // Use the same writer reservation as ingestion and orphan cleanup.
+      catalog.inSnapshotTransaction(
           () -> {
+            if (!Files.exists(enriched)) Files.move(temp, enriched, StandardCopyOption.ATOMIC_MOVE);
             catalog.addSnapshot(
                 new CatalogStore.SnapshotInfo(
                     version,

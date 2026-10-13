@@ -3,6 +3,7 @@ package org.metadatacenter.terms.ingest;
 import org.metadatacenter.terms.store.CatalogStore;
 import org.metadatacenter.terms.store.SearchIndexStore;
 import org.metadatacenter.terms.store.SnapshotStore;
+import org.metadatacenter.terms.store.SnapshotProperties;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -82,7 +83,9 @@ public class SearchIndexJob {
     List<SearchIndexStore.IndexedTerm> terms = new ArrayList<>();
     Map<String, List<SearchIndexStore.IndexedName>> names = new HashMap<>();
     long nameCount = 0;
-    try (SnapshotStore store = SnapshotStore.openFile(file.toString())) {
+    List<SnapshotProperties.Property> properties;
+    try (SnapshotStore store = SnapshotStore.openForRead(file.toString())) {
+      properties = store.properties().available() ? store.properties().all() : null;
       Map<String, Integer> descendants = store.descendantCounts();
       // One parent per concept, because a label does not always identify a class: IRAEO labels
       // fifteen classes "Disease", one under each body system, and only the parent tells them apart.
@@ -130,12 +133,7 @@ public class SearchIndexJob {
         nameCount++;
       }
     }
-    index.replaceOntology(acronym, snapshot.versionId(), Instant.now().toString(), terms, names);
-    try (SnapshotStore store = SnapshotStore.openForRead(file.toString())) {
-      if (store.properties().available()) {
-        index.properties().replace(acronym, snapshot.versionId(), store.properties().all());
-      }
-    }
+    index.replaceOntology(acronym, snapshot.versionId(), Instant.now().toString(), terms, names, properties);
     return new Outcome(acronym, snapshot.versionId(), terms.size(), nameCount, null);
   }
 

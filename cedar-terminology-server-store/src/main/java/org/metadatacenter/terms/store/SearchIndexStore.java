@@ -230,7 +230,7 @@ public class SearchIndexStore implements AutoCloseable {
   /** The SQL name of the function applying {@link #carriesResidual}. */
   static final String RESIDUAL_FN = "cedar_carries_residual";
 
-  private SearchIndexStore(Connection connection) throws SQLException {
+  SearchIndexStore(Connection connection) throws SQLException {
     this(connection, null);
   }
 
@@ -378,6 +378,23 @@ public class SearchIndexStore implements AutoCloseable {
             content_rowid='name_id',
             tokenize="unicode61 remove_diacritics 2"
           )""");
+      // Version markers, stored names and their FTS postings must commit together. A later
+      // corpus-wide rebuild cannot repair a process interruption between those publications.
+      st.executeUpdate("""
+          CREATE TRIGGER IF NOT EXISTS name_fts_insert AFTER INSERT ON name BEGIN
+            INSERT INTO name_fts(rowid, value, ont) VALUES (new.name_id, new.value, new.ont);
+          END""");
+      st.executeUpdate("""
+          CREATE TRIGGER IF NOT EXISTS name_fts_delete AFTER DELETE ON name BEGIN
+            INSERT INTO name_fts(name_fts, rowid, value, ont)
+              VALUES ('delete', old.name_id, old.value, old.ont);
+          END""");
+      st.executeUpdate("""
+          CREATE TRIGGER IF NOT EXISTS name_fts_update AFTER UPDATE ON name BEGIN
+            INSERT INTO name_fts(name_fts, rowid, value, ont)
+              VALUES ('delete', old.name_id, old.value, old.ont);
+            INSERT INTO name_fts(rowid, value, ont) VALUES (new.name_id, new.value, new.ont);
+          END""");
     }
   }
 
@@ -502,12 +519,31 @@ public class SearchIndexStore implements AutoCloseable {
         ps.setString(4, indexedAt);
         ps.executeUpdate();
       }
+      if (autoCommit) connection().commit();
+    } catch (SQLException | RuntimeException | Error e) {
+      if (autoCommit) connection().rollback();
+      throw e;
+    } finally {
+      if (autoCommit) connection().setAutoCommit(true);
+    }
+  }
+
+  /** Publish both search lanes and their version markers as one durable unit. */
+  public void replaceOntology(String acronym, String versionId, String indexedAt,
+                              Collection<IndexedTerm> terms, Map<String, List<IndexedName>> namesByIri,
+                              List<SnapshotProperties.Property> properties) throws SQLException {
+    if (!connection().getAutoCommit()) throw new SQLException("Nested ontology publication is not supported");
+    connection().setAutoCommit(false);
+    try {
+      replaceOntology(acronym, versionId, indexedAt, terms, namesByIri);
+      if (properties == null) properties().clear(acronym);
+      else properties().replace(acronym, versionId, properties);
       connection().commit();
-    } catch (SQLException e) {
+    } catch (SQLException | RuntimeException | Error e) {
       connection().rollback();
       throw e;
     } finally {
-      connection().setAutoCommit(autoCommit);
+      connection().setAutoCommit(true);
     }
   }
 
@@ -1108,11 +1144,11 @@ public class SearchIndexStore implements AutoCloseable {
     }
   }
 
-  /** Bulk-load settings. Durability is traded for speed on a file that is rebuilt, never edited. */
+  /** Bulk-load cache sizing without sacrificing rollback or crash recovery of an existing index. */
   public void applyBulkLoadPragmas() throws SQLException {
     try (Statement st = connection().createStatement()) {
-      st.executeUpdate("PRAGMA journal_mode = OFF");
-      st.executeUpdate("PRAGMA synchronous = OFF");
+      st.executeUpdate("PRAGMA journal_mode = DELETE");
+      st.executeUpdate("PRAGMA synchronous = FULL");
       st.executeUpdate("PRAGMA cache_size = -200000");
     }
   }
