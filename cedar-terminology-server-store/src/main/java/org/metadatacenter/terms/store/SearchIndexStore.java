@@ -378,23 +378,11 @@ public class SearchIndexStore implements AutoCloseable {
             content_rowid='name_id',
             tokenize="unicode61 remove_diacritics 2"
           )""");
-      // Version markers, stored names and their FTS postings must commit together. A later
-      // corpus-wide rebuild cannot repair a process interruption between those publications.
-      st.executeUpdate("""
-          CREATE TRIGGER IF NOT EXISTS name_fts_insert AFTER INSERT ON name BEGIN
-            INSERT INTO name_fts(rowid, value, ont) VALUES (new.name_id, new.value, new.ont);
-          END""");
-      st.executeUpdate("""
-          CREATE TRIGGER IF NOT EXISTS name_fts_delete AFTER DELETE ON name BEGIN
-            INSERT INTO name_fts(name_fts, rowid, value, ont)
-              VALUES ('delete', old.name_id, old.value, old.ont);
-          END""");
-      st.executeUpdate("""
-          CREATE TRIGGER IF NOT EXISTS name_fts_update AFTER UPDATE ON name BEGIN
-            INSERT INTO name_fts(name_fts, rowid, value, ont)
-              VALUES ('delete', old.name_id, old.value, old.ont);
-            INSERT INTO name_fts(rowid, value, ont) VALUES (new.name_id, new.value, new.ont);
-          END""");
+      // replaceOntology batches postings inside the same transaction as the content rows.
+      // Remove the previous per-name triggers on upgrade, or postings would be applied twice.
+      st.executeUpdate("DROP TRIGGER IF EXISTS name_fts_insert");
+      st.executeUpdate("DROP TRIGGER IF EXISTS name_fts_delete");
+      st.executeUpdate("DROP TRIGGER IF EXISTS name_fts_update");
     }
   }
 
@@ -475,6 +463,7 @@ public class SearchIndexStore implements AutoCloseable {
     boolean autoCommit = connection().getAutoCommit();
     connection().setAutoCommit(false);
     try {
+      replaceFullTextRows(acronym, true);
       deleteOntologyRows(acronym);
       try (PreparedStatement insertTerm = connection().prepareStatement(
                "INSERT INTO term(acronym, iri, pref_label, obsolete, replaced_by, has_children, "
@@ -511,6 +500,7 @@ public class SearchIndexStore implements AutoCloseable {
         }
         insertName.executeBatch();
       }
+      replaceFullTextRows(acronym, false);
       try (PreparedStatement ps = connection().prepareStatement(
           "INSERT OR REPLACE INTO indexed_snapshot(acronym, version_id, term_count, indexed_at) VALUES (?,?,?,?)")) {
         ps.setString(1, acronym);
@@ -557,6 +547,23 @@ public class SearchIndexStore implements AutoCloseable {
     insertName.addBatch();
   }
 
+  /**
+   * Delete postings before deleting their content, or insert them after all new names exist.
+   * One INSERT ... SELECT lets FTS process an ontology as a batch instead of one trigger per name.
+   * Both calls belong to the enclosing ontology transaction, including its rollback on failure.
+   */
+  private void replaceFullTextRows(String acronym, boolean delete) throws SQLException {
+    boolean scoped = scopesInIndex();
+    String sql = "INSERT INTO name_fts(" + (delete ? "name_fts, " : "")
+        + "rowid, value" + (scoped ? ", ont" : "") + ") SELECT "
+        + (delete ? "'delete', " : "") + "n.name_id, n.value" + (scoped ? ", n.ont" : "")
+        + " FROM name n JOIN term t ON t.term_id = n.term_id WHERE t.acronym = ?";
+    try (PreparedStatement ps = connection().prepareStatement(sql)) {
+      ps.setString(1, acronym);
+      ps.executeUpdate();
+    }
+  }
+
   private void deleteOntologyRows(String acronym) throws SQLException {
     try (PreparedStatement ps = connection().prepareStatement(
         "DELETE FROM name WHERE term_id IN (SELECT term_id FROM term WHERE acronym = ?)")) {
@@ -572,9 +579,9 @@ public class SearchIndexStore implements AutoCloseable {
   /**
    * Builds the full-text index from the names table.
    *
-   * Separate from insertion, and deliberately: keeping FTS in step row by row costs more than
-   * building it once at the end, and a build that dies half way leaves an index that is merely
-   * stale rather than one that disagrees with itself.
+   * Ontology publication already maintains postings transactionally. This explicit rebuild also
+   * repairs older indexes and upgrades the pre-scope FTS schema; callers need not run it to make
+   * a completed ontology replacement searchable.
    */
   public void rebuildFullText() throws SQLException {
     try (Statement st = connection().createStatement()) {

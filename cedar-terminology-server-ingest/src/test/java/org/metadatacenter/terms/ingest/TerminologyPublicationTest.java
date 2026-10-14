@@ -76,6 +76,8 @@ class TerminologyPublicationTest {
       assertTrue(job.indexOntology("EX", false, 0).indexed());
       assertEquals("new", index.indexedVersion("EX").orElseThrow());
       assertEquals("new", index.properties().version("EX").orElseThrow());
+      assertEquals(0, index.search("old", List.of("EX"), 10).size());
+      assertEquals(1, index.search("new", List.of("EX"), 10).size());
       assertEquals(0, index.properties().search("old", List.of("EX"), List.of(), 0, 10).total());
       assertEquals("already current", job.indexOntology("EX", false, 0).skipped());
     }
@@ -143,7 +145,7 @@ class TerminologyPublicationTest {
       try (SearchIndexStore index = SearchIndexStore.openFile(indexPath.toString())) {
         index.initSchema();
         for (String event : List.of("insert", "delete", "update"))
-          sql(indexPath, "DROP TRIGGER name_fts_" + event);
+          sql(indexPath, "DROP TRIGGER IF EXISTS name_fts_" + event);
         new SearchIndexJob(catalog, index).indexOntology("EX", false, 0);
         index.rebuildFullText(); // An index completed by the old batch writer.
       }

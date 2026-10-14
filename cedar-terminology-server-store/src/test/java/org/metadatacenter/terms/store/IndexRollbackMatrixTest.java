@@ -2,6 +2,7 @@ package org.metadatacenter.terms.store;
 
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.api.io.TempDir;
 import java.nio.file.Path;
 import java.util.*;
@@ -76,13 +77,13 @@ class IndexRollbackMatrixTest {
   }
 
   @ParameterizedTest
-  @ValueSource(booleans = {false, true})
-  void processDeathDuringReplacementPreservesCommittedIndex(boolean bulk) throws Exception {
+  @CsvSource({"false, rows", "true, rows", "false, postings", "true, postings"})
+  void processDeathDuringReplacementPreservesCommittedIndex(boolean bulk, String stage) throws Exception {
     Path path = dir.resolve("crash.sqlite");
     Path output = dir.resolve("child.log");
     Process child = new ProcessBuilder(Path.of(System.getProperty("java.home"), "bin", "java").toString(),
         "-cp", System.getProperty("surefire.test.class.path", System.getProperty("java.class.path")),
-        CrashWriter.class.getName(), path.toString(), Boolean.toString(bulk))
+        CrashWriter.class.getName(), path.toString(), Boolean.toString(bulk), stage)
         .redirectErrorStream(true).redirectOutput(output.toFile()).start();
     try {
       assertTrue(child.waitFor(15, java.util.concurrent.TimeUnit.SECONDS), "crash writer finished");
@@ -94,6 +95,8 @@ class IndexRollbackMatrixTest {
         assertEquals("old", reader.indexedVersion("EX").orElseThrow());
         assertTrue(reader.term("EX", "http://example.org/old0").isPresent());
         assertTrue(reader.term("EX", "http://example.org/new0").isEmpty());
+        assertEquals(100, reader.search("Old", List.of("EX"), 200).size());
+        assertEquals(0, reader.search("New", List.of("EX"), 200).size());
       }
     }, "a terminated writer must not damage the last committed index");
   }
@@ -111,6 +114,21 @@ class IndexRollbackMatrixTest {
         try (var statement = connection.createStatement()) {
           statement.execute("PRAGMA cache_size=4");
           statement.execute("PRAGMA cache_spill=ON");
+        }
+        if (args[2].equals("postings")) {
+          org.sqlite.Function.create(connection, "stop_process", new org.sqlite.Function() {
+            @Override protected void xFunc() { Runtime.getRuntime().halt(77); }
+          });
+          try (var statement = connection.createStatement()) {
+            // Version publication happens after both FTS batches, but before the transaction commits.
+            statement.execute("CREATE TRIGGER stop BEFORE INSERT ON indexed_snapshot "
+                + "BEGIN SELECT stop_process(); END");
+          }
+          List<SearchIndexStore.IndexedTerm> replacement = new ArrayList<>();
+          for (int i = 0; i < 200; i++) replacement.add(new SearchIndexStore.IndexedTerm(
+              "EX", "http://example.org/new" + i, "New" + "y".repeat(3000), false, null, false, 0));
+          index.replaceOntology("EX", "new", "time", replacement, Map.of());
+          throw new AssertionError("crash trigger did not execute");
         }
         Collection<SearchIndexStore.IndexedTerm> interrupted = new AbstractCollection<>() {
           public int size() { return 201; }
