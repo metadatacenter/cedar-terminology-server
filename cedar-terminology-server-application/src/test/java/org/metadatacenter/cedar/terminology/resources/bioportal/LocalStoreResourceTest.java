@@ -12,6 +12,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.metadatacenter.cedar.terminology.LocalStoreTestProperties;
 import org.metadatacenter.cedar.terminology.TerminologyServerApplication;
 import org.metadatacenter.cedar.terminology.TerminologyServerConfiguration;
 import org.metadatacenter.config.CedarConfig;
@@ -174,6 +175,7 @@ public class LocalStoreResourceTest {
   @AfterAll
   public static void tearDown() {
     RULE.after();
+    LocalStoreTestProperties.clear();
   }
 
   @Test

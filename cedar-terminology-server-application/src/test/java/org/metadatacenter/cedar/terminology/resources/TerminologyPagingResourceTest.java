@@ -6,6 +6,7 @@ import io.dropwizard.testing.ResourceHelpers;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.metadatacenter.cedar.terminology.LocalStoreTestProperties;
 import org.metadatacenter.cedar.terminology.TerminologyServerApplication;
 import org.metadatacenter.cedar.terminology.TerminologyServerConfiguration;
 import org.metadatacenter.config.CedarConfig;
@@ -108,6 +109,7 @@ public class TerminologyPagingResourceTest {
   @AfterAll
   public static void tearDown() {
     SERVER.after();
+    LocalStoreTestProperties.clear();
   }
 
   private static String children(String query) {
