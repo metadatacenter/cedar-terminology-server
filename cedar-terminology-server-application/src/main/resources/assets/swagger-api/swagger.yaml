@@ -2753,6 +2753,41 @@ paths:
               schema:
                 $ref: "#/components/schemas/Detail"
           description: Local ontology property data
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
+          description: "sourceAcronym, propertyIri or kind is missing, or kind is\
+            \ unknown. The message names the problem."
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
+          description: "The release, or its snapshot, is not held locally, or the\
+            \ release does not contain the property"
+        "406":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
+          description: The request does not accept a JSON response
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
+          description: "The ontology snapshot could not be read, which the message\
+            \ reports, or the server failed in another way. The body's errorId identifies\
+            \ the failure in the server log."
+        "503":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
+          description: "No local terminology store is configured, or the release has\
+            \ no extracted properties"
       summary: Find a property at an ontology version
   /properties/hierarchy:
     get:
@@ -2792,6 +2827,42 @@ paths:
               schema:
                 $ref: "#/components/schemas/Hierarchy"
           description: Local ontology property data
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
+          description: "sourceAcronym, propertyIri or kind is missing, kind is unknown,\
+            \ or limit or offset is out of range. The message names the problem. A\
+            \ limit or offset that is not a number is refused without a message."
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
+          description: "The release, or its snapshot, is not held locally, or the\
+            \ release does not contain the property"
+        "406":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
+          description: The request does not accept a JSON response
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
+          description: "The ontology snapshot could not be read, which the message\
+            \ reports, or the server failed in another way. The body's errorId identifies\
+            \ the failure in the server log."
+        "503":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
+          description: "No local terminology store is configured, or the release has\
+            \ no extracted properties"
       summary: Property ancestors and paged children at an ontology version
   /properties/roots:
     get:
@@ -2827,6 +2898,41 @@ paths:
               schema:
                 $ref: "#/components/schemas/Roots"
           description: Local ontology property data
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
+          description: "sourceAcronym or kind is missing, kind is unknown, or limit\
+            \ or offset is out of range. The message names the problem. A limit or\
+            \ offset that is not a number is refused without a message."
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
+          description: "The release, or its snapshot, is not held locally"
+        "406":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
+          description: The request does not accept a JSON response
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
+          description: "The ontology snapshot could not be read, which the message\
+            \ reports, or the server failed in another way. The body's errorId identifies\
+            \ the failure in the server log."
+        "503":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
+          description: "No local terminology store is configured, or the release has\
+            \ no extracted properties"
       summary: Paged root properties at an ontology version
   /properties/search:
     post:
@@ -2843,6 +2949,51 @@ paths:
               schema:
                 $ref: "#/components/schemas/Result"
           description: Local ontology property data
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
+          description: "The body is missing or is not JSON (malformedJsonRequestBody),\
+            \ or the search is refused: the query is empty, longer than 500 characters\
+            \ or holds no letter or number, a kind is unknown, the paging is out of\
+            \ range or mixes limit and offset with page and pageSize, more than 20\
+            \ sources are named, or a source names no sourceAcronym. The message names\
+            \ the problem."
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
+          description: "A named source's release, or its snapshot, is not held locally"
+        "406":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
+          description: The request does not accept a JSON response
+        "415":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
+          description: The body is not declared as JSON
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
+          description: "The ontology snapshot could not be read, which the message\
+            \ reports, or the server failed in another way. The body's errorId identifies\
+            \ the failure in the server log."
+        "503":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
+          description: "No local terminology store is configured, a named release\
+            \ has no extracted properties, or a search naming no source finds no property\
+            \ tables in the search index"
       summary: Search properties in local ontology snapshots
   /properties/versions:
     get:
@@ -2861,6 +3012,32 @@ paths:
                 items:
                   $ref: "#/components/schemas/Version"
           description: Ontology versions
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
+          description: "No sourceAcronym is given, or the ontology is not served locally"
+        "406":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
+          description: The request does not accept a JSON response
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
+          description: "The ontology snapshot could not be read, which the message\
+            \ reports, or the server failed in another way. The body's errorId identifies\
+            \ the failure in the server log."
+        "503":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
+          description: No local terminology store is configured
       summary: Ontology releases and their property extraction availability
   /search:
     post:
