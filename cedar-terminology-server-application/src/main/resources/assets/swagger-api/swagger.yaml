@@ -2834,7 +2834,8 @@ paths:
                 $ref: "#/components/schemas/CedarError"
           description: "sourceAcronym, propertyIri or kind is missing, kind is unknown,\
             \ or limit or offset is out of range. The message names the problem. A\
-            \ limit or offset that is not a number is refused without a message."
+            \ limit or offset that is not a 32-bit integer is refused with a message\
+            \ that identifies the parameter and says what form it takes."
         "404":
           content:
             application/json:
@@ -2905,7 +2906,8 @@ paths:
                 $ref: "#/components/schemas/CedarError"
           description: "sourceAcronym or kind is missing, kind is unknown, or limit\
             \ or offset is out of range. The message names the problem. A limit or\
-            \ offset that is not a number is refused without a message."
+            \ offset that is not a 32-bit integer is refused with a message that identifies\
+            \ the parameter and says what form it takes."
         "404":
           content:
             application/json:

@@ -191,7 +191,8 @@ public class VersionedPropertyResource {
   }
 
   private static final String NOT_ACCEPTABLE = "The request does not accept a JSON response";
-  private static final String NOT_A_NUMBER = "A limit or offset that is not a number is refused without a message.";
+  private static final String NOT_A_NUMBER = "A limit or offset that is not a 32-bit integer is refused with a "
+      + "message that identifies the parameter and says what form it takes.";
   private static final String NOT_CONFIGURED = "No local terminology store is configured";
   private static final String NOT_EXTRACTED = NOT_CONFIGURED + ", or the release has no extracted properties";
   private static final String PROPERTY_NOT_HELD = "The release, or its snapshot, is not held locally, or the "

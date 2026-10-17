@@ -160,15 +160,19 @@ class PropertyStoreFailureTest {
 
   /**
    * The refusals the routes document beside the store failure answer the shared error body too. The
-   * framework refuses each of these before the route runs, so none carries a message.
+   * framework refuses each of these before the route runs. An offset that is not a number is answered
+   * with a message that identifies the parameter and says what form it takes, without the text of the
+   * failed conversion. The other two carry no message.
    */
   @ParameterizedTest(name = "{0}: {1} {2}")
   @CsvSource(delimiter = '|', value = {
-      "406 | GET  | /properties/versions?sourceAcronym=BROKEN                 | application/json | | text/plain",
-      "415 | POST | /properties/search                                        | text/plain | {\"query\":\"related\"} | application/json",
-      "400 | GET  | /properties/roots?sourceAcronym=BROKEN&kind=object&offset=x | application/json | | application/json"})
+      "406 | GET  | /properties/versions?sourceAcronym=BROKEN                 | application/json | | text/plain       |",
+      "415 | POST | /properties/search                                        | text/plain | {\"query\":\"related\"} | application/json |",
+      "400 | GET  | /properties/roots?sourceAcronym=BROKEN&kind=object&offset=x | application/json | | application/json | "
+          + "The query parameter offset must be an integer from -2147483648 to 2147483647"})
   void theOtherDocumentedRefusalsAnswerTheSharedErrorBody(int status, String method, String path,
-                                                         String contentType, String body, String accept)
+                                                         String contentType, String body, String accept,
+                                                         String message)
       throws Exception {
     HttpResponse<String> response = send(method, path, contentType, body, accept);
 
@@ -176,7 +180,9 @@ class PropertyStoreFailureTest {
     JsonNode error = JsonMapper.STRICT_MAPPER.readTree(response.body());
     assertEquals(status, error.path("statusCode").asInt(), response.body());
     assertTrue(error.has("errorKey") && error.path("parameters").isObject(), response.body());
-    assertTrue(error.path("message").isNull(), response.body());
+    assertTrue(error.has("message"), response.body());
+    assertEquals(message, error.path("message").asText(null), response.body());
+    assertFalse(response.body().contains("For input string"), response.body());
   }
 
   private static HttpResponse<String> send(String method, String path, String contentType, String body,
