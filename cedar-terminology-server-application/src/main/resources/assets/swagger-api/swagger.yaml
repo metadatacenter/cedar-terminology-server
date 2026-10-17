@@ -3583,6 +3583,15 @@ components:
           type: string
           description: The user-supplied initial characters used to filter the conforming
             values.
+        limit:
+          type: integer
+          format: int32
+          description: "How many results to return, from 1 to 1000. Sent instead of\
+            \ page and pageSize."
+        offset:
+          type: integer
+          format: int32
+          description: How many results to skip. Sent instead of page and pageSize.
         page:
           type: integer
           format: int32
@@ -3831,6 +3840,15 @@ components:
       description: Object that encapsulates the information needed to run the integrated-search
         query.
       properties:
+        limit:
+          type: integer
+          format: int32
+          description: "How many results to return, from 1 to 1000. Sent instead of\
+            \ page and pageSize."
+        offset:
+          type: integer
+          format: int32
+          description: How many results to skip. Sent instead of page and pageSize.
         page:
           type: integer
           format: int32
