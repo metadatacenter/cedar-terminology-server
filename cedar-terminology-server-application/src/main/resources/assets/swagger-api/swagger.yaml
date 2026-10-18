@@ -155,7 +155,8 @@ paths:
         \ be valid any more. In those situations, the values of some of the pagination\
         \ fields returned as part of the results (e.g., pageCount, nextPage, etc.)\
         \ cannot be computed consistently, and the server will assign a 'null' value\
-        \ to those fields."
+        \ to those fields. <br /> <br />A credential is optional. The route has served\
+        \ anonymous callers in every release since it was introduced in 2024."
       operationId: cedarIntegratedRetrieve
       requestBody:
         content:
@@ -194,6 +195,7 @@ paths:
           description: Internal server error
       security:
       - api_key: []
+      - {}
       summary: Retrieve classes and values based on CEDAR value constraints
       tags:
       - Classes
@@ -211,7 +213,10 @@ paths:
         \ or a field's actions applied), it reads up to the first 1,000 results of\
         \ each source, reorders them as one list and pages that list exactly. A source\
         \ holding more is truncated, and the answer then carries countCapped: true,\
-        \ with totalCount counting what was read."
+        \ with totalCount counting what was read. <br /> <br />A credential is optional.\
+        \ The route serves anonymous callers because the CEDAR Embeddable Editor calls\
+        \ it from the browser, often on pages hosted outside CEDAR, and holds no CEDAR\
+        \ credential to send."
       operationId: cedarIntegratedSearch
       parameters:
       - description: "Optional BCP-47 language for result labels (e.g. fr). Honored\
@@ -264,6 +269,7 @@ paths:
           description: Internal server error
       security:
       - api_key: []
+      - {}
       summary: Search for classes and values based on CEDAR value constraints
       tags:
       - Classes
@@ -903,7 +909,9 @@ paths:
       - Classes
   /bioportal/ontologies/{ontology}/classes/{id}/descendants:
     get:
-      description: Get class descendants.
+      description: "Get class descendants. <br /> <br />A credential is optional.\
+        \ The route was opened to anonymous callers in 2019 for CEDAR's public metadata\
+        \ viewer, and it has served them in every release since."
       operationId: findClassDescendants
       parameters:
       - description: "Class identifier. Examples: http://data.bioontology.org/provisional_classes/4f82a7f0-bbba-0133-b23e-005056010074\
@@ -965,18 +973,6 @@ paths:
               schema:
                 $ref: "#/components/schemas/CedarError"
           description: Bad request
-        "401":
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/CedarError"
-          description: Unauthorized
-        "403":
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/CedarError"
-          description: Forbidden
         "404":
           content:
             application/json:
@@ -991,6 +987,7 @@ paths:
           description: Internal server error
       security:
       - api_key: []
+      - {}
       summary: Get class descendants
       tags:
       - Classes
@@ -1691,7 +1688,10 @@ paths:
       - Relations
   /bioportal/search:
     get:
-      description: "Search for ontology classes, value sets, and values."
+      description: "Search for ontology classes, value sets, and values. <br /> <br\
+        \ />A credential is optional. The route serves anonymous callers because the\
+        \ CEDAR Embeddable Designer searches it from the browser and holds no CEDAR\
+        \ credential to send."
       operationId: search_1
       parameters:
       - description: "Search query. Example: melanoma."
@@ -1787,18 +1787,6 @@ paths:
               schema:
                 $ref: "#/components/schemas/CedarError"
           description: Bad request
-        "401":
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/CedarError"
-          description: Unauthorized
-        "403":
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/CedarError"
-          description: Forbidden
         "404":
           content:
             application/json:
@@ -1813,6 +1801,7 @@ paths:
           description: Internal server error
       security:
       - api_key: []
+      - {}
       summary: Search
       tags:
       - Classes

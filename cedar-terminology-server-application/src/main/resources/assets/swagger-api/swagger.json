@@ -203,7 +203,7 @@
     },
     "/bioportal/integrated-retrieve" : {
       "post" : {
-        "description" : "Retrieve ontology classes, value sets, and values based on CEDAR value constraints. This endpoint takes a controlled term field specification and any user-supplied initial characters and returns conforming values. <br /> <br /> Some sample calls in Insomnia (https://insomnia.rest/) format are available at https://github.com/metadatacenter/cedar-util/blob/master/api-calls/CEDAR_Insomnia_API_calls.json. <br /> <br />Note that in some cases, the server will need to sort the results obtained from BioPortal and the original pagination information will not be valid any more. In those situations, the values of some of the pagination fields returned as part of the results (e.g., pageCount, nextPage, etc.) cannot be computed consistently, and the server will assign a 'null' value to those fields.",
+        "description" : "Retrieve ontology classes, value sets, and values based on CEDAR value constraints. This endpoint takes a controlled term field specification and any user-supplied initial characters and returns conforming values. <br /> <br /> Some sample calls in Insomnia (https://insomnia.rest/) format are available at https://github.com/metadatacenter/cedar-util/blob/master/api-calls/CEDAR_Insomnia_API_calls.json. <br /> <br />Note that in some cases, the server will need to sort the results obtained from BioPortal and the original pagination information will not be valid any more. In those situations, the values of some of the pagination fields returned as part of the results (e.g., pageCount, nextPage, etc.) cannot be computed consistently, and the server will assign a 'null' value to those fields. <br /> <br />A credential is optional. The route has served anonymous callers in every release since it was introduced in 2024.",
         "operationId" : "cedarIntegratedRetrieve",
         "requestBody" : {
           "content" : {
@@ -260,14 +260,14 @@
         },
         "security" : [ {
           "api_key" : [ ]
-        } ],
+        }, { } ],
         "summary" : "Retrieve classes and values based on CEDAR value constraints",
         "tags" : [ "Classes", "Value sets", "Values" ]
       }
     },
     "/bioportal/integrated-search" : {
       "post" : {
-        "description" : "Search for ontology classes, value sets, and values based on CEDAR value constraints. This endpoint takes a controlled term field specification and any user-supplied initial characters and returns conforming values. <br /> <br /> Some sample calls in Insomnia (https://insomnia.rest/) format are available at https://github.com/metadatacenter/cedar-util/blob/master/api-calls/CEDAR_Insomnia_API_calls.json. <br /> <br />When the server reorders what BioPortal returns (several sources sorted together, one source listed without a query and sorted by label, or a field's actions applied), it reads up to the first 1,000 results of each source, reorders them as one list and pages that list exactly. A source holding more is truncated, and the answer then carries countCapped: true, with totalCount counting what was read.",
+        "description" : "Search for ontology classes, value sets, and values based on CEDAR value constraints. This endpoint takes a controlled term field specification and any user-supplied initial characters and returns conforming values. <br /> <br /> Some sample calls in Insomnia (https://insomnia.rest/) format are available at https://github.com/metadatacenter/cedar-util/blob/master/api-calls/CEDAR_Insomnia_API_calls.json. <br /> <br />When the server reorders what BioPortal returns (several sources sorted together, one source listed without a query and sorted by label, or a field's actions applied), it reads up to the first 1,000 results of each source, reorders them as one list and pages that list exactly. A source holding more is truncated, and the answer then carries countCapped: true, with totalCount counting what was read. <br /> <br />A credential is optional. The route serves anonymous callers because the CEDAR Embeddable Editor calls it from the browser, often on pages hosted outside CEDAR, and holds no CEDAR credential to send.",
         "operationId" : "cedarIntegratedSearch",
         "parameters" : [ {
           "description" : "Optional BCP-47 language for result labels (e.g. fr). Honored for locally-served, single-source constraints; ignored for BioPortal-proxied ones.",
@@ -342,7 +342,7 @@
         },
         "security" : [ {
           "api_key" : [ ]
-        } ],
+        }, { } ],
         "summary" : "Search for classes and values based on CEDAR value constraints",
         "tags" : [ "Classes", "Value sets", "Values" ]
       }
@@ -1258,7 +1258,7 @@
     },
     "/bioportal/ontologies/{ontology}/classes/{id}/descendants" : {
       "get" : {
-        "description" : "Get class descendants.",
+        "description" : "Get class descendants. <br /> <br />A credential is optional. The route was opened to anonymous callers in 2019 for CEDAR's public metadata viewer, and it has served them in every release since.",
         "operationId" : "findClassDescendants",
         "parameters" : [ {
           "description" : "Class identifier. Examples: http://data.bioontology.org/provisional_classes/4f82a7f0-bbba-0133-b23e-005056010074 (provisional class). http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C3224 (regular class).",
@@ -1338,26 +1338,6 @@
             },
             "description" : "Bad request"
           },
-          "401" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/CedarError"
-                }
-              }
-            },
-            "description" : "Unauthorized"
-          },
-          "403" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/CedarError"
-                }
-              }
-            },
-            "description" : "Forbidden"
-          },
           "404" : {
             "content" : {
               "application/json" : {
@@ -1381,7 +1361,7 @@
         },
         "security" : [ {
           "api_key" : [ ]
-        } ],
+        }, { } ],
         "summary" : "Get class descendants",
         "tags" : [ "Classes" ]
       }
@@ -2433,7 +2413,7 @@
     },
     "/bioportal/search" : {
       "get" : {
-        "description" : "Search for ontology classes, value sets, and values.",
+        "description" : "Search for ontology classes, value sets, and values. <br /> <br />A credential is optional. The route serves anonymous callers because the CEDAR Embeddable Designer searches it from the browser and holds no CEDAR credential to send.",
         "operationId" : "search_1",
         "parameters" : [ {
           "description" : "Search query. Example: melanoma.",
@@ -2552,26 +2532,6 @@
             },
             "description" : "Bad request"
           },
-          "401" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/CedarError"
-                }
-              }
-            },
-            "description" : "Unauthorized"
-          },
-          "403" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/CedarError"
-                }
-              }
-            },
-            "description" : "Forbidden"
-          },
           "404" : {
             "content" : {
               "application/json" : {
@@ -2595,7 +2555,7 @@
         },
         "security" : [ {
           "api_key" : [ ]
-        } ],
+        }, { } ],
         "summary" : "Search",
         "tags" : [ "Classes", "Value sets", "Values" ]
       }

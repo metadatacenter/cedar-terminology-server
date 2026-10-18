@@ -13,6 +13,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.security.SecurityRequirementEntry;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.metadatacenter.cedar.cache.Cache;
 import org.metadatacenter.cedar.terminology.resources.AbstractTerminologyServerResource;
@@ -206,15 +207,18 @@ public class ClassResource extends AbstractTerminologyServerResource {
   @GET
   @Timed
   @Path("ontologies/{ontology}/classes/{id}/descendants")
-  @Operation(summary = "Get class descendants", description = "Get class descendants.")
+  @Operation(summary = "Get class descendants", description = "Get class descendants. <br /> <br />A credential is "
+      + "optional. The route was opened to anonymous callers in 2019 for CEDAR's public metadata viewer, and it "
+      + "has served them in every release since.")
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "One page of the class's descendants", content = @Content(schema = @Schema(implementation = PagedOntologyClasses.class))),
       @ApiResponse(responseCode = "400", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Bad request"),
-      @ApiResponse(responseCode = "401", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Unauthorized"),
-      @ApiResponse(responseCode = "403", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Forbidden"),
       @ApiResponse(responseCode = "404", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Not found"),
       @ApiResponse(responseCode = "500", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Internal server error")
   })
+  // swagger-core gives every method the class's api_key requirement. An entry with a blank name adds
+  // the empty alternative beside it, which is how OpenAPI says that a credential is optional.
+  @SecurityRequirement(combine = @SecurityRequirementEntry(name = ""))
   @AnonymousAccess
   public Response findClassDescendants(
       @Parameter(description = "Class identifier. Examples: http://data.bioontology.org/provisional_classes/" +
