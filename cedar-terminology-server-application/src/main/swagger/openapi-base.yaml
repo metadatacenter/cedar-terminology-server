@@ -1,6 +1,9 @@
 # Base OpenAPI document merged into the generated spec by io.swagger.core.v3:swagger-maven-plugin.
 # It seeds the info block (version stamped from the POM via resource filtering) and the api_key
-# security scheme that every resource class references with @SecurityRequirement(name = "api_key").
+# security scheme. The BioPortal resource classes and the shared health and insight routes reference
+# it with @SecurityRequirement(name = "api_key"); four BioPortal routes add an empty alternative that
+# makes the credential optional. The local-store resources, VersionAwareSearchResource and
+# VersionedPropertyResource, serve anonymous callers and reference no scheme.
 openapi: 3.0.1
 info:
   title: CEDAR Terminology Server API
