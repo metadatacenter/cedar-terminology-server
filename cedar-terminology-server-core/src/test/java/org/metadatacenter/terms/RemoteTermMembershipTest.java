@@ -4,6 +4,7 @@ import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -19,6 +20,7 @@ import static org.metadatacenter.cedar.terminology.util.Constants.BP_API_BASE;
 import static org.metadatacenter.util.json.JsonMapper.STRICT_MAPPER;
 
 /** Exercises the actual BioPortal HTTP/parser/fallback path used by semantic verification. */
+@Tag("integration")
 class RemoteTermMembershipTest {
   private static final String BASE = "https://example.org/";
   private static final String ONTOLOGY = "{\"ontologies\":[{\"acronym\":\"EX\"}]}";

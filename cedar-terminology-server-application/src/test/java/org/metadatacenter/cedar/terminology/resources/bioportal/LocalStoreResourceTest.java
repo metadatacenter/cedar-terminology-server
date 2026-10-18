@@ -11,6 +11,7 @@ import jakarta.ws.rs.core.Response.Status;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.metadatacenter.cedar.terminology.LocalStoreTestProperties;
 import org.metadatacenter.cedar.terminology.TerminologyServerApplication;
@@ -55,6 +56,7 @@ import static org.metadatacenter.constant.HttpConstants.HTTP_HEADER_AUTHORIZATIO
  * this test needs neither Neo4j nor BioPortal — only the CEDAR environment variables that
  * {@link CedarConfig} requires.
  */
+@Tag("integration")
 public class LocalStoreResourceTest {
 
   static {

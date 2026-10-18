@@ -6,6 +6,7 @@ import io.dropwizard.testing.DropwizardTestSupport;
 import io.dropwizard.testing.ResourceHelpers;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -51,6 +52,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * service behind this one, a 503, and the second is a gateway's 502. Seven more read BioPortal through
  * the cache, which wraps the same failures in an ExecutionException, and answered 500 for it too.
  */
+@Tag("integration")
 public class BioPortalAnswerMatrixTest {
 
   private static final HttpServer BIOPORTAL = startBioPortal();

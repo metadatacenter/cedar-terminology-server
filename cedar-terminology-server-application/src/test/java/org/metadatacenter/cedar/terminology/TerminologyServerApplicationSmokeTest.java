@@ -6,6 +6,7 @@ import io.dropwizard.testing.ResourceHelpers;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.metadatacenter.cedar.terminology.resources.bioportal.ValueResource;
 import org.metadatacenter.cedar.terminology.resources.bioportal.ValueSetResource;
@@ -30,6 +31,7 @@ import java.util.TreeSet;
  * BioPortal resource tests, this runs without network access to BioPortal, so it catches
  * configuration and startup rot even where the full suite can not run.
  */
+@Tag("integration")
 public class TerminologyServerApplicationSmokeTest {
 
   static {

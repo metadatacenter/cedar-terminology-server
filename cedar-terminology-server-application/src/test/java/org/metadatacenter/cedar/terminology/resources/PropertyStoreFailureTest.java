@@ -10,6 +10,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.metadatacenter.cedar.terminology.LocalStoreTestProperties;
@@ -55,6 +56,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * The list of an ontology's versions reads only the catalog and the extraction marker, so this fixture
  * cannot make it fail. It shares the failure path of the other four routes.
  */
+@Tag("integration")
 class PropertyStoreFailureTest {
 
   private static final String ONT = "BROKEN";

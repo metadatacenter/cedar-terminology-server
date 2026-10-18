@@ -7,6 +7,7 @@ import io.dropwizard.testing.DropwizardTestSupport;
 import io.dropwizard.testing.ResourceHelpers;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -51,6 +52,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * BioPortal had already passed any gate it has, so the stub's count shows that the anonymous request was
  * served rather than refused. A gated sibling receives the same anonymous request as a control.
  */
+@Tag("integration")
 public class AnonymousBioPortalRoutesTest {
 
   private static final AtomicInteger ASKED = new AtomicInteger();
