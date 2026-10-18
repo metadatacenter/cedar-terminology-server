@@ -3,6 +3,7 @@ package org.metadatacenter.cedar.terminology.resources;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.UriInfo;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -140,7 +141,7 @@ public class VersionedPropertyResource {
       @ApiResponse(responseCode = "200", description = "Local ontology property data",
           content = @Content(schema = @Schema(implementation = VersionedPropertyService.Hierarchy.class))),
       @ApiResponse(responseCode = "400", description = "sourceAcronym, propertyIri or kind is missing, kind is "
-          + "unknown, or limit or offset is out of range. The message names the problem. " + NOT_A_NUMBER,
+          + "unknown, " + OUT_OF_RANGE + " The message names the problem. " + NOT_A_NUMBER,
           content = @Content(schema = @Schema(implementation = CedarError.class))),
       @ApiResponse(responseCode = "404", description = PROPERTY_NOT_HELD,
           content = @Content(schema = @Schema(implementation = CedarError.class))),
@@ -156,8 +157,8 @@ public class VersionedPropertyResource {
       @QueryParam("versionId") String version,
       @QueryParam("propertyIri") String iri,
       @QueryParam("kind") String kind,
-      @QueryParam("offset") @DefaultValue("0") int offset,
-      @QueryParam("limit") Integer limit) {
+      @Parameter(description = CHILD_OFFSET) @QueryParam("offset") @DefaultValue("0") int offset,
+      @Parameter(description = CHILD_LIMIT) @QueryParam("limit") Integer limit) {
     return read(() -> service.hierarchy(acronym, version, iri, kind, offset, childLimit(limit, offset))
         .paged(uriInfo.getRequestUri().toString()));
   }
@@ -168,8 +169,8 @@ public class VersionedPropertyResource {
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "Local ontology property data",
           content = @Content(schema = @Schema(implementation = VersionedPropertyService.Roots.class))),
-      @ApiResponse(responseCode = "400", description = "sourceAcronym or kind is missing, kind is unknown, or "
-          + "limit or offset is out of range. The message names the problem. " + NOT_A_NUMBER,
+      @ApiResponse(responseCode = "400", description = "sourceAcronym or kind is missing, kind is unknown, "
+          + OUT_OF_RANGE + " The message names the problem. " + NOT_A_NUMBER,
           content = @Content(schema = @Schema(implementation = CedarError.class))),
       @ApiResponse(responseCode = "404", description = "The release, or its snapshot, is not held locally",
           content = @Content(schema = @Schema(implementation = CedarError.class))),
@@ -184,13 +185,21 @@ public class VersionedPropertyResource {
       @QueryParam("sourceAcronym") String acronym,
       @QueryParam("versionId") String version,
       @QueryParam("kind") String kind,
-      @QueryParam("offset") @DefaultValue("0") int offset,
-      @QueryParam("limit") Integer limit) {
+      @Parameter(description = ROOT_OFFSET) @QueryParam("offset") @DefaultValue("0") int offset,
+      @Parameter(description = ROOT_LIMIT) @QueryParam("limit") Integer limit) {
     return read(() -> service.roots(acronym, version, kind, offset, childLimit(limit, offset))
         .paged(uriInfo.getRequestUri().toString()));
   }
 
   private static final String NOT_ACCEPTABLE = "The request does not accept a JSON response";
+  private static final String CHILD_LIMIT = "How many children to return, from 1 to "
+      + VersionedPropertyService.MAX_CHILD_LIMIT + ". Defaults to " + VersionedPropertyService.DEFAULT_CHILD_LIMIT + ".";
+  private static final String CHILD_OFFSET = "How many children to skip. Defaults to 0.";
+  private static final String ROOT_LIMIT = "How many roots to return, from 1 to "
+      + VersionedPropertyService.MAX_CHILD_LIMIT + ". Defaults to " + VersionedPropertyService.DEFAULT_CHILD_LIMIT + ".";
+  private static final String ROOT_OFFSET = "How many roots to skip. Defaults to 0.";
+  private static final String OUT_OF_RANGE = "limit is outside 1 to " + VersionedPropertyService.MAX_CHILD_LIMIT
+      + ", or offset is negative.";
   private static final String NOT_A_NUMBER = "A limit or offset that is not a 32-bit integer is refused with a "
       + "message that identifies the parameter and says what form it takes.";
   private static final String NOT_CONFIGURED = "No local terminology store is configured";
@@ -200,7 +209,12 @@ public class VersionedPropertyResource {
   private static final String STORE_FAILED = "The ontology snapshot could not be read, which the message "
       + "reports, or the server failed in another way. The body's errorId identifies the failure in the server log.";
 
-  /** The page size a hierarchy or roots request asks for, refused when out of range. */
+  /**
+   * The page size a hierarchy or roots request asks for, refused when out of range.
+   *
+   * <p>The bound is the store's own page bound, so a limit this accepts is one the store can read. A
+   * larger one is refused here, with a message naming the range, rather than by the store.
+   */
   private static int childLimit(Integer limit, int offset) {
     int value = limit == null ? VersionedPropertyService.DEFAULT_CHILD_LIMIT : limit;
     if (value < 1 || value > VersionedPropertyService.MAX_CHILD_LIMIT || offset < 0) {

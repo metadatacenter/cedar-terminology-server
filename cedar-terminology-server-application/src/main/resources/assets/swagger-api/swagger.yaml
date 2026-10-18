@@ -2798,13 +2798,15 @@ paths:
         name: kind
         schema:
           type: string
-      - in: query
+      - description: How many children to skip. Defaults to 0.
+        in: query
         name: offset
         schema:
           type: integer
           format: int32
           default: 0
-      - in: query
+      - description: "How many children to return, from 1 to 200. Defaults to 50."
+        in: query
         name: limit
         schema:
           type: integer
@@ -2822,9 +2824,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/CedarError"
           description: "sourceAcronym, propertyIri or kind is missing, kind is unknown,\
-            \ or limit or offset is out of range. The message names the problem. A\
-            \ limit or offset that is not a 32-bit integer is refused with a message\
-            \ that identifies the parameter and says what form it takes."
+            \ limit is outside 1 to 200, or offset is negative. The message names\
+            \ the problem. A limit or offset that is not a 32-bit integer is refused\
+            \ with a message that identifies the parameter and says what form it takes."
         "404":
           content:
             application/json:
@@ -2870,13 +2872,15 @@ paths:
         name: kind
         schema:
           type: string
-      - in: query
+      - description: How many roots to skip. Defaults to 0.
+        in: query
         name: offset
         schema:
           type: integer
           format: int32
           default: 0
-      - in: query
+      - description: "How many roots to return, from 1 to 200. Defaults to 50."
+        in: query
         name: limit
         schema:
           type: integer
@@ -2893,10 +2897,10 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/CedarError"
-          description: "sourceAcronym or kind is missing, kind is unknown, or limit\
-            \ or offset is out of range. The message names the problem. A limit or\
-            \ offset that is not a 32-bit integer is refused with a message that identifies\
-            \ the parameter and says what form it takes."
+          description: "sourceAcronym or kind is missing, kind is unknown, limit is\
+            \ outside 1 to 200, or offset is negative. The message names the problem.\
+            \ A limit or offset that is not a 32-bit integer is refused with a message\
+            \ that identifies the parameter and says what form it takes."
         "404":
           content:
             application/json:

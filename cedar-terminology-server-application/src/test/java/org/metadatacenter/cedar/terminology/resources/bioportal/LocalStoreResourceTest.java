@@ -487,6 +487,39 @@ public class LocalStoreResourceTest {
     }
   }
 
+  /**
+   * A property hierarchy or roots page holds at most the store's 200, and the route refuses a larger
+   * limit itself, with a message naming the range.
+   *
+   * <p>The routes accepted a limit up to 500 while the store refused any page over 200. A limit from
+   * 201 to 500 passed the route and was refused by the store, whose message spoke of an invalid page
+   * and did not mention the limit.
+   */
+  @org.junit.jupiter.params.ParameterizedTest(name = "{0} with limit {1}")
+  @org.junit.jupiter.params.provider.CsvSource({"hierarchy,200,200", "hierarchy,201,400", "hierarchy,500,400",
+      "roots,200,200", "roots,201,400", "roots,500,400"})
+  public void aPropertyPageIsBoundedByTheStorePageSize(String route, int limit, int status) {
+    jakarta.ws.rs.client.WebTarget target = clientBuilder.build()
+        .target("http://localhost:" + RULE.getLocalPort() + "/properties/" + route)
+        .queryParam("sourceAcronym", ONT).queryParam("versionId", "v2").queryParam("kind", "object")
+        .queryParam("limit", limit);
+    if (route.equals("hierarchy")) {
+      target = target.queryParam("propertyIri", BASE + "relatedTo");
+    }
+    try (Response response = target.request().get()) {
+      JsonNode body = response.readEntity(JsonNode.class);
+      Assertions.assertEquals(status, response.getStatus(), body.toString());
+      if (status == 200) {
+        Assertions.assertEquals(limit, body.path("request").path("limit").asInt(), body.toString());
+        Assertions.assertEquals(1, (route.equals("hierarchy") ? body.path("children") : body.path("items")).size(),
+            body.toString());
+      } else {
+        Assertions.assertEquals("limit must be 1–200 and offset must not be negative", body.path("message").asText(),
+            body.toString());
+      }
+    }
+  }
+
   @Test
   public void versionAwareSearchIsServedFromTheLocalStore() {
     JsonNode json = postSearch("{\"query\":\"melanoma\",\"types\":[\"class\"],"

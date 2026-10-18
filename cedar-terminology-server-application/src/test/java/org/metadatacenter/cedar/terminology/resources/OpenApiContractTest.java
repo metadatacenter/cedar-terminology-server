@@ -67,6 +67,27 @@ class OpenApiContractTest {
     assertTrue(responses.at("/500/description").asText().contains("errorId"), path);
   }
 
+  /**
+   * The property hierarchy and roots document the range of {@code limit}, which is the store's page
+   * bound. Neither documented the parameter, and the route accepted up to 500 while the store refused
+   * any page over 200.
+   */
+  @ParameterizedTest
+  @ValueSource(strings = {"/properties/hierarchy", "/properties/roots"})
+  void propertyPagesDocumentTheirLimit(String path) throws IOException {
+    JsonNode operation = readSpec().path("paths").path(path).path("get");
+    String limit = null;
+    for (JsonNode parameter : operation.path("parameters")) {
+      if (parameter.path("name").asText().equals("limit")) {
+        limit = parameter.path("description").asText();
+      }
+    }
+    assertNotNull(limit, path + " documents no limit");
+    assertTrue(limit.contains("from 1 to 200. Defaults to 50."), limit);
+    assertTrue(operation.at("/responses/400/description").asText().contains("limit is outside 1 to 200"),
+        operation.at("/responses/400/description").asText());
+  }
+
   private static JsonNode readSpec() throws IOException {
     try (InputStream input = OpenApiContractTest.class.getResourceAsStream("/assets/swagger-api/swagger.json")) {
       assertNotNull(input, "generated OpenAPI document");

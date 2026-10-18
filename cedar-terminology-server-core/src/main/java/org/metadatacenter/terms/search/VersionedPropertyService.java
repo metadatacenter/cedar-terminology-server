@@ -82,8 +82,14 @@ public final class VersionedPropertyService {
     }
   }
 
-  /** The most children or roots one request may ask for, and how many it gets by default. */
-  public static final int MAX_CHILD_LIMIT = 500;
+  /**
+   * The most children or roots one request may ask for, and how many it gets by default.
+   *
+   * <p>The bound is the store's page bound. It was 500 while the store refused any page over 200, so
+   * a limit from 201 to 500 passed the route and was refused by the store, with a message about a
+   * page rather than about the limit.
+   */
+  public static final int MAX_CHILD_LIMIT = SnapshotProperties.MAX_PAGE_SIZE;
   public static final int DEFAULT_CHILD_LIMIT = 50;
 
   private static Map<String, String> links(String requestUrl, long totalCount,
