@@ -142,6 +142,17 @@ public class TerminologyServerApplicationSmokeTest {
         "POST /bioportal/integrated-retrieve is registered under a different method");
   }
 
+  @Test
+  public void exactTermVerificationAcceptsAnAnonymousCallerWithoutClaimingUnconstrainedSuccess() throws Exception {
+    HttpResponse<String> response = post("/bioportal/validate-term",
+        "{\"iri\":\"urn:test:term\",\"valueConstraints\":{}}");
+    Assertions.assertEquals(200, response.statusCode());
+    JsonNode answer = JsonMapper.STRICT_MAPPER.readTree(response.body());
+    Assertions.assertEquals("notChecked", answer.path("status").asText());
+    Assertions.assertEquals("semanticNotChecked", answer.path("code").asText());
+    Assertions.assertEquals("urn:test:term", answer.path("iri").asText());
+  }
+
   /** The terminology resource classes Jersey actually registered, less the index resource. */
   private static List<Class<?>> registeredResources() {
     org.glassfish.jersey.server.ResourceConfig resourceConfig =
@@ -175,11 +186,12 @@ public class TerminologyServerApplicationSmokeTest {
   /**
    * The routes that answer an anonymous caller rather than refusing one.
    *
-   * <p>The local property and search routes are unauthenticated by design. Four BioPortal routes are
+   * <p>The local property and search routes are unauthenticated by design. Five BioPortal routes are
    * anonymous too. The integrated search and the BioPortal search serve CEDAR's embeddable components,
    * which call them from the browser with no credential. The class descendants route was opened for
    * CEDAR's public metadata viewer in 2019. Integrated retrieve has answered anonymous callers since it
-   * was written, although the one CEDAR client that calls it sends a key. The other class routes and
+   * was written, although the one CEDAR client that calls it sends a key. Exact term verification is
+   * also public for the embeddable components. The other class routes and
    * {@code property_search} all assert {@code LoggedIn}.
    *
    * <p>{@code LocalStoreResourceTest} calls the local routes without a credential, and
@@ -195,6 +207,7 @@ public class TerminologyServerApplicationSmokeTest {
       "GET /search/hierarchy",
       "POST /bioportal/integrated-search",
       "POST /bioportal/integrated-retrieve",
+      "POST /bioportal/validate-term",
       "GET /bioportal/search",
       "GET /bioportal/ontologies/{ontology}/classes/{id}/descendants");
 

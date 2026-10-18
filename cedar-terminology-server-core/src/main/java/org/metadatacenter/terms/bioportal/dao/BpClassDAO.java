@@ -151,8 +151,14 @@ public class BpClassDAO
     // Success
     if (statusCode == Status.OK.getStatusCode()) {
       JsonNode bpResult = STRICT_MAPPER.readTree(response.getEntity().getContent());
+      if (bpResult == null || !bpResult.isArray())
+        throw new IOException("BioPortal returned an unreadable parent collection.");
       List<BpClass> children = new ArrayList<>();
       for (JsonNode n : bpResult) {
+        if (!n.isObject() || !n.path("@id").isTextual() || n.path("@id").textValue().isBlank()
+            || !n.path("links").path("ontology").isTextual()
+            || n.path("links").path("ontology").textValue().isBlank())
+          throw new IOException("BioPortal returned an incomplete parent record.");
         children.add(TOLERANT_MAPPER.convertValue(n, BpClass.class));
       }
       return children;

@@ -60,6 +60,9 @@ public class SqliteTerminologyService implements ITerminologyService {
       return forOntology(ontology);
     }
 
+    /** Exact verification must not trust a legacy provider that ignores the requested release. */
+    default boolean supportsVersionPins() { return false; }
+
     /**
      * The versions of an ontology the provider knows. Empty by default. Answers a "what versions
      * exist" query.
@@ -106,6 +109,13 @@ public class SqliteTerminologyService implements ITerminologyService {
   }
 
   private final SnapshotProvider provider;
+
+  SnapshotProvider snapshotProvider() { return provider; }
+
+  @Override
+  public TermVerification verifyTerm(String iri, ValueConstraints constraints, String apiKey) {
+    return new TermMembershipVerifier(provider, null).verify(iri, constraints, apiKey);
+  }
 
   /** The cross-snapshot index, or {@code null} where none is configured. */
   private final SearchIndexStore index;

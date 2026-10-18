@@ -55,6 +55,13 @@ public class RoutingTerminologyService implements ITerminologyService {
   private final LocalAvailability browseAvailability;
   private final boolean localOnly;
 
+  @Override
+  public TermVerification verifyTerm(String iri, ValueConstraints constraints, String apiKey) {
+    SqliteTerminologyService.SnapshotProvider provider = local instanceof SqliteTerminologyService sqlite
+        ? sqlite.snapshotProvider() : null;
+    return new TermMembershipVerifier(provider, localOnly ? null : remote).verify(iri, constraints, apiKey);
+  }
+
   /**
    * Remote-only: every call is delegated to {@code remote}. Behavior is identical to using the
    * remote backend directly. Use this until a local backend exists.

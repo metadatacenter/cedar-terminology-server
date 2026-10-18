@@ -2560,6 +2560,45 @@
         "tags" : [ "Classes", "Value sets", "Values" ]
       }
     },
+    "/bioportal/validate-term" : {
+      "post" : {
+        "description" : "Returns passed, failed, notChecked or unavailable independently of save policy. An unavailable release, incomplete lookup or outage is never a failed membership check. No constraints means notChecked, not proof of existence. Identifier spelling is preserved.",
+        "operationId" : "verify",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/VerificationRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TermVerification"
+                }
+              }
+            },
+            "description" : "Semantic verification facts"
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CedarError"
+                }
+              }
+            },
+            "description" : "Malformed identifier or value-constraint shape"
+          }
+        },
+        "summary" : "Verify an exact term identifier against complete field value constraints"
+      }
+    },
     "/bioportal/value-sets" : {
       "get" : {
         "description" : "Find all value sets.",
@@ -6454,6 +6493,23 @@
           }
         }
       },
+      "TermVerification" : {
+        "type" : "object",
+        "properties" : {
+          "code" : {
+            "type" : "string"
+          },
+          "iri" : {
+            "type" : "string"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "string"
+          }
+        }
+      },
       "TerminologyPageRequest" : {
         "type" : "object",
         "description" : "The page that was asked for, as a limit and an offset, after defaults were applied.",
@@ -6829,6 +6885,17 @@
           }
         },
         "required" : [ "uri", "vsCollection" ]
+      },
+      "VerificationRequest" : {
+        "type" : "object",
+        "properties" : {
+          "iri" : {
+            "type" : "string"
+          },
+          "valueConstraints" : {
+            "$ref" : "#/components/schemas/ValueConstraints"
+          }
+        }
       },
       "Version" : {
         "type" : "object",

@@ -11,6 +11,11 @@ import java.util.Optional;
 
 public interface ITerminologyService {
 
+  /** Exact semantic membership; callers apply their own template/instance save policy. */
+  default TermVerification verifyTerm(String iri, ValueConstraints constraints, String apiKey) {
+    return new TermMembershipVerifier(null, this).verify(iri, constraints, apiKey);
+  }
+
   /**
    * Search
    */
