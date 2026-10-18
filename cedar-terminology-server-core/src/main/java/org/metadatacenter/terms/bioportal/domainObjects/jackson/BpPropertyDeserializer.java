@@ -16,7 +16,7 @@ import java.util.List;
 public class BpPropertyDeserializer extends JsonDeserializer<BpProperty> {
   @Override
   public BpProperty deserialize(JsonParser jsonParser, DeserializationContext ctx) throws IOException, JsonProcessingException {
-    JsonNode node = jsonParser.getCodec().readTree(jsonParser);
+    JsonNode node = ctx.readTree(jsonParser);
     String id = node.get("@id")!=null? node.get("@id").asText() : null;
     String type = node.get("@type")!=null? node.get("@type").asText() : null;
     String propertyType = node.get("propertyType")!=null? node.get("propertyType").asText() : null;

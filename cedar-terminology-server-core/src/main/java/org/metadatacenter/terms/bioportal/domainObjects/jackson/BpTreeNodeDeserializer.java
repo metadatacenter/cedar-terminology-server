@@ -17,7 +17,7 @@ import java.util.List;
 public class BpTreeNodeDeserializer extends JsonDeserializer<BpTreeNode> {
   @Override
   public BpTreeNode deserialize(JsonParser jsonParser, DeserializationContext ctx) throws IOException, JsonProcessingException {
-    JsonNode node = jsonParser.getCodec().readTree(jsonParser);
+    JsonNode node = ctx.readTree(jsonParser);
     String id = node.get("@id")!=null? node.get("@id").asText() : null;
     String type = node.get("@type")!=null? node.get("@type").asText() : null;
     // The main reason of using this custom deserializer is the dynamic generation of the preferred label

@@ -19,7 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class ValueConstraintsWireShapeTest {
 
-  private final ObjectMapper mapper = new ObjectMapper();
+  private final ObjectMapper mapper = org.metadatacenter.model.policy.JsonSourcePolicy.apply(new ObjectMapper());
 
   @Test
   void terminologyDtosMatchArtifactLibraryWireShape() {

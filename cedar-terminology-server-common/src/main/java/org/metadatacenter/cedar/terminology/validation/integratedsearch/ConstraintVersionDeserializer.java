@@ -27,7 +27,7 @@ public class ConstraintVersionDeserializer extends JsonDeserializer<VersionSpec>
       return value.isBlank() ? null : new VersionSpec(value, Optional.empty(), Optional.empty());
     }
     if (parser.currentToken() == JsonToken.START_OBJECT) {
-      JsonNode version = parser.getCodec().readTree(parser);
+      JsonNode version = context.readTree(parser);
       Iterator<String> fields = version.fieldNames();
       while (fields.hasNext()) {
         String field = fields.next();
