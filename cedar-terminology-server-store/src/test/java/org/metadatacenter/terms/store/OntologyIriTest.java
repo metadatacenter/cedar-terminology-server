@@ -14,6 +14,21 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 public class OntologyIriTest {
 
   @Test
+  public void canonicalIdentityDoesNotDependOnProcessLocale() {
+    var previous = java.util.Locale.getDefault();
+    try {
+      for (var locale : java.util.List.of(java.util.Locale.US, java.util.Locale.forLanguageTag("tr"),
+          java.util.Locale.forLanguageTag("lt"))) {
+        java.util.Locale.setDefault(locale);
+        assertEquals("http://purl.obolibrary.org/obo/doid", OntologyIri.canonical("http://purl.obolibrary.org/obo/DOID_"));
+        assertTrue(OntologyIri.isOboOwner("DOID", "http://purl.obolibrary.org/obo/doid"));
+      }
+    } finally {
+      java.util.Locale.setDefault(previous);
+    }
+  }
+
+  @Test
   public void oboTermPrefix_dropsUnderscoreAndLowercasesId() {
     assertEquals("http://purl.obolibrary.org/obo/doid",
         OntologyIri.canonical("http://purl.obolibrary.org/obo/DOID_"));

@@ -1,5 +1,7 @@
 package org.metadatacenter.terms.ingest;
 
+import java.util.Locale;
+
 import org.metadatacenter.terms.store.SnapshotStore;
 import org.semanticweb.owlapi.apibinding.OWLManager;
 import org.semanticweb.owlapi.io.FileDocumentSource;
@@ -215,7 +217,7 @@ public class RelationHierarchyExtractor implements HierarchyExtractor {
     }
     boolean list = Names.hasBreak(literal.getLiteral());
     any.offer(concept, name, list);
-    if (literal.hasLang() && literal.getLang().toLowerCase().startsWith("en")) {
+    if (literal.hasLang() && literal.getLang().toLowerCase(Locale.ROOT).startsWith("en")) {
       en.offer(concept, name, list);
     }
   }

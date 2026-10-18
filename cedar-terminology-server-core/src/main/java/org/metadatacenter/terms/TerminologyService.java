@@ -88,7 +88,7 @@ public class TerminologyService implements ITerminologyService {
             String encSubclassOf = Util.encodeIfNeeded(c.getSubclassOf());
             String encVsId = Util.encodeIfNeeded(vsId);
             if (encSubclassOf.compareTo(encVsId) == 0) {
-              if (c.getPrefLabel().toLowerCase().contains(q.toLowerCase())) {
+              if (c.getPrefLabel().toLowerCase(Locale.ROOT).contains(q.toLowerCase(Locale.ROOT))) {
                 values.add(ObjectConverter.toSearchResult(c));
               }
             }

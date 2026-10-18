@@ -1,5 +1,7 @@
 package org.metadatacenter.terms.ingest;
 
+import java.util.Locale;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -103,7 +105,7 @@ public final class OntologyHeaderTitle {
         continue;
       }
       Matcher lang = XML_LANG.matcher(m.group(1));
-      boolean english = !lang.find() || lang.group(1).toLowerCase().startsWith("en");
+      boolean english = !lang.find() || lang.group(1).toLowerCase(Locale.ROOT).startsWith("en");
       if (english) {
         return Optional.of(v);
       }
@@ -125,7 +127,7 @@ public final class OntologyHeaderTitle {
           continue;
         }
         String lang = m.group(2);
-        if (lang == null || lang.toLowerCase().startsWith("en")) {
+        if (lang == null || lang.toLowerCase(Locale.ROOT).startsWith("en")) {
           return Optional.of(v);
         }
         if (otherLang == null) {

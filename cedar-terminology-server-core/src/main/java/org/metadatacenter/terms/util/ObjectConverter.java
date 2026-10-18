@@ -1,5 +1,7 @@
 package org.metadatacenter.terms.util;
 
+import java.util.Locale;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import org.metadatacenter.cedar.terminology.validation.integratedsearch.ClassValueConstraint;
 import org.metadatacenter.terms.bioportal.customObjects.BpPagedResults;
@@ -405,7 +407,7 @@ public class ObjectConverter {
     searchQuery = searchQuery.trim();
     List<String> matchedSynonyms = new ArrayList<>();
     for (String synonym : synonyms) {
-      if (!synonym.equalsIgnoreCase(prefLabel) && synonym.toLowerCase().contains(searchQuery.toLowerCase())) {
+      if (!synonym.equalsIgnoreCase(prefLabel) && synonym.toLowerCase(Locale.ROOT).contains(searchQuery.toLowerCase(Locale.ROOT))) {
         matchedSynonyms.add(synonym);
       }
     }

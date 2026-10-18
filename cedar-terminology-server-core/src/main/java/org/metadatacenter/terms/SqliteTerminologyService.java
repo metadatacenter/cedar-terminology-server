@@ -1,5 +1,7 @@
 package org.metadatacenter.terms;
 
+import java.util.Locale;
+
 import org.metadatacenter.cedar.terminology.validation.integratedsearch.BranchValueConstraint;
 import org.metadatacenter.cedar.terminology.validation.integratedsearch.ClassValueConstraint;
 import org.metadatacenter.cedar.terminology.validation.integratedsearch.OntologyValueConstraint;
@@ -665,8 +667,8 @@ public class SqliteTerminologyService implements ITerminologyService {
         List<SnapshotStore.Concept> values = new ArrayList<>(st.childrenDetailed(decodeIri(vs.getUri())));
         String query = q.map(String::trim).orElse("");
         if (!query.isEmpty()) {
-          String needle = query.toLowerCase();
-          values.removeIf(c -> c.prefLabel() == null || !c.prefLabel().toLowerCase().contains(needle));
+          String needle = query.toLowerCase(Locale.ROOT);
+          values.removeIf(c -> c.prefLabel() == null || !c.prefLabel().toLowerCase(Locale.ROOT).contains(needle));
         }
         values.sort(Comparator.comparing(c -> c.prefLabel() == null ? "" : c.prefLabel(),
             String.CASE_INSENSITIVE_ORDER));
@@ -730,7 +732,7 @@ public class SqliteTerminologyService implements ITerminologyService {
     String query = q.map(String::trim).map(String::toLowerCase).orElse("");
     List<SearchResult> all = new ArrayList<>();
     classes.stream()
-        .filter(c -> c.getPrefLabel() != null && c.getPrefLabel().toLowerCase().contains(query))
+        .filter(c -> c.getPrefLabel() != null && c.getPrefLabel().toLowerCase(Locale.ROOT).contains(query))
         .sorted(Comparator.comparing(ClassValueConstraint::getPrefLabel, String.CASE_INSENSITIVE_ORDER))
         .forEach(c -> all.add(ObjectConverter.toSearchResult(c)));
     return pageOf(all, page, pageSize);

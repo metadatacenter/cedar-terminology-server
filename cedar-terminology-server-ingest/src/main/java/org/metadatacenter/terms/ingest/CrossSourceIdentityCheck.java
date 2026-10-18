@@ -1,5 +1,7 @@
 package org.metadatacenter.terms.ingest;
 
+import java.util.Locale;
+
 import org.metadatacenter.terms.store.CatalogStore;
 import org.metadatacenter.terms.store.SnapshotDiff;
 import org.metadatacenter.terms.store.SnapshotStore;
@@ -41,7 +43,7 @@ public class CrossSourceIdentityCheck {
       System.exit(2);
     }
 
-    Path work = Files.createTempDirectory("xsource-" + acronym.toLowerCase());
+    Path work = Files.createTempDirectory("xsource-" + acronym.toLowerCase(Locale.ROOT));
     System.out.println("Cross-source identity check for " + acronym
         + (requestedDate == null ? " (BioPortal latest)" : " release " + requestedDate));
     System.out.println("Work dir: " + work + "\n");

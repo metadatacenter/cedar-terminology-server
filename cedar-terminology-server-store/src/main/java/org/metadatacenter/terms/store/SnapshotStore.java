@@ -1,5 +1,7 @@
 package org.metadatacenter.terms.store;
 
+import java.util.Locale;
+
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -501,7 +503,7 @@ public class SnapshotStore implements AutoCloseable {
     if (lang == null || lang.isEmpty()) {
       return 1;
     }
-    return lang.toLowerCase().startsWith("en") ? 0 : 2;
+    return lang.toLowerCase(Locale.ROOT).startsWith("en") ? 0 : 2;
   }
 
   private static int propertyRank(String property) {
@@ -701,7 +703,7 @@ public class SnapshotStore implements AutoCloseable {
     java.util.Set<String> tokens = new java.util.HashSet<>();
     for (String t : acronym.split("[^A-Za-z0-9]+")) {
       if (!t.isEmpty()) {
-        tokens.add(t.toUpperCase());
+        tokens.add(t.toUpperCase(Locale.ROOT));
       }
     }
     java.util.Map<String, Integer> freq = new java.util.HashMap<>();
@@ -715,11 +717,11 @@ public class SnapshotStore implements AutoCloseable {
     for (String sp : freq.keySet()) {
       java.util.regex.Matcher m = OBO_SPACE.matcher(sp);
       if (m.matches()) {
-        if (tokens.contains(m.group(1).toUpperCase())) {
+        if (tokens.contains(m.group(1).toUpperCase(Locale.ROOT))) {
           own.add(sp);
         }
       } else {
-        String up = sp.toUpperCase();
+        String up = sp.toUpperCase(Locale.ROOT);
         for (String t : tokens) {
           if (t.length() >= 3 && up.contains(t)) {
             own.add(sp);
@@ -790,10 +792,10 @@ public class SnapshotStore implements AutoCloseable {
 
   private static boolean isImportSpace(String sp) {
     java.util.regex.Matcher m = OBO_SPACE.matcher(sp);
-    if (m.matches() && IMPORT_OBO.contains(m.group(1).toUpperCase())) {
+    if (m.matches() && IMPORT_OBO.contains(m.group(1).toUpperCase(Locale.ROOT))) {
       return true;
     }
-    String up = sp.toUpperCase();
+    String up = sp.toUpperCase(Locale.ROOT);
     for (String h : IMPORT_HOST) {
       if (up.contains(h)) {
         return true;

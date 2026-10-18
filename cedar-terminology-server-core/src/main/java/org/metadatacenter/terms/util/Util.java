@@ -170,7 +170,7 @@ public class Util {
   }
 
   public static boolean isProvisionalClass(String classId) {
-    if (classId.toLowerCase().contains("provisional_classes")) {
+    if (classId.toLowerCase(Locale.ROOT).contains("provisional_classes")) {
       return true;
     }
     if (!classId.contains("http")) { // Id in the form "5e785190-5cb9-0138-e099-005056010088"
@@ -183,7 +183,7 @@ public class Util {
   public static List<SearchResult> filterByQuery(String query, List<SearchResult> results) {
     List<SearchResult> selectedResults = new ArrayList<>();
     for (SearchResult result : results) {
-      if (result.getPrefLabel().toLowerCase().contains(query.toLowerCase())) { // Label contains the query
+      if (result.getPrefLabel().toLowerCase(Locale.ROOT).contains(query.toLowerCase(Locale.ROOT))) { // Label contains the query
         selectedResults.add(result);
       }
     }
