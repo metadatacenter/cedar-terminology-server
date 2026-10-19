@@ -114,12 +114,27 @@ public final class PropertySearchIndex {
         p.setString(2, version);
         p.executeUpdate();
       }
-      c.commit();
-    } catch (SQLException | RuntimeException e) {
-      c.rollback();
+      if (auto) c.commit();
+    } catch (SQLException | RuntimeException | Error e) {
+      if (auto) c.rollback();
       throw e;
     } finally {
-      c.setAutoCommit(auto);
+      if (auto) c.setAutoCommit(true);
+    }
+  }
+
+  /** An unextracted legacy snapshot must not inherit the previous release's properties. */
+  void clear(String acronym) throws SQLException {
+    if (!available()) return;
+    // Called only inside SearchIndexStore's publication transaction.
+    try (PreparedStatement p = connection().prepareStatement(
+        "DELETE FROM property_index_fts WHERE rowid IN (SELECT id FROM property_index WHERE acronym=?)")) {
+      p.setString(1, acronym); p.executeUpdate();
+    }
+    for (String table : List.of("property_index", "property_indexed_snapshot")) {
+      try (PreparedStatement p = connection().prepareStatement("DELETE FROM " + table + " WHERE acronym=?")) {
+        p.setString(1, acronym); p.executeUpdate();
+      }
     }
   }
 

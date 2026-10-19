@@ -22,10 +22,12 @@ public class ConstraintVersionDeserializer extends JsonDeserializer<VersionSpec>
   public VersionSpec deserialize(JsonParser parser, DeserializationContext context) throws IOException {
     if (parser.currentToken() == JsonToken.VALUE_STRING) {
       String value = parser.getValueAsString();
-      return new VersionSpec(value, Optional.empty(), Optional.empty());
+      // A blank legacy pin names no release, so the search runs at latest, as it always has. A
+      // VersionSpec refuses a blank id, which would otherwise refuse the whole request.
+      return value.isBlank() ? null : new VersionSpec(value, Optional.empty(), Optional.empty());
     }
     if (parser.currentToken() == JsonToken.START_OBJECT) {
-      JsonNode version = parser.getCodec().readTree(parser);
+      JsonNode version = context.readTree(parser);
       Iterator<String> fields = version.fieldNames();
       while (fields.hasNext()) {
         String field = fields.next();

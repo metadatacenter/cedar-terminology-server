@@ -4,6 +4,7 @@ import jakarta.ws.rs.BadRequestException;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.terms.domainObjects.SearchResult;
+import org.metadatacenter.util.http.CedarResponse;
 
 import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
@@ -15,6 +16,14 @@ import java.util.*;
 import static org.metadatacenter.cedar.terminology.util.Constants.*;
 
 public class Util {
+
+  /**
+   * A refusal of the request in the shared error body, with the message naming what is wrong. A
+   * BadRequestException without an entity reached the client as a 400 whose body carried no message.
+   */
+  public static BadRequestException badRequest(String message) {
+    return new BadRequestException(message, CedarResponse.badRequest().message(message).build());
+  }
 
   public static String getBioPortalAuthHeader(String apikey) {
     return "apikey token=" + apikey;
@@ -161,7 +170,7 @@ public class Util {
   }
 
   public static boolean isProvisionalClass(String classId) {
-    if (classId.toLowerCase().contains("provisional_classes")) {
+    if (classId.toLowerCase(Locale.ROOT).contains("provisional_classes")) {
       return true;
     }
     if (!classId.contains("http")) { // Id in the form "5e785190-5cb9-0138-e099-005056010088"
@@ -174,7 +183,7 @@ public class Util {
   public static List<SearchResult> filterByQuery(String query, List<SearchResult> results) {
     List<SearchResult> selectedResults = new ArrayList<>();
     for (SearchResult result : results) {
-      if (result.getPrefLabel().toLowerCase().contains(query.toLowerCase())) { // Label contains the query
+      if (result.getPrefLabel().toLowerCase(Locale.ROOT).contains(query.toLowerCase(Locale.ROOT))) { // Label contains the query
         selectedResults.add(result);
       }
     }
@@ -205,7 +214,7 @@ public class Util {
     if (ontologyUri != null && ontologyUri.startsWith(prefix)) {
       return ontologyUri.substring(prefix.length());
     } else {
-      throw new BadRequestException("Malformed ontology URI: " + ontologyUri);
+      throw badRequest("Malformed ontology URI: " + ontologyUri);
     }
   }
 

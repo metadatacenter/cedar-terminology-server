@@ -14,11 +14,12 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class ValueConstraintsWireShapeTest {
 
-  private final ObjectMapper mapper = new ObjectMapper();
+  private final ObjectMapper mapper = org.metadatacenter.model.policy.JsonSourcePolicy.apply(new ObjectMapper());
 
   @Test
   void terminologyDtosMatchArtifactLibraryWireShape() {
@@ -54,6 +55,18 @@ class ValueConstraintsWireShapeTest {
     assertEquals("sha256:123", constraint.getVersion());
     assertEquals("2026-07-01", constraint.versionSpec().effectiveDate().orElseThrow());
     assertEquals("2026-07", constraint.versionSpec().declaredVersion().orElseThrow());
+  }
+
+  @Test
+  void aBlankLegacyStringVersionReadsAsUnpinned() throws Exception {
+    for (String blank : new String[] {"", "   "}) {
+      OntologyValueConstraint constraint = mapper.readValue(
+          "{\"acronym\":\"DOID\",\"version\":\"" + blank + "\"}", OntologyValueConstraint.class);
+      assertNull(constraint.versionSpec(), "a blank legacy pin '" + blank + "' names no release");
+      assertNull(constraint.getVersion());
+    }
+    assertEquals("2026-07", mapper.readValue("{\"acronym\":\"DOID\",\"version\":\"2026-07\"}",
+        OntologyValueConstraint.class).getVersion());
   }
 
   @Test

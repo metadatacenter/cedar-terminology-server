@@ -1,5 +1,7 @@
 package org.metadatacenter.terms;
 
+import java.util.Locale;
+
 import org.metadatacenter.cedar.terminology.validation.integratedsearch.BranchValueConstraint;
 import org.metadatacenter.cedar.terminology.validation.integratedsearch.ClassValueConstraint;
 import org.metadatacenter.cedar.terminology.validation.integratedsearch.OntologyValueConstraint;
@@ -58,6 +60,9 @@ public class SqliteTerminologyService implements ITerminologyService {
       return forOntology(ontology);
     }
 
+    /** Exact verification must not trust a legacy provider that ignores the requested release. */
+    default boolean supportsVersionPins() { return false; }
+
     /**
      * The versions of an ontology the provider knows. Empty by default. Answers a "what versions
      * exist" query.
@@ -104,6 +109,13 @@ public class SqliteTerminologyService implements ITerminologyService {
   }
 
   private final SnapshotProvider provider;
+
+  SnapshotProvider snapshotProvider() { return provider; }
+
+  @Override
+  public TermVerification verifyTerm(String iri, ValueConstraints constraints, String apiKey) {
+    return new TermMembershipVerifier(provider, null).verify(iri, constraints, apiKey);
+  }
 
   /** The cross-snapshot index, or {@code null} where none is configured. */
   private final SearchIndexStore index;
@@ -665,8 +677,8 @@ public class SqliteTerminologyService implements ITerminologyService {
         List<SnapshotStore.Concept> values = new ArrayList<>(st.childrenDetailed(decodeIri(vs.getUri())));
         String query = q.map(String::trim).orElse("");
         if (!query.isEmpty()) {
-          String needle = query.toLowerCase();
-          values.removeIf(c -> c.prefLabel() == null || !c.prefLabel().toLowerCase().contains(needle));
+          String needle = query.toLowerCase(Locale.ROOT);
+          values.removeIf(c -> c.prefLabel() == null || !c.prefLabel().toLowerCase(Locale.ROOT).contains(needle));
         }
         values.sort(Comparator.comparing(c -> c.prefLabel() == null ? "" : c.prefLabel(),
             String.CASE_INSENSITIVE_ORDER));
@@ -730,7 +742,7 @@ public class SqliteTerminologyService implements ITerminologyService {
     String query = q.map(String::trim).map(String::toLowerCase).orElse("");
     List<SearchResult> all = new ArrayList<>();
     classes.stream()
-        .filter(c -> c.getPrefLabel() != null && c.getPrefLabel().toLowerCase().contains(query))
+        .filter(c -> c.getPrefLabel() != null && c.getPrefLabel().toLowerCase(Locale.ROOT).contains(query))
         .sorted(Comparator.comparing(ClassValueConstraint::getPrefLabel, String.CASE_INSENSITIVE_ORDER))
         .forEach(c -> all.add(ObjectConverter.toSearchResult(c)));
     return pageOf(all, page, pageSize);

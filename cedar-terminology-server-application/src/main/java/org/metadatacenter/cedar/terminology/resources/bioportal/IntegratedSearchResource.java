@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.security.SecurityRequirementEntry;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.metadatacenter.cedar.terminology.resources.AbstractTerminologyServerResource;
 import org.metadatacenter.cedar.terminology.resources.bioportal.swaggermodel.IntegratedSearchResults;
@@ -61,7 +62,9 @@ public class IntegratedSearchResource extends AbstractTerminologyServerResource 
           "sources sorted together, one source listed without a query and sorted by label, or a field's actions " +
           "applied), it reads up to the first 1,000 results of each source, reorders them as one list and pages " +
           "that list exactly. A source holding more is truncated, and the answer then carries countCapped: true, " +
-          "with totalCount counting what was read.", tags = {"Classes", "Value sets", "Values"})
+          "with totalCount counting what was read. <br /> <br />A credential is optional. The route serves " +
+          "anonymous callers because the CEDAR Embeddable Editor calls it from the browser, often on pages hosted " +
+          "outside CEDAR, and holds no CEDAR credential to send.", tags = {"Classes", "Value sets", "Values"})
   @RequestBody(description = "Object that encapsulates the information needed to run the " +
           "search query. The \"valueConstraints\" field specification is based on CEDAR's \"_valueConstraints\" " +
           "field. See https://more.metadatacenter.org/tools-training/outreach/cedar-template-model for more details.", required = true, content = @Content(schema = @Schema(implementation = org.metadatacenter.cedar.terminology.resources.bioportal.swaggermodel.IntegratedSearchRequestBody.class)))
@@ -72,6 +75,9 @@ public class IntegratedSearchResource extends AbstractTerminologyServerResource 
       @ApiResponse(responseCode = "422", description = "A constraint pins a vocabulary version that cannot be served", content = @Content(schema = @Schema(implementation = CedarError.class))),
       @ApiResponse(responseCode = "500", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Internal server error")
   })
+  // swagger-core gives every method the class's api_key requirement. An entry with a blank name adds
+  // the empty alternative beside it, which is how OpenAPI says that a credential is optional.
+  @SecurityRequirement(combine = @SecurityRequirementEntry(name = ""))
   public Response cedarIntegratedSearch(@Valid IntegratedSearchBody body,
       @Parameter(description = "Optional BCP-47 language for result labels (e.g. fr). Honored for "
           + "locally-served, single-source constraints; ignored for BioPortal-proxied ones.")

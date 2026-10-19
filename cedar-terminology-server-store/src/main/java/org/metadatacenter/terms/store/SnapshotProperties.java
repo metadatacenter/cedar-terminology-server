@@ -22,6 +22,9 @@ public final class SnapshotProperties {
 
   public record Page(long total, List<Summary> items) {}
 
+  /** The most properties one page of a search, a property's children or the roots may hold. */
+  public static final int MAX_PAGE_SIZE = 200;
+
   @FunctionalInterface
   interface ConnectionSource {
     Connection get() throws SQLException;
@@ -281,7 +284,7 @@ public final class SnapshotProperties {
   public Page search(String query, List<String> kinds, int offset, int limit) throws SQLException {
     if (!available())
       throw new IllegalStateException("Properties were not extracted for this ontology version");
-    if (offset < 0 || limit < 1 || limit > 200)
+    if (offset < 0 || limit < 1 || limit > MAX_PAGE_SIZE)
       throw new IllegalArgumentException("Invalid search page");
     validateKinds(kinds);
     List<Object> args = new ArrayList<>(List.of(queryTokens(query), query.trim()));
@@ -324,7 +327,7 @@ public final class SnapshotProperties {
 
   public List<Summary> children(String iri, String kind, int offset, int limit)
       throws SQLException {
-    if (offset < 0 || limit < 1 || limit > 200)
+    if (offset < 0 || limit < 1 || limit > MAX_PAGE_SIZE)
       throw new IllegalArgumentException("Invalid child page");
     return read(
         SELECT
@@ -346,7 +349,7 @@ public final class SnapshotProperties {
   }
 
   public List<Summary> roots(String kind, int offset, int limit) throws SQLException {
-    if (offset < 0 || limit < 1 || limit > 200)
+    if (offset < 0 || limit < 1 || limit > MAX_PAGE_SIZE)
       throw new IllegalArgumentException("Invalid root page");
     return read(
         SELECT

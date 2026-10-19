@@ -1,11 +1,11 @@
 package org.metadatacenter.terms;
 
-import jakarta.ws.rs.BadRequestException;
 import org.metadatacenter.cedar.terminology.validation.integratedsearch.Action;
 import org.metadatacenter.cedar.terminology.validation.integratedsearch.ClassValueConstraint;
 import org.metadatacenter.cedar.terminology.validation.integratedsearch.ValueConstraints;
 import org.metadatacenter.terms.domainObjects.SearchResult;
 import org.metadatacenter.terms.util.ObjectConverter;
+import org.metadatacenter.terms.util.Util;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -54,7 +54,7 @@ final class ResultActions {
       if (action.getAction().equals(CEDAR_VALUE_ARRANGEMENTS_ACTION_MOVE)) {
         moveActions.add(action);
       } else if (!action.getAction().equals(CEDAR_VALUE_ARRANGEMENTS_ACTION_DELETE)) {
-        throw new BadRequestException("Invalid action: " + action.getAction());
+        throw Util.badRequest("Invalid action: " + action.getAction());
       }
       actionTermUris.add(action.getTermUri());
     }

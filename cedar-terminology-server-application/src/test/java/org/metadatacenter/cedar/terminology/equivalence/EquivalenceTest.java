@@ -13,7 +13,9 @@ import jakarta.ws.rs.core.Response;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.metadatacenter.cedar.terminology.LocalStoreTestProperties;
 import org.metadatacenter.cedar.terminology.TerminologyServerApplication;
 import org.metadatacenter.cedar.terminology.TerminologyServerConfiguration;
 import org.metadatacenter.config.CedarConfig;
@@ -59,6 +61,7 @@ import static org.metadatacenter.constant.HttpConstants.HTTP_HEADER_AUTHORIZATIO
  * (class-hierarchy browsing + the CEE's enumerated classes); typed {@code /search} against Solr is a
  * separate, report-only comparison.
  */
+@Tag("integration")
 public class EquivalenceTest {
 
   private static final String OBI_ASSAY = "http://purl.obolibrary.org/obo/OBI_0000070";
@@ -128,6 +131,7 @@ public class EquivalenceTest {
   @AfterAll
   public static void tearDown() {
     RULE.after();
+    LocalStoreTestProperties.clear();
   }
 
   /* ---- helpers ---- */

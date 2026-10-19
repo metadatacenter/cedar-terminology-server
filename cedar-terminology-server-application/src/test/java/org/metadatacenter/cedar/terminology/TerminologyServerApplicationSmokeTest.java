@@ -1,22 +1,29 @@
 package org.metadatacenter.cedar.terminology;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import io.dropwizard.testing.DropwizardTestSupport;
 import io.dropwizard.testing.ResourceHelpers;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.metadatacenter.cedar.terminology.resources.bioportal.ValueResource;
 import org.metadatacenter.cedar.terminology.resources.bioportal.ValueSetResource;
 import org.metadatacenter.cedar.util.dw.CedarMicroserviceIndexResource;
+import org.metadatacenter.util.json.JsonMapper;
 import org.metadatacenter.util.test.RouteSurface;
 
+import java.io.InputStream;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
+import java.util.TreeSet;
 
 /**
  * Boots the real application in test mode through the Dropwizard test rule and exercises the
@@ -24,6 +31,7 @@ import java.util.List;
  * BioPortal resource tests, this runs without network access to BioPortal, so it catches
  * configuration and startup rot even where the full suite can not run.
  */
+@Tag("integration")
 public class TerminologyServerApplicationSmokeTest {
 
   static {
@@ -120,12 +128,10 @@ public class TerminologyServerApplicationSmokeTest {
   /**
    * Integrated retrieve is registered and matches its path.
    *
-   * <p>This asserts reachability rather than a status. The route's authentication is commented out
-   * behind a {@code //TODO} in {@code IntegratedRetrieveResource} — as it is in
-   * {@code IntegratedSearchResource} — so an anonymous caller is answered rather than refused.
-   * Asserting the 401 the OpenAPI on this method documents would fail today; asserting the 200 it
-   * actually returns would write the missing gate into the suite as though it were intended. Both
-   * are recorded on the backend roadmap instead.
+   * <p>This asserts reachability rather than a status. The route serves anonymous callers, as
+   * {@code IntegratedSearchResource} does, and {@code AnonymousBioPortalRoutesTest} asserts what such
+   * a caller is answered, against a stub BioPortal. Here an empty set of constraints keeps the request
+   * away from BioPortal altogether.
    */
   @Test
   public void theIntegratedRetrieveRouteIsReachable() throws Exception {
@@ -136,6 +142,17 @@ public class TerminologyServerApplicationSmokeTest {
         "POST /bioportal/integrated-retrieve did not match a registered route");
     Assertions.assertNotEquals(405, response.statusCode(),
         "POST /bioportal/integrated-retrieve is registered under a different method");
+  }
+
+  @Test
+  public void exactTermVerificationAcceptsAnAnonymousCallerWithoutClaimingUnconstrainedSuccess() throws Exception {
+    HttpResponse<String> response = post("/bioportal/validate-term",
+        "{\"iri\":\"urn:test:term\",\"valueConstraints\":{}}");
+    Assertions.assertEquals(200, response.statusCode());
+    JsonNode answer = JsonMapper.STRICT_MAPPER.readTree(response.body());
+    Assertions.assertEquals("notChecked", answer.path("status").asText());
+    Assertions.assertEquals("semanticNotChecked", answer.path("code").asText());
+    Assertions.assertEquals("urn:test:term", answer.path("iri").asText());
   }
 
   /** The terminology resource classes Jersey actually registered, less the index resource. */
@@ -171,18 +188,18 @@ public class TerminologyServerApplicationSmokeTest {
   /**
    * The routes that answer an anonymous caller rather than refusing one.
    *
-   * <p>{@code POST /search} and {@code GET /search/hierarchy} are unauthenticated by design. The two
-   * integrated routes lost their assertion to a {@code //TODO} in the resource. The class
-   * descendants route and the BioPortal search build an anonymous request context explicitly, so
-   * they read as decisions rather than omissions, but they are the only two of their siblings that
-   * do — the other five class routes and {@code property_search} all assert {@code LoggedIn}. All
-   * six are recorded on the backend roadmap.
+   * <p>The local property and search routes are unauthenticated by design. Five BioPortal routes are
+   * anonymous too. The integrated search and the BioPortal search serve CEDAR's embeddable components,
+   * which call them from the browser with no credential. The class descendants route was opened for
+   * CEDAR's public metadata viewer in 2019. Integrated retrieve has answered anonymous callers since it
+   * was written, although the one CEDAR client that calls it sends a key. Exact term verification is
+   * also public for the embeddable components. The other class routes and
+   * {@code property_search} all assert {@code LoggedIn}.
    *
-   * <p>Four of them are exercised elsewhere in the default build: the three search routes by
-   * {@code LocalStoreResourceTest} and integrated-retrieve by
-   * {@link #theIntegratedRetrieveRouteIsReachable()}. The remaining two would have to reach
-   * BioPortal to answer at all, so here they are only asserted registered; their behaviour is
-   * covered by {@code ClassResourceTest} and {@code SearchResourceTest} under the bioportal tag.
+   * <p>{@code LocalStoreResourceTest} calls the local routes without a credential, and
+   * {@code AnonymousBioPortalRoutesTest} sends each of the four BioPortal routes an anonymous request
+   * against a stub BioPortal. {@link #theSpecDocumentsACredentialAsOptionalOnExactlyTheseRoutes()}
+   * holds the spec to this list.
    */
   private static final java.util.Set<String> UNAUTHENTICATED_ROUTES = java.util.Set.of(
       // Local property reads follow the same public-read contract as local class search.
@@ -192,6 +209,7 @@ public class TerminologyServerApplicationSmokeTest {
       "GET /search/hierarchy",
       "POST /bioportal/integrated-search",
       "POST /bioportal/integrated-retrieve",
+      "POST /bioportal/validate-term",
       "GET /bioportal/search",
       "GET /bioportal/ontologies/{ontology}/classes/{id}/descendants");
 
@@ -237,6 +255,53 @@ public class TerminologyServerApplicationSmokeTest {
   public void thePropertySearchRouteIsGuarded() throws Exception {
     HttpResponse<String> response = get("/bioportal/property_search?q=title");
     Assertions.assertEquals(401, response.statusCode());
+  }
+
+  /**
+   * The spec says a credential is required on every registered route that refuses an anonymous
+   * caller, and on no other.
+   *
+   * <p>The probe above holds the runtime to {@link #UNAUTHENTICATED_ROUTES}; this holds the spec to
+   * it. The spec declared {@code api_key} on every route under {@code /bioportal}, including the four
+   * that serve anonymous callers, so a client built from it demanded a key those routes never read.
+   * An operation requires a credential when every requirement it lists names a scheme. No
+   * requirement at all, or an empty one among them, means a caller may send none.
+   */
+  @Test
+  public void theSpecDocumentsACredentialAsOptionalOnExactlyTheseRoutes() throws Exception {
+    JsonNode spec;
+    try (InputStream input = getClass().getResourceAsStream("/assets/swagger-api/swagger.json")) {
+      Assertions.assertNotNull(input, "generated OpenAPI document");
+      spec = JsonMapper.STRICT_MAPPER.readTree(input);
+    }
+    Set<String> registered = new TreeSet<>();
+    RouteSurface.endpoints(registeredResources()).forEach(endpoint -> registered.add(endpoint.key()));
+
+    Set<String> documented = new TreeSet<>();
+    Set<String> optional = new TreeSet<>();
+    spec.path("paths").fields().forEachRemaining(path -> path.getValue().fields().forEachRemaining(operation -> {
+      String key = operation.getKey().toUpperCase(Locale.ROOT) + " " + path.getKey();
+      documented.add(key);
+      JsonNode security = operation.getValue().has("security")
+          ? operation.getValue().get("security") : spec.path("security");
+      boolean required = security.size() > 0;
+      for (JsonNode requirement : security) {
+        required &= requirement.size() > 0;
+      }
+      if (!required && registered.contains(key)) {
+        optional.add(key);
+      }
+    }));
+
+    Assertions.assertTrue(documented.containsAll(registered),
+        "every registered route is in the spec; missing: " + difference(registered, documented));
+    Assertions.assertEquals(new TreeSet<>(UNAUTHENTICATED_ROUTES), optional);
+  }
+
+  private static Set<String> difference(Set<String> from, Set<String> less) {
+    Set<String> rest = new TreeSet<>(from);
+    rest.removeAll(less);
+    return rest;
   }
 
 }

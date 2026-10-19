@@ -3,7 +3,7 @@
   "info" : {
     "description" : "CEDAR Terminology Server API",
     "title" : "CEDAR Terminology Server API",
-    "version" : "2.9.24"
+    "version" : "2.9.25"
   },
   "paths" : {
     "/" : {
@@ -203,7 +203,7 @@
     },
     "/bioportal/integrated-retrieve" : {
       "post" : {
-        "description" : "Retrieve ontology classes, value sets, and values based on CEDAR value constraints. This endpoint takes a controlled term field specification and any user-supplied initial characters and returns conforming values. <br /> <br /> Some sample calls in Insomnia (https://insomnia.rest/) format are available at https://github.com/metadatacenter/cedar-util/blob/master/api-calls/CEDAR_Insomnia_API_calls.json. <br /> <br />Note that in some cases, the server will need to sort the results obtained from BioPortal and the original pagination information will not be valid any more. In those situations, the values of some of the pagination fields returned as part of the results (e.g., pageCount, nextPage, etc.) cannot be computed consistently, and the server will assign a 'null' value to those fields.",
+        "description" : "Retrieve ontology classes, value sets, and values based on CEDAR value constraints. This endpoint takes a controlled term field specification and any user-supplied initial characters and returns conforming values. <br /> <br /> Some sample calls in Insomnia (https://insomnia.rest/) format are available at https://github.com/metadatacenter/cedar-util/blob/master/api-calls/CEDAR_Insomnia_API_calls.json. <br /> <br />Note that in some cases, the server will need to sort the results obtained from BioPortal and the original pagination information will not be valid any more. In those situations, the values of some of the pagination fields returned as part of the results (e.g., pageCount, nextPage, etc.) cannot be computed consistently, and the server will assign a 'null' value to those fields. <br /> <br />A credential is optional. The route has served anonymous callers in every release since it was introduced in 2024.",
         "operationId" : "cedarIntegratedRetrieve",
         "requestBody" : {
           "content" : {
@@ -260,14 +260,14 @@
         },
         "security" : [ {
           "api_key" : [ ]
-        } ],
+        }, { } ],
         "summary" : "Retrieve classes and values based on CEDAR value constraints",
         "tags" : [ "Classes", "Value sets", "Values" ]
       }
     },
     "/bioportal/integrated-search" : {
       "post" : {
-        "description" : "Search for ontology classes, value sets, and values based on CEDAR value constraints. This endpoint takes a controlled term field specification and any user-supplied initial characters and returns conforming values. <br /> <br /> Some sample calls in Insomnia (https://insomnia.rest/) format are available at https://github.com/metadatacenter/cedar-util/blob/master/api-calls/CEDAR_Insomnia_API_calls.json. <br /> <br />When the server reorders what BioPortal returns (several sources sorted together, one source listed without a query and sorted by label, or a field's actions applied), it reads up to the first 1,000 results of each source, reorders them as one list and pages that list exactly. A source holding more is truncated, and the answer then carries countCapped: true, with totalCount counting what was read.",
+        "description" : "Search for ontology classes, value sets, and values based on CEDAR value constraints. This endpoint takes a controlled term field specification and any user-supplied initial characters and returns conforming values. <br /> <br /> Some sample calls in Insomnia (https://insomnia.rest/) format are available at https://github.com/metadatacenter/cedar-util/blob/master/api-calls/CEDAR_Insomnia_API_calls.json. <br /> <br />When the server reorders what BioPortal returns (several sources sorted together, one source listed without a query and sorted by label, or a field's actions applied), it reads up to the first 1,000 results of each source, reorders them as one list and pages that list exactly. A source holding more is truncated, and the answer then carries countCapped: true, with totalCount counting what was read. <br /> <br />A credential is optional. The route serves anonymous callers because the CEDAR Embeddable Editor calls it from the browser, often on pages hosted outside CEDAR, and holds no CEDAR credential to send.",
         "operationId" : "cedarIntegratedSearch",
         "parameters" : [ {
           "description" : "Optional BCP-47 language for result labels (e.g. fr). Honored for locally-served, single-source constraints; ignored for BioPortal-proxied ones.",
@@ -342,7 +342,7 @@
         },
         "security" : [ {
           "api_key" : [ ]
-        } ],
+        }, { } ],
         "summary" : "Search for classes and values based on CEDAR value constraints",
         "tags" : [ "Classes", "Value sets", "Values" ]
       }
@@ -1258,7 +1258,7 @@
     },
     "/bioportal/ontologies/{ontology}/classes/{id}/descendants" : {
       "get" : {
-        "description" : "Get class descendants.",
+        "description" : "Get class descendants. <br /> <br />A credential is optional. The route was opened to anonymous callers in 2019 for CEDAR's public metadata viewer, and it has served them in every release since.",
         "operationId" : "findClassDescendants",
         "parameters" : [ {
           "description" : "Class identifier. Examples: http://data.bioontology.org/provisional_classes/4f82a7f0-bbba-0133-b23e-005056010074 (provisional class). http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C3224 (regular class).",
@@ -1338,26 +1338,6 @@
             },
             "description" : "Bad request"
           },
-          "401" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/CedarError"
-                }
-              }
-            },
-            "description" : "Unauthorized"
-          },
-          "403" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/CedarError"
-                }
-              }
-            },
-            "description" : "Forbidden"
-          },
           "404" : {
             "content" : {
               "application/json" : {
@@ -1381,7 +1361,7 @@
         },
         "security" : [ {
           "api_key" : [ ]
-        } ],
+        }, { } ],
         "summary" : "Get class descendants",
         "tags" : [ "Classes" ]
       }
@@ -2433,7 +2413,7 @@
     },
     "/bioportal/search" : {
       "get" : {
-        "description" : "Search for ontology classes, value sets, and values.",
+        "description" : "Search for ontology classes, value sets, and values. <br /> <br />A credential is optional. The route serves anonymous callers because the CEDAR Embeddable Designer searches it from the browser and holds no CEDAR credential to send.",
         "operationId" : "search_1",
         "parameters" : [ {
           "description" : "Search query. Example: melanoma.",
@@ -2552,26 +2532,6 @@
             },
             "description" : "Bad request"
           },
-          "401" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/CedarError"
-                }
-              }
-            },
-            "description" : "Unauthorized"
-          },
-          "403" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/CedarError"
-                }
-              }
-            },
-            "description" : "Forbidden"
-          },
           "404" : {
             "content" : {
               "application/json" : {
@@ -2595,9 +2555,48 @@
         },
         "security" : [ {
           "api_key" : [ ]
-        } ],
+        }, { } ],
         "summary" : "Search",
         "tags" : [ "Classes", "Value sets", "Values" ]
+      }
+    },
+    "/bioportal/validate-term" : {
+      "post" : {
+        "description" : "Returns passed, failed, notChecked or unavailable independently of save policy. An unavailable release, incomplete lookup or outage is never a failed membership check. No constraints means notChecked, not proof of existence. Identifier spelling is preserved.",
+        "operationId" : "verify",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/VerificationRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TermVerification"
+                }
+              }
+            },
+            "description" : "Semantic verification facts"
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CedarError"
+                }
+              }
+            },
+            "description" : "Malformed identifier or value-constraint shape"
+          }
+        },
+        "summary" : "Verify an exact term identifier against complete field value constraints"
       }
     },
     "/bioportal/value-sets" : {
@@ -3997,6 +3996,56 @@
               }
             },
             "description" : "Local ontology property data"
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CedarError"
+                }
+              }
+            },
+            "description" : "sourceAcronym, propertyIri or kind is missing, or kind is unknown. The message names the problem."
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CedarError"
+                }
+              }
+            },
+            "description" : "The release, or its snapshot, is not held locally, or the release does not contain the property"
+          },
+          "406" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CedarError"
+                }
+              }
+            },
+            "description" : "The request does not accept a JSON response"
+          },
+          "500" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CedarError"
+                }
+              }
+            },
+            "description" : "The ontology snapshot could not be read, which the message reports, or the server failed in another way. The body's errorId identifies the failure in the server log."
+          },
+          "503" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CedarError"
+                }
+              }
+            },
+            "description" : "No local terminology store is configured, or the release has no extracted properties"
           }
         },
         "summary" : "Find a property at an ontology version"
@@ -4030,6 +4079,7 @@
             "type" : "string"
           }
         }, {
+          "description" : "How many children to skip. Defaults to 0.",
           "in" : "query",
           "name" : "offset",
           "schema" : {
@@ -4038,6 +4088,7 @@
             "default" : 0
           }
         }, {
+          "description" : "How many children to return, from 1 to 200. Defaults to 50.",
           "in" : "query",
           "name" : "limit",
           "schema" : {
@@ -4055,6 +4106,56 @@
               }
             },
             "description" : "Local ontology property data"
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CedarError"
+                }
+              }
+            },
+            "description" : "sourceAcronym, propertyIri or kind is missing, kind is unknown, limit is outside 1 to 200, or offset is negative. The message names the problem. A limit or offset that is not a 32-bit integer is refused with a message that identifies the parameter and says what form it takes."
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CedarError"
+                }
+              }
+            },
+            "description" : "The release, or its snapshot, is not held locally, or the release does not contain the property"
+          },
+          "406" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CedarError"
+                }
+              }
+            },
+            "description" : "The request does not accept a JSON response"
+          },
+          "500" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CedarError"
+                }
+              }
+            },
+            "description" : "The ontology snapshot could not be read, which the message reports, or the server failed in another way. The body's errorId identifies the failure in the server log."
+          },
+          "503" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CedarError"
+                }
+              }
+            },
+            "description" : "No local terminology store is configured, or the release has no extracted properties"
           }
         },
         "summary" : "Property ancestors and paged children at an ontology version"
@@ -4082,6 +4183,7 @@
             "type" : "string"
           }
         }, {
+          "description" : "How many roots to skip. Defaults to 0.",
           "in" : "query",
           "name" : "offset",
           "schema" : {
@@ -4090,6 +4192,7 @@
             "default" : 0
           }
         }, {
+          "description" : "How many roots to return, from 1 to 200. Defaults to 50.",
           "in" : "query",
           "name" : "limit",
           "schema" : {
@@ -4107,6 +4210,56 @@
               }
             },
             "description" : "Local ontology property data"
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CedarError"
+                }
+              }
+            },
+            "description" : "sourceAcronym or kind is missing, kind is unknown, limit is outside 1 to 200, or offset is negative. The message names the problem. A limit or offset that is not a 32-bit integer is refused with a message that identifies the parameter and says what form it takes."
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CedarError"
+                }
+              }
+            },
+            "description" : "The release, or its snapshot, is not held locally"
+          },
+          "406" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CedarError"
+                }
+              }
+            },
+            "description" : "The request does not accept a JSON response"
+          },
+          "500" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CedarError"
+                }
+              }
+            },
+            "description" : "The ontology snapshot could not be read, which the message reports, or the server failed in another way. The body's errorId identifies the failure in the server log."
+          },
+          "503" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CedarError"
+                }
+              }
+            },
+            "description" : "No local terminology store is configured, or the release has no extracted properties"
           }
         },
         "summary" : "Paged root properties at an ontology version"
@@ -4134,6 +4287,66 @@
               }
             },
             "description" : "Local ontology property data"
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CedarError"
+                }
+              }
+            },
+            "description" : "The body is missing or is not JSON (malformedJsonRequestBody), or the search is refused: the query is empty, longer than 500 characters or holds no letter or number, a kind is unknown, the paging is out of range or mixes limit and offset with page and pageSize, more than 20 sources are named, or a source names no sourceAcronym. The message names the problem."
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CedarError"
+                }
+              }
+            },
+            "description" : "A named source's release, or its snapshot, is not held locally"
+          },
+          "406" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CedarError"
+                }
+              }
+            },
+            "description" : "The request does not accept a JSON response"
+          },
+          "415" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CedarError"
+                }
+              }
+            },
+            "description" : "The body is not declared as JSON"
+          },
+          "500" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CedarError"
+                }
+              }
+            },
+            "description" : "The ontology snapshot could not be read, which the message reports, or the server failed in another way. The body's errorId identifies the failure in the server log."
+          },
+          "503" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CedarError"
+                }
+              }
+            },
+            "description" : "No local terminology store is configured, a named release has no extracted properties, or a search naming no source finds no property tables in the search index"
           }
         },
         "summary" : "Search properties in local ontology snapshots"
@@ -4162,6 +4375,46 @@
               }
             },
             "description" : "Ontology versions"
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CedarError"
+                }
+              }
+            },
+            "description" : "No sourceAcronym is given, or the ontology is not served locally"
+          },
+          "406" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CedarError"
+                }
+              }
+            },
+            "description" : "The request does not accept a JSON response"
+          },
+          "500" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CedarError"
+                }
+              }
+            },
+            "description" : "The ontology snapshot could not be read, which the message reports, or the server failed in another way. The body's errorId identifies the failure in the server log."
+          },
+          "503" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CedarError"
+                }
+              }
+            },
+            "description" : "No local terminology store is configured"
           }
         },
         "summary" : "Ontology releases and their property extraction availability"
@@ -4908,6 +5161,16 @@
             "type" : "string",
             "description" : "The user-supplied initial characters used to filter the conforming values."
           },
+          "limit" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "How many results to return, from 1 to 1000. Sent instead of page and pageSize."
+          },
+          "offset" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "How many results to skip. Sent instead of page and pageSize."
+          },
           "page" : {
             "type" : "integer",
             "format" : "int32",
@@ -5188,6 +5451,16 @@
         "additionalProperties" : false,
         "description" : "Object that encapsulates the information needed to run the integrated-search query.",
         "properties" : {
+          "limit" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "How many results to return, from 1 to 1000. Sent instead of page and pageSize."
+          },
+          "offset" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "How many results to skip. Sent instead of page and pageSize."
+          },
           "page" : {
             "type" : "integer",
             "format" : "int32",
@@ -6220,6 +6493,23 @@
           }
         }
       },
+      "TermVerification" : {
+        "type" : "object",
+        "properties" : {
+          "code" : {
+            "type" : "string"
+          },
+          "iri" : {
+            "type" : "string"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "string"
+          }
+        }
+      },
       "TerminologyPageRequest" : {
         "type" : "object",
         "description" : "The page that was asked for, as a limit and an offset, after defaults were applied.",
@@ -6595,6 +6885,17 @@
           }
         },
         "required" : [ "uri", "vsCollection" ]
+      },
+      "VerificationRequest" : {
+        "type" : "object",
+        "properties" : {
+          "iri" : {
+            "type" : "string"
+          },
+          "valueConstraints" : {
+            "$ref" : "#/components/schemas/ValueConstraints"
+          }
+        }
       },
       "Version" : {
         "type" : "object",

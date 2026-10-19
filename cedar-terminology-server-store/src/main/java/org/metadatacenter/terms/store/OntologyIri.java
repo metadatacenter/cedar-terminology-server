@@ -42,7 +42,7 @@ public final class OntologyIri {
     }
     Matcher obo = OBO_TERM.matcher(namespace);
     if (obo.matches()) {
-      return obo.group(1) + obo.group(2).toLowerCase();
+      return obo.group(1) + obo.group(2).toLowerCase(Locale.ROOT);
     }
     char last = namespace.charAt(namespace.length() - 1);
     if (last == '/' || last == '#') {

@@ -1,5 +1,7 @@
 package org.metadatacenter.terms.util;
 
+import java.util.Locale;
+
 import org.apache.commons.text.similarity.LevenshteinDistance;
 import org.metadatacenter.terms.domainObjects.SearchResult;
 
@@ -12,13 +14,13 @@ public class SearchResultComparator implements Comparator<SearchResult> {
   private final String query;
 
   public SearchResultComparator(String query) {
-    this.query = query.toLowerCase();
+    this.query = query.toLowerCase(Locale.ROOT);
   }
 
   @Override
   public int compare(SearchResult r1, SearchResult r2) {
-    String prefLabel1 = r1.getPrefLabel().toLowerCase();
-    String prefLabel2 = r2.getPrefLabel().toLowerCase();
+    String prefLabel1 = r1.getPrefLabel().toLowerCase(Locale.ROOT);
+    String prefLabel2 = r2.getPrefLabel().toLowerCase(Locale.ROOT);
 
     if (prefLabel1.contains(query) && !prefLabel2.contains(query)) {
       return -1;

@@ -5,7 +5,9 @@ import io.dropwizard.testing.DropwizardTestSupport;
 import io.dropwizard.testing.ResourceHelpers;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.metadatacenter.cedar.terminology.LocalStoreTestProperties;
 import org.metadatacenter.cedar.terminology.TerminologyServerApplication;
 import org.metadatacenter.cedar.terminology.TerminologyServerConfiguration;
 import org.metadatacenter.config.CedarConfig;
@@ -45,6 +47,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * and never a page number, that the page-number parameters still answer as they did, and that asking
  * both ways at once is refused.
  */
+@Tag("integration")
 public class TerminologyPagingResourceTest {
 
   private static final String ONT = "PAGETEST";
@@ -108,6 +111,7 @@ public class TerminologyPagingResourceTest {
   @AfterAll
   public static void tearDown() {
     SERVER.after();
+    LocalStoreTestProperties.clear();
   }
 
   private static String children(String query) {
@@ -251,6 +255,24 @@ public class TerminologyPagingResourceTest {
   }
 
   // ---- helpers -----------------------------------------------------------------------------------
+
+  @Test
+  void exactTermVerificationIsVersionAwareAndStrictAtTheHttpBoundary() throws Exception {
+    String body = "{\"iri\":\"" + BASE + "c0\",\"valueConstraints\":{\"ontologies\":[{\"acronym\":\"" + ONT
+        + "\",\"iri\":\"" + BASE + "\",\"version\":{\"id\":\"" + version + "\"}}]}}";
+    JsonNode passed = post("/bioportal/validate-term", body);
+    assertEquals("passed", passed.path("status").asText());
+    assertEquals(BASE + "c0", passed.path("iri").asText());
+    assertEquals("failed", post("/bioportal/validate-term", body.replace(BASE + "c0", BASE + "unknown")).path("status").asText());
+    assertEquals("unavailable", post("/bioportal/validate-term", body.replace(version, "missing-release")).path("status").asText());
+    assertEquals("notChecked", post("/bioportal/validate-term", "{\"iri\":\"urn:test:value\",\"valueConstraints\":{}}").path("status").asText());
+    for (String invalid : List.of("{}", "null", "{\"iri\":12,\"valueConstraints\":{}}",
+        "{\"iri\":\"relative\",\"valueConstraints\":{}}", "{\"iri\":\"urn:test:value\",\"valueConstraints\":{\"ontologies\":null}}",
+        "{\"iri\":\"urn:test:value\",\"valueConstraints\":{\"futureConstraint\":true}}",
+        "{\"iri\":\"urn:test:value\",\"valueConstraints\":{\"branches\":[{\"uri\":\"urn:root\",\"acronym\":\"EX\",\"maxDepth\":1.5}]}}")) {
+      assertEquals(400, postStatus("/bioportal/validate-term", invalid), invalid);
+    }
+  }
 
   private static List<String> labels(JsonNode page) {
     return labels(page.has("collection") ? page.get("collection") : page, "prefLabel");

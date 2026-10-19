@@ -758,11 +758,36 @@ public class CatalogStore implements AutoCloseable {
     try {
       work.run();
       connection().commit();
-    } catch (SQLException e) {
+    } catch (SQLException | RuntimeException | Error e) {
       connection().rollback();
       throw e;
     } finally {
       connection().setAutoCommit(autoCommit);
+    }
+  }
+
+  /** Files are published or pruned only while holding the catalog's writer reservation. */
+  @FunctionalInterface
+  public interface SnapshotFileWork {
+    void run() throws SQLException, java.io.IOException;
+  }
+
+  public void inSnapshotTransaction(SnapshotFileWork work) throws SQLException, java.io.IOException {
+    try {
+      inTransaction(() -> {
+        // Acquire SQLite's writer reservation before looking at files or reading references.
+        // A zero-row UPDATE takes that reservation without changing snapshot metadata.
+        try (Statement statement = connection().createStatement()) {
+          statement.executeUpdate("UPDATE snapshot SET file_path=file_path WHERE 0");
+        }
+        try {
+          work.run();
+        } catch (java.io.IOException e) {
+          throw new java.io.UncheckedIOException(e);
+        }
+      });
+    } catch (java.io.UncheckedIOException e) {
+      throw e.getCause();
     }
   }
 

@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.security.SecurityRequirementEntry;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.hibernate.validator.constraints.NotEmpty;
 import org.metadatacenter.cedar.cache.Cache;
@@ -54,15 +55,18 @@ public class SearchResource extends AbstractTerminologyServerResource {
   @GET
   @Timed
   @Path("/search")
-  @Operation(summary = "Search", description = "Search for ontology classes, value sets, and values.", tags = {"Classes", "Value sets", "Values"})
+  @Operation(summary = "Search", description = "Search for ontology classes, value sets, and values. <br /> <br />"
+      + "A credential is optional. The route serves anonymous callers because the CEDAR Embeddable Designer "
+      + "searches it from the browser and holds no CEDAR credential to send.", tags = {"Classes", "Value sets", "Values"})
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "One page of matching classes, value sets and values", content = @Content(schema = @Schema(implementation = PagedSearchResults.class))),
       @ApiResponse(responseCode = "400", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Bad request"),
-      @ApiResponse(responseCode = "401", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Unauthorized"),
-      @ApiResponse(responseCode = "403", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Forbidden"),
       @ApiResponse(responseCode = "404", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Not found"),
       @ApiResponse(responseCode = "500", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Internal server error")
   })
+  // swagger-core gives every method the class's api_key requirement. An entry with a blank name adds
+  // the empty alternative beside it, which is how OpenAPI says that a credential is optional.
+  @SecurityRequirement(combine = @SecurityRequirementEntry(name = ""))
   @AnonymousAccess
   public Response search(
       @Parameter(description = "Search query. Example: melanoma.", required = true)

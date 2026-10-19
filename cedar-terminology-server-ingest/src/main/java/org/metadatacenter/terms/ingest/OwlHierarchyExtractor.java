@@ -1,5 +1,7 @@
 package org.metadatacenter.terms.ingest;
 
+import java.util.Locale;
+
 import org.metadatacenter.terms.store.SnapshotStore;
 import org.semanticweb.owlapi.apibinding.OWLManager;
 import org.semanticweb.owlapi.io.FileDocumentSource;
@@ -373,7 +375,7 @@ public class OwlHierarchyExtractor implements HierarchyExtractor {
     if (lang == null || lang.isEmpty()) {
       return 1; // untagged
     }
-    String lower = lang.toLowerCase();
+    String lower = lang.toLowerCase(Locale.ROOT);
     return lower.equals("en") || lower.startsWith("en-") ? 2 : 0;
   }
 

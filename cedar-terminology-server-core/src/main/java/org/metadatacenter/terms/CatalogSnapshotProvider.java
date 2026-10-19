@@ -52,6 +52,9 @@ public class CatalogSnapshotProvider implements SqliteTerminologyService.Snapsho
   }
 
   @Override
+  public boolean supportsVersionPins() { return true; }
+
+  @Override
   public Optional<SnapshotStore> forOntology(String ontology, String version) {
     if (ontology == null || !allowed.contains(ontology)) {
       return Optional.empty();
