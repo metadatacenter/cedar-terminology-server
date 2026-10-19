@@ -5,7 +5,7 @@
   <parent>
     <groupId>org.metadatacenter</groupId>
     <artifactId>cedar-terminology-server</artifactId>
-    <version>2.9.25</version>
+    <version>2.9.26</version>
   </parent>
 
   <groupId>org.metadatacenter</groupId>
@@ -54,11 +54,6 @@
 
     <dependency>
       <groupId>org.apache.httpcomponents.client5</groupId>
-      <artifactId>httpclient5</artifactId>
-    </dependency>
-
-    <dependency>
-      <groupId>org.apache.httpcomponents.client5</groupId>
       <artifactId>httpclient5-fluent</artifactId>
     </dependency>
 
@@ -91,11 +86,6 @@
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter</artifactId>
       <scope>test</scope>
-    </dependency>
-
-    <dependency>
-      <groupId>ch.qos.logback</groupId>
-      <artifactId>logback-classic</artifactId>
     </dependency>
 
   </dependencies>
