@@ -15,6 +15,11 @@
   <name>CEDAR Terminology Server Store</name>
   <description>Local, version-aware SQLite-backed store for terminology hierarchies</description>
 
+  <properties>
+    <!-- Line coverage measured on 2026-10-19: 65.6%. The build fails below this floor. -->
+    <cedar.coverage.line.minimum>0.63</cedar.coverage.line.minimum>
+  </properties>
+
   <dependencies>
 
     <dependency>

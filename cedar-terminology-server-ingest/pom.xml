@@ -15,6 +15,11 @@
   <name>CEDAR Terminology Server Ingest</name>
   <description>Batch ingestion of ontology submissions into version-pinned SQLite snapshots</description>
 
+  <properties>
+    <!-- Line coverage measured on 2026-10-19: 51.7%. The build fails below this floor. -->
+    <cedar.coverage.line.minimum>0.49</cedar.coverage.line.minimum>
+  </properties>
+
   <dependencies>
 
     <dependency>

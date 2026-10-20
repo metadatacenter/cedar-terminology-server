@@ -24,6 +24,8 @@
       -DexcludedGroups= only clears the exclusion when the configuration reads a property.
     -->
     <excludedGroups>bioportal</excludedGroups>
+    <!-- Line coverage measured on 2026-10-19: 43.0%. The build fails below this floor. -->
+    <cedar.coverage.line.minimum>0.41</cedar.coverage.line.minimum>
   </properties>
 
   <dependencies>

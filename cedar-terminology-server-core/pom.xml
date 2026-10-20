@@ -14,6 +14,11 @@
 
   <name>CEDAR Terminology Server Core</name>
 
+  <properties>
+    <!-- Line coverage measured on 2026-10-19: 47.4%. The build fails below this floor. -->
+    <cedar.coverage.line.minimum>0.45</cedar.coverage.line.minimum>
+  </properties>
+
   <dependencies>
 
     <dependency>
