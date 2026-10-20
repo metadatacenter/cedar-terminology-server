@@ -24,8 +24,8 @@
       -DexcludedGroups= only clears the exclusion when the configuration reads a property.
     -->
     <excludedGroups>bioportal</excludedGroups>
-    <!-- Line coverage measured on 2026-10-19: 43.0%. The build fails below this floor. -->
-    <cedar.coverage.line.minimum>0.41</cedar.coverage.line.minimum>
+    <!-- Line coverage measured on 2026-10-19: 73.7%. The build fails below this floor. -->
+    <cedar.coverage.line.minimum>0.71</cedar.coverage.line.minimum>
   </properties>
 
   <dependencies>
@@ -182,6 +182,18 @@
         <artifactId>maven-shade-plugin</artifactId>
       </plugin>
 
+      <plugin>
+        <groupId>org.jacoco</groupId>
+        <artifactId>jacoco-maven-plugin</artifactId>
+        <!-- The swaggermodel classes only describe request and response bodies to the OpenAPI generator, which
+             reads them by reflection. No request runs them. The exclusion sits on the plugin rather than on one
+             execution, so the report and the coverage check count the same classes. -->
+        <configuration>
+          <excludes>
+            <exclude>org/metadatacenter/cedar/terminology/resources/bioportal/swaggermodel/**</exclude>
+          </excludes>
+        </configuration>
+      </plugin>
     </plugins>
 
   </build>
