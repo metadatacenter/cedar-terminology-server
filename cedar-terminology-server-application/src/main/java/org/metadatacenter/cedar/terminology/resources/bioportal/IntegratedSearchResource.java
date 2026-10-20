@@ -57,8 +57,8 @@ public class IntegratedSearchResource extends AbstractTerminologyServerResource 
   @Operation(summary = "Search for classes and values based on CEDAR value constraints", description = "Search for ontology classes, value sets, and values based on CEDAR value constraints. This endpoint " +
           "takes a controlled term field specification and any user-supplied initial characters and returns " +
           "conforming values. <br /> <br /> Some sample calls in Insomnia (https://insomnia.rest/) format are " +
-          "available at https://github.com/metadatacenter/cedar-util/blob/master/api-calls/" +
-          "CEDAR_Insomnia_API_calls.json. <br /> <br />When the server reorders what BioPortal returns (several " +
+          "available at https://github.com/metadatacenter/cedar-terminology-server/blob/develop/examples/" +
+          "integrated-search.insomnia.json. <br /> <br />When the server reorders what BioPortal returns (several " +
           "sources sorted together, one source listed without a query and sorted by label, or a field's actions " +
           "applied), it reads up to the first 1,000 results of each source, reorders them as one list and pages " +
           "that list exactly. A source holding more is truncated, and the answer then carries countCapped: true, " +
