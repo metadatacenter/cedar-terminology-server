@@ -1247,12 +1247,30 @@ public class IngestJob {
     return selectSource(sourceName, release);
   }
 
+  /** Every option {@link #main} reads, so a refused one can be checked against the whole list. */
+  static final String USAGE = String.join("\n",
+      "Usage: IngestJob <catalogPath> <snapshotDir> [options] <acronym> [acronym...]",
+      "  Ingest:      [--source bioportal|obofoundry|url] [--url <URL>] [--format OWL|SKOS] [--backend <name>]",
+      "               [--base-url <ontoportal-api>] [--release <date>] [--all] [--valuesets] [--submission <id>]",
+      "  Maintenance: --backfill-labels | --backfill-labels-from-raw | --backfill-definitions-from-raw",
+      "               | --refetch-definitions [--current-only] | --retain-raw-by-hash | --backfill-header-iri",
+      "               | --verify [--deep] | --prune-orphans [--apply]");
+
+  /**
+   * An argument the options did not consume is an acronym, unless it looks like an option. Before
+   * this check a mistyped option, such as --valueset, was taken for an acronym: the run tried to
+   * ingest an ontology by that name, and the operation the operator meant never ran.
+   */
+  static String acronymOrRefuse(String argument) {
+    if (argument.startsWith("-")) {
+      throw new IllegalArgumentException("Unrecognized option, or an option missing its value: " + argument);
+    }
+    return argument;
+  }
+
   public static void main(String[] args) throws Exception {
     if (args.length < 3) {
-      System.err.println("Usage: IngestJob <catalogPath> <snapshotDir> "
-          + "[--source bioportal|obofoundry|url] [--url <URL>] [--format OWL|SKOS] [--backend <name>] "
-          + "[--base-url <ontoportal-api>] "
-          + "[--release <date>] [--all] [--valuesets] [--submission <id>] <acronym> [acronym...]");
+      System.err.println(USAGE);
       System.exit(2);
     }
     Path catalogPath = Path.of(args[0]);
@@ -1280,50 +1298,57 @@ public class IngestJob {
     String baseUrl = null;
     List<Integer> submissionIds = new ArrayList<>();
     List<String> acronyms = new ArrayList<>();
-    for (int i = 2; i < args.length; i++) {
-      if ("--all".equals(args[i])) {
-        all = true;
-      } else if ("--valuesets".equals(args[i])) {
-        valuesets = true;
-      } else if ("--backfill-labels".equals(args[i])) {
-        backfillLabels = true;
-      } else if ("--backfill-labels-from-raw".equals(args[i])) {
-        backfillLabelsFromRaw = true;
-      } else if ("--backfill-definitions-from-raw".equals(args[i])) {
-        backfillDefinitionsFromRaw = true;
-      } else if ("--retain-raw-by-hash".equals(args[i])) {
-        retainRawByHash = true;
-      } else if ("--refetch-definitions".equals(args[i])) {
-        refetchDefinitions = true;
-      } else if ("--current-only".equals(args[i])) {
-        currentOnly = true;
-      } else if ("--verify".equals(args[i])) {
-        verify = true;
-      } else if ("--deep".equals(args[i])) {
-        deep = true;
-      } else if ("--prune-orphans".equals(args[i])) {
-        pruneOrphans = true;
-      } else if ("--apply".equals(args[i])) {
-        apply = true;
-      } else if ("--backfill-header-iri".equals(args[i])) {
-        backfillHeaderIri = true;
-      } else if ("--source".equals(args[i]) && i + 1 < args.length) {
-        sourceName = args[++i];
-      } else if ("--release".equals(args[i]) && i + 1 < args.length) {
-        oboRelease = args[++i];
-      } else if ("--url".equals(args[i]) && i + 1 < args.length) {
-        url = args[++i];
-      } else if ("--format".equals(args[i]) && i + 1 < args.length) {
-        format = args[++i];
-      } else if ("--backend".equals(args[i]) && i + 1 < args.length) {
-        backend = args[++i];
-      } else if ("--base-url".equals(args[i]) && i + 1 < args.length) {
-        baseUrl = args[++i];
-      } else if ("--submission".equals(args[i]) && i + 1 < args.length) {
-        submissionIds.add(Integer.parseInt(args[++i]));
-      } else {
-        acronyms.add(args[i]);
+    try {
+      for (int i = 2; i < args.length; i++) {
+        if ("--all".equals(args[i])) {
+          all = true;
+        } else if ("--valuesets".equals(args[i])) {
+          valuesets = true;
+        } else if ("--backfill-labels".equals(args[i])) {
+          backfillLabels = true;
+        } else if ("--backfill-labels-from-raw".equals(args[i])) {
+          backfillLabelsFromRaw = true;
+        } else if ("--backfill-definitions-from-raw".equals(args[i])) {
+          backfillDefinitionsFromRaw = true;
+        } else if ("--retain-raw-by-hash".equals(args[i])) {
+          retainRawByHash = true;
+        } else if ("--refetch-definitions".equals(args[i])) {
+          refetchDefinitions = true;
+        } else if ("--current-only".equals(args[i])) {
+          currentOnly = true;
+        } else if ("--verify".equals(args[i])) {
+          verify = true;
+        } else if ("--deep".equals(args[i])) {
+          deep = true;
+        } else if ("--prune-orphans".equals(args[i])) {
+          pruneOrphans = true;
+        } else if ("--apply".equals(args[i])) {
+          apply = true;
+        } else if ("--backfill-header-iri".equals(args[i])) {
+          backfillHeaderIri = true;
+        } else if ("--source".equals(args[i]) && i + 1 < args.length) {
+          sourceName = args[++i];
+        } else if ("--release".equals(args[i]) && i + 1 < args.length) {
+          oboRelease = args[++i];
+        } else if ("--url".equals(args[i]) && i + 1 < args.length) {
+          url = args[++i];
+        } else if ("--format".equals(args[i]) && i + 1 < args.length) {
+          format = args[++i];
+        } else if ("--backend".equals(args[i]) && i + 1 < args.length) {
+          backend = args[++i];
+        } else if ("--base-url".equals(args[i]) && i + 1 < args.length) {
+          baseUrl = args[++i];
+        } else if ("--submission".equals(args[i]) && i + 1 < args.length) {
+          submissionIds.add(Integer.parseInt(args[++i]));
+        } else {
+          acronyms.add(acronymOrRefuse(args[i]));
+        }
       }
+    } catch (IllegalArgumentException refused) {
+      // A malformed --submission value lands here too, as a NumberFormatException.
+      System.err.println(refused.getMessage());
+      System.err.println(USAGE);
+      System.exit(2);
     }
 
     // A raw-file backfill, the integrity check, and the orphan prune read only local files, so they need

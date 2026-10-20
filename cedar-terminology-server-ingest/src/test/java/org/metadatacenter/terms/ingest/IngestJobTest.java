@@ -463,6 +463,20 @@ public class IngestJobTest {
     assertEquals(0, labelCount(ingested.snapshotFile()));
   }
 
+  /**
+   * An argument that looks like an option but is not one is refused. It used to be taken for an
+   * acronym, so a typo such as --valueset tried to ingest an ontology of that name and the
+   * operation the operator meant never ran.
+   */
+  @Test
+  public void anUnrecognizedOptionIsRefusedRatherThanTakenForAnAcronym() {
+    assertEquals("DOID", IngestJob.acronymOrRefuse("DOID"));
+    IllegalArgumentException refused = assertThrows(IllegalArgumentException.class,
+        () -> IngestJob.acronymOrRefuse("--valueset"));
+    assertTrue(refused.getMessage().contains("--valueset"), refused.getMessage());
+    assertTrue(IngestJob.USAGE.contains("--valuesets"), "the usage should list the option meant");
+  }
+
   private static int labelCount(Path snapshot) throws Exception {
     try (SnapshotStore store = SnapshotStore.openFile(snapshot.toString())) {
       return store.labelCount();
