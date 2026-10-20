@@ -3,6 +3,7 @@ package org.metadatacenter.terms.ingest;
 import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -26,6 +27,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * may read the ontology, the list of its submissions, and each submission's file. The API key goes in a header,
  * never the address, and the file lands in the target folder whatever name the server gives it.
  */
+@Tag("integration")
 class BioPortalDownloaderTest {
 
   private HttpServer server;

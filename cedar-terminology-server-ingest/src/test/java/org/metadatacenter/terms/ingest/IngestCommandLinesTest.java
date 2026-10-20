@@ -3,6 +3,7 @@ package org.metadatacenter.terms.ingest;
 import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.metadatacenter.terms.store.CatalogStore;
@@ -34,6 +35,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * the search index, and the one-time catalog conversions the versioning runbook lists. Each runs here as an
  * operator would run it, against one store: a small ontology fetched from a local server by URL.
  */
+@Tag("integration")
 class IngestCommandLinesTest {
 
   private static final String ACRONYM = "DTEST";
