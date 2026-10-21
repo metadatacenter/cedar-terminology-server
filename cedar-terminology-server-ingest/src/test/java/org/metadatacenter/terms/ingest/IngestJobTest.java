@@ -20,6 +20,8 @@ import java.nio.file.StandardCopyOption;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -464,6 +466,129 @@ public class IngestJobTest {
   }
 
   /**
+   * The label backfill can read the retained download instead of the source, which is the route
+   * once a source has moved on. A snapshot whose download is gone is counted and left alone.
+   */
+  @Test
+  public void backfillLabelsFromRaw_restoresLabelsFromTheRetainedDownload() throws Exception {
+    Path snapshotDir = tempDir.resolve("snapshots");
+    IngestJob.IngestResult kept = new IngestJob(fakeSource()).ingestLatest(catalog, "EX", snapshotDir);
+    IngestJob.IngestResult lost = new IngestJob(fakeSource()).ingestLatest(catalog, "LOST", snapshotDir);
+    int labels = labelCount(kept.snapshotFile());
+    removeLabels(kept.snapshotFile());
+    removeLabels(lost.snapshotFile());
+    deleteRecursively(snapshotDir.resolve("LOST").resolve("raw"));
+
+    // The job has no source, so the retained download is its only input.
+    IngestJob.BackfillSummary first = new IngestJob(null).backfillLabelsFromRaw(catalog, snapshotDir, Set.of());
+    assertEquals(1, first.filled());
+    assertEquals(1, first.noSubmission(), "the snapshot whose download is gone");
+    assertEquals(0, first.failed());
+    assertEquals(labels, labelCount(kept.snapshotFile()));
+    assertEquals(0, labelCount(lost.snapshotFile()));
+    assertEquals(kept.versionId(), catalog.resolveLatest("EX").orElseThrow().versionId());
+
+    IngestJob.BackfillSummary second = new IngestJob(null).backfillLabelsFromRaw(catalog, snapshotDir, Set.of());
+    assertEquals(0, second.filled());
+    assertEquals(1, second.alreadyLabeled());
+  }
+
+  /**
+   * Downloads retained before content-hash naming kept the source's own file name, so the
+   * definition backfill finds one by hashing what the directory holds.
+   */
+  @Test
+  public void backfillDefinitionsFromRaw_findsADownloadKeptUnderItsSourceName() throws Exception {
+    addDefinition(sourceOwl, "dog", "A domesticated canid.");
+    Path snapshotDir = tempDir.resolve("snapshots");
+    IngestJob.IngestResult ingested = new IngestJob(fakeSource()).ingestLatest(catalog, "EX", snapshotDir);
+    assertEquals(1, definitionCount(ingested.snapshotFile()), "the fixture should carry a definition to lose");
+    removeDefinitions(ingested.snapshotFile());
+    Path rawDir = snapshotDir.resolve("EX").resolve("raw");
+    deleteRecursively(rawDir);
+    Files.createDirectories(rawDir);
+    Files.copy(sourceOwl, rawDir.resolve("doid.owl"));
+
+    IngestJob.BackfillSummary first = new IngestJob(null).backfillDefinitionsFromRaw(catalog, snapshotDir, Set.of());
+    assertEquals(1, first.filled());
+    assertEquals(1, first.labelsAdded(), "the count of definitions added");
+    assertEquals(1, definitionCount(ingested.snapshotFile()));
+    assertEquals(ingested.versionId(), catalog.resolveLatest("EX").orElseThrow().versionId());
+
+    IngestJob.BackfillSummary second = new IngestJob(null).backfillDefinitionsFromRaw(catalog, snapshotDir, Set.of());
+    assertEquals(0, second.filled());
+    assertEquals(1, second.alreadyLabeled());
+  }
+
+  /**
+   * Definitions are refetched only for a snapshot whose download is gone, and only the release that
+   * built the snapshot may supply them. What the pass fetches is retained, so the next one need not.
+   */
+  @Test
+  public void refetchDefinitions_fetchesOnlyWhereTheDownloadIsGoneAndOnlyTheSameRelease() throws Exception {
+    addDefinition(sourceOwl, "dog", "A domesticated canid.");
+    Path snapshotDir = tempDir.resolve("snapshots");
+    IngestJob.IngestResult ingested = new IngestJob(fakeSource()).ingestLatest(catalog, "EX", snapshotDir);
+    String fileHash = catalog.getSnapshot(ingested.versionId()).orElseThrow().fileHash();
+    removeDefinitions(ingested.snapshotFile());
+
+    // The download is still held, so the raw pass is the route and nothing is fetched.
+    IngestJob.BackfillSummary held = new IngestJob(fakeSource()).refetchDefinitions(catalog, snapshotDir, Set.of(), false);
+    assertEquals(1, held.alreadyLabeled());
+    assertEquals(0, held.filled());
+
+    Path rawDir = snapshotDir.resolve("EX").resolve("raw");
+    deleteRecursively(rawDir);
+    Path release = tempDir.resolve("release.owl");
+    Files.copy(sourceOwl, release);
+
+    // The source now serves another release, whose definitions are not this snapshot's.
+    buildOntologyWithAnExtraClass(sourceOwl);
+    IngestJob.BackfillSummary moved = new IngestJob(fakeSource()).refetchDefinitions(catalog, snapshotDir, Set.of(), false);
+    assertEquals(1, moved.mismatched());
+    assertEquals(0, moved.filled());
+    assertEquals(0, definitionCount(ingested.snapshotFile()), "a declined snapshot must be left untouched");
+
+    // The source serves the snapshot's own release again. Its definitions attach, and its download
+    // is kept this time.
+    Files.copy(release, sourceOwl, StandardCopyOption.REPLACE_EXISTING);
+    IngestJob.BackfillSummary same = new IngestJob(fakeSource()).refetchDefinitions(catalog, snapshotDir, Set.of(), false);
+    assertEquals(1, same.filled());
+    assertEquals(1, definitionCount(ingested.snapshotFile()));
+    assertTrue(Files.exists(rawDir.resolve(fileHash + ".gz")), "the refetched download was not retained");
+    assertEquals(ingested.versionId(), catalog.resolveLatest("EX").orElseThrow().versionId());
+  }
+
+  /**
+   * BioPortal serves some submissions as a zip that also holds a catalog or a readme. The
+   * ontology is the largest entry, and a zip with no file in it is refused rather than parsed.
+   */
+  @Test
+  public void decompress_takesTheLargestEntryOfAZipAndRefusesOneWithNoFile() throws Exception {
+    Path zip = tempDir.resolve("submission.zip");
+    try (ZipOutputStream out = new ZipOutputStream(Files.newOutputStream(zip))) {
+      zipEntry(out, "README.txt", "Read me first.".getBytes());
+      out.putNextEntry(new ZipEntry("ontology/"));
+      out.closeEntry();
+      zipEntry(out, "ontology/doid.owl", Files.readAllBytes(sourceOwl));
+      zipEntry(out, "catalog-v001.xml", "<catalog/>".getBytes());
+    }
+    Path expanded = IngestJob.decompress(zip);
+    assertEquals(Files.readString(sourceOwl), Files.readString(expanded));
+    try (var listing = Files.list(tempDir)) {
+      assertEquals(List.of(), listing.map(p -> p.getFileName().toString()).filter(n -> n.contains(".entry")).toList(),
+          "the smaller entries were left beside the archive");
+    }
+
+    Path noFile = tempDir.resolve("directories-only.zip");
+    try (ZipOutputStream out = new ZipOutputStream(Files.newOutputStream(noFile))) {
+      out.putNextEntry(new ZipEntry("ontology/"));
+      out.closeEntry();
+    }
+    assertThrows(IOException.class, () -> IngestJob.decompress(noFile));
+  }
+
+  /**
    * An argument that looks like an option but is not one is refused. It used to be taken for an
    * acronym, so a typo such as --valueset tried to ingest an ontology of that name and the
    * operation the operator meant never ran.
@@ -480,6 +605,47 @@ public class IngestJobTest {
   private static int labelCount(Path snapshot) throws Exception {
     try (SnapshotStore store = SnapshotStore.openFile(snapshot.toString())) {
       return store.labelCount();
+    }
+  }
+
+  private static int definitionCount(Path snapshot) throws Exception {
+    try (SnapshotStore store = SnapshotStore.openFile(snapshot.toString())) {
+      return store.definitionCount();
+    }
+  }
+
+  /** Empties the definition table, leaving the snapshot as one taken before definitions were captured. */
+  private static void removeDefinitions(Path snapshot) throws Exception {
+    try (var connection = java.sql.DriverManager.getConnection("jdbc:sqlite:" + snapshot);
+         var statement = connection.createStatement()) {
+      statement.executeUpdate("DELETE FROM definition");
+    }
+  }
+
+  private static void deleteRecursively(Path dir) throws IOException {
+    try (var paths = Files.walk(dir)) {
+      for (Path p : paths.sorted(Comparator.reverseOrder()).toList()) {
+        Files.delete(p);
+      }
+    }
+  }
+
+  private static void zipEntry(ZipOutputStream out, String name, byte[] bytes) throws IOException {
+    out.putNextEntry(new ZipEntry(name));
+    out.write(bytes);
+    out.closeEntry();
+  }
+
+  /** Adds an IAO definition of one class to the ontology file. */
+  private static void addDefinition(Path file, String cls, String text) throws Exception {
+    OWLOntologyManager m = OWLManager.createOWLOntologyManager();
+    OWLOntology ont = m.loadOntologyFromOntologyDocument(file.toFile());
+    OWLDataFactory df = m.getOWLDataFactory();
+    m.addAxiom(ont, df.getOWLAnnotationAssertionAxiom(
+        df.getOWLAnnotationProperty(IRI.create("http://purl.obolibrary.org/obo/IAO_0000115")), iri(cls),
+        df.getOWLLiteral(text)));
+    try (var out = Files.newOutputStream(file)) {
+      m.saveOntology(ont, out);
     }
   }
 

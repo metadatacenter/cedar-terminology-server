@@ -130,4 +130,68 @@ public class SnapshotValidatorTest {
     // ...and its transitive consequence is missing from the stale stored closure.
     assertTrue(r.closureMissingFromStore().contains(BASE + "pet" + "\t" + BASE + "cat"));
   }
+
+  @Test
+  public void reportsACycleInTheStoredHierarchy() throws Exception {
+    // Mammal is put under cat while cat is under mammal, so each is its own ancestor.
+    store.addEdge(BASE + "mammal", BASE + "cat", "rdfs:subClassOf");
+
+    SnapshotValidator.Report r = new SnapshotValidator().validate(ont, store);
+    assertFalse(r.isValid());
+    assertEquals(List.of(BASE + "cat", BASE + "mammal"), r.cycles());
+  }
+
+  @Test
+  public void reportsAClassTheStoreLacks() throws Exception {
+    // The ontology declares a class after extraction, so the store never received it.
+    OWLOntologyManager m = ont.getOWLOntologyManager();
+    OWLDataFactory df = m.getOWLDataFactory();
+    m.addAxiom(ont, df.getOWLSubClassOfAxiom(df.getOWLClass(iri("bird")), df.getOWLClass(iri("animal"))));
+
+    SnapshotValidator.Report r = new SnapshotValidator().validate(ont, store);
+    assertFalse(r.isValid());
+    assertEquals(List.of(BASE + "bird"), r.conceptsMissingFromStore());
+    assertEquals(List.of(BASE + "bird" + "\t" + BASE + "animal"), r.edgesMissingFromStore());
+  }
+
+  /**
+   * Some SKOS vocabularies state their hierarchy as object property assertions between named
+   * individuals, and declare a concept only by typing it skos:Concept. The validator derives the
+   * same edges and concepts from those axioms as the extractor does, so a store built without them
+   * is caught.
+   */
+  @Test
+  public void validatesSkosConceptsStatedAsIndividuals() throws Exception {
+    String skos = "http://www.w3.org/2004/02/skos/core#";
+    String base = "http://ex/skos/";
+    OWLOntologyManager m = OWLManager.createOWLOntologyManager();
+    OWLDataFactory df = m.getOWLDataFactory();
+    OWLOntology annotated = m.createOntology(IRI.create(base + "annotated"));
+    m.addAxiom(annotated, df.getOWLAnnotationAssertionAxiom(df.getOWLAnnotationProperty(IRI.create(skos + "broader")),
+        IRI.create(base + "A"), IRI.create(base + "B")));
+    OWLOntology full = m.createOntology(IRI.create(base + "full"));
+    m.addAxioms(full, annotated.getAxioms());
+    m.addAxiom(full, df.getOWLObjectPropertyAssertionAxiom(df.getOWLObjectProperty(IRI.create(skos + "broader")),
+        df.getOWLNamedIndividual(IRI.create(base + "C")), df.getOWLNamedIndividual(IRI.create(base + "B"))));
+    m.addAxiom(full, df.getOWLObjectPropertyAssertionAxiom(df.getOWLObjectProperty(IRI.create(skos + "narrower")),
+        df.getOWLNamedIndividual(IRI.create(base + "B")), df.getOWLNamedIndividual(IRI.create(base + "D"))));
+    m.addAxiom(full, df.getOWLClassAssertionAxiom(df.getOWLClass(IRI.create(skos + "Concept")),
+        df.getOWLNamedIndividual(IRI.create(base + "E"))));
+
+    try (SnapshotStore complete = SnapshotStore.openInMemory();
+         SnapshotStore partial = SnapshotStore.openInMemory()) {
+      complete.initSchema();
+      new SkosHierarchyExtractor().extract(full, complete);
+      SnapshotValidator.Report agreed = new SnapshotValidator().validateSkos(full, complete);
+      assertTrue(agreed.isValid(), agreed.summary());
+      assertEquals(5, agreed.ontologyClasses());
+
+      partial.initSchema();
+      new SkosHierarchyExtractor().extract(annotated, partial);
+      SnapshotValidator.Report r = new SnapshotValidator().validateSkos(full, partial);
+      assertFalse(r.isValid());
+      assertEquals(List.of(base + "C", base + "D", base + "E"), r.conceptsMissingFromStore());
+      assertEquals(List.of(base + "C\t" + base + "B", base + "D\t" + base + "B"), r.edgesMissingFromStore());
+    }
+  }
 }

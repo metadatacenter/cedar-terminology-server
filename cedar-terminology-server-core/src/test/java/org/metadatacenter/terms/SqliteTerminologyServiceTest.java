@@ -334,6 +334,27 @@ public class SqliteTerminologyServiceTest {
   }
 
   @Test
+  public void aConstraintNamingAReleaseKeepsTheSnapshotAndOneNamingLatestDoesNot() throws Exception {
+    // The index keeps one version an ontology, so only a constraint that takes whichever is current
+    // may be answered from it. Naming the very release the index holds is still a pin, and a pin is
+    // the snapshot's to answer. "latest", in any case, names no release at all.
+    try (SearchIndexStore index = indexOf(EX, "v1")) {
+      SqliteTerminologyService routed = routing(index, "v1", 1);
+      // Mammal is in the snapshot and not in the index, so finding it proves which store answered.
+      PagedResults<SearchResult> pinned = routed.integratedSearch(Optional.of("Mammal"),
+          VC_MAPPER.readValue("{\"ontologies\":[{\"acronym\":\"EX\",\"version\":\"v1\"}]}",
+              ValueConstraints.class), 1, 50, null);
+      assertEquals(1, pinned.getCollection().size(), "a pinned release was answered from the index");
+      for (String latest : new String[]{"latest", " LATEST "}) {
+        PagedResults<SearchResult> current = routed.integratedSearch(Optional.of("Mammal"),
+            VC_MAPPER.readValue("{\"ontologies\":[{\"acronym\":\"EX\",\"version\":\"" + latest + "\"}]}",
+                ValueConstraints.class), 1, 50, null);
+        assertEquals(0, current.getCollection().size(), "'" + latest + "' was taken for a pin");
+      }
+    }
+  }
+
+  @Test
   public void integratedSearch_singleOntologyEmptyTextEnumerates() throws Exception {
     PagedResults<SearchResult> r = integrated(Optional.empty(),
         "{\"ontologies\":[{\"acronym\":\"EX\"}],\"branches\":[],\"valueSets\":[],\"classes\":[]}");

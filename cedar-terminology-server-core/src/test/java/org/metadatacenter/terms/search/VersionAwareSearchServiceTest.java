@@ -601,6 +601,54 @@ public class VersionAwareSearchServiceTest {
     throw new AssertionError("expected a hierarchy, got " + lookup);
   }
 
+  /**
+   * An unpinned request is answered from the index, which holds one parent a term. The path runs
+   * from the root down to the term's parent, and the children come alphabetically from the offset,
+   * with the count of all of them beside the page.
+   */
+  @Test
+  public void anUnpinnedHierarchyWalksTheIndexFromTheRootAndPagesTheChildren() throws Exception {
+    SearchIndexStore index = SearchIndexStore.openInMemory();
+    index.initSchema();
+    index.replaceOntology("EX", "hash-v2", "2026-08-13T00:00:00Z", List.of(
+        new SearchIndexStore.IndexedTerm("EX", BASE + "thing", "Thing", false, null, true, 6, null, null, null),
+        new SearchIndexStore.IndexedTerm("EX", BASE + "animal", "Animal", false, null, true, 5,
+            BASE + "thing", "Thing", null),
+        new SearchIndexStore.IndexedTerm("EX", BASE + "mammal", "Mammal", false, null, true, 3,
+            BASE + "animal", "Animal", null),
+        new SearchIndexStore.IndexedTerm("EX", BASE + "wolf", "Wolf", false, null, false, 0,
+            BASE + "mammal", "Mammal", null),
+        new SearchIndexStore.IndexedTerm("EX", BASE + "cat", "Cat", false, null, false, 0,
+            BASE + "mammal", "Mammal", "A small domesticated feline."),
+        new SearchIndexStore.IndexedTerm("EX", BASE + "dog", "Dog", false, null, false, 0,
+            BASE + "mammal", "Mammal", null)),
+        java.util.Map.of());
+    VersionAwareSearchService indexed = new VersionAwareSearchService(provider, index);
+
+    HierarchyResponse first = treeOf(indexed.hierarchy("EX", BASE + "mammal", null, 0, 2));
+    assertEquals(List.of("Thing", "Animal"),
+        first.path().stream().map(SearchResponse.TermRef::termLabel).toList());
+    assertEquals(List.of("Cat", "Dog"), first.children().stream().map(HierarchyResponse.Child::termLabel).toList());
+    assertEquals("A small domesticated feline.", first.children().get(0).definition());
+    assertEquals(3, first.childCount(), "the count is of every child, not of the page");
+    assertEquals("hash-v2", first.source().version().id(), "the release the index holds answered");
+
+    HierarchyResponse rest = treeOf(indexed.hierarchy("EX", BASE + "mammal", null, 2, 2));
+    assertEquals(List.of("Wolf"), rest.children().stream().map(HierarchyResponse.Child::termLabel).toList());
+    assertEquals(2, rest.offset());
+
+    HierarchyResponse root = treeOf(indexed.hierarchy("EX", BASE + "thing", null, 0));
+    assertNull(root.path(), "a root has no path above it");
+  }
+
+  @Test
+  public void aSourceThatNamesNoOntologyIsRefused() {
+    VersionAwareSearchService.BadSearchRequestException refused =
+        assertThrows(VersionAwareSearchService.BadSearchRequestException.class,
+            () -> service.search(request("cat", List.of("class"), List.of(new SourceSelector(null, " ", null)))));
+    assertTrue(refused.getMessage().contains("sourceAcronym"), refused.getMessage());
+  }
+
   @Test
   public void aHierarchySaysWhatTheTermItselfMeansAndNotOnlyItsChildren() throws Exception {
     HierarchyResponse tree = treeOf(withIndex().hierarchy("EX", BASE + "mammal", null, 0));

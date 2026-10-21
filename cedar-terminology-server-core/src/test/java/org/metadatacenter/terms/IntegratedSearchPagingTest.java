@@ -2,6 +2,8 @@ package org.metadatacenter.terms;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.metadatacenter.cedar.terminology.validation.integratedsearch.ValueConstraints;
 import org.metadatacenter.terms.bioportal.IBioPortalService;
 import org.metadatacenter.terms.bioportal.customObjects.BpPagedResults;
@@ -10,6 +12,7 @@ import org.metadatacenter.terms.bioportal.domainObjects.BpLinks;
 import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.terms.domainObjects.SearchResult;
 
+import javax.xml.ws.http.HTTPException;
 import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -22,6 +25,7 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -41,6 +45,8 @@ class IntegratedSearchPagingTest {
   private final Map<String, List<BpClass>> ontologies = new LinkedHashMap<>();
   private final Map<String, List<BpClass>> branches = new LinkedHashMap<>();
   private final List<String> upstreamCalls = new ArrayList<>();
+  /** The status the scripted BioPortal answers a lookup of one term with. It holds none, so 404. */
+  private int classLookupStatus = 404;
 
   private TerminologyService service() {
     IBioPortalService bioPortal = (IBioPortalService) Proxy.newProxyInstance(getClass().getClassLoader(),
@@ -67,6 +73,10 @@ class IntegratedSearchPagingTest {
             matches.removeIf(c -> !c.getPrefLabel().toLowerCase().contains(q));
             upstreamCalls.add("search:" + args[7]);
             yield page(matches, (int) args[7], (int) args[8]);
+          }
+          case "findBpClassById", "findBpProvisionalClassById" -> {
+            upstreamCalls.add(method.getName() + ":" + args[0]);
+            throw new HTTPException(classLookupStatus);
           }
           default -> throw new UnsupportedOperationException(method.getName());
         });
@@ -263,6 +273,39 @@ class IntegratedSearchPagingTest {
     assertEquals(30, walked.size());
     assertEquals("alpha 0000", walked.get(25).getPrefLabel());
     assertEquals("alpha 0001", walked.get(0).getPrefLabel());
+  }
+
+  /**
+   * A move naming a term the source no longer has costs that move and nothing else. Every term the
+   * source does serve is still listed, in order, rather than the search failing for the field.
+   */
+  @Test
+  void aMoveNamingATermTheSourceNoLongerHasLeavesTheRestOfTheSearch() throws Exception {
+    ontologies.put("ONTA", terms("ONTA", "alpha", 30));
+    ValueConstraints vc = constraints("{\"ontologies\":[" + ontology("ONTA") + "],\"actions\":[{\"to\":0,"
+        + "\"action\":\"move\",\"termUri\":\"http://example.org/ONTA/gone\",\"type\":\"OntologyClass\","
+        + "\"source\":\"ONTA\"}]}");
+
+    List<SearchResult> walked = walk(service(), Optional.empty(), vc, 10);
+
+    assertEveryTermOnceInOrder(walked, 30);
+    assertTrue(upstreamCalls.contains("findBpClassById:http://example.org/ONTA/gone"),
+        "the moved term was never looked up, so nothing here tested its absence");
+  }
+
+  /** A refused key or an outage while looking a moved term up is a fault, and is reported as one. */
+  @ParameterizedTest
+  @ValueSource(ints = {401, 403, 500, 503})
+  void aFailureLookingUpAMovedTermIsReportedRatherThanTakenForItsAbsence(int status) throws Exception {
+    ontologies.put("ONTA", terms("ONTA", "alpha", 5));
+    classLookupStatus = status;
+    ValueConstraints vc = constraints("{\"ontologies\":[" + ontology("ONTA") + "],\"actions\":[{\"to\":0,"
+        + "\"action\":\"move\",\"termUri\":\"http://example.org/ONTA/elsewhere\",\"type\":\"OntologyClass\","
+        + "\"source\":\"ONTA\"}]}");
+
+    HTTPException failure = assertThrows(HTTPException.class,
+        () -> service().integratedSearch(Optional.empty(), vc, 1, 10, "key", null));
+    assertEquals(status, failure.getStatusCode());
   }
 
   // ---- what is not reordered keeps its source's paging -------------------------------------------
