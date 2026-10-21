@@ -92,11 +92,37 @@ final class ReadConnections implements AutoCloseable {
       created.decrementAndGet();
       return shared;
     }
-    Connection fresh = DriverManager.getConnection(url);
-    configurer.configure(fresh);
+    Connection fresh = null;
+    try {
+      fresh = DriverManager.getConnection(url);
+      configurer.configure(fresh);
+    } catch (SQLException | RuntimeException e) {
+      // Give back what was counted. A failed open would otherwise hold its place in both allowances
+      // for good, and enough of them would leave every thread sharing one connection.
+      TOTAL_OPEN.decrementAndGet();
+      created.decrementAndGet();
+      if (fresh != null) {
+        try {
+          fresh.close();
+        } catch (SQLException closing) {
+          e.addSuppressed(closing);
+        }
+      }
+      throw e;
+    }
     opened.add(fresh);
     perThread.set(fresh);
     return fresh;
+  }
+
+  /** How many connections this store has taken from its allowance, its first included. */
+  int taken() {
+    return created.get();
+  }
+
+  /** How many reading connections all stores together have taken, beyond each store's first. */
+  static int takenByAll() {
+    return TOTAL_OPEN.get();
   }
 
   @Override

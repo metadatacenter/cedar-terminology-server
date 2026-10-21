@@ -1,5 +1,7 @@
 package org.metadatacenter.terms.store;
 
+import org.sqlite.SQLiteOpenMode;
+
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -293,9 +295,14 @@ public class SearchIndexStore implements AutoCloseable {
    *
    * The store this returns writes nothing. An ingest opens the same file with {@link #openFile},
    * which keeps the single connection its transactions need.
+   *
+   * Every connection opens the file read-only, as a served snapshot's connections do, and SQLite
+   * creates no file it opens that way. A mistyped path therefore fails to open. A read-write open would create an
+   * empty index there, and the server would report corpus-wide search as enabled and find nothing.
    */
   public static SearchIndexStore openForRead(String path) throws SQLException {
-    return new SearchIndexStore(DriverManager.getConnection("jdbc:sqlite:" + path), path);
+    String readOnly = path + "?open_mode=" + SQLiteOpenMode.READONLY.flag;
+    return new SearchIndexStore(DriverManager.getConnection("jdbc:sqlite:" + readOnly), readOnly);
   }
 
   public static SearchIndexStore openInMemory() throws SQLException {

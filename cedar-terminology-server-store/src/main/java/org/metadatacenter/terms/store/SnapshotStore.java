@@ -2,6 +2,7 @@ package org.metadatacenter.terms.store;
 
 import org.sqlite.SQLiteOpenMode;
 
+import java.io.File;
 import java.util.Locale;
 
 import java.sql.Connection;
@@ -112,8 +113,15 @@ public class SnapshotStore implements AutoCloseable {
    * catalogued snapshot whose file is gone therefore fails to open, and the caller can fall back. A
    * read-write open would leave an empty database at the path, which would then be served and fail
    * every lookup.
+   *
+   * An empty file is refused in the same way. SQLite reads a zero-byte file as a database with no
+   * tables and opens it, and the read-write open used to leave exactly such a file behind.
    */
   public static SnapshotStore openForRead(String path) throws SQLException {
+    File file = new File(path);
+    if (file.isFile() && file.length() == 0) {
+      throw new SQLException("Snapshot file is empty: " + path);
+    }
     String readOnly = path + "?open_mode=" + SQLiteOpenMode.READONLY.flag;
     Connection first = DriverManager.getConnection("jdbc:sqlite:" + readOnly);
     return new SnapshotStore(first,
@@ -1140,25 +1148,6 @@ public class SnapshotStore implements AutoCloseable {
         List<String[]> out = new ArrayList<>();
         while (rs.next()) {
           out.add(new String[]{rs.getString(1), rs.getString(2)});
-        }
-        return out;
-      }
-    }
-  }
-
-  /** Subjects related to an object by a predicate (reverse: e.g. drugs whose has_ingredient is X). */
-  public List<String> subjectsWith(String predicate, String objectIri) throws SQLException {
-    try (PreparedStatement ps = connection().prepareStatement("""
-        SELECT s.iri FROM relation r
-        JOIN concept s ON s.id = r.subject_id
-        JOIN concept o ON o.id = r.object_id
-        WHERE r.predicate = ? AND o.iri = ? ORDER BY s.iri""")) {
-      ps.setString(1, predicate);
-      ps.setString(2, objectIri);
-      try (ResultSet rs = ps.executeQuery()) {
-        List<String> out = new ArrayList<>();
-        while (rs.next()) {
-          out.add(rs.getString(1));
         }
         return out;
       }

@@ -12,6 +12,7 @@ import org.semanticweb.owlapi.model.OWLOntologyManager;
 import java.util.List;
 import java.util.Set;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -51,12 +52,10 @@ public class RelationHierarchyExtractorTest {
       // isa gives the hierarchy edge
       assertEquals(List.of(EX + "drug"), s.children(EX + "drugClass"));
 
-      // has_ingredient is retained as a typed relation, queryable both ways
-      List<String[]> rels = s.relationsFrom(EX + "drug");
+      // has_ingredient is retained as a typed relation. It is the only one, since isa gave the edge.
+      List<String[]> rels = s.allRelations();
       assertEquals(1, rels.size());
-      assertEquals(EX + "has_ingredient", rels.get(0)[0]);
-      assertEquals(EX + "aspirin", rels.get(0)[1]);
-      assertEquals(List.of(EX + "drug"), s.subjectsWith(EX + "has_ingredient", EX + "aspirin"));
+      assertArrayEquals(new String[]{EX + "drug", EX + "has_ingredient", EX + "aspirin"}, rels.get(0));
     }
   }
 
