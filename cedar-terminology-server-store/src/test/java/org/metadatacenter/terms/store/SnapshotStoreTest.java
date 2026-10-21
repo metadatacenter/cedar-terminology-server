@@ -3,12 +3,17 @@ package org.metadatacenter.terms.store;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -376,6 +381,39 @@ public class SnapshotStoreTest {
       assertTrue(s.subsumes("b", "a"));
       // a cyclic node is its own ancestor, which is how callers can detect the cycle
       assertTrue(s.ancestors("a").contains("a"));
+    }
+  }
+
+  /**
+   * Opening a snapshot to serve it never creates the file. A catalogued snapshot whose file is gone
+   * must fail to open, so the caller can fall back. An empty database created in its place would
+   * open, be served, and fail every lookup for want of its tables.
+   */
+  @Test
+  public void openingForReadRefusesAMissingFileAndCreatesNothing(@TempDir Path dir) {
+    Path missing = dir.resolve("gone.sqlite");
+
+    assertThrows(SQLException.class, () -> SnapshotStore.openForRead(missing.toString()));
+    assertFalse(Files.exists(missing), "opening for read created the missing file");
+  }
+
+  /**
+   * The same holds for the connection a reading thread opens later. Here the file goes after the
+   * store was opened, and the first lookup opens a connection of its own.
+   */
+  @Test
+  public void aReadingConnectionDoesNotRecreateAFileDeletedWhileServed(@TempDir Path dir) throws Exception {
+    Path file = dir.resolve("served.sqlite");
+    try (SnapshotStore writer = SnapshotStore.openFile(file.toString())) {
+      writer.initSchema();
+      writer.addConcept("a", "A");
+      writer.materialize();
+    }
+    try (SnapshotStore served = SnapshotStore.openForRead(file.toString())) {
+      Files.delete(file);
+
+      assertThrows(SQLException.class, () -> served.prefLabel("a"));
+      assertFalse(Files.exists(file), "a reading connection created the deleted file");
     }
   }
 

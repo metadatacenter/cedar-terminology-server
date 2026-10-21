@@ -17,8 +17,10 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
@@ -384,6 +386,95 @@ public class IngestJobTest {
     assertEquals(List.of("EX", "EX_ALIAS"), catalog.acronymsForIri("http://ex"));
   }
 
+  /** Builds a source that serves each acronym the file given for it and records each download. */
+  private static SubmissionSource serving(Map<String, Path> files, List<String> downloads) {
+    return new SubmissionSource() {
+      @Override
+      public OntologyAccess accessInfo(String acronym) {
+        return new OntologyAccess("public", null);
+      }
+
+      @Override
+      public List<Submission> listSubmissions(String acronym) {
+        return List.of(submission());
+      }
+
+      @Override
+      public Submission latestSubmission(String acronym) {
+        return submission();
+      }
+
+      @Override
+      public Path download(String acronym, int submissionId, Path targetDir) throws IOException {
+        downloads.add(acronym + ":" + submissionId);
+        Files.createDirectories(targetDir);
+        Path dest = targetDir.resolve("source.owl");
+        Files.copy(files.get(acronym), dest, StandardCopyOption.REPLACE_EXISTING);
+        return dest;
+      }
+    };
+  }
+
+  /**
+   * The header-IRI backfill gives an ontology the catalog holds by acronym alone the identity its
+   * owl:Ontology header declares. The header is read from a fresh download of the source's latest
+   * submission, not from anything already stored, and is written to the catalog and to the
+   * ontology's snapshot. An ontology that has an identity, or that the run does not name, is not
+   * fetched and does not change.
+   */
+  @Test
+  public void backfillHeaderIris_restoresIdentityFromTheLatestSubmissionsHeader() throws Exception {
+    Path snapshotDir = tempDir.resolve("snapshots");
+    List<String> downloads = new ArrayList<>();
+    IngestJob job = new IngestJob(serving(
+        Map.of("EX", sourceOwl, "KEPT", sourceOwl, "OUTSIDE", sourceOwl), downloads));
+    IngestJob.IngestResult ex = job.ingestLatest(catalog, "EX", snapshotDir);
+    job.ingestLatest(catalog, "KEPT", snapshotDir);
+    job.ingestLatest(catalog, "OUTSIDE", snapshotDir);
+    catalog.clearOntologyIri("EX");
+    catalog.clearOntologyIri("OUTSIDE");
+    // The source's latest submission now declares a different ontology IRI from the snapshot's.
+    buildOntology(sourceOwl, IRI.create(BASE + "renamed"));
+    downloads.clear();
+
+    IngestJob.HeaderIriSummary summary = job.backfillHeaderIris(catalog, snapshotDir, Set.of("EX", "KEPT"));
+
+    assertEquals(List.of("EX:7"), downloads, "only the named ontology without an identity is fetched");
+    assertEquals(BASE + "renamed", catalog.ontologyIri("EX").orElseThrow());
+    try (SnapshotStore store = SnapshotStore.openFile(ex.snapshotFile().toString())) {
+      assertEquals(BASE + "renamed", store.getMeta("ontology_iri").orElseThrow());
+    }
+    assertEquals("http://ex", catalog.ontologyIri("KEPT").orElseThrow());
+    assertTrue(catalog.ontologyIri("OUTSIDE").isEmpty());
+    assertEquals(new IngestJob.HeaderIriSummary(1, 1, 0, 0, 1, 0), summary);
+  }
+
+  /**
+   * An ontology stays acronym-only when its header cannot identify it: when it declares no IRI, and
+   * when two ontologies with different content declare the same one, which is not a merge.
+   */
+  @Test
+  public void backfillHeaderIris_leavesAnOntologyAcronymOnlyWhenItsHeaderCannotIdentifyIt() throws Exception {
+    Path anonymous = tempDir.resolve("anonymous.owl");
+    buildOntology(anonymous, null);
+    Path larger = tempDir.resolve("larger.owl");
+    buildOntologyWithAnExtraClass(larger);
+    Path snapshotDir = tempDir.resolve("snapshots");
+    IngestJob job = new IngestJob(serving(
+        Map.of("NOHEADER", anonymous, "FIRST", sourceOwl, "SECOND", larger), new ArrayList<>()));
+    for (String acronym : List.of("NOHEADER", "FIRST", "SECOND")) {
+      job.ingestLatest(catalog, acronym, snapshotDir);
+      catalog.clearOntologyIri(acronym);
+    }
+
+    IngestJob.HeaderIriSummary summary = job.backfillHeaderIris(catalog, snapshotDir, Set.of());
+
+    assertTrue(catalog.ontologyIri("NOHEADER").isEmpty());
+    assertTrue(catalog.ontologyIri("FIRST").isEmpty(), "a header shared with other content was kept");
+    assertTrue(catalog.ontologyIri("SECOND").isEmpty(), "a header shared with other content was kept");
+    assertEquals(new IngestJob.HeaderIriSummary(3, 2, 1, 0, 0, 3), summary);
+  }
+
   /**
    * The label backfill, which gives snapshots taken before label capture their labels without
    * changing their identity. It re-extracts the snapshot's own submission and copies the labels in
@@ -593,6 +684,106 @@ public class IngestJobTest {
    * acronym, so a typo such as --valueset tried to ingest an ontology of that name and the
    * operation the operator meant never ran.
    */
+  /**
+   * An OBO file's {@code import:} declarations are dropped before it is parsed, because OWLAPI fetches
+   * each one and a single unreachable import fails the whole load. Every other line is kept, in order,
+   * in a sibling file, and the download itself is left as it was.
+   */
+  @Test
+  public void stripOboImports_dropsTheImportDeclarationsOfAnOboFile() throws Exception {
+    Path obo = tempDir.resolve("ex.obo");
+    List<String> original = List.of(
+        "format-version: 1.2",
+        "ontology: ex",
+        "import: http://purl.obolibrary.org/obo/chebi.owl",
+        "import: exposure-envo_pattern.owl",
+        "",
+        "[Term]",
+        "id: EX:0000001",
+        "name: dog",
+        "comment: kept, although it mentions import: in its text",
+        "is_a: CHEBI:23367 ! a parent from the import");
+    Files.write(obo, original);
+
+    Path stripped = IngestJob.stripOboImports(obo);
+
+    assertEquals(tempDir.resolve("ex.obo.noimports"), stripped);
+    assertEquals(List.of(
+        "format-version: 1.2",
+        "ontology: ex",
+        "",
+        "[Term]",
+        "id: EX:0000001",
+        "name: dog",
+        "comment: kept, although it mentions import: in its text",
+        "is_a: CHEBI:23367 ! a parent from the import"), Files.readAllLines(stripped));
+    assertEquals(original, Files.readAllLines(obo), "the download itself was rewritten");
+  }
+
+  /**
+   * Nothing but an OBO file's import declarations is stripped. An OBO file that imports nothing is
+   * parsed as it is, with no copy written. A file in another syntax is not touched even where a line
+   * of a literal begins {@code import:}. Its imports are left to the extractor's own policy, and
+   * rewriting a literal would change the release's content.
+   */
+  @Test
+  public void stripOboImports_leavesEverythingElseAsItIs() throws Exception {
+    Path plain = tempDir.resolve("plain.obo");
+    Files.write(plain, List.of("format-version: 1.2", "ontology: ex", "", "[Term]", "id: EX:0000001"));
+
+    assertEquals(plain, IngestJob.stripOboImports(plain));
+    assertFalse(Files.exists(tempDir.resolve("plain.obo.noimports")));
+
+    Path owl = tempDir.resolve("other.owl");
+    String rdf = """
+        <?xml version="1.0"?>
+        <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+                 xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+                 xmlns:owl="http://www.w3.org/2002/07/owl#">
+          <owl:Ontology rdf:about="http://ex/other">
+            <owl:imports rdf:resource="http://purl.obolibrary.org/obo/chebi.owl"/>
+            <rdfs:comment>Converted from OBO, whose header read
+        import: http://purl.obolibrary.org/obo/chebi.owl</rdfs:comment>
+          </owl:Ontology>
+        </rdf:RDF>
+        """;
+    Files.writeString(owl, rdf);
+
+    assertEquals(owl, IngestJob.stripOboImports(owl));
+    assertEquals(rdf, Files.readString(owl));
+  }
+
+  /**
+   * An OBO release that imports a file nobody can fetch still ingests, with its own terms and the
+   * hierarchy between them. Here the import names a local file that does not exist.
+   */
+  @Test
+  public void ingest_extractsAnOboReleaseWhoseImportCannotBeFetched() throws Exception {
+    Files.write(sourceOwl, List.of(
+        "format-version: 1.2",
+        "ontology: ex",
+        "import: " + tempDir.resolve("missing.owl").toUri(),
+        "",
+        "[Term]",
+        "id: EX:0000001",
+        "name: dog",
+        "is_a: EX:0000002 ! animal",
+        "",
+        "[Term]",
+        "id: EX:0000002",
+        "name: animal"));
+
+    IngestJob.IngestResult r =
+        new IngestJob(fakeSource()).ingestLatest(catalog, "EX", tempDir.resolve("snapshots"));
+
+    String obo = "http://purl.obolibrary.org/obo/EX_";
+    assertEquals(2, r.classCount());
+    try (SnapshotStore store = SnapshotStore.openFile(r.snapshotFile().toString())) {
+      assertEquals("dog", store.prefLabel(obo + "0000001").orElseThrow());
+      assertEquals(List.of(obo + "0000001"), store.children(obo + "0000002"));
+    }
+  }
+
   @Test
   public void anUnrecognizedOptionIsRefusedRatherThanTakenForAnAcronym() {
     assertEquals("DOID", IngestJob.acronymOrRefuse("DOID"));
@@ -669,9 +860,14 @@ public class IngestJobTest {
   }
 
   private static void buildOntology(Path file) throws Exception {
+    buildOntology(file, IRI.create(BASE + "test"));
+  }
+
+  /** Builds the fixture ontology with {@code ontologyIri} in its header, or with no header IRI when null. */
+  private static void buildOntology(Path file, IRI ontologyIri) throws Exception {
     OWLOntologyManager m = OWLManager.createOWLOntologyManager();
     OWLDataFactory df = m.getOWLDataFactory();
-    OWLOntology ont = m.createOntology(IRI.create(BASE + "test"));
+    OWLOntology ont = ontologyIri == null ? m.createOntology() : m.createOntology(ontologyIri);
 
     OWLClass animal = df.getOWLClass(iri("animal"));
     OWLClass mammal = df.getOWLClass(iri("mammal"));

@@ -259,6 +259,37 @@ public class VersionAwareSearchServiceTest {
     assertEquals(hits.size() - 1, hits.indexOf(hound));
   }
 
+  /**
+   * Hits are listed in the order an author reads them. An exact label leads, then a label that starts
+   * with the query, then one that only contains it. Within each, the shorter label comes first, then
+   * the label alphabetically. The IRI settles any tie left, so two sources holding the same label are
+   * listed the same way whichever was named first.
+   */
+  @Test
+  public void hitsRankByHowCloselyTheLabelMatchesAndTheIriSettlesATie() throws Exception {
+    Path tieFile = tempDir.resolve("TIE_v1.sqlite");
+    try (SnapshotStore store = SnapshotStore.openFile(tieFile.toString())) {
+      store.initSchema();
+      for (String label : List.of("Wildcat", "Catalase", "Ocicat", "Cat", "Bobcat", "Cattle")) {
+        store.addConcept("http://tie/" + label.toLowerCase(), label);
+      }
+      store.materialize();
+    }
+    catalog.upsertOntology(new CatalogStore.OntologyInfo("TIE", "Tie Ontology", null, "OWL"));
+    catalog.addSnapshot(new CatalogStore.SnapshotInfo("hash-t1", "TIE", "1.0", "2025-01-01",
+        "2025-01-02T00:00:00Z", "OWL", "subsumption", 6, 0, tieFile.toString(), "f4", "open"));
+    catalog.setTag("TIE", CatalogStore.TAG_LATEST, "hash-t1");
+    VersionAwareSearchService both = new VersionAwareSearchService(
+        new CatalogSnapshotProvider(catalog, Set.of("EX", "TIE")));
+
+    List<ClassHit> hits = hits(both.search(request("cat", List.of("class"),
+        List.of(new SourceSelector(null, "TIE", null), ex(null)))), "class");
+
+    assertEquals(List.of(BASE + "cat", "http://tie/cat", "http://tie/cattle", "http://tie/catalase",
+            "http://tie/bobcat", "http://tie/ocicat", "http://tie/wildcat"),
+        hits.stream().map(ClassHit::termIri).toList());
+  }
+
   @Test
   public void branchesAreTheHitsThatHaveDescendants() throws Exception {
     SearchResponse response = service.search(request("a", List.of("class", "branch"), List.of(ex("hash-v1"))));

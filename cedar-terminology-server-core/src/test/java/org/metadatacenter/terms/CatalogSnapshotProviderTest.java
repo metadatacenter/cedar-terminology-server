@@ -155,6 +155,21 @@ public class CatalogSnapshotProviderTest {
     assertTrue(provider.forOntology(null).isEmpty());
   }
 
+  /**
+   * A snapshot the catalog records but whose file is gone is not served, so its lookups go to
+   * BioPortal. Resolving it must not leave an empty database at its path either. That file would be
+   * served from then on, and every lookup in it would fail for want of its tables.
+   */
+  @Test
+  public void aCataloguedSnapshotWhoseFileIsGoneFallsBackAndIsNotRecreated() throws Exception {
+    Path v1 = tempDir.resolve("EX_v1.sqlite");
+    Files.delete(v1);
+
+    assertTrue(provider.forOntology("EX").isEmpty(), "a missing snapshot must reach the remote fallback");
+    assertFalse(Files.exists(v1), "resolving the snapshot created its missing file");
+    assertFalse(new SqliteTerminologyService(provider).isAvailable("EX"));
+  }
+
   @Test
   public void rejectsAllowlistedButNotIngested() {
     assertTrue(provider.forOntology("OTHER").isEmpty());

@@ -45,8 +45,12 @@ class IntegratedSearchPagingTest {
   private final Map<String, List<BpClass>> ontologies = new LinkedHashMap<>();
   private final Map<String, List<BpClass>> branches = new LinkedHashMap<>();
   private final List<String> upstreamCalls = new ArrayList<>();
-  /** The status the scripted BioPortal answers a lookup of one term with. It holds none, so 404. */
+  /**
+   * The scripted BioPortal answers a lookup of one term with these statuses, for the regular lookup
+   * and then the provisional one. It holds no term, so both are 404.
+   */
   private int classLookupStatus = 404;
+  private int provisionalLookupStatus = 404;
 
   private TerminologyService service() {
     IBioPortalService bioPortal = (IBioPortalService) Proxy.newProxyInstance(getClass().getClassLoader(),
@@ -74,9 +78,13 @@ class IntegratedSearchPagingTest {
             upstreamCalls.add("search:" + args[7]);
             yield page(matches, (int) args[7], (int) args[8]);
           }
-          case "findBpClassById", "findBpProvisionalClassById" -> {
+          case "findBpClassById" -> {
             upstreamCalls.add(method.getName() + ":" + args[0]);
             throw new HTTPException(classLookupStatus);
+          }
+          case "findBpProvisionalClassById" -> {
+            upstreamCalls.add(method.getName() + ":" + args[0]);
+            throw new HTTPException(provisionalLookupStatus);
           }
           default -> throw new UnsupportedOperationException(method.getName());
         });
@@ -299,6 +307,7 @@ class IntegratedSearchPagingTest {
   void aFailureLookingUpAMovedTermIsReportedRatherThanTakenForItsAbsence(int status) throws Exception {
     ontologies.put("ONTA", terms("ONTA", "alpha", 5));
     classLookupStatus = status;
+    provisionalLookupStatus = status;
     ValueConstraints vc = constraints("{\"ontologies\":[" + ontology("ONTA") + "],\"actions\":[{\"to\":0,"
         + "\"action\":\"move\",\"termUri\":\"http://example.org/ONTA/elsewhere\",\"type\":\"OntologyClass\","
         + "\"source\":\"ONTA\"}]}");
@@ -306,6 +315,28 @@ class IntegratedSearchPagingTest {
     HTTPException failure = assertThrows(HTTPException.class,
         () -> service().integratedSearch(Optional.empty(), vc, 1, 10, "key", null));
     assertEquals(status, failure.getStatusCode());
+  }
+
+  /**
+   * A moved term is looked up twice, as a regular class and then as a provisional one. A term that is
+   * not provisional answers the second lookup 404 whatever happened to the first, so the fault that
+   * made the first fail is the one reported, with its own status.
+   */
+  @ParameterizedTest
+  @ValueSource(ints = {401, 403, 500, 503})
+  void aFailedRegularLookupIsReportedWhenTheProvisionalLookupFindsNothing(int status) throws Exception {
+    ontologies.put("ONTA", terms("ONTA", "alpha", 5));
+    classLookupStatus = status;
+    provisionalLookupStatus = 404;
+    ValueConstraints vc = constraints("{\"ontologies\":[" + ontology("ONTA") + "],\"actions\":[{\"to\":0,"
+        + "\"action\":\"move\",\"termUri\":\"http://example.org/ONTA/elsewhere\",\"type\":\"OntologyClass\","
+        + "\"source\":\"ONTA\"}]}");
+
+    HTTPException failure = assertThrows(HTTPException.class,
+        () -> service().integratedSearch(Optional.empty(), vc, 1, 10, "key", null));
+    assertEquals(status, failure.getStatusCode());
+    assertTrue(upstreamCalls.contains("findBpProvisionalClassById:http://example.org/ONTA/elsewhere"),
+        "the provisional lookup never ran, so nothing here tested its 404 hiding the fault");
   }
 
   // ---- what is not reordered keeps its source's paging -------------------------------------------

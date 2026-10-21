@@ -252,13 +252,26 @@ public class TerminologyService implements ITerminologyService {
    */
   private SearchResult nullIfTermIsGone(Action action, HTTPException failure) {
     int status = failure.getStatusCode();
-    if (status == 401 || status == 403 || status >= 500) {
+    if (isFault(status)) {
       throw failure;
+    }
+    // A class is looked up as a regular class and then as a provisional one, and findClass reports
+    // the provisional lookup's status, keeping the regular lookup's failure as suppressed. A term
+    // that is not provisional answers 404 there whatever became of the first lookup, so a fault in
+    // the first is the one reported.
+    for (Throwable earlier : failure.getSuppressed()) {
+      if (earlier instanceof HTTPException regular && isFault(regular.getStatusCode())) {
+        throw regular;
+      }
     }
     log.warn("The '{}' action on {} in {} names a term BioPortal answered {} for; that action is "
         + "ignored and the rest of the search stands", action.getAction(), action.getTermUri(),
         action.getSource(), status);
     return null;
+  }
+
+  private static boolean isFault(int status) {
+    return status == 401 || status == 403 || status >= 500;
   }
 
   private PagedResults<SearchResult> integratedSearchSingleSource(Optional<String> q, ValueConstraints valueConstraints,

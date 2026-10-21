@@ -1,5 +1,7 @@
 package org.metadatacenter.terms.store;
 
+import org.sqlite.SQLiteOpenMode;
+
 import java.util.Locale;
 
 import java.sql.Connection;
@@ -105,11 +107,17 @@ public class SnapshotStore implements AutoCloseable {
    *
    * A snapshot opened this way writes nothing. An ingest opens the same file with
    * {@link #openFile}, keeping the single connection its transactions need.
+   *
+   * Every connection opens the file read-only, and SQLite creates no file it opens that way. A
+   * catalogued snapshot whose file is gone therefore fails to open, and the caller can fall back. A
+   * read-write open would leave an empty database at the path, which would then be served and fail
+   * every lookup.
    */
   public static SnapshotStore openForRead(String path) throws SQLException {
-    Connection first = DriverManager.getConnection("jdbc:sqlite:" + path);
+    String readOnly = path + "?open_mode=" + SQLiteOpenMode.READONLY.flag;
+    Connection first = DriverManager.getConnection("jdbc:sqlite:" + readOnly);
     return new SnapshotStore(first,
-        ReadConnections.of(path, first, c -> { }, READ_CONNECTION_LIMIT));
+        ReadConnections.of(readOnly, first, c -> { }, READ_CONNECTION_LIMIT));
   }
 
   /** Opens an in-memory snapshot store, useful for tests and transient ingestion. */
