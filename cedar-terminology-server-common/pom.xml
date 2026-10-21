@@ -5,7 +5,7 @@
   <parent>
     <groupId>org.metadatacenter</groupId>
     <artifactId>cedar-terminology-server</artifactId>
-    <version>2.9.26</version>
+    <version>2.9.27</version>
   </parent>
 
   <groupId>org.metadatacenter</groupId>
@@ -13,6 +13,11 @@
   <packaging>jar</packaging>
 
   <name>CEDAR Terminology Server Common</name>
+
+  <properties>
+    <!-- Line coverage measured on 2026-10-19: 87.5%. The build fails below this floor. -->
+    <cedar.coverage.line.minimum>0.85</cedar.coverage.line.minimum>
+  </properties>
 
   <dependencies>
 

@@ -2,7 +2,7 @@ openapi: 3.0.1
 info:
   description: CEDAR Terminology Server API
   title: CEDAR Terminology Server API
-  version: 2.9.26
+  version: 2.9.27
 paths:
   /:
     get:
@@ -149,7 +149,7 @@ paths:
         \ value constraints. This endpoint takes a controlled term field specification\
         \ and any user-supplied initial characters and returns conforming values.\
         \ <br /> <br /> Some sample calls in Insomnia (https://insomnia.rest/) format\
-        \ are available at https://github.com/metadatacenter/cedar-util/blob/master/api-calls/CEDAR_Insomnia_API_calls.json.\
+        \ are available at https://github.com/metadatacenter/cedar-terminology-server/blob/develop/examples/integrated-search.insomnia.json.\
         \ <br /> <br />Note that in some cases, the server will need to sort the results\
         \ obtained from BioPortal and the original pagination information will not\
         \ be valid any more. In those situations, the values of some of the pagination\
@@ -207,7 +207,7 @@ paths:
         \ value constraints. This endpoint takes a controlled term field specification\
         \ and any user-supplied initial characters and returns conforming values.\
         \ <br /> <br /> Some sample calls in Insomnia (https://insomnia.rest/) format\
-        \ are available at https://github.com/metadatacenter/cedar-util/blob/master/api-calls/CEDAR_Insomnia_API_calls.json.\
+        \ are available at https://github.com/metadatacenter/cedar-terminology-server/blob/develop/examples/integrated-search.insomnia.json.\
         \ <br /> <br />When the server reorders what BioPortal returns (several sources\
         \ sorted together, one source listed without a query and sorted by label,\
         \ or a field's actions applied), it reads up to the first 1,000 results of\

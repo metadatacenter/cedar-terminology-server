@@ -130,11 +130,17 @@ public class BioPortalDownloader implements SubmissionSource {
     return v == null || v.isNull() ? null : v.asText();
   }
 
-  private static String filenameFrom(String contentDisposition) {
+  /**
+   * The file name a download's Content-Disposition gives, reduced to its last path component, so that a name
+   * the server sends cannot place the file outside the target folder. A name with no usable component is empty.
+   */
+  static String filenameFrom(String contentDisposition) {
     for (String part : contentDisposition.split(";")) {
       String p = part.trim();
       if (p.startsWith("filename=")) {
-        return p.substring("filename=".length()).replace("\"", "").trim();
+        String name = p.substring("filename=".length()).replace("\"", "").trim();
+        name = name.substring(Math.max(name.lastIndexOf('/'), name.lastIndexOf('\\')) + 1);
+        return name.equals(".") || name.equals("..") ? "" : name;
       }
     }
     return "";

@@ -179,10 +179,12 @@ public final class TermMembershipVerifier {
   private static void requireSource(Scope scope, OntologyClass found) throws IOException {
     String source = found.getOntology();
     // In particular, the global provisional fallback must not prove membership in an unrelated
-    // ontology. Only BioPortal's source identity or its exact acronym establishes that scope.
+    // ontology. Only BioPortal's source identity, at data.bioontology.org or at the BioPortal this
+    // server is configured to read, or its exact acronym establishes that scope.
     if (!scope.acronym().equals(source)
         && !("http://data.bioontology.org/ontologies/" + scope.acronym()).equals(source)
-        && !("https://data.bioontology.org/ontologies/" + scope.acronym()).equals(source)) {
+        && !("https://data.bioontology.org/ontologies/" + scope.acronym()).equals(source)
+        && !(org.metadatacenter.cedar.terminology.util.Constants.BP_API_BASE + "ontologies/" + scope.acronym()).equals(source)) {
       throw new IOException("The terminology service did not establish the requested vocabulary identity.");
     }
   }

@@ -1043,20 +1043,6 @@ public class TerminologyService implements ITerminologyService {
     return v;
   }
 
-  /**
-   * Works in the same way than findValue but figuring out the vsCollection from the value set id. It assumes that
-   * the value set id contains the acronym of the vsCollection.
-   */
-  public Value findValueByValueSet(String valueId, String vsId, String apiKey) throws IOException {
-    String vsCollection = null;
-    for (String vsc : BP_VS_COLLECTIONS_READ) {
-      if (vsId.contains("/" + vsCollection + "/")) {
-        vsCollection = vsc;
-      }
-    }
-    return findValue(valueId, vsCollection, apiKey);
-  }
-
   public TreeNode getValueTree(String id, String vsCollection, String apiKey) throws IOException {
     int page = FIRST_PAGE;
     int pageSize = LARGE_PAGE_SIZE;

@@ -51,8 +51,8 @@ public class IntegratedRetrieveResource extends AbstractTerminologyServerResourc
   @Operation(summary = "Retrieve classes and values based on CEDAR value constraints", description = "Retrieve ontology classes, value sets, and values based on CEDAR value constraints. This endpoint " +
           "takes a controlled term field specification and any user-supplied initial characters and returns " +
           "conforming values. <br /> <br /> Some sample calls in Insomnia (https://insomnia.rest/) format are " +
-          "available at https://github.com/metadatacenter/cedar-util/blob/master/api-calls/" +
-          "CEDAR_Insomnia_API_calls.json. <br /> <br />Note that in some cases, the server will need to sort the " +
+          "available at https://github.com/metadatacenter/cedar-terminology-server/blob/develop/examples/" +
+          "integrated-search.insomnia.json. <br /> <br />Note that in some cases, the server will need to sort the " +
           "results obtained from BioPortal and the original pagination information will not be valid any more. In " +
           "those situations, the values of some of the pagination fields returned as part of the results (e.g., " +
           "pageCount, nextPage, etc.) cannot be computed consistently, and the server will assign a 'null' value to " +

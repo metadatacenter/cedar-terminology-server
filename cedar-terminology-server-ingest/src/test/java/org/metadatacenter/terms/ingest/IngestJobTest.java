@@ -19,6 +19,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -379,6 +380,126 @@ public class IngestJobTest {
     job.ingestLatest(catalog, "EX_ALIAS", tempDir.resolve("b")); // same bytes, a different acronym
     assertEquals("http://ex", catalog.ontologyIri("EX_ALIAS").orElseThrow());
     assertEquals(List.of("EX", "EX_ALIAS"), catalog.acronymsForIri("http://ex"));
+  }
+
+  /**
+   * The label backfill, which gives snapshots taken before label capture their labels without
+   * changing their identity. It re-extracts the snapshot's own submission and copies the labels in
+   * only when the re-extraction hashes to the snapshot's version id, so the stored content never
+   * changes. Here a snapshot is ingested and its label table emptied, as an old one would be.
+   */
+  @Test
+  public void backfillLabels_restoresTheLabelsOfASnapshotThatPredatesThem() throws Exception {
+    Path snapshotDir = tempDir.resolve("snapshots");
+    IngestJob.IngestResult ingested = new IngestJob(fakeSource()).ingestLatest(catalog, "EX", snapshotDir);
+    int labels = labelCount(ingested.snapshotFile());
+    assertTrue(labels > 0, "the fixture should carry labels to lose");
+    removeLabels(ingested.snapshotFile());
+
+    IngestJob.BackfillSummary first = new IngestJob(fakeSource()).backfillLabels(catalog, snapshotDir, Set.of());
+    assertEquals(1, first.filled());
+    assertEquals(labels, first.labelsAdded());
+    assertEquals(labels, labelCount(ingested.snapshotFile()));
+    assertEquals(ingested.versionId(), catalog.resolveLatest("EX").orElseThrow().versionId(),
+        "the backfill must not change the snapshot's identity");
+
+    // Resumable: a snapshot that has its labels is skipped.
+    IngestJob.BackfillSummary second = new IngestJob(fakeSource()).backfillLabels(catalog, snapshotDir, Set.of());
+    assertEquals(0, second.filled());
+    assertEquals(1, second.alreadyLabeled());
+  }
+
+  /** A source that now serves different content cannot enrich the snapshot: the identity gate declines. */
+  @Test
+  public void backfillLabels_leavesASnapshotAloneWhenTheSourceHasMovedOn() throws Exception {
+    Path snapshotDir = tempDir.resolve("snapshots");
+    IngestJob.IngestResult ingested = new IngestJob(fakeSource()).ingestLatest(catalog, "EX", snapshotDir);
+    removeLabels(ingested.snapshotFile());
+    buildOntologyWithAnExtraClass(sourceOwl);
+
+    IngestJob.BackfillSummary summary = new IngestJob(fakeSource()).backfillLabels(catalog, snapshotDir, Set.of());
+    assertEquals(0, summary.filled());
+    assertEquals(1, summary.mismatched());
+    assertEquals(0, labelCount(ingested.snapshotFile()), "a declined snapshot must be left untouched");
+  }
+
+  /** Each run serves one backend, so a snapshot another backend produced is skipped rather than refetched. */
+  @Test
+  public void backfillLabels_skipsSnapshotsAnotherBackendProduced() throws Exception {
+    Path snapshotDir = tempDir.resolve("snapshots");
+    IngestJob.IngestResult ingested = new IngestJob(fakeSource()).ingestLatest(catalog, "EX", snapshotDir);
+    removeLabels(ingested.snapshotFile());
+    SubmissionSource base = fakeSource();
+    SubmissionSource otherBackend = new SubmissionSource() {
+      @Override
+      public String backendId() {
+        return "obofoundry";
+      }
+
+      @Override
+      public OntologyAccess accessInfo(String acronym) throws IOException, InterruptedException {
+        return base.accessInfo(acronym);
+      }
+
+      @Override
+      public List<Submission> listSubmissions(String acronym) throws IOException, InterruptedException {
+        return base.listSubmissions(acronym);
+      }
+
+      @Override
+      public Submission latestSubmission(String acronym) throws IOException, InterruptedException {
+        return base.latestSubmission(acronym);
+      }
+
+      @Override
+      public Path download(String acronym, int submissionId, Path targetDir) throws IOException, InterruptedException {
+        return base.download(acronym, submissionId, targetDir);
+      }
+    };
+
+    IngestJob.BackfillSummary summary = new IngestJob(otherBackend).backfillLabels(catalog, snapshotDir, Set.of());
+    assertEquals(0, summary.filled());
+    assertEquals(1, summary.otherBackend());
+    assertEquals(0, labelCount(ingested.snapshotFile()));
+  }
+
+  /**
+   * An argument that looks like an option but is not one is refused. It used to be taken for an
+   * acronym, so a typo such as --valueset tried to ingest an ontology of that name and the
+   * operation the operator meant never ran.
+   */
+  @Test
+  public void anUnrecognizedOptionIsRefusedRatherThanTakenForAnAcronym() {
+    assertEquals("DOID", IngestJob.acronymOrRefuse("DOID"));
+    IllegalArgumentException refused = assertThrows(IllegalArgumentException.class,
+        () -> IngestJob.acronymOrRefuse("--valueset"));
+    assertTrue(refused.getMessage().contains("--valueset"), refused.getMessage());
+    assertTrue(IngestJob.USAGE.contains("--valuesets"), "the usage should list the option meant");
+  }
+
+  private static int labelCount(Path snapshot) throws Exception {
+    try (SnapshotStore store = SnapshotStore.openFile(snapshot.toString())) {
+      return store.labelCount();
+    }
+  }
+
+  /** Empties the label table, leaving the snapshot as one taken before labels were captured. */
+  private static void removeLabels(Path snapshot) throws Exception {
+    try (var connection = java.sql.DriverManager.getConnection("jdbc:sqlite:" + snapshot);
+         var statement = connection.createStatement()) {
+      statement.executeUpdate("DELETE FROM label");
+    }
+  }
+
+  private static void buildOntologyWithAnExtraClass(Path file) throws Exception {
+    buildOntology(file);
+    OWLOntologyManager m = OWLManager.createOWLOntologyManager();
+    OWLOntology ont = m.loadOntologyFromOntologyDocument(file.toFile());
+    OWLDataFactory df = m.getOWLDataFactory();
+    m.addAxiom(ont, df.getOWLSubClassOfAxiom(df.getOWLClass(iri("bird")), df.getOWLClass(iri("animal"))));
+    try (var out = Files.newOutputStream(file)) {
+      m.saveOntology(ont, out);
+    }
   }
 
   private static void buildOntology(Path file) throws Exception {
