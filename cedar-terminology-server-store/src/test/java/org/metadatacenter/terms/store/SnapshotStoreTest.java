@@ -197,6 +197,68 @@ public class SnapshotStoreTest {
   }
 
   @Test
+  public void normalizedContentHash_relationChangeMovesBoth() throws Exception {
+    String structBefore, structAfter, fullBefore, fullAfter;
+    try (SnapshotStore a = SnapshotStore.openInMemory()) {
+      a.initSchema();
+      a.addConcept("http://ex/drug", "Drug");
+      a.addConcept("http://ex/aspirin", "Aspirin");
+      a.addConcept("http://ex/tablet", "Tablet");
+      a.addRelation("http://ex/drug", "has_ingredient", "http://ex/aspirin");
+      a.materialize();
+      structBefore = a.normalizedContentHash(false);
+      fullBefore = a.normalizedContentHash(true);
+    }
+    try (SnapshotStore b = SnapshotStore.openInMemory()) {
+      b.initSchema();
+      b.addConcept("http://ex/drug", "Drug");
+      b.addConcept("http://ex/aspirin", "Aspirin");
+      b.addConcept("http://ex/tablet", "Tablet");
+      b.addRelation("http://ex/drug", "has_ingredient", "http://ex/aspirin");
+      b.addRelation("http://ex/drug", "has_dose_form", "http://ex/tablet"); // the only difference
+      b.materialize();
+      structAfter = b.normalizedContentHash(false);
+      fullAfter = b.normalizedContentHash(true);
+    }
+    assertFalse(structBefore.equals(structAfter), "adding a typed relation changes the structure hash");
+    assertFalse(fullBefore.equals(fullAfter), "adding a typed relation changes the full hash");
+  }
+
+  @Test
+  public void normalizedContentHash_ignoresRelationIngestOrder() throws Exception {
+    // The same relations added in the opposite order hash identically. The relation table keeps its
+    // rows in internal-id order, whatever order they were added in, so the concepts are added in
+    // the opposite order too. Their ids then differ, and only the hash's own sort by IRI can make
+    // the two hashes agree.
+    String h1, h2;
+    try (SnapshotStore a = SnapshotStore.openInMemory()) {
+      a.initSchema();
+      a.addConcept("http://ex/aspirin", "Aspirin");
+      a.addConcept("http://ex/caffeine", "Caffeine");
+      a.addConcept("http://ex/drug1", "Drug 1");
+      a.addConcept("http://ex/drug2", "Drug 2");
+      a.addRelation("http://ex/drug1", "has_ingredient", "http://ex/aspirin");
+      a.addRelation("http://ex/drug2", "has_ingredient", "http://ex/aspirin");
+      a.addRelation("http://ex/drug2", "has_ingredient", "http://ex/caffeine");
+      a.materialize();
+      h1 = a.normalizedContentHash(true);
+    }
+    try (SnapshotStore b = SnapshotStore.openInMemory()) {
+      b.initSchema();
+      b.addConcept("http://ex/drug2", "Drug 2"); // reverse insert order
+      b.addConcept("http://ex/drug1", "Drug 1");
+      b.addConcept("http://ex/caffeine", "Caffeine");
+      b.addConcept("http://ex/aspirin", "Aspirin");
+      b.addRelation("http://ex/drug2", "has_ingredient", "http://ex/caffeine");
+      b.addRelation("http://ex/drug2", "has_ingredient", "http://ex/aspirin");
+      b.addRelation("http://ex/drug1", "has_ingredient", "http://ex/aspirin");
+      b.materialize();
+      h2 = b.normalizedContentHash(true);
+    }
+    assertEquals(h1, h2);
+  }
+
+  @Test
   public void dominantOwnIdspace_picksOwnSpaceOverBulkImport() throws Exception {
     // OBI-like: mostly imported CHEBI_ concepts, a minority of its own OBI_ terms. Acronym-keying
     // must resolve the own space, not the more frequent import — this is the canonical-iri source.

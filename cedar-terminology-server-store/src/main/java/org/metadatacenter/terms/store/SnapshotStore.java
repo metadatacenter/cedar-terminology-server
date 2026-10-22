@@ -160,7 +160,10 @@ public class SnapshotStore implements AutoCloseable {
       s.executeUpdate("CREATE INDEX IF NOT EXISTS idx_closure_desc ON closure(descendant_id)");
       s.executeUpdate("CREATE TABLE IF NOT EXISTS root (concept_id INTEGER PRIMARY KEY)");
       // Level-1 typed relations: non-hierarchical object relations retained for compositional
-      // vocabularies (e.g. RxNorm has_ingredient / has_dose_form), for filtered expansion.
+      // vocabularies (e.g. RxNorm has_ingredient / has_dose_form). Nothing looks up one concept's
+      // relations. normalizedContentHash reads every relation, so adding or removing one changes the
+      // snapshot's version_id. SnapshotDiff compares them between two versions of an ontology, and
+      // the versions diff route reports the relations added and removed as counts.
       s.executeUpdate("""
           CREATE TABLE IF NOT EXISTS relation (
             subject_id INTEGER NOT NULL,
