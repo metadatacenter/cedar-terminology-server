@@ -17,9 +17,13 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -382,6 +386,95 @@ public class IngestJobTest {
     assertEquals(List.of("EX", "EX_ALIAS"), catalog.acronymsForIri("http://ex"));
   }
 
+  /** Builds a source that serves each acronym the file given for it and records each download. */
+  private static SubmissionSource serving(Map<String, Path> files, List<String> downloads) {
+    return new SubmissionSource() {
+      @Override
+      public OntologyAccess accessInfo(String acronym) {
+        return new OntologyAccess("public", null);
+      }
+
+      @Override
+      public List<Submission> listSubmissions(String acronym) {
+        return List.of(submission());
+      }
+
+      @Override
+      public Submission latestSubmission(String acronym) {
+        return submission();
+      }
+
+      @Override
+      public Path download(String acronym, int submissionId, Path targetDir) throws IOException {
+        downloads.add(acronym + ":" + submissionId);
+        Files.createDirectories(targetDir);
+        Path dest = targetDir.resolve("source.owl");
+        Files.copy(files.get(acronym), dest, StandardCopyOption.REPLACE_EXISTING);
+        return dest;
+      }
+    };
+  }
+
+  /**
+   * The header-IRI backfill gives an ontology the catalog holds by acronym alone the identity its
+   * owl:Ontology header declares. The header is read from a fresh download of the source's latest
+   * submission, not from anything already stored, and is written to the catalog and to the
+   * ontology's snapshot. An ontology that has an identity, or that the run does not name, is not
+   * fetched and does not change.
+   */
+  @Test
+  public void backfillHeaderIris_restoresIdentityFromTheLatestSubmissionsHeader() throws Exception {
+    Path snapshotDir = tempDir.resolve("snapshots");
+    List<String> downloads = new ArrayList<>();
+    IngestJob job = new IngestJob(serving(
+        Map.of("EX", sourceOwl, "KEPT", sourceOwl, "OUTSIDE", sourceOwl), downloads));
+    IngestJob.IngestResult ex = job.ingestLatest(catalog, "EX", snapshotDir);
+    job.ingestLatest(catalog, "KEPT", snapshotDir);
+    job.ingestLatest(catalog, "OUTSIDE", snapshotDir);
+    catalog.clearOntologyIri("EX");
+    catalog.clearOntologyIri("OUTSIDE");
+    // The source's latest submission now declares a different ontology IRI from the snapshot's.
+    buildOntology(sourceOwl, IRI.create(BASE + "renamed"));
+    downloads.clear();
+
+    IngestJob.HeaderIriSummary summary = job.backfillHeaderIris(catalog, snapshotDir, Set.of("EX", "KEPT"));
+
+    assertEquals(List.of("EX:7"), downloads, "only the named ontology without an identity is fetched");
+    assertEquals(BASE + "renamed", catalog.ontologyIri("EX").orElseThrow());
+    try (SnapshotStore store = SnapshotStore.openFile(ex.snapshotFile().toString())) {
+      assertEquals(BASE + "renamed", store.getMeta("ontology_iri").orElseThrow());
+    }
+    assertEquals("http://ex", catalog.ontologyIri("KEPT").orElseThrow());
+    assertTrue(catalog.ontologyIri("OUTSIDE").isEmpty());
+    assertEquals(new IngestJob.HeaderIriSummary(1, 1, 0, 0, 1, 0), summary);
+  }
+
+  /**
+   * An ontology stays acronym-only when its header cannot identify it: when it declares no IRI, and
+   * when two ontologies with different content declare the same one, which is not a merge.
+   */
+  @Test
+  public void backfillHeaderIris_leavesAnOntologyAcronymOnlyWhenItsHeaderCannotIdentifyIt() throws Exception {
+    Path anonymous = tempDir.resolve("anonymous.owl");
+    buildOntology(anonymous, null);
+    Path larger = tempDir.resolve("larger.owl");
+    buildOntologyWithAnExtraClass(larger);
+    Path snapshotDir = tempDir.resolve("snapshots");
+    IngestJob job = new IngestJob(serving(
+        Map.of("NOHEADER", anonymous, "FIRST", sourceOwl, "SECOND", larger), new ArrayList<>()));
+    for (String acronym : List.of("NOHEADER", "FIRST", "SECOND")) {
+      job.ingestLatest(catalog, acronym, snapshotDir);
+      catalog.clearOntologyIri(acronym);
+    }
+
+    IngestJob.HeaderIriSummary summary = job.backfillHeaderIris(catalog, snapshotDir, Set.of());
+
+    assertTrue(catalog.ontologyIri("NOHEADER").isEmpty());
+    assertTrue(catalog.ontologyIri("FIRST").isEmpty(), "a header shared with other content was kept");
+    assertTrue(catalog.ontologyIri("SECOND").isEmpty(), "a header shared with other content was kept");
+    assertEquals(new IngestJob.HeaderIriSummary(3, 2, 1, 0, 0, 3), summary);
+  }
+
   /**
    * The label backfill, which gives snapshots taken before label capture their labels without
    * changing their identity. It re-extracts the snapshot's own submission and copies the labels in
@@ -464,10 +557,233 @@ public class IngestJobTest {
   }
 
   /**
+   * The label backfill can read the retained download instead of the source, which is the route
+   * once a source has moved on. A snapshot whose download is gone is counted and left alone.
+   */
+  @Test
+  public void backfillLabelsFromRaw_restoresLabelsFromTheRetainedDownload() throws Exception {
+    Path snapshotDir = tempDir.resolve("snapshots");
+    IngestJob.IngestResult kept = new IngestJob(fakeSource()).ingestLatest(catalog, "EX", snapshotDir);
+    IngestJob.IngestResult lost = new IngestJob(fakeSource()).ingestLatest(catalog, "LOST", snapshotDir);
+    int labels = labelCount(kept.snapshotFile());
+    removeLabels(kept.snapshotFile());
+    removeLabels(lost.snapshotFile());
+    deleteRecursively(snapshotDir.resolve("LOST").resolve("raw"));
+
+    // The job has no source, so the retained download is its only input.
+    IngestJob.BackfillSummary first = new IngestJob(null).backfillLabelsFromRaw(catalog, snapshotDir, Set.of());
+    assertEquals(1, first.filled());
+    assertEquals(1, first.noSubmission(), "the snapshot whose download is gone");
+    assertEquals(0, first.failed());
+    assertEquals(labels, labelCount(kept.snapshotFile()));
+    assertEquals(0, labelCount(lost.snapshotFile()));
+    assertEquals(kept.versionId(), catalog.resolveLatest("EX").orElseThrow().versionId());
+
+    IngestJob.BackfillSummary second = new IngestJob(null).backfillLabelsFromRaw(catalog, snapshotDir, Set.of());
+    assertEquals(0, second.filled());
+    assertEquals(1, second.alreadyLabeled());
+  }
+
+  /**
+   * Downloads retained before content-hash naming kept the source's own file name, so the
+   * definition backfill finds one by hashing what the directory holds.
+   */
+  @Test
+  public void backfillDefinitionsFromRaw_findsADownloadKeptUnderItsSourceName() throws Exception {
+    addDefinition(sourceOwl, "dog", "A domesticated canid.");
+    Path snapshotDir = tempDir.resolve("snapshots");
+    IngestJob.IngestResult ingested = new IngestJob(fakeSource()).ingestLatest(catalog, "EX", snapshotDir);
+    assertEquals(1, definitionCount(ingested.snapshotFile()), "the fixture should carry a definition to lose");
+    removeDefinitions(ingested.snapshotFile());
+    Path rawDir = snapshotDir.resolve("EX").resolve("raw");
+    deleteRecursively(rawDir);
+    Files.createDirectories(rawDir);
+    Files.copy(sourceOwl, rawDir.resolve("doid.owl"));
+
+    IngestJob.BackfillSummary first = new IngestJob(null).backfillDefinitionsFromRaw(catalog, snapshotDir, Set.of());
+    assertEquals(1, first.filled());
+    assertEquals(1, first.labelsAdded(), "the count of definitions added");
+    assertEquals(1, definitionCount(ingested.snapshotFile()));
+    assertEquals(ingested.versionId(), catalog.resolveLatest("EX").orElseThrow().versionId());
+
+    IngestJob.BackfillSummary second = new IngestJob(null).backfillDefinitionsFromRaw(catalog, snapshotDir, Set.of());
+    assertEquals(0, second.filled());
+    assertEquals(1, second.alreadyLabeled());
+  }
+
+  /**
+   * Definitions are refetched only for a snapshot whose download is gone, and only the release that
+   * built the snapshot may supply them. What the pass fetches is retained, so the next one need not.
+   */
+  @Test
+  public void refetchDefinitions_fetchesOnlyWhereTheDownloadIsGoneAndOnlyTheSameRelease() throws Exception {
+    addDefinition(sourceOwl, "dog", "A domesticated canid.");
+    Path snapshotDir = tempDir.resolve("snapshots");
+    IngestJob.IngestResult ingested = new IngestJob(fakeSource()).ingestLatest(catalog, "EX", snapshotDir);
+    String fileHash = catalog.getSnapshot(ingested.versionId()).orElseThrow().fileHash();
+    removeDefinitions(ingested.snapshotFile());
+
+    // The download is still held, so the raw pass is the route and nothing is fetched.
+    IngestJob.BackfillSummary held = new IngestJob(fakeSource()).refetchDefinitions(catalog, snapshotDir, Set.of(), false);
+    assertEquals(1, held.alreadyLabeled());
+    assertEquals(0, held.filled());
+
+    Path rawDir = snapshotDir.resolve("EX").resolve("raw");
+    deleteRecursively(rawDir);
+    Path release = tempDir.resolve("release.owl");
+    Files.copy(sourceOwl, release);
+
+    // The source now serves another release, whose definitions are not this snapshot's.
+    buildOntologyWithAnExtraClass(sourceOwl);
+    IngestJob.BackfillSummary moved = new IngestJob(fakeSource()).refetchDefinitions(catalog, snapshotDir, Set.of(), false);
+    assertEquals(1, moved.mismatched());
+    assertEquals(0, moved.filled());
+    assertEquals(0, definitionCount(ingested.snapshotFile()), "a declined snapshot must be left untouched");
+
+    // The source serves the snapshot's own release again. Its definitions attach, and its download
+    // is kept this time.
+    Files.copy(release, sourceOwl, StandardCopyOption.REPLACE_EXISTING);
+    IngestJob.BackfillSummary same = new IngestJob(fakeSource()).refetchDefinitions(catalog, snapshotDir, Set.of(), false);
+    assertEquals(1, same.filled());
+    assertEquals(1, definitionCount(ingested.snapshotFile()));
+    assertTrue(Files.exists(rawDir.resolve(fileHash + ".gz")), "the refetched download was not retained");
+    assertEquals(ingested.versionId(), catalog.resolveLatest("EX").orElseThrow().versionId());
+  }
+
+  /**
+   * BioPortal serves some submissions as a zip that also holds a catalog or a readme. The
+   * ontology is the largest entry, and a zip with no file in it is refused rather than parsed.
+   */
+  @Test
+  public void decompress_takesTheLargestEntryOfAZipAndRefusesOneWithNoFile() throws Exception {
+    Path zip = tempDir.resolve("submission.zip");
+    try (ZipOutputStream out = new ZipOutputStream(Files.newOutputStream(zip))) {
+      zipEntry(out, "README.txt", "Read me first.".getBytes());
+      out.putNextEntry(new ZipEntry("ontology/"));
+      out.closeEntry();
+      zipEntry(out, "ontology/doid.owl", Files.readAllBytes(sourceOwl));
+      zipEntry(out, "catalog-v001.xml", "<catalog/>".getBytes());
+    }
+    Path expanded = IngestJob.decompress(zip);
+    assertEquals(Files.readString(sourceOwl), Files.readString(expanded));
+    try (var listing = Files.list(tempDir)) {
+      assertEquals(List.of(), listing.map(p -> p.getFileName().toString()).filter(n -> n.contains(".entry")).toList(),
+          "the smaller entries were left beside the archive");
+    }
+
+    Path noFile = tempDir.resolve("directories-only.zip");
+    try (ZipOutputStream out = new ZipOutputStream(Files.newOutputStream(noFile))) {
+      out.putNextEntry(new ZipEntry("ontology/"));
+      out.closeEntry();
+    }
+    assertThrows(IOException.class, () -> IngestJob.decompress(noFile));
+  }
+
+  /**
    * An argument that looks like an option but is not one is refused. It used to be taken for an
    * acronym, so a typo such as --valueset tried to ingest an ontology of that name and the
    * operation the operator meant never ran.
    */
+  /**
+   * An OBO file's {@code import:} declarations are dropped before it is parsed, because OWLAPI fetches
+   * each one and a single unreachable import fails the whole load. Every other line is kept, in order,
+   * in a sibling file, and the download itself is left as it was.
+   */
+  @Test
+  public void stripOboImports_dropsTheImportDeclarationsOfAnOboFile() throws Exception {
+    Path obo = tempDir.resolve("ex.obo");
+    List<String> original = List.of(
+        "format-version: 1.2",
+        "ontology: ex",
+        "import: http://purl.obolibrary.org/obo/chebi.owl",
+        "import: exposure-envo_pattern.owl",
+        "",
+        "[Term]",
+        "id: EX:0000001",
+        "name: dog",
+        "comment: kept, although it mentions import: in its text",
+        "is_a: CHEBI:23367 ! a parent from the import");
+    Files.write(obo, original);
+
+    Path stripped = IngestJob.stripOboImports(obo);
+
+    assertEquals(tempDir.resolve("ex.obo.noimports"), stripped);
+    assertEquals(List.of(
+        "format-version: 1.2",
+        "ontology: ex",
+        "",
+        "[Term]",
+        "id: EX:0000001",
+        "name: dog",
+        "comment: kept, although it mentions import: in its text",
+        "is_a: CHEBI:23367 ! a parent from the import"), Files.readAllLines(stripped));
+    assertEquals(original, Files.readAllLines(obo), "the download itself was rewritten");
+  }
+
+  /**
+   * Nothing but an OBO file's import declarations is stripped. An OBO file that imports nothing is
+   * parsed as it is, with no copy written. A file in another syntax is not touched even where a line
+   * of a literal begins {@code import:}. Its imports are left to the extractor's own policy, and
+   * rewriting a literal would change the release's content.
+   */
+  @Test
+  public void stripOboImports_leavesEverythingElseAsItIs() throws Exception {
+    Path plain = tempDir.resolve("plain.obo");
+    Files.write(plain, List.of("format-version: 1.2", "ontology: ex", "", "[Term]", "id: EX:0000001"));
+
+    assertEquals(plain, IngestJob.stripOboImports(plain));
+    assertFalse(Files.exists(tempDir.resolve("plain.obo.noimports")));
+
+    Path owl = tempDir.resolve("other.owl");
+    String rdf = """
+        <?xml version="1.0"?>
+        <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+                 xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+                 xmlns:owl="http://www.w3.org/2002/07/owl#">
+          <owl:Ontology rdf:about="http://ex/other">
+            <owl:imports rdf:resource="http://purl.obolibrary.org/obo/chebi.owl"/>
+            <rdfs:comment>Converted from OBO, whose header read
+        import: http://purl.obolibrary.org/obo/chebi.owl</rdfs:comment>
+          </owl:Ontology>
+        </rdf:RDF>
+        """;
+    Files.writeString(owl, rdf);
+
+    assertEquals(owl, IngestJob.stripOboImports(owl));
+    assertEquals(rdf, Files.readString(owl));
+  }
+
+  /**
+   * An OBO release that imports a file nobody can fetch still ingests, with its own terms and the
+   * hierarchy between them. Here the import names a local file that does not exist.
+   */
+  @Test
+  public void ingest_extractsAnOboReleaseWhoseImportCannotBeFetched() throws Exception {
+    Files.write(sourceOwl, List.of(
+        "format-version: 1.2",
+        "ontology: ex",
+        "import: " + tempDir.resolve("missing.owl").toUri(),
+        "",
+        "[Term]",
+        "id: EX:0000001",
+        "name: dog",
+        "is_a: EX:0000002 ! animal",
+        "",
+        "[Term]",
+        "id: EX:0000002",
+        "name: animal"));
+
+    IngestJob.IngestResult r =
+        new IngestJob(fakeSource()).ingestLatest(catalog, "EX", tempDir.resolve("snapshots"));
+
+    String obo = "http://purl.obolibrary.org/obo/EX_";
+    assertEquals(2, r.classCount());
+    try (SnapshotStore store = SnapshotStore.openFile(r.snapshotFile().toString())) {
+      assertEquals("dog", store.prefLabel(obo + "0000001").orElseThrow());
+      assertEquals(List.of(obo + "0000001"), store.children(obo + "0000002"));
+    }
+  }
+
   @Test
   public void anUnrecognizedOptionIsRefusedRatherThanTakenForAnAcronym() {
     assertEquals("DOID", IngestJob.acronymOrRefuse("DOID"));
@@ -480,6 +796,47 @@ public class IngestJobTest {
   private static int labelCount(Path snapshot) throws Exception {
     try (SnapshotStore store = SnapshotStore.openFile(snapshot.toString())) {
       return store.labelCount();
+    }
+  }
+
+  private static int definitionCount(Path snapshot) throws Exception {
+    try (SnapshotStore store = SnapshotStore.openFile(snapshot.toString())) {
+      return store.definitionCount();
+    }
+  }
+
+  /** Empties the definition table, leaving the snapshot as one taken before definitions were captured. */
+  private static void removeDefinitions(Path snapshot) throws Exception {
+    try (var connection = java.sql.DriverManager.getConnection("jdbc:sqlite:" + snapshot);
+         var statement = connection.createStatement()) {
+      statement.executeUpdate("DELETE FROM definition");
+    }
+  }
+
+  private static void deleteRecursively(Path dir) throws IOException {
+    try (var paths = Files.walk(dir)) {
+      for (Path p : paths.sorted(Comparator.reverseOrder()).toList()) {
+        Files.delete(p);
+      }
+    }
+  }
+
+  private static void zipEntry(ZipOutputStream out, String name, byte[] bytes) throws IOException {
+    out.putNextEntry(new ZipEntry(name));
+    out.write(bytes);
+    out.closeEntry();
+  }
+
+  /** Adds an IAO definition of one class to the ontology file. */
+  private static void addDefinition(Path file, String cls, String text) throws Exception {
+    OWLOntologyManager m = OWLManager.createOWLOntologyManager();
+    OWLOntology ont = m.loadOntologyFromOntologyDocument(file.toFile());
+    OWLDataFactory df = m.getOWLDataFactory();
+    m.addAxiom(ont, df.getOWLAnnotationAssertionAxiom(
+        df.getOWLAnnotationProperty(IRI.create("http://purl.obolibrary.org/obo/IAO_0000115")), iri(cls),
+        df.getOWLLiteral(text)));
+    try (var out = Files.newOutputStream(file)) {
+      m.saveOntology(ont, out);
     }
   }
 
@@ -503,9 +860,14 @@ public class IngestJobTest {
   }
 
   private static void buildOntology(Path file) throws Exception {
+    buildOntology(file, IRI.create(BASE + "test"));
+  }
+
+  /** Builds the fixture ontology with {@code ontologyIri} in its header, or with no header IRI when null. */
+  private static void buildOntology(Path file, IRI ontologyIri) throws Exception {
     OWLOntologyManager m = OWLManager.createOWLOntologyManager();
     OWLDataFactory df = m.getOWLDataFactory();
-    OWLOntology ont = m.createOntology(IRI.create(BASE + "test"));
+    OWLOntology ont = ontologyIri == null ? m.createOntology() : m.createOntology(ontologyIri);
 
     OWLClass animal = df.getOWLClass(iri("animal"));
     OWLClass mammal = df.getOWLClass(iri("mammal"));

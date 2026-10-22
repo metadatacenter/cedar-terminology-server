@@ -3,13 +3,18 @@ package org.metadatacenter.terms.store;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class SearchIndexStoreTest {
@@ -204,5 +209,54 @@ public class SearchIndexStoreTest {
   public void aQueryOfPurePunctuationMatchesNothingRatherThanThrowing() throws Exception {
     assertEquals(0, index.search("---", List.of(), 20).size());
     assertEquals(0, index.search("", List.of(), 20).size());
+  }
+
+  /**
+   * Opening the index to serve it never creates the file. A mistyped path used to leave an empty
+   * index there, and the server then reported corpus-wide search as enabled and found nothing.
+   */
+  @Test
+  public void openingForReadRefusesAMissingFileAndCreatesNothing(@TempDir Path dir) {
+    Path missing = dir.resolve("search-index.sqlite");
+
+    assertThrows(SQLException.class, () -> SearchIndexStore.openForRead(missing.toString()));
+    assertFalse(Files.exists(missing), "opening for read created the missing file");
+  }
+
+  /** An index opened to serve it cannot be written, on whichever connection a thread reads. */
+  @Test
+  public void anIndexOpenedForReadRefusesWrites(@TempDir Path dir) throws Exception {
+    Path file = dir.resolve("search-index.sqlite");
+    writeIndex(file);
+    try (SearchIndexStore served = SearchIndexStore.openForRead(file.toString())) {
+      assertThrows(SQLException.class, () -> served.replaceOntology(
+          "EX", "hash-v2", "2026-08-14T00:00:00Z", List.of(), Map.of()));
+      assertEquals("hash-v1", served.indexedVersion("EX").orElseThrow());
+    }
+  }
+
+  /**
+   * The server checks the schema of the index it opens before serving it. On an index already at
+   * the current schema every statement of that check changes nothing, so it passes read-only.
+   */
+  @Test
+  public void theStartupSchemaCheckPassesOnAnIndexOpenedForRead(@TempDir Path dir) throws Exception {
+    Path file = dir.resolve("search-index.sqlite");
+    writeIndex(file);
+    try (SearchIndexStore served = SearchIndexStore.openForRead(file.toString())) {
+      served.initSchema();
+      assertEquals(1, served.indexedOntologyCount());
+      assertEquals(1, served.termCount());
+      assertEquals("melanoma", served.term("EX", "http://ex/melanoma").orElseThrow().prefLabel());
+    }
+  }
+
+  private static void writeIndex(Path file) throws Exception {
+    try (SearchIndexStore writer = SearchIndexStore.openFile(file.toString())) {
+      writer.initSchema();
+      writer.replaceOntology("EX", "hash-v1", "2026-08-13T00:00:00Z",
+          List.of(new SearchIndexStore.IndexedTerm("EX", "http://ex/melanoma", "melanoma", false, null, false, 0)),
+          Map.of());
+    }
   }
 }

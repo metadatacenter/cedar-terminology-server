@@ -2,6 +2,8 @@ package org.metadatacenter.terms;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.metadatacenter.cedar.terminology.validation.integratedsearch.ValueConstraints;
 import org.metadatacenter.terms.bioportal.IBioPortalService;
 import org.metadatacenter.terms.bioportal.customObjects.BpPagedResults;
@@ -10,6 +12,7 @@ import org.metadatacenter.terms.bioportal.domainObjects.BpLinks;
 import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.terms.domainObjects.SearchResult;
 
+import javax.xml.ws.http.HTTPException;
 import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -22,6 +25,7 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -41,6 +45,12 @@ class IntegratedSearchPagingTest {
   private final Map<String, List<BpClass>> ontologies = new LinkedHashMap<>();
   private final Map<String, List<BpClass>> branches = new LinkedHashMap<>();
   private final List<String> upstreamCalls = new ArrayList<>();
+  /**
+   * The scripted BioPortal answers a lookup of one term with these statuses, for the regular lookup
+   * and then the provisional one. It holds no term, so both are 404.
+   */
+  private int classLookupStatus = 404;
+  private int provisionalLookupStatus = 404;
 
   private TerminologyService service() {
     IBioPortalService bioPortal = (IBioPortalService) Proxy.newProxyInstance(getClass().getClassLoader(),
@@ -67,6 +77,14 @@ class IntegratedSearchPagingTest {
             matches.removeIf(c -> !c.getPrefLabel().toLowerCase().contains(q));
             upstreamCalls.add("search:" + args[7]);
             yield page(matches, (int) args[7], (int) args[8]);
+          }
+          case "findBpClassById" -> {
+            upstreamCalls.add(method.getName() + ":" + args[0]);
+            throw new HTTPException(classLookupStatus);
+          }
+          case "findBpProvisionalClassById" -> {
+            upstreamCalls.add(method.getName() + ":" + args[0]);
+            throw new HTTPException(provisionalLookupStatus);
           }
           default -> throw new UnsupportedOperationException(method.getName());
         });
@@ -263,6 +281,62 @@ class IntegratedSearchPagingTest {
     assertEquals(30, walked.size());
     assertEquals("alpha 0000", walked.get(25).getPrefLabel());
     assertEquals("alpha 0001", walked.get(0).getPrefLabel());
+  }
+
+  /**
+   * A move naming a term the source no longer has costs that move and nothing else. Every term the
+   * source does serve is still listed, in order, rather than the search failing for the field.
+   */
+  @Test
+  void aMoveNamingATermTheSourceNoLongerHasLeavesTheRestOfTheSearch() throws Exception {
+    ontologies.put("ONTA", terms("ONTA", "alpha", 30));
+    ValueConstraints vc = constraints("{\"ontologies\":[" + ontology("ONTA") + "],\"actions\":[{\"to\":0,"
+        + "\"action\":\"move\",\"termUri\":\"http://example.org/ONTA/gone\",\"type\":\"OntologyClass\","
+        + "\"source\":\"ONTA\"}]}");
+
+    List<SearchResult> walked = walk(service(), Optional.empty(), vc, 10);
+
+    assertEveryTermOnceInOrder(walked, 30);
+    assertTrue(upstreamCalls.contains("findBpClassById:http://example.org/ONTA/gone"),
+        "the moved term was never looked up, so nothing here tested its absence");
+  }
+
+  /** A refused key or an outage while looking a moved term up is a fault, and is reported as one. */
+  @ParameterizedTest
+  @ValueSource(ints = {401, 403, 500, 503})
+  void aFailureLookingUpAMovedTermIsReportedRatherThanTakenForItsAbsence(int status) throws Exception {
+    ontologies.put("ONTA", terms("ONTA", "alpha", 5));
+    classLookupStatus = status;
+    provisionalLookupStatus = status;
+    ValueConstraints vc = constraints("{\"ontologies\":[" + ontology("ONTA") + "],\"actions\":[{\"to\":0,"
+        + "\"action\":\"move\",\"termUri\":\"http://example.org/ONTA/elsewhere\",\"type\":\"OntologyClass\","
+        + "\"source\":\"ONTA\"}]}");
+
+    HTTPException failure = assertThrows(HTTPException.class,
+        () -> service().integratedSearch(Optional.empty(), vc, 1, 10, "key", null));
+    assertEquals(status, failure.getStatusCode());
+  }
+
+  /**
+   * A moved term is looked up twice, as a regular class and then as a provisional one. A term that is
+   * not provisional answers the second lookup 404 whatever happened to the first, so the fault that
+   * made the first fail is the one reported, with its own status.
+   */
+  @ParameterizedTest
+  @ValueSource(ints = {401, 403, 500, 503})
+  void aFailedRegularLookupIsReportedWhenTheProvisionalLookupFindsNothing(int status) throws Exception {
+    ontologies.put("ONTA", terms("ONTA", "alpha", 5));
+    classLookupStatus = status;
+    provisionalLookupStatus = 404;
+    ValueConstraints vc = constraints("{\"ontologies\":[" + ontology("ONTA") + "],\"actions\":[{\"to\":0,"
+        + "\"action\":\"move\",\"termUri\":\"http://example.org/ONTA/elsewhere\",\"type\":\"OntologyClass\","
+        + "\"source\":\"ONTA\"}]}");
+
+    HTTPException failure = assertThrows(HTTPException.class,
+        () -> service().integratedSearch(Optional.empty(), vc, 1, 10, "key", null));
+    assertEquals(status, failure.getStatusCode());
+    assertTrue(upstreamCalls.contains("findBpProvisionalClassById:http://example.org/ONTA/elsewhere"),
+        "the provisional lookup never ran, so nothing here tested its 404 hiding the fault");
   }
 
   // ---- what is not reordered keeps its source's paging -------------------------------------------
