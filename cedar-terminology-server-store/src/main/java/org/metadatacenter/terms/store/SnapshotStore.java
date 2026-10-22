@@ -168,6 +168,11 @@ public class SnapshotStore implements AutoCloseable {
             object_id  INTEGER NOT NULL,
             PRIMARY KEY (subject_id, predicate, object_id)
           ) WITHOUT ROWID""");
+      // No remaining query looks a relation up by predicate and object. This index served the
+      // reverse lookup subjectsWith, which has been removed. SQLite may scan the index in place of
+      // the table when it reads every relation (allRelations, normalizedContentHash), but the table
+      // holds the same three columns, so nothing depends on it. It stays because stored snapshots
+      // carry it, and dropping it from them needs a store rebuild.
       s.executeUpdate("CREATE INDEX IF NOT EXISTS idx_relation_obj ON relation(predicate, object_id)");
       // Every language variant of a concept's names — its labels and synonyms — with the BCP-47
       // language tag ('' = untagged, BioPortal's "none"). The served pref_label keeps the single
@@ -1132,24 +1137,6 @@ public class SnapshotStore implements AutoCloseable {
       ps.setString(2, descendantIri);
       try (ResultSet rs = ps.executeQuery()) {
         return rs.next();
-      }
-    }
-  }
-
-  /** Typed relations from a concept, as {@code [predicate, objectIri]} pairs. */
-  public List<String[]> relationsFrom(String subjectIri) throws SQLException {
-    try (PreparedStatement ps = connection().prepareStatement("""
-        SELECT r.predicate, o.iri FROM relation r
-        JOIN concept s ON s.id = r.subject_id
-        JOIN concept o ON o.id = r.object_id
-        WHERE s.iri = ? ORDER BY r.predicate, o.iri""")) {
-      ps.setString(1, subjectIri);
-      try (ResultSet rs = ps.executeQuery()) {
-        List<String[]> out = new ArrayList<>();
-        while (rs.next()) {
-          out.add(new String[]{rs.getString(1), rs.getString(2)});
-        }
-        return out;
       }
     }
   }

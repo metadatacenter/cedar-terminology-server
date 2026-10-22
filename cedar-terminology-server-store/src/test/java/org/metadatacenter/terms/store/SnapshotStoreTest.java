@@ -443,18 +443,15 @@ public class SnapshotStoreTest {
   }
 
   @Test
-  public void relations_forwardLookupAndTheStoredSet() throws Exception {
+  public void addRelationIgnoresNonConcepts() throws Exception {
     try (SnapshotStore s = SnapshotStore.openInMemory()) {
       s.initSchema();
       s.addConcept("drug", "Drug");
       s.addConcept("aspirin", "Aspirin");
       s.addRelation("drug", "has_ingredient", "aspirin");
       s.addRelation("drug", "has_ingredient", "ghost"); // object not a concept -> ignored
-      List<String[]> from = s.relationsFrom("drug");
-      assertEquals(1, from.size());
-      assertEquals("has_ingredient", from.get(0)[0]);
-      assertEquals("aspirin", from.get(0)[1]);
-      // A snapshot diff reads the relations this way, and the one to a non-concept is not among them.
+      // A snapshot diff reads the relations this way. The stored relation keeps its direction, and
+      // the one to a non-concept is not among them.
       List<String[]> all = s.allRelations();
       assertEquals(1, all.size());
       assertArrayEquals(new String[]{"drug", "has_ingredient", "aspirin"}, all.get(0));
