@@ -4,9 +4,10 @@ import java.util.List;
 
 /**
  * The vocabulary difference between two versions of an ontology in the local store: concept,
- * subsumption-edge, and typed-relation counts before/after with additions, removals, and
- * content changes. This is what a template pinned to an older version would see has changed in a
- * newer one.
+ * hierarchy-edge, and typed-relation counts before/after with additions, removals, and content
+ * changes. A hierarchy edge is a subsumption, a broader term or, for an ontology configured with
+ * one, a partonomy relation. This is what a template pinned to an older version would see has
+ * changed in a newer one.
  */
 public record VersionDiff(
     String fromVersion,

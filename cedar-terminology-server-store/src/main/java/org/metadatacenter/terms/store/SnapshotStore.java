@@ -623,20 +623,25 @@ public class SnapshotStore implements AutoCloseable {
    * A content hash of the normalized extracted model, independent of the source file's bytes and
    * serialization (VERSIONING-ROADMAP "The Model" §4.3). Two snapshots with the same served content hash to the
    * same value even when they came from different serializations (OBO vs OWL) or backends; a genuine
-   * content change gives a different hash. This is the alternative to the raw-file hash that today's
-   * {@code version_id} uses.
+   * content change gives a different hash. Ingestion takes it, with labels, as the snapshot's
+   * {@code version_id}.
    *
    * The canonical form is built over IRIs (stable, source-independent), never internal row ids:
    * <ul>
    *   <li>every concept, sorted by IRI, as {@code C<TAB>iri<TAB>obsolete} — and, when
    *       {@code includeLabels}, also {@code <TAB>prefLabel<TAB>replacedBy};</li>
-   *   <li>every subsumption edge, sorted, as {@code E<TAB>childIri<TAB>parentIri<TAB>sourcePred};</li>
-   *   <li>every typed relation, sorted, as {@code R<TAB>subjectIri<TAB>predicate<TAB>objectIri}.</li>
+   *   <li>every hierarchy edge, sorted, as {@code E<TAB>childIri<TAB>parentIri<TAB>sourcePred}. Each
+   *       edge records the predicate it came from: a subsumption, a broader term or, for an ontology
+   *       configured with one, a partonomy relation;</li>
+   *   <li>every typed relation, sorted, as {@code R<TAB>subjectIri<TAB>predicate<TAB>objectIri};</li>
+   *   <li>every ontology property with its kind, label, obsolescence, literals and parents, through
+   *       {@link SnapshotProperties#updateHash}. A snapshot extracted before properties were kept has
+   *       none, and hashes as it always did.</li>
    * </ul>
-   * Edges and relations are structure and are always included; {@code includeLabels} is the one open
-   * knob (§4.3) — structure-only identity vs identity that also moves when a display label changes.
-   * Section tags (C/E/R) prevent cross-section collisions; the binary default collation makes the
-   * SQL ordering deterministic.
+   * Edges, relations and properties are always included; {@code includeLabels} is the one open knob
+   * (§4.3) — structure-only identity vs identity that also moves when a display label changes. Section
+   * tags (C/E/R) and the properties' own length-prefixed encoding prevent cross-section collisions;
+   * the binary default collation makes the SQL ordering deterministic.
    */
   public String normalizedContentHash(boolean includeLabels) throws SQLException {
     java.security.MessageDigest md;
