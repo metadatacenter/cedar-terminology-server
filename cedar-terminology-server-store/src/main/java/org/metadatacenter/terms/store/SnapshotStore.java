@@ -195,9 +195,11 @@ public class SnapshotStore implements AutoCloseable {
       // tag. Several are allowed: a term can carry a definition and an alternative one, and which
       // property it came from is the difference between a definition and an editor's note.
       //
-      // Outside content identity, exactly as the label table is and for the same reason: a snapshot
-      // is identified by a hash over its concepts, labels and edges, so admitting definitions to it
-      // would change the identity of every snapshot already written and break every pin with it.
+      // This table stays outside content identity, as the label table does and for the same reason.
+      // A snapshot is identified by a hash over its concepts with their preferred labels, its
+      // hierarchy edges, its typed relations and its ontology properties. Admitting definitions to
+      // that hash would change the identity of every snapshot already written and break every pin
+      // with it.
       s.executeUpdate("""
           CREATE TABLE IF NOT EXISTS definition (
             concept_id INTEGER NOT NULL,
