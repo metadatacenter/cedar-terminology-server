@@ -39,6 +39,20 @@ public class ValueConstraints extends RejectUnknownFields {
 
   public ValueConstraints() { }
 
+  /**
+   * Part of a field's constraints, for a backend that answers each part on its own and combines the
+   * answers. Carries no actions, which apply to the combined answer rather than to a part.
+   */
+  public static ValueConstraints part(List<OntologyValueConstraint> ontologies, List<BranchValueConstraint> branches,
+                                      List<ValueSetValueConstraint> valueSets, List<ClassValueConstraint> classes) {
+    ValueConstraints part = new ValueConstraints();
+    part.ontologies = ontologies;
+    part.branches = branches;
+    part.valueSets = valueSets;
+    part.classes = classes;
+    return part;
+  }
+
   public List<OntologyValueConstraint> getOntologies() {
     return ontologies;
   }

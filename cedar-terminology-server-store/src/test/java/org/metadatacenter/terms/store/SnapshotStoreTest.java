@@ -499,6 +499,28 @@ public class SnapshotStoreTest {
   }
 
   @Test
+  public void aBranchSearchReachesNoDeeperThanItsDepth() throws Exception {
+    java.util.function.Function<List<SnapshotStore.Concept>, List<String>> iris =
+        rows -> rows.stream().map(SnapshotStore.Concept::iri).sorted().toList();
+    assertEquals(List.of("animal", "pet"), iris.apply(store.searchByLabelUnderRoot("thing", "", false, 0, 1)));
+    assertEquals(List.of("animal", "dog", "mammal", "pet"),
+        iris.apply(store.searchByLabelUnderRoot("thing", "", false, 0, 2)),
+        "dog is two levels down through pet, though three through animal");
+    assertEquals(List.of("animal", "cat", "dog", "mammal", "pet"),
+        iris.apply(store.searchByLabelUnderRoot("thing", "", false, 0, 0)), "0 is every level");
+    assertEquals(List.of("pet"), iris.apply(store.searchByLabelUnderRoot("thing", "pe", false, 0, 1)));
+  }
+
+  @Test
+  public void aBranchDepthIsCountedOverTheEdgesParentsReads() throws Exception {
+    try (SnapshotStore s = definedUnderItsGenus()) {
+      assertEquals(List.of("organ"),
+          s.searchByLabelUnderRoot("disease", "", false, 0, 1).stream().map(SnapshotStore.Concept::iri).toList(),
+          "a genus edge another parent implies is no shortcut to the first level");
+    }
+  }
+
+  @Test
   public void descendants_areTransitive() throws Exception {
     assertEquals(List.of("animal", "cat", "dog", "mammal", "pet"), store.descendants("thing"));
     assertEquals(List.of("cat", "dog"), store.descendants("mammal"));

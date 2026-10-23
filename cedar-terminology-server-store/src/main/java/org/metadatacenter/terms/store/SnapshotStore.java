@@ -1292,17 +1292,32 @@ public class SnapshotStore implements AutoCloseable {
    * {@code limit} ({@code <= 0} means no cap).
    */
   public List<Concept> searchByLabel(String query, boolean prefixOnly, int limit) throws SQLException {
-    return labelSearch(null, query, prefixOnly, limit);
+    return labelSearch(null, query, prefixOnly, limit, 0);
   }
 
   /** As {@link #searchByLabel}, but restricted to the strict descendants of {@code rootIri}; the
    * branch root itself is excluded, matching BioPortal's branch semantics. */
   public List<Concept> searchByLabelUnderRoot(String rootIri, String query, boolean prefixOnly, int limit)
       throws SQLException {
-    return labelSearch(rootIri, query, prefixOnly, limit);
+    return labelSearch(rootIri, query, prefixOnly, limit, 0);
   }
 
-  private List<Concept> labelSearch(String rootIri, String query, boolean prefixOnly, int limit) throws SQLException {
+  /**
+   * As {@link #searchByLabelUnderRoot}, but no more than {@code maxDepth} levels below the root, or at
+   * any depth where it is 0 or less.
+   *
+   * A branch constraint carries the depth its author chose, and the membership check honours it: a
+   * term is in a depth-1 branch only when the root is one of its parents. A search that offered the
+   * whole subtree offered terms the check then refused. The levels are counted over the same direct
+   * edges {@link #parents} reads, so the two agree on what a level is.
+   */
+  public List<Concept> searchByLabelUnderRoot(String rootIri, String query, boolean prefixOnly, int limit,
+                                              int maxDepth) throws SQLException {
+    return labelSearch(rootIri, query, prefixOnly, limit, maxDepth);
+  }
+
+  private List<Concept> labelSearch(String rootIri, String query, boolean prefixOnly, int limit, int maxDepth)
+      throws SQLException {
     String escaped = escapeLike(query == null ? "" : query);
     String pattern = prefixOnly ? escaped + "%" : "%" + escaped + "%";
     // A non-empty query also matches any captured name — a label in any language, or a synonym — so a
@@ -1314,7 +1329,19 @@ public class SnapshotStore implements AutoCloseable {
         ? "(COALESCE(c.pref_label, '') LIKE ? ESCAPE '\\'"
             + " OR EXISTS(SELECT 1 FROM label l WHERE l.concept_id = c.id AND l.value LIKE ? ESCAPE '\\'))"
         : "COALESCE(c.pref_label, '') LIKE ? ESCAPE '\\'";
-    StringBuilder sql = new StringBuilder(
+    boolean bounded = rootIri != null && maxDepth > 0;
+    StringBuilder sql = new StringBuilder();
+    if (bounded) {
+      // Level by level down the direct edges. UNION stops a node reached twice at one level from being
+      // walked twice, and the bound stops a cycle.
+      sql.append("WITH RECURSIVE down(id, depth) AS (\n" +
+                 "    SELECT e.child_id, 1 FROM edge e JOIN concept r ON r.id = e.parent_id\n" +
+                 "    WHERE r.iri = ? AND ").append(DIRECT_EDGE).append("\n" +
+                 "  UNION\n" +
+                 "    SELECT e.child_id, d.depth + 1 FROM down d JOIN edge e ON e.parent_id = d.id\n" +
+                 "    WHERE d.depth < ? AND ").append(DIRECT_EDGE).append(")\n");
+    }
+    sql.append(
         "SELECT c.iri, c.pref_label, c.obsolete,\n" +
         "       EXISTS(SELECT 1 FROM edge e2 WHERE e2.parent_id = c.id) AS has_children\n" +
         "FROM concept c\n");
@@ -1329,11 +1356,13 @@ public class SnapshotStore implements AutoCloseable {
       // semantics (a branch value constraint offers the subtypes of the class, not the class itself).
       // The closure is non-reflexive, but a broader/narrower cycle (which some SKOS vocabularies
       // contain, e.g. HRAVS) can make a node reach itself; the explicit c.iri <> root guards that.
-      sql.append("WHERE c.id IN (\n" +
-                 "        SELECT cl.descendant_id FROM closure cl\n" +
-                 "        JOIN concept a ON a.id = cl.ancestor_id WHERE a.iri = ?)\n" +
-                 "  AND c.iri <> ?\n" +
-                 "  AND ").append(match).append('\n');
+      sql.append(bounded
+              ? "WHERE c.id IN (SELECT id FROM down)\n"
+              : "WHERE c.id IN (\n" +
+                "        SELECT cl.descendant_id FROM closure cl\n" +
+                "        JOIN concept a ON a.id = cl.ancestor_id WHERE a.iri = ?)\n")
+          .append("  AND c.iri <> ?\n" +
+                  "  AND ").append(match).append('\n');
     } else {
       sql.append("WHERE ").append(match).append('\n');
     }
@@ -1343,7 +1372,11 @@ public class SnapshotStore implements AutoCloseable {
     }
     try (PreparedStatement ps = connection().prepareStatement(sql.toString())) {
       int i = 1;
-      if (rootIri != null) {
+      if (bounded) {
+        ps.setString(i++, rootIri);
+        ps.setInt(i++, maxDepth);
+        ps.setString(i++, rootIri);
+      } else if (rootIri != null) {
         ps.setString(i++, rootIri);
         ps.setString(i++, rootIri);
       }

@@ -450,6 +450,42 @@ public class SqliteTerminologyServiceTest {
   }
 
   @Test
+  public void integratedSearch_singleBranchReachesNoDeeperThanItsDepth() throws Exception {
+    // thing's direct subtypes are animal and pet; mammal, cat and dog lie deeper.
+    PagedResults<SearchResult> shallow = integrated(Optional.empty(),
+        "{\"branches\":[{\"acronym\":\"EX\",\"uri\":\"" + iri("thing") + "\",\"maxDepth\":1}]}");
+    assertEquals(List.of(iri("animal"), iri("pet")), ldIds(shallow.getCollection()).stream().sorted().toList());
+    PagedResults<SearchResult> every = integrated(Optional.empty(),
+        "{\"branches\":[{\"acronym\":\"EX\",\"uri\":\"" + iri("thing") + "\",\"maxDepth\":0}]}");
+    assertEquals(Integer.valueOf(5), every.getTotalCount());
+  }
+
+  @Test
+  public void integratedSearch_mixedConstraintsAreTheUnionOfTheirParts() throws Exception {
+    // A depth-1 branch under mammal (cat, dog), a value set under pet (dog) and an enumerated class
+    // (Zebra). Dog is reached twice and offered once; the whole is ordered by label for a browse.
+    String json = "{\"branches\":[{\"acronym\":\"EX\",\"uri\":\"" + iri("mammal") + "\",\"maxDepth\":1}],"
+        + "\"valueSets\":[{\"vsCollection\":\"EX\",\"uri\":\"" + iri("pet") + "\"}],"
+        + "\"classes\":[{\"uri\":\"" + iri("zebra") + "\",\"prefLabel\":\"Zebra\",\"type\":\"OntologyClass\","
+        + "\"source\":\"EX\"}]}";
+    PagedResults<SearchResult> browse = integrated(Optional.empty(), json);
+    assertEquals(List.of(iri("cat"), iri("dog"), iri("zebra")), ldIds(browse.getCollection()));
+    assertEquals(Integer.valueOf(3), browse.getTotalCount());
+    assertEquals(List.of(iri("dog")), ldIds(integrated(Optional.of("do"), json).getCollection()));
+  }
+
+  @Test
+  public void integratedSearch_mixedConstraintsHonourADepthAcrossParts() throws Exception {
+    // thing at depth 1 offers animal and pet, and the class part adds cat, three levels down: a depth
+    // limits what its own branch contributes, never what another part allows.
+    String json = "{\"branches\":[{\"acronym\":\"EX\",\"uri\":\"" + iri("thing") + "\",\"maxDepth\":1}],"
+        + "\"classes\":[{\"uri\":\"" + iri("cat") + "\",\"prefLabel\":\"Cat\",\"type\":\"OntologyClass\","
+        + "\"source\":\"EX\"}]}";
+    assertEquals(List.of(iri("animal"), iri("cat"), iri("pet")),
+        ldIds(integrated(Optional.empty(), json).getCollection()));
+  }
+
+  @Test
   public void integratedSearch_multiOntologyNotServedLocally() {
     assertThrows(UnsupportedOperationException.class,
         () -> integrated(Optional.of("x"), "{\"ontologies\":[{\"acronym\":\"EX\"},{\"acronym\":\"OTHER\"}]}"));
