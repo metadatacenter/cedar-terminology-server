@@ -437,6 +437,15 @@ public class SnapshotStoreTest {
   }
 
   @Test
+  public void aPathRunsThroughTheFirstParentByIriAndNeverThroughAnImpliedGenus() throws Exception {
+    assertEquals(java.util.Map.of("animal", "thing", "mammal", "animal", "cat", "mammal", "dog", "mammal",
+        "pet", "thing"), store.pathParents(), "dog has two parents, and mammal sorts before pet");
+    try (SnapshotStore s = definedUnderItsGenus()) {
+      assertEquals(java.util.Map.of("organ", "disease", "adrenal", "organ"), s.pathParents());
+    }
+  }
+
+  @Test
   public void aGenusEdgeIsKeptWhereNothingElseImpliesIt() throws Exception {
     try (SnapshotStore s = SnapshotStore.openInMemory()) {
       s.initSchema();

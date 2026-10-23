@@ -89,13 +89,15 @@ public class SearchIndexJob {
       Map<String, Integer> descendants = store.descendantCounts();
       // One parent per concept, because a label does not always identify a class: IRAEO labels
       // fifteen classes "Disease", one under each body system, and only the parent tells them apart.
+      // It is the parent the release's own path runs through, so a search row names the chain the
+      // tree it opens draws.
       Map<String, String[]> parents = new HashMap<>();
       Map<String, String> labels = new HashMap<>();
       for (SnapshotStore.Concept concept : store.allConceptsDetailed()) {
         labels.put(concept.iri(), concept.prefLabel());
       }
-      for (String[] edge : store.allEdges()) {
-        parents.putIfAbsent(edge[0], new String[] {edge[1], null});
+      for (Map.Entry<String, String> step : store.pathParents().entrySet()) {
+        parents.put(step.getKey(), new String[] {step.getValue(), null});
       }
       for (String[] parent : parents.values()) {
         parent[1] = labels.get(parent[0]);

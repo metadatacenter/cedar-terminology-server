@@ -1421,6 +1421,31 @@ public class SnapshotStore implements AutoCloseable {
     }
   }
 
+  /**
+   * The parent each concept's path runs through, for every concept that has one: the first of its
+   * {@link #parents} by IRI.
+   *
+   * A path names one chain, and a concept with several parents has several. This is the step every
+   * reader of one release takes, so a search row and the tree it opens draw the same chain. Taking
+   * whichever edge a scan reached first made the choice depend on internal row ids: DOID's
+   * "cardiovascular system disease" was filed directly under "disease" by a genus edge, rather than
+   * under "disease of anatomical entity" where DOID asserts it.
+   */
+  public Map<String, String> pathParents() throws SQLException {
+    try (Statement s = connection().createStatement();
+         ResultSet rs = s.executeQuery("""
+             SELECT c.iri, MIN(p.iri) FROM edge e
+             JOIN concept c ON c.id = e.child_id
+             JOIN concept p ON p.id = e.parent_id
+             WHERE """ + DIRECT_EDGE + " GROUP BY e.child_id")) {
+      Map<String, String> out = new HashMap<>();
+      while (rs.next()) {
+        out.put(rs.getString(1), rs.getString(2));
+      }
+      return out;
+    }
+  }
+
   /** Every direct edge as a {@code [childIri, parentIri]} pair. */
   public List<String[]> allEdges() throws SQLException {
     try (Statement s = connection().createStatement();

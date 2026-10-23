@@ -855,6 +855,7 @@ public class VersionAwareSearchService {
       if (parents.isEmpty()) {
         break;
       }
+      // The first by IRI, the step the index records for a term too (SnapshotStore.pathParents).
       String parent = parents.get(0);
       if (parent.equals(current) || path.stream().anyMatch(step -> step.termIri().equals(parent))) {
         break;
