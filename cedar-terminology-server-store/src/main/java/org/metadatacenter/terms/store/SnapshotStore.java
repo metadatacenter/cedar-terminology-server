@@ -35,6 +35,35 @@ import java.util.Optional;
  */
 public class SnapshotStore implements AutoCloseable {
 
+  /** The source predicate of an edge drawn to the named genus of an {@code owl:equivalentClass} definition. */
+  public static final String GENUS_PREDICATE = "equivalentClass:genus";
+
+  /**
+   * Keeps an edge {@code e} unless it is a genus edge that another of the child's parents implies.
+   *
+   * A genus edge is a true subsumption, and for a class with no other named parent it is the only
+   * place the class can be drawn: OBI's defined assays are the reason the extractor records it. Most
+   * defined classes also assert where they belong, and then the genus is an ancestor already. DOID
+   * defines 189 classes as "disease and has_location some X" while filing each under its organ
+   * system, so every read of a direct edge drew all 189 directly under "disease" beside the 8
+   * classes DOID asserts there.
+   *
+   * The edge stays in the snapshot. Edges enter the content hash, so dropping it at extraction would
+   * change the identifier of every release that has one, and every constraint pinned to it. It is
+   * left out of the reads of direct edges, where another parent below the genus says the same thing.
+   * A parent the child is itself an ancestor of does not count: it sits below the genus only through
+   * the child, and counting it would let a cycle hide a class from its genus. The closure is unchanged by this: whatever the edge implies, the other parent
+   * implies too.
+   */
+  private static final String DIRECT_EDGE = """
+      (e.source_pred IS NOT '%s' OR NOT EXISTS (
+        SELECT 1 FROM edge o
+        JOIN closure up ON up.descendant_id = o.parent_id AND up.ancestor_id = e.parent_id
+        WHERE o.child_id = e.child_id AND o.parent_id <> e.parent_id
+          AND NOT EXISTS (SELECT 1 FROM closure cy
+                          WHERE cy.ancestor_id = e.child_id AND cy.descendant_id = o.parent_id)))"""
+      .formatted(GENUS_PREDICATE);
+
   /**
    * A concept row with the fields callers commonly need together: its IRI, preferred label,
    * obsolete flag, and whether it has any direct children (so a UI can render an expand control).
@@ -974,13 +1003,13 @@ public class SnapshotStore implements AutoCloseable {
     }
   }
 
-  /** Direct children (subclasses) of a concept. */
+  /** Direct children (subclasses) of a concept, leaving out a genus edge another parent implies. */
   public List<String> children(String parentIri) throws SQLException {
     return queryIris("""
         SELECT c.iri FROM edge e
         JOIN concept c ON c.id = e.child_id
         JOIN concept p ON p.id = e.parent_id
-        WHERE p.iri = ? ORDER BY c.iri""", parentIri);
+        WHERE p.iri = ? AND """ + DIRECT_EDGE + " ORDER BY c.iri", parentIri);
   }
 
   /**
@@ -988,9 +1017,8 @@ public class SnapshotStore implements AutoCloseable {
    *
    * Ordering and limiting together, rather than a caller taking the first n of {@link #children} and
    * sorting those: children come back by IRI, so taking the first n of that and then sorting them
-   * for display yields an arbitrary subset presented as an alphabetical list. It also matches how
-   * the search index serves the same question for the current release, so pinning a release changes
-   * which release is read and nothing else.
+   * for display yields an arbitrary subset presented as an alphabetical list. The same edges as
+   * {@link #children}, so a genus edge another parent implies is left out here too.
    *
    * Case-insensitively, because the order is read by a person. SQLite's default collation compares
    * bytes, which puts every capitalised label before every lowercase one: DOID's "disease" listed
@@ -1006,7 +1034,8 @@ public class SnapshotStore implements AutoCloseable {
         SELECT c.iri, c.pref_label FROM edge e
         JOIN concept c ON c.id = e.child_id
         JOIN concept p ON p.id = e.parent_id
-        WHERE p.iri = ? ORDER BY c.pref_label COLLATE NOCASE, c.pref_label, c.iri LIMIT ? OFFSET ?""")) {
+        WHERE p.iri = ? AND """ + DIRECT_EDGE
+        + " ORDER BY c.pref_label COLLATE NOCASE, c.pref_label, c.iri LIMIT ? OFFSET ?")) {
       ps.setString(1, parentIri);
       ps.setInt(2, limit);
       ps.setInt(3, offset);
@@ -1023,12 +1052,12 @@ public class SnapshotStore implements AutoCloseable {
   public record LabelledConcept(String iri, String prefLabel) {
   }
 
-  /** How many direct children a concept has, without reading them. */
+  /** How many direct children a concept has, without reading them: the edges {@link #children} reads. */
   public int childCount(String parentIri) throws SQLException {
     try (PreparedStatement ps = connection().prepareStatement("""
         SELECT COUNT(*) FROM edge e
         JOIN concept p ON p.id = e.parent_id
-        WHERE p.iri = ?""")) {
+        WHERE p.iri = ? AND """ + DIRECT_EDGE)) {
       ps.setString(1, parentIri);
       try (ResultSet rs = ps.executeQuery()) {
         return rs.next() ? rs.getInt(1) : 0;
@@ -1036,13 +1065,13 @@ public class SnapshotStore implements AutoCloseable {
     }
   }
 
-  /** Direct parents of a concept. */
+  /** Direct parents of a concept, leaving out a genus edge another parent implies. */
   public List<String> parents(String childIri) throws SQLException {
     return queryIris("""
         SELECT p.iri FROM edge e
         JOIN concept c ON c.id = e.child_id
         JOIN concept p ON p.id = e.parent_id
-        WHERE c.iri = ? ORDER BY p.iri""", childIri);
+        WHERE c.iri = ? AND """ + DIRECT_EDGE + " ORDER BY p.iri", childIri);
   }
 
   /** All descendants of a concept (value-set expansion). */

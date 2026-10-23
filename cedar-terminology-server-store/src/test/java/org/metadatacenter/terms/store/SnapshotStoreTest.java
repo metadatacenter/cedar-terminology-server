@@ -401,6 +401,94 @@ public class SnapshotStoreTest {
     assertEquals(List.of("thing"), store.parents("animal"));
   }
 
+  /*
+   * Genus edges another parent implies.
+   *
+   * DOID defines "adrenal cortex disease" as "disease and has_location some adrenal cortex" and files
+   * it under "adrenal gland disease". The extractor records both edges, and every direct read used to
+   * draw the class straight under "disease" as well, 189 times over.
+   */
+
+  /** disease > organ disease > adrenal disease, with a genus edge from adrenal disease to disease. */
+  private static SnapshotStore definedUnderItsGenus() throws SQLException {
+    SnapshotStore s = SnapshotStore.openInMemory();
+    s.initSchema();
+    s.addConcept("disease", "Disease");
+    s.addConcept("organ", "Organ disease");
+    s.addConcept("adrenal", "Adrenal disease");
+    s.addEdge("organ", "disease", "rdfs:subClassOf");
+    s.addEdge("adrenal", "organ", "rdfs:subClassOf");
+    s.addEdge("adrenal", "disease", SnapshotStore.GENUS_PREDICATE);
+    s.materialize();
+    return s;
+  }
+
+  @Test
+  public void aGenusEdgeAnotherParentImpliesIsNotADirectEdge() throws Exception {
+    try (SnapshotStore s = definedUnderItsGenus()) {
+      assertEquals(List.of("organ"), s.children("disease"));
+      assertEquals(1, s.childCount("disease"));
+      assertEquals(List.of("organ"),
+          s.childrenByLabel("disease", 0, 10).stream().map(SnapshotStore.LabelledConcept::iri).toList());
+      assertEquals(List.of("organ"), s.parents("adrenal"));
+      assertEquals(List.of("adrenal", "organ"), s.descendants("disease"), "the closure is unchanged");
+      assertEquals(3, s.allEdges().size(), "the edge is still recorded, and so still hashed");
+    }
+  }
+
+  @Test
+  public void aGenusEdgeIsKeptWhereNothingElseImpliesIt() throws Exception {
+    try (SnapshotStore s = SnapshotStore.openInMemory()) {
+      s.initSchema();
+      s.addConcept("assay", "Assay");
+      s.addConcept("mhc", "MHC assay");
+      s.addConcept("kit", "Kit");
+      s.addConcept("boxed", "Boxed assay");
+      // OBI's case: a defined class whose only parent is its genus.
+      s.addEdge("mhc", "assay", SnapshotStore.GENUS_PREDICATE);
+      // A second parent that is not below the genus says nothing about the genus.
+      s.addEdge("boxed", "assay", SnapshotStore.GENUS_PREDICATE);
+      s.addEdge("boxed", "kit", "rdfs:subClassOf");
+      s.materialize();
+
+      assertEquals(List.of("boxed", "mhc"), s.children("assay"));
+      assertEquals(List.of("assay", "kit"), s.parents("boxed"));
+    }
+  }
+
+  @Test
+  public void anAssertedEdgeIsNeverLeftOutForBeingImplied() throws Exception {
+    // A subClassOf edge to an ancestor of another parent is redundant too, but it is what the
+    // ontology says, so it is drawn.
+    try (SnapshotStore s = SnapshotStore.openInMemory()) {
+      s.initSchema();
+      s.addConcept("a", "A");
+      s.addConcept("b", "B");
+      s.addConcept("c", "C");
+      s.addEdge("b", "a", "rdfs:subClassOf");
+      s.addEdge("c", "b", "rdfs:subClassOf");
+      s.addEdge("c", "a", "rdfs:subClassOf");
+      s.materialize();
+      assertEquals(List.of("b", "c"), s.children("a"));
+    }
+  }
+
+  @Test
+  public void aCycleDoesNotHideAClassFromItsGenus() throws Exception {
+    try (SnapshotStore s = SnapshotStore.openInMemory()) {
+      s.initSchema();
+      s.addConcept("genus", "Genus");
+      s.addConcept("c", "C");
+      s.addConcept("q", "Q");
+      s.addEdge("c", "genus", SnapshotStore.GENUS_PREDICATE);
+      // q is c's other parent and also its child, so q sits below the genus only through c.
+      s.addEdge("c", "q", "rdfs:subClassOf");
+      s.addEdge("q", "c", "rdfs:subClassOf");
+      s.materialize();
+      assertEquals(List.of("c"), s.children("genus"));
+    }
+  }
+
   @Test
   public void descendants_areTransitive() throws Exception {
     assertEquals(List.of("animal", "cat", "dog", "mammal", "pet"), store.descendants("thing"));

@@ -47,6 +47,9 @@ import java.util.Set;
  *       the ubiquitous OBO genus-differentia pattern (e.g. {@code assay measuring X ≡ assay and
  *       (has_specified_input some X)}); the genus {@code assay} is the parent.</li>
  * </ul>
+ * A genus edge is recorded even where another parent of the class already sits below the genus.
+ * The snapshot leaves such an edge out of its reads of direct edges rather than this extractor
+ * leaving it out of the snapshot, because edges enter a release's content hash.
  * Restriction fillers (the {@code X} in {@code part_of some X}) are not edges, so compositional
  * relations do not pollute the {@code is_a} tree. {@code owl:Thing} and {@code owl:Nothing} are not
  * materialized, so classes with no named superclass become roots.
@@ -163,7 +166,7 @@ public class OwlHierarchyExtractor implements HierarchyExtractor {
           // Only take the genus from an anonymous definition (an intersection); a named class on
           // the other side is an equivalence, not a subsumption, and is not an edge.
           if (definiens != e && definiens.isAnonymous()) {
-            edgeCount += addParents(store, child, namedParents(definiens), "equivalentClass:genus");
+            edgeCount += addParents(store, child, namedParents(definiens), SnapshotStore.GENUS_PREDICATE);
           }
         }
       }
