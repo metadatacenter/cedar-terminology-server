@@ -4473,7 +4473,7 @@
     },
     "/search/hierarchy" : {
       "get" : {
-        "description" : "The chain of ancestors above a term, root first, and what hangs directly below it. A search result names a term; whether it is the right term is a question about its neighbourhood, and two concepts with one label are told apart by nothing else. With versionId, answered from that release's snapshot: a hierarchy belongs to a release, and a term's parent can move between two of them. Without it, from the cross-snapshot index, which holds each ontology's current version. Children are alphabetical and capped; offset asks for the next page of them.",
+        "description" : "The chain of ancestors above a term, root first, and what hangs directly below it. A search result names a term; whether it is the right term is a question about its neighbourhood, and two concepts with one label are told apart by nothing else. Always answered from one release's snapshot, because a hierarchy belongs to a release and a term's parent can move between two of them. With versionId, the release is that one. Without it, the release is the one an unpinned search of the source reads. Children are alphabetical and capped; offset asks for the next page of them.",
         "operationId" : "versionAwareSearchHierarchy",
         "parameters" : [ {
           "in" : "query",
@@ -4540,7 +4540,7 @@
                 }
               }
             },
-            "description" : "No such release, a release without that term, or a term the index does not hold"
+            "description" : "No such release, a release without that term, or a term the current release does not hold"
           },
           "503" : {
             "content" : {

@@ -583,10 +583,10 @@ public class LocalStoreResourceTest {
   /* ------------------------------------------------------------------------------------------------
    * GET /search/hierarchy — where a term sits, at the same root path as POST /search.
    *
-   * Every read here names a release, so it is answered from a snapshot. The unpinned path reads the
-   * cross-snapshot index instead, which this fixture deliberately does not build: an index would
-   * take over the searches above, which exist to prove the snapshots serve them. What the service
-   * does with an index is covered by VersionAwareSearchServiceTest in the core module.
+   * Every read is answered from a snapshot: the release named, or without a name the current one.
+   * This fixture deliberately builds no index, because an index would take over the searches above,
+   * which exist to prove the snapshots serve them. Which release an index makes current is covered by
+   * VersionAwareSearchServiceTest in the core module.
    * --------------------------------------------------------------------------------------------- */
 
   private static Response hierarchyResponse(String query) {
@@ -654,6 +654,14 @@ public class LocalStoreResourceTest {
     Assertions.assertEquals(Set.of(BASE + "cancer"),
         childIris(getHierarchy(termAt("disease", "v1"), Status.OK)),
         "v1 predates infection, so a read pinned to it must not see the term");
+  }
+
+  @Test
+  public void anUnpinnedHierarchyIsReadAtTheCurrentRelease() {
+    String disease = "sourceAcronym=" + ONT + "&termIri=" + URLEncoder.encode(BASE + "disease", StandardCharsets.UTF_8);
+    JsonNode json = getHierarchy(disease, Status.OK);
+    Assertions.assertEquals(Set.of(BASE + "cancer", BASE + "infection"), childIris(json));
+    Assertions.assertEquals("v2", json.get("source").get("version").get("id").asText());
   }
 
   @Test
