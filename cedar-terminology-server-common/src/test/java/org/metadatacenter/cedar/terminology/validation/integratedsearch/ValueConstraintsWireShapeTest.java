@@ -45,6 +45,20 @@ class ValueConstraintsWireShapeTest {
   }
 
   @Test
+  void aPartCarriesItsConstraintsAndNoActions() throws Exception {
+    BranchValueConstraint branch = mapper.readValue(
+        "{\"acronym\":\"DOID\",\"uri\":\"http://purl.obolibrary.org/obo/DOID_4\",\"maxDepth\":1}",
+        BranchValueConstraint.class);
+    ValueConstraints part = ValueConstraints.part(java.util.List.of(), java.util.List.of(branch),
+        java.util.List.of(), java.util.List.of());
+    assertEquals(java.util.List.of(branch), part.getBranches());
+    assertEquals(java.util.List.of(), part.getOntologies());
+    assertEquals(java.util.List.of(), part.getValueSets());
+    assertEquals(java.util.List.of(), part.getClasses());
+    assertNull(part.getActions(), "actions apply to the combined answer, not to a part");
+  }
+
+  @Test
   void structuredVersionRetainsTheArtifactLibraryShape() throws Exception {
     String json = "{\"acronym\":\"DOID\",\"version\":{" +
         "\"id\":\"sha256:123\",\"effectiveDate\":\"2026-07-01\"," +

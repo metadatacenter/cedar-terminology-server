@@ -35,9 +35,11 @@ public final class HierarchyConfigs {
 
   public static Optional<HierarchyConfig> forOntology(String acronym) {
     if ("RXNORM".equalsIgnoreCase(acronym)) {
-      // RxNorm's hierarchy is the isa relation, not subClassOf; labels are skos:prefLabel. Retain
-      // its other IRI-valued relations (has_ingredient, has_dose_form, tradename_of, ...) as Level-1
-      // typed relations so ingredients/products (which have no isa parent) remain reachable.
+      // RxNorm's hierarchy is the isa relation, not subClassOf, and its labels are skos:prefLabel.
+      // Ingredients and products have no isa parent, so they appear in the hierarchy only as roots.
+      // RxNorm's other IRI-valued relations between concepts (has_ingredient, has_dose_form,
+      // tradename_of, ...) are kept as Level-1 typed relations. They enter the snapshot's content
+      // hash and the diff between two versions, and no query navigates by them.
       return Optional.of(new HierarchyConfig(Set.of(RXNORM_ISA), Set.of(), SKOS_PREF_LABEL, "subsumption", true));
     }
     if ("GDMT".equalsIgnoreCase(acronym)) {

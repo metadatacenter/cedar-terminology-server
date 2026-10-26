@@ -23,7 +23,9 @@ import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -599,7 +601,8 @@ public class SqliteTerminologyService implements ITerminologyService {
    * <p>Limitations, deliberately left to the equivalence harness to quantify: matching is a plain
    * case-insensitive substring on the preferred label, not BioPortal's Solr behaviour, so
    * {@code suggest} is treated the same as a normal search; and {@code maxDepth} is not honoured —
-   * a branch search returns the whole subtree.
+   * a branch search returns the whole subtree. The route defaults it to 1, so honouring it here would
+   * narrow every caller that leaves it out; integrated search honours the depth a constraint states.
    */
   @Override
   public PagedResults<SearchResult> search(String q, List<String> scope, List<String> sources, boolean suggest,
@@ -644,11 +647,13 @@ public class SqliteTerminologyService implements ITerminologyService {
    * single-source shapes the snapshot can answer:
    * <ul>
    *   <li>a single ontology — enumerate on empty text, else label search;</li>
-   *   <li>a single branch (class + descendants) — label search within the subtree;</li>
+   *   <li>a single branch (class + descendants to the branch's depth) — label search within it;</li>
    *   <li>an explicit set of enumerated classes — filtered and sorted by preferred label
-   *       (self-contained, needs no snapshot).</li>
+   *       (self-contained, needs no snapshot);</li>
+   *   <li>anything else, as the combined answers to each of its parts, where every part is served
+   *       locally.</li>
    * </ul>
-   * Value sets, multiple sources, and mixed constraints throw so the router falls back to BioPortal.
+   * A part whose source is not served locally throws, so the router falls back to BioPortal.
    */
   @Override
   public PagedResults<SearchResult> integratedSearch(Optional<String> q, ValueConstraints valueConstraints, int page,
@@ -687,17 +692,14 @@ public class SqliteTerminologyService implements ITerminologyService {
         throw new IOException(e);
       }
     }
-    if (hasValueSets) {
-      throw unsupported("integratedSearch (value sets: multi-source or mixed)");
-    }
     // Enumerated classes on their own — self-contained, no snapshot needed.
-    if (hasClasses && !hasOntologies && !hasBranches) {
+    if (hasClasses && !hasOntologies && !hasBranches && !hasValueSets) {
       return integratedSearchEnumeratedClasses(q, classes, page, pageSize);
     }
     // A single ontology — enumerate on empty text, else label-search — served at the constraint's
     // pinned version (null = latest). Resolved here rather than via the public search() so the version
     // can be honored; the picker's live search() stays latest.
-    if (hasOntologies && ontologies.size() == 1 && !hasBranches && !hasClasses) {
+    if (hasOntologies && ontologies.size() == 1 && !hasBranches && !hasClasses && !hasValueSets) {
       OntologyValueConstraint ont = ontologies.get(0);
       String query = q.map(String::trim).orElse("");
       try {
@@ -716,19 +718,77 @@ public class SqliteTerminologyService implements ITerminologyService {
     // A single branch (class + descendants) at the constraint's pinned version. The branch root IRI is
     // decoded first: some ontologies (e.g. GDMT) store it percent-encoded and BioPortal decodes before
     // matching; a normal IRI has nothing to decode.
-    if (hasBranches && branches.size() == 1 && !hasOntologies && !hasClasses) {
+    if (hasBranches && branches.size() == 1 && !hasOntologies && !hasClasses && !hasValueSets) {
       BranchValueConstraint branch = branches.get(0);
       String query = q.map(String::trim).orElse("");
       try {
         SnapshotStore st = store(branch.getAcronym(), branch.getVersion());
-        List<SnapshotStore.Concept> rows =
-            st.searchByLabelUnderRoot(decodeIri(branch.getUri()), query, false, 0);
+        List<SnapshotStore.Concept> rows = st.searchByLabelUnderRoot(decodeIri(branch.getUri()), query, false, 0,
+            branch.getMaxDepth() == null ? 0 : branch.getMaxDepth());
         return pagedSearchResults(rows, branch.getAcronym(), page, pageSize, st, lang);
       } catch (SQLException e) {
         throw new IOException(e);
       }
     }
-    throw unsupported("integratedSearch (multi-source or mixed constraints)");
+    return integratedSearchCombined(q, valueConstraints, page, pageSize, apiKey, lang);
+  }
+
+  /**
+   * A field with several constraints, or constraints of several kinds, as the union of each one's own
+   * answer.
+   *
+   * These went to BioPortal, which cannot honour a pinned release, so a pinned field failed, and does
+   * not honour a branch's depth, so a field offered terms its own membership check refused. Each part
+   * is now answered here at its own release and depth. A term two parts reach is offered once, and
+   * the whole is ordered as the BioPortal path orders several sources: closest match first for typed
+   * text, by label for a browse. Each part is read up to the window the BioPortal path reads, and an
+   * answer that met it says its count is capped.
+   */
+  private PagedResults<SearchResult> integratedSearchCombined(Optional<String> q, ValueConstraints vc, int page,
+                                                              int pageSize, String apiKey, String lang)
+      throws IOException {
+    List<ValueConstraints> parts = new ArrayList<>();
+    for (OntologyValueConstraint ontology : listOf(vc.getOntologies())) {
+      parts.add(ValueConstraints.part(List.of(ontology), List.of(), List.of(), List.of()));
+    }
+    for (BranchValueConstraint branch : listOf(vc.getBranches())) {
+      parts.add(ValueConstraints.part(List.of(), List.of(branch), List.of(), List.of()));
+    }
+    for (ValueSetValueConstraint valueSet : listOf(vc.getValueSets())) {
+      parts.add(ValueConstraints.part(List.of(), List.of(), List.of(valueSet), List.of()));
+    }
+    if (!listOf(vc.getClasses()).isEmpty()) {
+      parts.add(ValueConstraints.part(List.of(), List.of(), List.of(), vc.getClasses()));
+    }
+    if (parts.size() < 2) {
+      throw unsupported("integratedSearch (a constraint shape the local store does not serve)");
+    }
+    List<IntegratedSearchWindow.Source> sources = new ArrayList<>();
+    for (ValueConstraints part : parts) {
+      sources.add((p, size) -> integratedSearch(q, part, p, size, apiKey, lang));
+    }
+    IntegratedSearchWindow.Window window = IntegratedSearchWindow.collect(sources);
+    Map<String, SearchResult> once = new LinkedHashMap<>();
+    for (SearchResult result : window.results()) {
+      once.putIfAbsent(result.getLdId() != null ? result.getLdId() : result.getId(), result);
+    }
+    List<SearchResult> ordered = new ArrayList<>(once.values());
+    String query = q.map(String::trim).orElse("");
+    if (query.isEmpty()) {
+      ordered.sort(Comparator.comparing(r -> r.getPrefLabel() == null ? "" : r.getPrefLabel(),
+          String.CASE_INSENSITIVE_ORDER));
+    } else {
+      Util.sortByClosestMatch(query, ordered);
+    }
+    PagedResults<SearchResult> results = Util.generatePaginatedResults(ordered, page, pageSize, Optional.empty());
+    if (window.truncated()) {
+      results.setCountCapped(true);
+    }
+    return results;
+  }
+
+  private static <T> List<T> listOf(List<T> list) {
+    return list == null ? List.of() : list;
   }
 
   /**

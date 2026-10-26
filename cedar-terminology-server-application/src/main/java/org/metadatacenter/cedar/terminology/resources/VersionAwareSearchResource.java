@@ -119,15 +119,15 @@ public class VersionAwareSearchResource extends AbstractTerminologyServerResourc
       description = "The chain of ancestors above a term, root first, and what hangs directly below it. "
           + "A search result names a term; whether it is the right term is a question about its "
           + "neighbourhood, and two concepts with one label are told apart by nothing else. "
-          + "With versionId, answered from that release's snapshot: a hierarchy belongs to a release, "
-          + "and a term's parent can move between two of them. Without it, from the cross-snapshot "
-          + "index, which holds each ontology's current version. "
+          + "Always answered from one release's snapshot, because a hierarchy belongs to a release "
+          + "and a term's parent can move between two of them. With versionId, the release is that one. "
+          + "Without it, the release is the one an unpinned search of the source reads. "
           + "Children are alphabetical and capped; offset asks for the next page of them.",
       tags = {"Search"})
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "The term's ancestors and children", content = @Content(schema = @Schema(implementation = HierarchyResponse.class))),
       @ApiResponse(responseCode = "400", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "A request naming no term"),
-      @ApiResponse(responseCode = "404", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "No such release, a release without that term, or a term the index does not hold"),
+      @ApiResponse(responseCode = "404", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "No such release, a release without that term, or a term the current release does not hold"),
       @ApiResponse(responseCode = "503", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "No local terminology store is configured")
   })
   public Response hierarchy(@QueryParam("sourceAcronym") String sourceAcronym,
@@ -188,7 +188,7 @@ public class VersionAwareSearchResource extends AbstractTerminologyServerResourc
                 + ". Another release of the same source may contain it.")
             .build();
       }
-      if (lookup instanceof HierarchyLookup.TermNotInIndex absent) {
+      if (lookup instanceof HierarchyLookup.TermNotHeld absent) {
         return CedarResponse.notFound()
             .errorKey(CedarErrorKey.INVALID_INPUT)
             .message("The store holds no term " + absent.termIri() + " in "

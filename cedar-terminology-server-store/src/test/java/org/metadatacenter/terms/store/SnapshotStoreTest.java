@@ -197,6 +197,68 @@ public class SnapshotStoreTest {
   }
 
   @Test
+  public void normalizedContentHash_relationChangeMovesBoth() throws Exception {
+    String structBefore, structAfter, fullBefore, fullAfter;
+    try (SnapshotStore a = SnapshotStore.openInMemory()) {
+      a.initSchema();
+      a.addConcept("http://ex/drug", "Drug");
+      a.addConcept("http://ex/aspirin", "Aspirin");
+      a.addConcept("http://ex/tablet", "Tablet");
+      a.addRelation("http://ex/drug", "has_ingredient", "http://ex/aspirin");
+      a.materialize();
+      structBefore = a.normalizedContentHash(false);
+      fullBefore = a.normalizedContentHash(true);
+    }
+    try (SnapshotStore b = SnapshotStore.openInMemory()) {
+      b.initSchema();
+      b.addConcept("http://ex/drug", "Drug");
+      b.addConcept("http://ex/aspirin", "Aspirin");
+      b.addConcept("http://ex/tablet", "Tablet");
+      b.addRelation("http://ex/drug", "has_ingredient", "http://ex/aspirin");
+      b.addRelation("http://ex/drug", "has_dose_form", "http://ex/tablet"); // the only difference
+      b.materialize();
+      structAfter = b.normalizedContentHash(false);
+      fullAfter = b.normalizedContentHash(true);
+    }
+    assertFalse(structBefore.equals(structAfter), "adding a typed relation changes the structure hash");
+    assertFalse(fullBefore.equals(fullAfter), "adding a typed relation changes the full hash");
+  }
+
+  @Test
+  public void normalizedContentHash_ignoresRelationIngestOrder() throws Exception {
+    // The same relations added in the opposite order hash identically. The relation table keeps its
+    // rows in internal-id order, whatever order they were added in, so the concepts are added in
+    // the opposite order too. Their ids then differ, and only the hash's own sort by IRI can make
+    // the two hashes agree.
+    String h1, h2;
+    try (SnapshotStore a = SnapshotStore.openInMemory()) {
+      a.initSchema();
+      a.addConcept("http://ex/aspirin", "Aspirin");
+      a.addConcept("http://ex/caffeine", "Caffeine");
+      a.addConcept("http://ex/drug1", "Drug 1");
+      a.addConcept("http://ex/drug2", "Drug 2");
+      a.addRelation("http://ex/drug1", "has_ingredient", "http://ex/aspirin");
+      a.addRelation("http://ex/drug2", "has_ingredient", "http://ex/aspirin");
+      a.addRelation("http://ex/drug2", "has_ingredient", "http://ex/caffeine");
+      a.materialize();
+      h1 = a.normalizedContentHash(true);
+    }
+    try (SnapshotStore b = SnapshotStore.openInMemory()) {
+      b.initSchema();
+      b.addConcept("http://ex/drug2", "Drug 2"); // reverse insert order
+      b.addConcept("http://ex/drug1", "Drug 1");
+      b.addConcept("http://ex/caffeine", "Caffeine");
+      b.addConcept("http://ex/aspirin", "Aspirin");
+      b.addRelation("http://ex/drug2", "has_ingredient", "http://ex/caffeine");
+      b.addRelation("http://ex/drug2", "has_ingredient", "http://ex/aspirin");
+      b.addRelation("http://ex/drug1", "has_ingredient", "http://ex/aspirin");
+      b.materialize();
+      h2 = b.normalizedContentHash(true);
+    }
+    assertEquals(h1, h2);
+  }
+
+  @Test
   public void dominantOwnIdspace_picksOwnSpaceOverBulkImport() throws Exception {
     // OBI-like: mostly imported CHEBI_ concepts, a minority of its own OBI_ terms. Acronym-keying
     // must resolve the own space, not the more frequent import — this is the canonical-iri source.
@@ -337,6 +399,125 @@ public class SnapshotStoreTest {
   public void parents_includeMultipleInheritance() throws Exception {
     assertEquals(List.of("mammal", "pet"), store.parents("dog"));
     assertEquals(List.of("thing"), store.parents("animal"));
+  }
+
+  /*
+   * Genus edges another parent implies.
+   *
+   * DOID defines "adrenal cortex disease" as "disease and has_location some adrenal cortex" and files
+   * it under "adrenal gland disease". The extractor records both edges, and every direct read used to
+   * draw the class straight under "disease" as well, 189 times over.
+   */
+
+  /** disease > organ disease > adrenal disease, with a genus edge from adrenal disease to disease. */
+  private static SnapshotStore definedUnderItsGenus() throws SQLException {
+    SnapshotStore s = SnapshotStore.openInMemory();
+    s.initSchema();
+    s.addConcept("disease", "Disease");
+    s.addConcept("organ", "Organ disease");
+    s.addConcept("adrenal", "Adrenal disease");
+    s.addEdge("organ", "disease", "rdfs:subClassOf");
+    s.addEdge("adrenal", "organ", "rdfs:subClassOf");
+    s.addEdge("adrenal", "disease", SnapshotStore.GENUS_PREDICATE);
+    s.materialize();
+    return s;
+  }
+
+  @Test
+  public void aGenusEdgeAnotherParentImpliesIsNotADirectEdge() throws Exception {
+    try (SnapshotStore s = definedUnderItsGenus()) {
+      assertEquals(List.of("organ"), s.children("disease"));
+      assertEquals(1, s.childCount("disease"));
+      assertEquals(List.of("organ"),
+          s.childrenByLabel("disease", 0, 10).stream().map(SnapshotStore.LabelledConcept::iri).toList());
+      assertEquals(List.of("organ"), s.parents("adrenal"));
+      assertEquals(List.of("adrenal", "organ"), s.descendants("disease"), "the closure is unchanged");
+      assertEquals(3, s.allEdges().size(), "the edge is still recorded, and so still hashed");
+    }
+  }
+
+  @Test
+  public void aPathRunsThroughTheFirstParentByIriAndNeverThroughAnImpliedGenus() throws Exception {
+    assertEquals(java.util.Map.of("animal", "thing", "mammal", "animal", "cat", "mammal", "dog", "mammal",
+        "pet", "thing"), store.pathParents(), "dog has two parents, and mammal sorts before pet");
+    try (SnapshotStore s = definedUnderItsGenus()) {
+      assertEquals(java.util.Map.of("organ", "disease", "adrenal", "organ"), s.pathParents());
+    }
+  }
+
+  @Test
+  public void aGenusEdgeIsKeptWhereNothingElseImpliesIt() throws Exception {
+    try (SnapshotStore s = SnapshotStore.openInMemory()) {
+      s.initSchema();
+      s.addConcept("assay", "Assay");
+      s.addConcept("mhc", "MHC assay");
+      s.addConcept("kit", "Kit");
+      s.addConcept("boxed", "Boxed assay");
+      // OBI's case: a defined class whose only parent is its genus.
+      s.addEdge("mhc", "assay", SnapshotStore.GENUS_PREDICATE);
+      // A second parent that is not below the genus says nothing about the genus.
+      s.addEdge("boxed", "assay", SnapshotStore.GENUS_PREDICATE);
+      s.addEdge("boxed", "kit", "rdfs:subClassOf");
+      s.materialize();
+
+      assertEquals(List.of("boxed", "mhc"), s.children("assay"));
+      assertEquals(List.of("assay", "kit"), s.parents("boxed"));
+    }
+  }
+
+  @Test
+  public void anAssertedEdgeIsNeverLeftOutForBeingImplied() throws Exception {
+    // A subClassOf edge to an ancestor of another parent is redundant too, but it is what the
+    // ontology says, so it is drawn.
+    try (SnapshotStore s = SnapshotStore.openInMemory()) {
+      s.initSchema();
+      s.addConcept("a", "A");
+      s.addConcept("b", "B");
+      s.addConcept("c", "C");
+      s.addEdge("b", "a", "rdfs:subClassOf");
+      s.addEdge("c", "b", "rdfs:subClassOf");
+      s.addEdge("c", "a", "rdfs:subClassOf");
+      s.materialize();
+      assertEquals(List.of("b", "c"), s.children("a"));
+    }
+  }
+
+  @Test
+  public void aCycleDoesNotHideAClassFromItsGenus() throws Exception {
+    try (SnapshotStore s = SnapshotStore.openInMemory()) {
+      s.initSchema();
+      s.addConcept("genus", "Genus");
+      s.addConcept("c", "C");
+      s.addConcept("q", "Q");
+      s.addEdge("c", "genus", SnapshotStore.GENUS_PREDICATE);
+      // q is c's other parent and also its child, so q sits below the genus only through c.
+      s.addEdge("c", "q", "rdfs:subClassOf");
+      s.addEdge("q", "c", "rdfs:subClassOf");
+      s.materialize();
+      assertEquals(List.of("c"), s.children("genus"));
+    }
+  }
+
+  @Test
+  public void aBranchSearchReachesNoDeeperThanItsDepth() throws Exception {
+    java.util.function.Function<List<SnapshotStore.Concept>, List<String>> iris =
+        rows -> rows.stream().map(SnapshotStore.Concept::iri).sorted().toList();
+    assertEquals(List.of("animal", "pet"), iris.apply(store.searchByLabelUnderRoot("thing", "", false, 0, 1)));
+    assertEquals(List.of("animal", "dog", "mammal", "pet"),
+        iris.apply(store.searchByLabelUnderRoot("thing", "", false, 0, 2)),
+        "dog is two levels down through pet, though three through animal");
+    assertEquals(List.of("animal", "cat", "dog", "mammal", "pet"),
+        iris.apply(store.searchByLabelUnderRoot("thing", "", false, 0, 0)), "0 is every level");
+    assertEquals(List.of("pet"), iris.apply(store.searchByLabelUnderRoot("thing", "pe", false, 0, 1)));
+  }
+
+  @Test
+  public void aBranchDepthIsCountedOverTheEdgesParentsReads() throws Exception {
+    try (SnapshotStore s = definedUnderItsGenus()) {
+      assertEquals(List.of("organ"),
+          s.searchByLabelUnderRoot("disease", "", false, 0, 1).stream().map(SnapshotStore.Concept::iri).toList(),
+          "a genus edge another parent implies is no shortcut to the first level");
+    }
   }
 
   @Test

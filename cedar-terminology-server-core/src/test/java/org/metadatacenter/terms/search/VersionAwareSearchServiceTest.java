@@ -633,26 +633,21 @@ public class VersionAwareSearchServiceTest {
   }
 
   /**
-   * An unpinned request is answered from the index, which holds one parent a term. The path runs
-   * from the root down to the term's parent, and the children come alphabetically from the offset,
-   * with the count of all of them beside the page.
+   * An unpinned request is answered from the snapshot of the release the index holds, never from the
+   * index's own rows. The index keeps one parent a term, so a tree drawn from it lost every term
+   * whose kept parent was another: here it files Wolf under Thing, and the release files it under
+   * Mammal.
    */
   @Test
-  public void anUnpinnedHierarchyWalksTheIndexFromTheRootAndPagesTheChildren() throws Exception {
+  public void anUnpinnedHierarchyReadsTheIndexedReleaseAndNotTheIndex() throws Exception {
     SearchIndexStore index = SearchIndexStore.openInMemory();
     index.initSchema();
     index.replaceOntology("EX", "hash-v2", "2026-08-13T00:00:00Z", List.of(
-        new SearchIndexStore.IndexedTerm("EX", BASE + "thing", "Thing", false, null, true, 6, null, null, null),
-        new SearchIndexStore.IndexedTerm("EX", BASE + "animal", "Animal", false, null, true, 5,
-            BASE + "thing", "Thing", null),
+        new SearchIndexStore.IndexedTerm("EX", BASE + "thing", "Thing", false, null, true, 5, null, null, null),
         new SearchIndexStore.IndexedTerm("EX", BASE + "mammal", "Mammal", false, null, true, 3,
-            BASE + "animal", "Animal", null),
+            BASE + "thing", "Thing", null),
         new SearchIndexStore.IndexedTerm("EX", BASE + "wolf", "Wolf", false, null, false, 0,
-            BASE + "mammal", "Mammal", null),
-        new SearchIndexStore.IndexedTerm("EX", BASE + "cat", "Cat", false, null, false, 0,
-            BASE + "mammal", "Mammal", "A small domesticated feline."),
-        new SearchIndexStore.IndexedTerm("EX", BASE + "dog", "Dog", false, null, false, 0,
-            BASE + "mammal", "Mammal", null)),
+            BASE + "thing", "Thing", null)),
         java.util.Map.of());
     VersionAwareSearchService indexed = new VersionAwareSearchService(provider, index);
 
@@ -660,7 +655,6 @@ public class VersionAwareSearchServiceTest {
     assertEquals(List.of("Thing", "Animal"),
         first.path().stream().map(SearchResponse.TermRef::termLabel).toList());
     assertEquals(List.of("Cat", "Dog"), first.children().stream().map(HierarchyResponse.Child::termLabel).toList());
-    assertEquals("A small domesticated feline.", first.children().get(0).definition());
     assertEquals(3, first.childCount(), "the count is of every child, not of the page");
     assertEquals("hash-v2", first.source().version().id(), "the release the index holds answered");
 
@@ -670,6 +664,32 @@ public class VersionAwareSearchServiceTest {
 
     HierarchyResponse root = treeOf(indexed.hierarchy("EX", BASE + "thing", null, 0));
     assertNull(root.path(), "a root has no path above it");
+    assertEquals(List.of("Animal"), root.children().stream().map(HierarchyResponse.Child::termLabel).toList());
+  }
+
+  /** The index may hold an older release than the catalog's current one, and its search rows came from it. */
+  @Test
+  public void anUnpinnedHierarchyFollowsTheIndexWhereItLagsTheCatalog() throws Exception {
+    SearchIndexStore index = SearchIndexStore.openInMemory();
+    index.initSchema();
+    index.replaceOntology("EX", "hash-v1", "2026-08-13T00:00:00Z", List.of(
+        new SearchIndexStore.IndexedTerm("EX", BASE + "mammal", "Mammal", false, null, true, 2,
+            BASE + "animal", "Animal", null)),
+        java.util.Map.of());
+
+    HierarchyResponse tree = treeOf(new VersionAwareSearchService(provider, index)
+        .hierarchy("EX", BASE + "mammal", null, 0));
+    assertEquals("hash-v1", tree.source().version().id());
+    assertEquals(List.of("Cat", "Dog"), tree.children().stream().map(HierarchyResponse.Child::termLabel).toList(),
+        "the release before the wolf was read");
+  }
+
+  @Test
+  public void withoutAnIndexAnUnpinnedHierarchyReadsTheCurrentRelease() throws Exception {
+    HierarchyResponse tree = treeOf(service.hierarchy("EX", BASE + "mammal", null, 0));
+    assertEquals("hash-v2", tree.source().version().id());
+    assertEquals(List.of("Cat", "Dog", "Wolf"),
+        tree.children().stream().map(HierarchyResponse.Child::termLabel).toList());
   }
 
   @Test
@@ -682,7 +702,15 @@ public class VersionAwareSearchServiceTest {
 
   @Test
   public void aHierarchySaysWhatTheTermItselfMeansAndNotOnlyItsChildren() throws Exception {
-    HierarchyResponse tree = treeOf(withIndex().hierarchy("EX", BASE + "mammal", null, 0));
+    // The first release is the one that records definitions, so the index is made to hold it.
+    SearchIndexStore index = SearchIndexStore.openInMemory();
+    index.initSchema();
+    index.replaceOntology("EX", "hash-v1", "2026-08-13T00:00:00Z", List.of(
+        new SearchIndexStore.IndexedTerm("EX", BASE + "mammal", "Mammal", false, null, true, 2,
+            BASE + "animal", "Animal", null)),
+        java.util.Map.of());
+    HierarchyResponse tree = treeOf(new VersionAwareSearchService(provider, index)
+        .hierarchy("EX", BASE + "mammal", null, 0));
     assertEquals("A warm-blooded animal.", tree.definition(),
         "the one term the response is about had nothing said about it");
   }
@@ -728,8 +756,10 @@ public class VersionAwareSearchServiceTest {
   }
 
   @Test
-  public void aTermTheIndexDoesNotHoldIsItsOwnAnswer() throws Exception {
-    HierarchyLookup lookup = withIndex().hierarchy("EX", BASE + "nosuchterm", null, 0);
-    assertInstanceOf(HierarchyLookup.TermNotInIndex.class, lookup);
+  public void aTermTheCurrentReleaseDoesNotHoldIsItsOwnAnswer() throws Exception {
+    assertInstanceOf(HierarchyLookup.TermNotHeld.class, withIndex().hierarchy("EX", BASE + "nosuchterm", null, 0));
+    assertInstanceOf(HierarchyLookup.TermNotHeld.class, service.hierarchy("EX", BASE + "nosuchterm", null, 0));
+    assertInstanceOf(HierarchyLookup.TermNotHeld.class, service.hierarchy("NOTSERVED", BASE + "mammal", null, 0),
+        "a source the store does not serve has no current release to read");
   }
 }

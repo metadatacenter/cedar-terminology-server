@@ -35,6 +35,35 @@ import java.util.Optional;
  */
 public class SnapshotStore implements AutoCloseable {
 
+  /** The source predicate of an edge drawn to the named genus of an {@code owl:equivalentClass} definition. */
+  public static final String GENUS_PREDICATE = "equivalentClass:genus";
+
+  /**
+   * Keeps an edge {@code e} unless it is a genus edge that another of the child's parents implies.
+   *
+   * A genus edge is a true subsumption, and for a class with no other named parent it is the only
+   * place the class can be drawn: OBI's defined assays are the reason the extractor records it. Most
+   * defined classes also assert where they belong, and then the genus is an ancestor already. DOID
+   * defines 189 classes as "disease and has_location some X" while filing each under its organ
+   * system, so every read of a direct edge drew all 189 directly under "disease" beside the 8
+   * classes DOID asserts there.
+   *
+   * The edge stays in the snapshot. Edges enter the content hash, so dropping it at extraction would
+   * change the identifier of every release that has one, and every constraint pinned to it. It is
+   * left out of the reads of direct edges, where another parent below the genus says the same thing.
+   * A parent the child is itself an ancestor of does not count: it sits below the genus only through
+   * the child, and counting it would let a cycle hide a class from its genus. The closure is unchanged by this: whatever the edge implies, the other parent
+   * implies too.
+   */
+  private static final String DIRECT_EDGE = """
+      (e.source_pred IS NOT '%s' OR NOT EXISTS (
+        SELECT 1 FROM edge o
+        JOIN closure up ON up.descendant_id = o.parent_id AND up.ancestor_id = e.parent_id
+        WHERE o.child_id = e.child_id AND o.parent_id <> e.parent_id
+          AND NOT EXISTS (SELECT 1 FROM closure cy
+                          WHERE cy.ancestor_id = e.child_id AND cy.descendant_id = o.parent_id)))"""
+      .formatted(GENUS_PREDICATE);
+
   /**
    * A concept row with the fields callers commonly need together: its IRI, preferred label,
    * obsolete flag, and whether it has any direct children (so a UI can render an expand control).
@@ -160,7 +189,10 @@ public class SnapshotStore implements AutoCloseable {
       s.executeUpdate("CREATE INDEX IF NOT EXISTS idx_closure_desc ON closure(descendant_id)");
       s.executeUpdate("CREATE TABLE IF NOT EXISTS root (concept_id INTEGER PRIMARY KEY)");
       // Level-1 typed relations: non-hierarchical object relations retained for compositional
-      // vocabularies (e.g. RxNorm has_ingredient / has_dose_form), for filtered expansion.
+      // vocabularies (e.g. RxNorm has_ingredient / has_dose_form). Nothing looks up one concept's
+      // relations. normalizedContentHash reads every relation, so adding or removing one changes the
+      // snapshot's version_id. SnapshotDiff compares them between two versions of an ontology, and
+      // the versions diff route reports the relations added and removed as counts.
       s.executeUpdate("""
           CREATE TABLE IF NOT EXISTS relation (
             subject_id INTEGER NOT NULL,
@@ -192,9 +224,11 @@ public class SnapshotStore implements AutoCloseable {
       // tag. Several are allowed: a term can carry a definition and an alternative one, and which
       // property it came from is the difference between a definition and an editor's note.
       //
-      // Outside content identity, exactly as the label table is and for the same reason: a snapshot
-      // is identified by a hash over its concepts, labels and edges, so admitting definitions to it
-      // would change the identity of every snapshot already written and break every pin with it.
+      // This table stays outside content identity, as the label table does and for the same reason.
+      // A snapshot is identified by a hash over its concepts with their preferred labels, its
+      // hierarchy edges, its typed relations and its ontology properties. Admitting definitions to
+      // that hash would change the identity of every snapshot already written and break every pin
+      // with it.
       s.executeUpdate("""
           CREATE TABLE IF NOT EXISTS definition (
             concept_id INTEGER NOT NULL,
@@ -618,20 +652,25 @@ public class SnapshotStore implements AutoCloseable {
    * A content hash of the normalized extracted model, independent of the source file's bytes and
    * serialization (VERSIONING-ROADMAP "The Model" §4.3). Two snapshots with the same served content hash to the
    * same value even when they came from different serializations (OBO vs OWL) or backends; a genuine
-   * content change gives a different hash. This is the alternative to the raw-file hash that today's
-   * {@code version_id} uses.
+   * content change gives a different hash. Ingestion takes it, with labels, as the snapshot's
+   * {@code version_id}.
    *
    * The canonical form is built over IRIs (stable, source-independent), never internal row ids:
    * <ul>
    *   <li>every concept, sorted by IRI, as {@code C<TAB>iri<TAB>obsolete} — and, when
    *       {@code includeLabels}, also {@code <TAB>prefLabel<TAB>replacedBy};</li>
-   *   <li>every subsumption edge, sorted, as {@code E<TAB>childIri<TAB>parentIri<TAB>sourcePred};</li>
-   *   <li>every typed relation, sorted, as {@code R<TAB>subjectIri<TAB>predicate<TAB>objectIri}.</li>
+   *   <li>every hierarchy edge, sorted, as {@code E<TAB>childIri<TAB>parentIri<TAB>sourcePred}. Each
+   *       edge records the predicate it came from: a subsumption, a broader term or, for an ontology
+   *       configured with one, a partonomy relation;</li>
+   *   <li>every typed relation, sorted, as {@code R<TAB>subjectIri<TAB>predicate<TAB>objectIri};</li>
+   *   <li>every ontology property with its kind, label, obsolescence, literals and parents, through
+   *       {@link SnapshotProperties#updateHash}. A snapshot extracted before properties were kept has
+   *       none, and hashes as it always did.</li>
    * </ul>
-   * Edges and relations are structure and are always included; {@code includeLabels} is the one open
-   * knob (§4.3) — structure-only identity vs identity that also moves when a display label changes.
-   * Section tags (C/E/R) prevent cross-section collisions; the binary default collation makes the
-   * SQL ordering deterministic.
+   * Edges, relations and properties are always included; {@code includeLabels} is the one open knob
+   * (§4.3) — structure-only identity vs identity that also moves when a display label changes. Section
+   * tags (C/E/R) and the properties' own length-prefixed encoding prevent cross-section collisions;
+   * the binary default collation makes the SQL ordering deterministic.
    */
   public String normalizedContentHash(boolean includeLabels) throws SQLException {
     java.security.MessageDigest md;
@@ -964,13 +1003,13 @@ public class SnapshotStore implements AutoCloseable {
     }
   }
 
-  /** Direct children (subclasses) of a concept. */
+  /** Direct children (subclasses) of a concept, leaving out a genus edge another parent implies. */
   public List<String> children(String parentIri) throws SQLException {
     return queryIris("""
         SELECT c.iri FROM edge e
         JOIN concept c ON c.id = e.child_id
         JOIN concept p ON p.id = e.parent_id
-        WHERE p.iri = ? ORDER BY c.iri""", parentIri);
+        WHERE p.iri = ? AND """ + DIRECT_EDGE + " ORDER BY c.iri", parentIri);
   }
 
   /**
@@ -978,9 +1017,8 @@ public class SnapshotStore implements AutoCloseable {
    *
    * Ordering and limiting together, rather than a caller taking the first n of {@link #children} and
    * sorting those: children come back by IRI, so taking the first n of that and then sorting them
-   * for display yields an arbitrary subset presented as an alphabetical list. It also matches how
-   * the search index serves the same question for the current release, so pinning a release changes
-   * which release is read and nothing else.
+   * for display yields an arbitrary subset presented as an alphabetical list. The same edges as
+   * {@link #children}, so a genus edge another parent implies is left out here too.
    *
    * Case-insensitively, because the order is read by a person. SQLite's default collation compares
    * bytes, which puts every capitalised label before every lowercase one: DOID's "disease" listed
@@ -996,7 +1034,8 @@ public class SnapshotStore implements AutoCloseable {
         SELECT c.iri, c.pref_label FROM edge e
         JOIN concept c ON c.id = e.child_id
         JOIN concept p ON p.id = e.parent_id
-        WHERE p.iri = ? ORDER BY c.pref_label COLLATE NOCASE, c.pref_label, c.iri LIMIT ? OFFSET ?""")) {
+        WHERE p.iri = ? AND """ + DIRECT_EDGE
+        + " ORDER BY c.pref_label COLLATE NOCASE, c.pref_label, c.iri LIMIT ? OFFSET ?")) {
       ps.setString(1, parentIri);
       ps.setInt(2, limit);
       ps.setInt(3, offset);
@@ -1013,12 +1052,12 @@ public class SnapshotStore implements AutoCloseable {
   public record LabelledConcept(String iri, String prefLabel) {
   }
 
-  /** How many direct children a concept has, without reading them. */
+  /** How many direct children a concept has, without reading them: the edges {@link #children} reads. */
   public int childCount(String parentIri) throws SQLException {
     try (PreparedStatement ps = connection().prepareStatement("""
         SELECT COUNT(*) FROM edge e
         JOIN concept p ON p.id = e.parent_id
-        WHERE p.iri = ?""")) {
+        WHERE p.iri = ? AND """ + DIRECT_EDGE)) {
       ps.setString(1, parentIri);
       try (ResultSet rs = ps.executeQuery()) {
         return rs.next() ? rs.getInt(1) : 0;
@@ -1026,13 +1065,13 @@ public class SnapshotStore implements AutoCloseable {
     }
   }
 
-  /** Direct parents of a concept. */
+  /** Direct parents of a concept, leaving out a genus edge another parent implies. */
   public List<String> parents(String childIri) throws SQLException {
     return queryIris("""
         SELECT p.iri FROM edge e
         JOIN concept c ON c.id = e.child_id
         JOIN concept p ON p.id = e.parent_id
-        WHERE c.iri = ? ORDER BY p.iri""", childIri);
+        WHERE c.iri = ? AND """ + DIRECT_EDGE + " ORDER BY p.iri", childIri);
   }
 
   /** All descendants of a concept (value-set expansion). */
@@ -1253,17 +1292,32 @@ public class SnapshotStore implements AutoCloseable {
    * {@code limit} ({@code <= 0} means no cap).
    */
   public List<Concept> searchByLabel(String query, boolean prefixOnly, int limit) throws SQLException {
-    return labelSearch(null, query, prefixOnly, limit);
+    return labelSearch(null, query, prefixOnly, limit, 0);
   }
 
   /** As {@link #searchByLabel}, but restricted to the strict descendants of {@code rootIri}; the
    * branch root itself is excluded, matching BioPortal's branch semantics. */
   public List<Concept> searchByLabelUnderRoot(String rootIri, String query, boolean prefixOnly, int limit)
       throws SQLException {
-    return labelSearch(rootIri, query, prefixOnly, limit);
+    return labelSearch(rootIri, query, prefixOnly, limit, 0);
   }
 
-  private List<Concept> labelSearch(String rootIri, String query, boolean prefixOnly, int limit) throws SQLException {
+  /**
+   * As {@link #searchByLabelUnderRoot}, but no more than {@code maxDepth} levels below the root, or at
+   * any depth where it is 0 or less.
+   *
+   * A branch constraint carries the depth its author chose, and the membership check honours it: a
+   * term is in a depth-1 branch only when the root is one of its parents. A search that offered the
+   * whole subtree offered terms the check then refused. The levels are counted over the same direct
+   * edges {@link #parents} reads, so the two agree on what a level is.
+   */
+  public List<Concept> searchByLabelUnderRoot(String rootIri, String query, boolean prefixOnly, int limit,
+                                              int maxDepth) throws SQLException {
+    return labelSearch(rootIri, query, prefixOnly, limit, maxDepth);
+  }
+
+  private List<Concept> labelSearch(String rootIri, String query, boolean prefixOnly, int limit, int maxDepth)
+      throws SQLException {
     String escaped = escapeLike(query == null ? "" : query);
     String pattern = prefixOnly ? escaped + "%" : "%" + escaped + "%";
     // A non-empty query also matches any captured name — a label in any language, or a synonym — so a
@@ -1275,7 +1329,19 @@ public class SnapshotStore implements AutoCloseable {
         ? "(COALESCE(c.pref_label, '') LIKE ? ESCAPE '\\'"
             + " OR EXISTS(SELECT 1 FROM label l WHERE l.concept_id = c.id AND l.value LIKE ? ESCAPE '\\'))"
         : "COALESCE(c.pref_label, '') LIKE ? ESCAPE '\\'";
-    StringBuilder sql = new StringBuilder(
+    boolean bounded = rootIri != null && maxDepth > 0;
+    StringBuilder sql = new StringBuilder();
+    if (bounded) {
+      // Level by level down the direct edges. UNION stops a node reached twice at one level from being
+      // walked twice, and the bound stops a cycle.
+      sql.append("WITH RECURSIVE down(id, depth) AS (\n" +
+                 "    SELECT e.child_id, 1 FROM edge e JOIN concept r ON r.id = e.parent_id\n" +
+                 "    WHERE r.iri = ? AND ").append(DIRECT_EDGE).append("\n" +
+                 "  UNION\n" +
+                 "    SELECT e.child_id, d.depth + 1 FROM down d JOIN edge e ON e.parent_id = d.id\n" +
+                 "    WHERE d.depth < ? AND ").append(DIRECT_EDGE).append(")\n");
+    }
+    sql.append(
         "SELECT c.iri, c.pref_label, c.obsolete,\n" +
         "       EXISTS(SELECT 1 FROM edge e2 WHERE e2.parent_id = c.id) AS has_children\n" +
         "FROM concept c\n");
@@ -1290,11 +1356,13 @@ public class SnapshotStore implements AutoCloseable {
       // semantics (a branch value constraint offers the subtypes of the class, not the class itself).
       // The closure is non-reflexive, but a broader/narrower cycle (which some SKOS vocabularies
       // contain, e.g. HRAVS) can make a node reach itself; the explicit c.iri <> root guards that.
-      sql.append("WHERE c.id IN (\n" +
-                 "        SELECT cl.descendant_id FROM closure cl\n" +
-                 "        JOIN concept a ON a.id = cl.ancestor_id WHERE a.iri = ?)\n" +
-                 "  AND c.iri <> ?\n" +
-                 "  AND ").append(match).append('\n');
+      sql.append(bounded
+              ? "WHERE c.id IN (SELECT id FROM down)\n"
+              : "WHERE c.id IN (\n" +
+                "        SELECT cl.descendant_id FROM closure cl\n" +
+                "        JOIN concept a ON a.id = cl.ancestor_id WHERE a.iri = ?)\n")
+          .append("  AND c.iri <> ?\n" +
+                  "  AND ").append(match).append('\n');
     } else {
       sql.append("WHERE ").append(match).append('\n');
     }
@@ -1304,7 +1372,11 @@ public class SnapshotStore implements AutoCloseable {
     }
     try (PreparedStatement ps = connection().prepareStatement(sql.toString())) {
       int i = 1;
-      if (rootIri != null) {
+      if (bounded) {
+        ps.setString(i++, rootIri);
+        ps.setInt(i++, maxDepth);
+        ps.setString(i++, rootIri);
+      } else if (rootIri != null) {
         ps.setString(i++, rootIri);
         ps.setString(i++, rootIri);
       }
@@ -1377,6 +1449,31 @@ public class SnapshotStore implements AutoCloseable {
       List<ConceptState> out = new ArrayList<>();
       while (rs.next()) {
         out.add(new ConceptState(rs.getString(1), rs.getString(2), rs.getInt(3) != 0, rs.getString(4)));
+      }
+      return out;
+    }
+  }
+
+  /**
+   * The parent each concept's path runs through, for every concept that has one: the first of its
+   * {@link #parents} by IRI.
+   *
+   * A path names one chain, and a concept with several parents has several. This is the step every
+   * reader of one release takes, so a search row and the tree it opens draw the same chain. Taking
+   * whichever edge a scan reached first made the choice depend on internal row ids: DOID's
+   * "cardiovascular system disease" was filed directly under "disease" by a genus edge, rather than
+   * under "disease of anatomical entity" where DOID asserts it.
+   */
+  public Map<String, String> pathParents() throws SQLException {
+    try (Statement s = connection().createStatement();
+         ResultSet rs = s.executeQuery("""
+             SELECT c.iri, MIN(p.iri) FROM edge e
+             JOIN concept c ON c.id = e.child_id
+             JOIN concept p ON p.id = e.parent_id
+             WHERE """ + DIRECT_EDGE + " GROUP BY e.child_id")) {
+      Map<String, String> out = new HashMap<>();
+      while (rs.next()) {
+        out.put(rs.getString(1), rs.getString(2));
       }
       return out;
     }

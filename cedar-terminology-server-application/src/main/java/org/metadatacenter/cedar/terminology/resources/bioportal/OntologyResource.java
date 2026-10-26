@@ -201,9 +201,12 @@ public class OntologyResource extends AbstractTerminologyServerResource {
   @Timed
   @Path("ontologies/{id}/versions/diff")
   @Operation(summary = "Diff two local versions of an ontology",
-      description = "The vocabulary diff (concept and subsumption-edge additions/removals, newly "
-          + "obsoleted, capped concept samples) between two versions in the local store, given by "
-          + "version_id or tag. 404 when the ontology or a version is not served locally.",
+      description = "The route compares two versions of an ontology in the local store, each given by "
+          + "version_id or tag. For concepts, hierarchy edges and typed relations, the response gives "
+          + "the count in each version and the number added and removed. It also counts the concepts "
+          + "whose preferred label, obsolescence or replacement changed and the concepts newly "
+          + "obsoleted, and it lists up to 25 each of the concepts added, removed and changed. The "
+          + "route returns 404 when the ontology or either version is not served locally.",
       tags = {"Ontologies"})
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "The vocabulary diff between the two versions", content = @Content(schema = @Schema(implementation = VersionDiff.class))),

@@ -142,45 +142,6 @@ public class SearchIndexStore implements AutoCloseable {
     return chain;
   }
 
-  /**
-   * What sits directly under a term, and how many there are in all.
-   *
-   * By case-folded label, matching the snapshot's own children query, so pinning a release changes
-   * which release is read and not the order it is read in. Byte order put capitals first, which for
-   * a capped list reads as a term being absent.
-   */
-  public List<IndexedTerm> children(String acronym, String iri, int offset, int limit)
-      throws SQLException {
-    String sql = "SELECT acronym, iri, pref_label, obsolete, replaced_by, has_children,"
-        + " descendant_count, parent_iri, parent_label, definition FROM term"
-        + " WHERE acronym = ? AND parent_iri = ? ORDER BY pref_label COLLATE NOCASE, pref_label, iri LIMIT ? OFFSET ?";
-    List<IndexedTerm> out = new ArrayList<>();
-    try (PreparedStatement ps = connection().prepareStatement(sql)) {
-      ps.setString(1, acronym);
-      ps.setString(2, iri);
-      ps.setInt(3, limit);
-      ps.setInt(4, offset);
-      try (ResultSet rs = ps.executeQuery()) {
-        while (rs.next()) {
-          out.add(readTerm(rs));
-        }
-      }
-    }
-    return out;
-  }
-
-  /** How many children a term has, without reading them. */
-  public int childCount(String acronym, String iri) throws SQLException {
-    try (PreparedStatement ps = connection().prepareStatement(
-        "SELECT COUNT(*) FROM term WHERE acronym = ? AND parent_iri = ?")) {
-      ps.setString(1, acronym);
-      ps.setString(2, iri);
-      try (ResultSet rs = ps.executeQuery()) {
-        return rs.next() ? rs.getInt(1) : 0;
-      }
-    }
-  }
-
   public Optional<IndexedTerm> term(String acronym, String iri) throws SQLException {
     try (PreparedStatement ps = connection().prepareStatement(
         "SELECT acronym, iri, pref_label, obsolete, replaced_by, has_children, descendant_count,"

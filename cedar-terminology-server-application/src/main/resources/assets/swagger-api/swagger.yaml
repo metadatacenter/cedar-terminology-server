@@ -2,7 +2,7 @@ openapi: 3.0.1
 info:
   description: CEDAR Terminology Server API
   title: CEDAR Terminology Server API
-  version: 2.9.28
+  version: 2.9.29
 paths:
   /:
     get:
@@ -465,10 +465,13 @@ paths:
       - Ontologies
   /bioportal/ontologies/{id}/versions/diff:
     get:
-      description: "The vocabulary diff (concept and subsumption-edge additions/removals,\
-        \ newly obsoleted, capped concept samples) between two versions in the local\
-        \ store, given by version_id or tag. 404 when the ontology or a version is\
-        \ not served locally."
+      description: "The route compares two versions of an ontology in the local store,\
+        \ each given by version_id or tag. For concepts, hierarchy edges and typed\
+        \ relations, the response gives the count in each version and the number added\
+        \ and removed. It also counts the concepts whose preferred label, obsolescence\
+        \ or replacement changed and the concepts newly obsoleted, and it lists up\
+        \ to 25 each of the concepts added, removed and changed. The route returns\
+        \ 404 when the ontology or either version is not served locally."
       operationId: diffVersions
       parameters:
       - description: Ontology acronym.
@@ -3106,11 +3109,11 @@ paths:
       description: "The chain of ancestors above a term, root first, and what hangs\
         \ directly below it. A search result names a term; whether it is the right\
         \ term is a question about its neighbourhood, and two concepts with one label\
-        \ are told apart by nothing else. With versionId, answered from that release's\
-        \ snapshot: a hierarchy belongs to a release, and a term's parent can move\
-        \ between two of them. Without it, from the cross-snapshot index, which holds\
-        \ each ontology's current version. Children are alphabetical and capped; offset\
-        \ asks for the next page of them."
+        \ are told apart by nothing else. Always answered from one release's snapshot,\
+        \ because a hierarchy belongs to a release and a term's parent can move between\
+        \ two of them. With versionId, the release is that one. Without it, the release\
+        \ is the one an unpinned search of the source reads. Children are alphabetical\
+        \ and capped; offset asks for the next page of them."
       operationId: versionAwareSearchHierarchy
       parameters:
       - in: query
@@ -3157,7 +3160,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/CedarError"
           description: "No such release, a release without that term, or a term the\
-            \ index does not hold"
+            \ current release does not hold"
         "503":
           content:
             application/json:
