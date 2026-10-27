@@ -5,7 +5,7 @@
   <parent>
     <groupId>org.metadatacenter</groupId>
     <artifactId>cedar-terminology-server</artifactId>
-    <version>2.9.29</version>
+    <version>2.9.30</version>
   </parent>
 
   <groupId>org.metadatacenter</groupId>
@@ -24,8 +24,10 @@
       -DexcludedGroups= only clears the exclusion when the configuration reads a property.
     -->
     <excludedGroups>bioportal</excludedGroups>
-    <!-- Line coverage measured on 2026-10-19: 73.7%. The build fails below this floor. -->
-    <cedar.coverage.line.minimum>0.71</cedar.coverage.line.minimum>
+    <!-- Line coverage measured on 2026-10-26: 74.7%. The build fails below this floor. -->
+    <cedar.coverage.line.minimum>0.72</cedar.coverage.line.minimum>
+    <!-- Branch coverage measured on 2026-10-26: 78.3%. The build fails below this floor. -->
+    <cedar.coverage.branch.minimum>0.76</cedar.coverage.branch.minimum>
   </properties>
 
   <dependencies>
