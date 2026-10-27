@@ -3064,6 +3064,53 @@ paths:
                 $ref: "#/components/schemas/CedarError"
           description: No local terminology store is configured
       summary: Ontology releases and their property extraction availability
+  /resources/description:
+    get:
+      operationId: describeTerminologyResource
+      parameters:
+      - in: query
+        name: kind
+        schema:
+          type: string
+          default: term
+      - in: query
+        name: sourceSystem
+        schema:
+          type: string
+      - in: query
+        name: sourceAcronym
+        schema:
+          type: string
+      - in: query
+        name: sourceIri
+        schema:
+          type: string
+      - in: query
+        name: resourceIri
+        schema:
+          type: string
+      - in: query
+        name: versionId
+        schema:
+          type: string
+      - in: query
+        name: language
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResourceDescription"
+          description: Public resource description; unavailable references are explicit
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
+          description: Missing or invalid reference
+      summary: Describe a terminology resource and its public links
   /search:
     post:
       description: "Search the local terminology store at a named version or the current\
@@ -3228,6 +3275,8 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/TermRef"
+        resource:
+          $ref: "#/components/schemas/ResourceDescription"
         sourceAcronym:
           type: string
         sourceSystem:
@@ -3495,6 +3544,8 @@ components:
           format: int32
         hasChildren:
           type: boolean
+        resource:
+          $ref: "#/components/schemas/ResourceDescription"
         termIri:
           type: string
         termLabel:
@@ -3527,6 +3578,8 @@ components:
             $ref: "#/components/schemas/TermRef"
         replacedBy:
           $ref: "#/components/schemas/TermRef"
+        resource:
+          $ref: "#/components/schemas/ResourceDescription"
         sourceAcronym:
           type: string
         sourceSystem:
@@ -3657,6 +3710,8 @@ components:
             $ref: "#/components/schemas/TermRef"
         request:
           $ref: "#/components/schemas/PageRequest"
+        resource:
+          $ref: "#/components/schemas/ResourceDescription"
         source:
           $ref: "#/components/schemas/SourceBlock"
         sourceAcronym:
@@ -4184,6 +4239,19 @@ components:
       - classes
       - ontologies
       - valueSets
+    Link:
+      type: object
+      properties:
+        href:
+          type: string
+        icon:
+          type: string
+        label:
+          type: string
+        rel:
+          type: string
+        versionScope:
+          type: string
     Literal:
       type: object
       properties:
@@ -4294,6 +4362,8 @@ components:
           format: int32
         matchType:
           type: string
+        resource:
+          $ref: "#/components/schemas/ResourceDescription"
         sourceAcronym:
           type: string
         sourceSystem:
@@ -4549,6 +4619,21 @@ components:
           type: array
           items:
             type: string
+    Reference:
+      type: object
+      properties:
+        kind:
+          type: string
+        resourceIri:
+          type: string
+        sourceAcronym:
+          type: string
+        sourceIri:
+          type: string
+        sourceSystem:
+          type: string
+        versionId:
+          type: string
     Relation:
       type: object
       properties:
@@ -4598,6 +4683,33 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Source"
+    ResourceDescription:
+      type: object
+      properties:
+        authorityLabel:
+          type: string
+        capabilities:
+          type: array
+          items:
+            type: string
+        description:
+          type: string
+        label:
+          type: string
+        language:
+          type: string
+        links:
+          type: array
+          items:
+            $ref: "#/components/schemas/Link"
+        reason:
+          type: string
+        ref:
+          $ref: "#/components/schemas/Reference"
+        replacedBy:
+          type: string
+        status:
+          type: string
     Result:
       type: object
       properties:
@@ -4732,12 +4844,16 @@ components:
       properties:
         authority:
           type: string
+        authorityLabel:
+          type: string
         pinnable:
           type: boolean
         reason:
           type: string
         requestedVersion:
           $ref: "#/components/schemas/VersionSelector"
+        resource:
+          $ref: "#/components/schemas/ResourceDescription"
         served:
           type: string
         sourceAcronym:
@@ -5019,6 +5135,8 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/TermRef"
+        resource:
+          $ref: "#/components/schemas/ResourceDescription"
         sourceAcronym:
           type: string
         sourceSystem:

@@ -44,6 +44,7 @@ public class IngestJob {
   public record IngestResult(int submissionId, String versionId, Path snapshotFile, int classCount, int edgeCount) {}
 
   private final SubmissionSource source;
+  private org.metadatacenter.terms.store.SourcePresentation presentationOverride;
   private final OwlHierarchyExtractor owlExtractor = new OwlHierarchyExtractor();
   private final SkosHierarchyExtractor skosExtractor = new SkosHierarchyExtractor();
 
@@ -152,7 +153,8 @@ public class IngestJob {
     // The ontology's self-declared owl:Ontology IRI, read cheaply from the file head. A fallback
     // identity for when the class namespace is a file/host base or a merely-imported namespace that
     // de-confliction declines (VERSIONING item 6).
-    String headerIri = OntologyHeaderIri.fromFile(prep.loadable()).orElse(null);
+    String headerIri = EpaPfasSource.FORMAT.equals(sub.format()) ? EpaPfasSource.COLLECTION_IRI
+        : OntologyHeaderIri.fromFile(prep.loadable()).orElse(null);
 
     // Extract into a temp file and only replace the live snapshot once extraction succeeds with a
     // non-empty result. Extracting in place (delete-then-write) would lose a good snapshot whenever
@@ -171,6 +173,8 @@ public class IngestJob {
     try (SnapshotStore store = SnapshotStore.openFile(tempFile.toString())) {
       store.initSchema();
       Extraction ex = extractInto(store, acronym, sub, prep.loadable());
+      store.setMeta(org.metadatacenter.terms.store.SourcePresentation.META_KEY,
+          new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(presentationOverride == null ? source.presentation(acronym) : presentationOverride));
       if (headerIri != null) {
         store.setMeta("ontology_iri", headerIri); // record the declared IRI in the snapshot
       }
@@ -292,6 +296,10 @@ public class IngestJob {
    */
   private Extraction extractInto(SnapshotStore store, String acronym, Submission sub, Path loadable)
       throws Exception {
+    if (EpaPfasSource.FORMAT.equals(sub.format())) {
+      HierarchyExtractor.Result extracted = EpaPfasExtractor.extract(loadable, store);
+      return new Extraction(extracted, store.normalizedContentHash(true), EpaPfasSource.COLLECTION_IRI);
+    }
     HierarchyExtractor.Result extracted =
         extractorFor(acronym, sub.format()).extractFromFile(loadable.toFile(), store);
     // Drop dead-end import references from the roots: unlabeled foreign classes with no labeled
@@ -1204,6 +1212,9 @@ public class IngestJob {
    * Package-visible for testing the selection without the network.
    */
   static SubmissionSource selectSource(String sourceName, String release) {
+    if ("epa-pfas".equals(sourceName)) {
+      return new EpaPfasSource(System.getenv("CEDAR_COMP_TOX_API_KEY"));
+    }
     if ("obofoundry".equals(sourceName)) {
       return new OboFoundrySubmissionSource(release);
     }
@@ -1215,7 +1226,7 @@ public class IngestJob {
       }
       return new BioPortalDownloader(apiKey);
     }
-    System.err.println("Unknown --source '" + sourceName + "' (expected bioportal, obofoundry, or url)");
+    System.err.println("Unknown --source '" + sourceName + "' (expected bioportal, obofoundry, url, or epa-pfas)");
     System.exit(2);
     throw new IllegalStateException("unreachable"); // System.exit does not return
   }
@@ -1250,8 +1261,9 @@ public class IngestJob {
   /** Every option {@link #main} reads, so a refused one can be checked against the whole list. */
   static final String USAGE = String.join("\n",
       "Usage: IngestJob <catalogPath> <snapshotDir> [options] <acronym> [acronym...]",
-      "  Ingest:      [--source bioportal|obofoundry|url] [--url <URL>] [--format OWL|SKOS] [--backend <name>]",
+      "  Ingest:      [--source bioportal|obofoundry|url|epa-pfas] [--url <URL>] [--format OWL|SKOS] [--backend <name>]",
       "               [--base-url <ontoportal-api>] [--release <date>] [--all] [--valuesets] [--submission <id>]",
+      "               [--presentation <public-resource-profile.json>]",
       "  Maintenance: --backfill-labels | --backfill-labels-from-raw | --backfill-definitions-from-raw",
       "               | --refetch-definitions [--current-only] | --retain-raw-by-hash | --backfill-header-iri",
       "               | --verify [--deep] | --prune-orphans [--apply]");
@@ -1296,6 +1308,7 @@ public class IngestJob {
     String format = null;
     String backend = null;
     String baseUrl = null;
+    String presentationFile = null;
     List<Integer> submissionIds = new ArrayList<>();
     List<String> acronyms = new ArrayList<>();
     try {
@@ -1336,6 +1349,8 @@ public class IngestJob {
           format = args[++i];
         } else if ("--backend".equals(args[i]) && i + 1 < args.length) {
           backend = args[++i];
+        } else if ("--presentation".equals(args[i]) && i + 1 < args.length) {
+          presentationFile = args[++i];
         } else if ("--base-url".equals(args[i]) && i + 1 < args.length) {
           baseUrl = args[++i];
         } else if ("--submission".equals(args[i]) && i + 1 < args.length) {
@@ -1355,7 +1370,12 @@ public class IngestJob {
     // no source or credentials.
     SubmissionSource source = (backfillLabelsFromRaw || verify || pruneOrphans)
         ? null : selectSource(sourceName, oboRelease, url, format, backend, baseUrl);
+    if (source instanceof EpaPfasSource) valuesets = true;
     IngestJob job = new IngestJob(source);
+    if (presentationFile != null) {
+      job.presentationOverride = new com.fasterxml.jackson.databind.ObjectMapper().readValue(
+          Path.of(presentationFile).toFile(), org.metadatacenter.terms.store.SourcePresentation.class);
+    }
     try (CatalogStore catalog = CatalogStore.openFile(catalogPath.toString())) {
       catalog.setBusyTimeoutMillis(60_000); // wait out a live server's brief catalog read locks
       catalog.initSchema();

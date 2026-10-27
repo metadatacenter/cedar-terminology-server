@@ -47,6 +47,12 @@ public class BioPortalDownloader implements SubmissionSource {
         .build();
   }
 
+  @Override public org.metadatacenter.terms.store.SourcePresentation presentation(String acronym) {
+    return DEFAULT_BASE_URL.equals(baseUrl)
+        ? org.metadatacenter.terms.store.SourcePresentation.legacyBioPortal()
+        : SubmissionSource.super.presentation(acronym);
+  }
+
   private HttpRequest.Builder request(String url) {
     return HttpRequest.newBuilder(URI.create(url)).header("Authorization", "apikey token=" + apiKey);
   }

@@ -4420,6 +4420,78 @@
         "summary" : "Ontology releases and their property extraction availability"
       }
     },
+    "/resources/description" : {
+      "get" : {
+        "operationId" : "describeTerminologyResource",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "kind",
+          "schema" : {
+            "type" : "string",
+            "default" : "term"
+          }
+        }, {
+          "in" : "query",
+          "name" : "sourceSystem",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "sourceAcronym",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "sourceIri",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "resourceIri",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "versionId",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "language",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ResourceDescription"
+                }
+              }
+            },
+            "description" : "Public resource description; unavailable references are explicit"
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CedarError"
+                }
+              }
+            },
+            "description" : "Missing or invalid reference"
+          }
+        },
+        "summary" : "Describe a terminology resource and its public links"
+      }
+    },
     "/search" : {
       "post" : {
         "description" : "Search the local terminology store at a named version or the current one, across the constraint types a controlled-term field can carry: ontology, branch, class and valueSet. Returns per-type counts and each type's first page, and describes every source it searched — the version that answered, and whether a constraint on it can be pinned.",
@@ -4631,6 +4703,9 @@
               "$ref" : "#/components/schemas/TermRef"
             }
           },
+          "resource" : {
+            "$ref" : "#/components/schemas/ResourceDescription"
+          },
           "sourceAcronym" : {
             "type" : "string"
           },
@@ -4782,6 +4857,9 @@
           "hasChildren" : {
             "type" : "boolean"
           },
+          "resource" : {
+            "$ref" : "#/components/schemas/ResourceDescription"
+          },
           "termIri" : {
             "type" : "string"
           },
@@ -4829,6 +4907,9 @@
           },
           "replacedBy" : {
             "$ref" : "#/components/schemas/TermRef"
+          },
+          "resource" : {
+            "$ref" : "#/components/schemas/ResourceDescription"
           },
           "sourceAcronym" : {
             "type" : "string"
@@ -5004,6 +5085,9 @@
           },
           "request" : {
             "$ref" : "#/components/schemas/PageRequest"
+          },
+          "resource" : {
+            "$ref" : "#/components/schemas/ResourceDescription"
           },
           "source" : {
             "$ref" : "#/components/schemas/SourceBlock"
@@ -5610,6 +5694,26 @@
         },
         "required" : [ "branches", "classes", "ontologies", "valueSets" ]
       },
+      "Link" : {
+        "type" : "object",
+        "properties" : {
+          "href" : {
+            "type" : "string"
+          },
+          "icon" : {
+            "type" : "string"
+          },
+          "label" : {
+            "type" : "string"
+          },
+          "rel" : {
+            "type" : "string"
+          },
+          "versionScope" : {
+            "type" : "string"
+          }
+        }
+      },
       "Literal" : {
         "type" : "object",
         "properties" : {
@@ -5774,6 +5878,9 @@
           },
           "matchType" : {
             "type" : "string"
+          },
+          "resource" : {
+            "$ref" : "#/components/schemas/ResourceDescription"
           },
           "sourceAcronym" : {
             "type" : "string"
@@ -6141,6 +6248,29 @@
           }
         }
       },
+      "Reference" : {
+        "type" : "object",
+        "properties" : {
+          "kind" : {
+            "type" : "string"
+          },
+          "resourceIri" : {
+            "type" : "string"
+          },
+          "sourceAcronym" : {
+            "type" : "string"
+          },
+          "sourceIri" : {
+            "type" : "string"
+          },
+          "sourceSystem" : {
+            "type" : "string"
+          },
+          "versionId" : {
+            "type" : "string"
+          }
+        }
+      },
       "Relation" : {
         "type" : "object",
         "properties" : {
@@ -6210,6 +6340,47 @@
             "items" : {
               "$ref" : "#/components/schemas/Source"
             }
+          }
+        }
+      },
+      "ResourceDescription" : {
+        "type" : "object",
+        "properties" : {
+          "authorityLabel" : {
+            "type" : "string"
+          },
+          "capabilities" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "description" : {
+            "type" : "string"
+          },
+          "label" : {
+            "type" : "string"
+          },
+          "language" : {
+            "type" : "string"
+          },
+          "links" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Link"
+            }
+          },
+          "reason" : {
+            "type" : "string"
+          },
+          "ref" : {
+            "$ref" : "#/components/schemas/Reference"
+          },
+          "replacedBy" : {
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "string"
           }
         }
       },
@@ -6409,6 +6580,9 @@
           "authority" : {
             "type" : "string"
           },
+          "authorityLabel" : {
+            "type" : "string"
+          },
           "pinnable" : {
             "type" : "boolean"
           },
@@ -6417,6 +6591,9 @@
           },
           "requestedVersion" : {
             "$ref" : "#/components/schemas/VersionSelector"
+          },
+          "resource" : {
+            "$ref" : "#/components/schemas/ResourceDescription"
           },
           "served" : {
             "type" : "string"
@@ -6832,6 +7009,9 @@
             "items" : {
               "$ref" : "#/components/schemas/TermRef"
             }
+          },
+          "resource" : {
+            "$ref" : "#/components/schemas/ResourceDescription"
           },
           "sourceAcronym" : {
             "type" : "string"

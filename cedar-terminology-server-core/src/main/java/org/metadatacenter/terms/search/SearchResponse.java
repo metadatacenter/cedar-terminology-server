@@ -46,7 +46,31 @@ public record SearchResponse(String query, List<SourceBlock> sources, Map<String
       /** The versions themselves, newest first, when the request asked for them. */
       List<VersionInfo> versions,
       String reason,
-      SearchRequest.VersionSelector requestedVersion) {
+      SearchRequest.VersionSelector requestedVersion, ResourceDescription resource) {
+    public SourceBlock(String sourceSystem, String sourceAcronym, String sourceName, String sourceIri, String served, String authority, boolean pinnable, VersionInfo version, Integer versionCount, List<VersionInfo> versions, String reason, SearchRequest.VersionSelector requestedVersion) {
+      this(sourceSystem, sourceAcronym, sourceName, sourceIri, served, authority, pinnable, version, versionCount, versions, reason, requestedVersion, null);
+    }
+
+    public SourceBlock withResource(ResourceDescription resource) {
+      return new SourceBlock(sourceSystem, sourceAcronym, sourceName, sourceIri, served, authority, pinnable, version, versionCount, versions, reason, requestedVersion, resource);
+    }
+
+
+    @com.fasterxml.jackson.annotation.JsonProperty("authorityLabel")
+    public String authorityLabel() {
+      if (authority == null) return null;
+      if (resource != null && authority.equals(resource.ref().sourceSystem()) && resource.authorityLabel() != null)
+        return resource.authorityLabel();
+      return switch (authority) {
+        case "bioportal" -> "BioPortal";
+        case "obofoundry" -> "OBO Foundry";
+        case "agroportal" -> "AgroPortal";
+        case "ecoportal" -> "EcoPortal";
+        case "eionet" -> "Eionet";
+        case "url" -> "Direct download";
+        default -> authority;
+      };
+    }
 
     /** Served from the local store at an exact snapshot, and therefore pinnable. */
     public static final String SERVED_LOCAL = "local";
@@ -183,7 +207,15 @@ public record SearchResponse(String query, List<SourceBlock> sources, Map<String
        * "disease" from three upstream vocabularies and a label cannot tell them apart. Absent for
        * roughly half the corpus, which asserts no definition at all.
        */
-      String definition) implements Hit {}
+      String definition, ResourceDescription resource) implements Hit {
+    public ClassHit(String type, String sourceSystem, String sourceAcronym, String termIri, String termType, String termLabel, String matchType, List<MatchedLabel> matchedLabels, boolean obsolete, TermRef replacedBy, boolean hasChildren, int descendantCount, List<TermRef> path, List<MatchedLabel> names, String definition) {
+      this(type, sourceSystem, sourceAcronym, termIri, termType, termLabel, matchType, matchedLabels, obsolete, replacedBy, hasChildren, descendantCount, path, names, definition, null);
+    }
+
+    public ClassHit withResource(ResourceDescription resource) {
+      return new ClassHit(type, sourceSystem, sourceAcronym, termIri, termType, termLabel, matchType, matchedLabels, obsolete, replacedBy, hasChildren, descendantCount, path, names, definition, resource);
+    }
+}
 
   /** Everything at or below a term. */
   @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -199,7 +231,15 @@ public record SearchResponse(String query, List<SourceBlock> sources, Map<String
       boolean obsolete,
       List<TermRef> path,
       List<TermRef> examples,
-      List<MatchedLabel> names) implements Hit {}
+      List<MatchedLabel> names, ResourceDescription resource) implements Hit {
+    public BranchHit(String type, String sourceSystem, String sourceAcronym, String termBaseIri, String termBaseLabel, int descendantCount, String matchType, List<MatchedLabel> matchedLabels, boolean obsolete, List<TermRef> path, List<TermRef> examples, List<MatchedLabel> names) {
+      this(type, sourceSystem, sourceAcronym, termBaseIri, termBaseLabel, descendantCount, matchType, matchedLabels, obsolete, path, examples, names, null);
+    }
+
+    public BranchHit withResource(ResourceDescription resource) {
+      return new BranchHit(type, sourceSystem, sourceAcronym, termBaseIri, termBaseLabel, descendantCount, matchType, matchedLabels, obsolete, path, examples, names, resource);
+    }
+}
 
   /**
    * A whole vocabulary. Thin, because its source block already carries everything else.
@@ -216,7 +256,15 @@ public record SearchResponse(String query, List<SourceBlock> sources, Map<String
       String sourceAcronym,
       Integer termCount,
       String matchType,
-      Integer matchCount) implements Hit {}
+      Integer matchCount, ResourceDescription resource) implements Hit {
+    public OntologyHit(String type, String sourceSystem, String sourceAcronym, Integer termCount, String matchType, Integer matchCount) {
+      this(type, sourceSystem, sourceAcronym, termCount, matchType, matchCount, null);
+    }
+
+    public OntologyHit withResource(ResourceDescription resource) {
+      return new OntologyHit(type, sourceSystem, sourceAcronym, termCount, matchType, matchCount, resource);
+    }
+}
 
   /** A curated list. */
   @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -228,5 +276,13 @@ public record SearchResponse(String query, List<SourceBlock> sources, Map<String
       String termBaseLabel,
       Integer termCount,
       String matchType,
-      List<TermRef> matchedTerms) implements Hit {}
+      List<TermRef> matchedTerms, ResourceDescription resource) implements Hit {
+    public ValueSetHit(String type, String sourceSystem, String sourceAcronym, String termBaseIri, String termBaseLabel, Integer termCount, String matchType, List<TermRef> matchedTerms) {
+      this(type, sourceSystem, sourceAcronym, termBaseIri, termBaseLabel, termCount, matchType, matchedTerms, null);
+    }
+
+    public ValueSetHit withResource(ResourceDescription resource) {
+      return new ValueSetHit(type, sourceSystem, sourceAcronym, termBaseIri, termBaseLabel, termCount, matchType, matchedTerms, resource);
+    }
+}
 }

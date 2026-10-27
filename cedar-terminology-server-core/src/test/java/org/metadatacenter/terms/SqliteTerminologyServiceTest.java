@@ -293,6 +293,21 @@ public class SqliteTerminologyServiceTest {
   }
 
   @Test
+  public void indexedSearchRetainsTheNameThatMatched() throws Exception {
+    try (SearchIndexStore index = indexOf(EX, "v1")) {
+      index.replaceOntology(EX, "v1", "2026-08-26T00:00:00Z",
+          List.of(new SearchIndexStore.IndexedTerm(EX, iri("cat"), "Cat", false, null, false, 0)),
+          Map.of(iri("cat"), List.of(new SearchIndexStore.IndexedName("skos:altLabel", "en", "Feline"))));
+      index.rebuildFullText();
+      SearchResult result = routing(index, "v1", 1).integratedSearch(Optional.of("feline"),
+          VC_MAPPER.readValue("{\"ontologies\":[{\"acronym\":\"EX\"}]}", ValueConstraints.class),
+          1, 50, null).getCollection().get(0);
+      assertEquals("Cat", result.getPrefLabel());
+      assertEquals(List.of("Feline"), result.getMatchedSynonyms());
+    }
+  }
+
+  @Test
   public void anIndexHoldingAnotherReleaseIsNotAsked() throws Exception {
     // A re-ingest can move the served version before the index catches up. Answering from the older
     // one would attribute terms to a release that did not produce them.
@@ -405,6 +420,42 @@ public class SqliteTerminologyServiceTest {
     PagedResults<SearchResult> filtered = integrated(Optional.of("Cat"),
         "{\"valueSets\":[{\"vsCollection\":\"EX\",\"uri\":\"" + iri("mammal") + "\"}]}");
     assertEquals(List.of(iri("cat")), ldIds(filtered.getCollection()));
+  }
+
+  @Test
+  public void valueSetSearchFindsAliasesButNeverOtherSetsOrNestedMembers() throws Exception {
+    store.addLabels(List.of(
+        new SnapshotStore.LabelRow(iri("cat"), "skos:altLabel", "", "335-67-1"),
+        new SnapshotStore.LabelRow(iri("animal"), "skos:altLabel", "", "335-67-1"),
+        new SnapshotStore.LabelRow(iri("dog"), "skos:altLabel", "", "PFOA")));
+    String constraint = "{\"valueSets\":[{\"vsCollection\":\"EX\",\"uri\":\"" + iri("mammal") + "\"}]}";
+    assertEquals(List.of(iri("cat")), ldIds(integrated(Optional.of("335-67-1"), constraint).getCollection()));
+    assertEquals(List.of(iri("dog")), ldIds(integrated(Optional.of("PFOA"), constraint).getCollection()));
+    String parentSet = "{\"valueSets\":[{\"vsCollection\":\"EX\",\"uri\":\"" + iri("thing") + "\"}]}";
+    assertTrue(integrated(Optional.of("PFOA"), parentSet).getCollection().isEmpty());
+  }
+
+  @Test
+  public void everySnapshotConstraintRetainsAliasEvidenceWithoutChangingThePreferredLabel() throws Exception {
+    store.addLabels(List.of(
+        new SnapshotStore.LabelRow(iri("cat"), "skos:altLabel", "en", "Feline"),
+        new SnapshotStore.LabelRow(iri("cat"), "skos:altLabel", "", "335-67-1"),
+        new SnapshotStore.LabelRow(iri("cat"), "skos:altLabel", "", "DTXSID8031865"),
+        new SnapshotStore.LabelRow(iri("dog"), "skos:altLabel", "", "Canine")));
+    for (String constraint : List.of(
+        "{\"ontologies\":[{\"acronym\":\"EX\"}]}",
+        "{\"branches\":[{\"acronym\":\"EX\",\"uri\":\"http://ex/mammal\"}]}",
+        "{\"valueSets\":[{\"vsCollection\":\"EX\",\"uri\":\"http://ex/mammal\",\"version\":\"v1\"}]}",
+        "{\"valueSets\":[{\"vsCollection\":\"EX\",\"uri\":\"http://ex/mammal\"},"
+            + "{\"vsCollection\":\"EX\",\"uri\":\"http://ex/pet\"}]}")) {
+      for (String alias : List.of("Feline", "335-67-1", "DTXSID8031865")) {
+        List<SearchResult> results = integrated(Optional.of(alias.toLowerCase(java.util.Locale.ROOT)),
+            constraint).getCollection();
+        assertEquals(1, results.size(), constraint);
+        assertEquals("Cat", results.get(0).getPrefLabel());
+        assertEquals(List.of(alias), results.get(0).getMatchedSynonyms());
+      }
+    }
   }
 
   @Test

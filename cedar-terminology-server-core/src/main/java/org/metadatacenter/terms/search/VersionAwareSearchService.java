@@ -146,7 +146,7 @@ public class VersionAwareSearchService {
         .map(SourceSelector::sourceAcronym)
         .filter(java.util.Objects::nonNull)
         .toList();
-    boolean useIndex = index != null && !pinned;
+    boolean useIndex = index != null && !pinned && resolved.stream().allMatch(Resolved::isLocal);
     if (useIndex && !scope.isEmpty()) {
       for (Resolved source : searchable) {
         String current = source.block().version() == null ? null : source.block().version().id();
@@ -164,7 +164,7 @@ public class VersionAwareSearchService {
           : "A corpus-wide search needs at least " + MIN_CORPUS_QUERY_LENGTH
               + " characters. Name a source to search it with fewer.");
     }
-    if (!useIndex && searchable.isEmpty() && needsASource(types)) {
+    if (!useIndex && searchable.isEmpty() && needsASource(types) && request.sourcesOrEmpty().isEmpty()) {
       throw new BadSearchRequestException(needsASourceMessage(types));
     }
     // A value set is reached through the collection that holds it, which the index does not record.
@@ -218,7 +218,38 @@ public class VersionAwareSearchService {
           ? facetedPage(query, SearchRequest.TYPE_BRANCH.equals(type), all, offset, limit, scope)
           : paged(all, offset, limit));
     }
-    return new SearchResponse(query, List.copyOf(blocks.values()), results);
+    return describeResponse(new SearchResponse(query, List.copyOf(blocks.values()), results), request.lang());
+  }
+
+  private SearchResponse describeResponse(SearchResponse response, String language) throws SQLException {
+    var descriptions = new ResourceDescriptionService(provider);
+    Map<String, SourceBlock> sources = new LinkedHashMap<>();
+    for (var source : response.sources()) {
+      sources.put(source.sourceAcronym(), SourceBlock.SERVED_LOCAL.equals(source.served())
+          ? source.withResource(descriptions.describe(reference(source, "vocabulary", source.sourceIri()), language)) : source);
+    }
+    Map<String, TypeResults> results = new LinkedHashMap<>();
+    for (var entry : response.results().entrySet()) {
+      var page = entry.getValue();
+      List<Hit> hits = new ArrayList<>();
+      for (var hit : page.collection()) {
+        var source = sources.get(hit.sourceAcronym());
+        if (source == null || !SourceBlock.SERVED_LOCAL.equals(source.served())) { hits.add(hit); continue; }
+        if (hit instanceof ClassHit h) hits.add(h.withResource(descriptions.describe(reference(source, "term", h.termIri()), language)));
+        else if (hit instanceof BranchHit h) hits.add(h.withResource(descriptions.describe(reference(source, "branch", h.termBaseIri()), language)));
+        else if (hit instanceof ValueSetHit h) hits.add(h.withResource(descriptions.describe(reference(source, "valueSet", h.termBaseIri()), language)));
+        else if (hit instanceof OntologyHit h) hits.add(h.withResource(source.resource()));
+        else hits.add(hit);
+      }
+      results.put(entry.getKey(), new TypeResults(page.totalCount(), page.countCapped(), page.distinctLabelCount(),
+          page.distinctLabelCountCapped(), page.page(), page.pageSize(), hits, page.request(), page.currentOffset()));
+    }
+    return new SearchResponse(response.query(), List.copyOf(sources.values()), results);
+  }
+
+  private static ResourceDescription.Reference reference(SourceBlock source, String kind, String iri) {
+    return new ResourceDescription.Reference(kind, source.sourceSystem(), source.sourceAcronym(), source.sourceIri(),
+        iri, source.version() == null ? null : source.version().id());
   }
 
   /* ----------------------------------------------------------------------------------------------
@@ -256,7 +287,8 @@ public class VersionAwareSearchService {
   }
 
   private Resolved resolveSource(SourceSelector selector, boolean withVersions) throws SQLException {
-    String system = selector.systemOrDefault();
+    String system = selector.sourceSystem() == null || selector.sourceSystem().isBlank()
+        ? sourceSystemOf(selector.sourceAcronym()) : selector.systemOrDefault();
     String acronym = selector.sourceAcronym();
     String pinned = selector.version() == null ? null : selector.version().id();
 
@@ -267,6 +299,14 @@ public class VersionAwareSearchService {
     CatalogStore catalog = provider.catalog();
     String name = catalog.ontologyName(acronym);
     String iri = catalog.ontologyIri(acronym).orElse(null);
+
+    String heldSystem = sourceSystemOf(acronym);
+    // New adapters declare their identity namespace; legacy snapshots keep their old resolution rules.
+    var held = provider.forOntology(acronym, pinned);
+    if (held.isPresent() && held.get().getMeta(org.metadatacenter.terms.store.SourcePresentation.META_KEY).isPresent()
+        && !system.equals(ResourceDescriptionService.presentation(held.get()).sourceSystem())) {
+      return unavailable(system, acronym, name, iri, SourceBlock.REASON_SOURCE_UNKNOWN, selector.version());
+    }
 
     if (!provider.serves(acronym)) {
       // Whether the catalog has never heard of it or simply does not serve it are different facts to
@@ -337,7 +377,7 @@ public class VersionAwareSearchService {
       if (!provider.serves(ontology.acronym())) {
         continue;
       }
-      if (!resolved.isEmpty() && resolved.stream().noneMatch(r -> r.acronym().equals(ontology.acronym()))) {
+      if (!resolved.isEmpty() && resolved.stream().noneMatch(r -> r.isLocal() && r.acronym().equals(ontology.acronym()))) {
         continue;
       }
       String acronym = ontology.acronym() == null ? "" : ontology.acronym();
@@ -347,7 +387,7 @@ public class VersionAwareSearchService {
       if (!byAcronym && !byName) {
         continue;
       }
-      hits.add(new OntologyHit(SearchRequest.TYPE_ONTOLOGY, SearchRequest.BIOPORTAL, acronym, null,
+      hits.add(new OntologyHit(SearchRequest.TYPE_ONTOLOGY, sourceSystemOf(acronym), acronym, null,
           byAcronym ? SearchResponse.MATCH_SOURCE_ACRONYM : SearchResponse.MATCH_SOURCE_NAME, null));
       if (name.toLowerCase(Locale.ROOT).startsWith(needle)) {
         startsWithName.add(acronym);
@@ -377,7 +417,7 @@ public class VersionAwareSearchService {
     }
     for (Map.Entry<String, Integer> found : matches.entrySet()) {
       if (!named.contains(found.getKey())) {
-        withCounts.add(new OntologyHit(SearchRequest.TYPE_ONTOLOGY, SearchRequest.BIOPORTAL,
+        withCounts.add(new OntologyHit(SearchRequest.TYPE_ONTOLOGY, sourceSystemOf(found.getKey()),
             found.getKey(), null, SearchResponse.MATCH_TERMS, found.getValue()));
       }
     }
@@ -560,12 +600,12 @@ public class VersionAwareSearchService {
       List<MatchedLabel> names = otherNames(
           namesByTerm.get(SearchIndexStore.nameKey(term.acronym(), term.iri())), term.prefLabel());
       if (branchesOnly) {
-        hits.add(new BranchHit(SearchRequest.TYPE_BRANCH, SearchRequest.BIOPORTAL, term.acronym(),
+        hits.add(new BranchHit(SearchRequest.TYPE_BRANCH, sourceSystemOf(term.acronym()), term.acronym(),
             term.iri(), term.prefLabel(), term.descendantCount(), matchType,
             matched.isEmpty() ? null : matched, term.obsolete(), parent, null,
             names.isEmpty() ? null : names));
       } else {
-        hits.add(new ClassHit(SearchRequest.TYPE_CLASS, SearchRequest.BIOPORTAL, term.acronym(),
+        hits.add(new ClassHit(SearchRequest.TYPE_CLASS, sourceSystemOf(term.acronym()), term.acronym(),
             term.iri(), SearchRequest.TYPE_CLASS, term.prefLabel(), matchType,
             matched.isEmpty() ? null : matched, term.obsolete(),
             term.replacedBy() == null ? null : new TermRef(term.replacedBy(), null),
@@ -686,17 +726,20 @@ public class VersionAwareSearchService {
     // display gave an arbitrary subset of a large node's children, presented as though it were the
     // alphabetical head of them: ABD's "Disease" has 280 children, and the 50 that came back skipped
     // "African horse sickness" while showing "African swine fever" two rows on.
+    var descriptions = new ResourceDescriptionService(provider);
     List<HierarchyResponse.Child> children = new ArrayList<>();
     for (SnapshotStore.LabelledConcept child : store.childrenByLabel(termIri, from, limit)) {
       children.add(new HierarchyResponse.Child(child.iri(), child.prefLabel(),
           !store.children(child.iri()).isEmpty(), store.descendantCount(child.iri()),
-          SnapshotStore.servedDefinition(store.definitions(child.iri()))));
+          SnapshotStore.servedDefinition(store.definitions(child.iri())))
+          .withResource(descriptions.describe(reference(resolved.block(), "term", child.iri()), null)));
     }
     List<TermRef> path = path(store, termIri);
-    return new HierarchyLookup.Found(new HierarchyResponse(SearchRequest.BIOPORTAL, acronym,
+    return new HierarchyLookup.Found(new HierarchyResponse(resolved.block().sourceSystem(), acronym,
         resolved.block(), path, termIri, label.orElse(null), children.isEmpty() ? null : children,
         store.childCount(termIri), from, store.descendantCount(termIri),
-        SnapshotStore.servedDefinition(store.definitions(termIri)), null, null, null, null).paged(limit, null));
+        SnapshotStore.servedDefinition(store.definitions(termIri)), null, null, null, null)
+        .withResource(descriptions.describe(reference(resolved.block(), "branch", termIri), null)).paged(limit, null));
   }
 
   /**
@@ -739,9 +782,15 @@ public class VersionAwareSearchService {
           .map(s -> new VersionInfo(s.versionId(), s.releasedAt(), s.declaredVersion()))
           .orElseGet(() -> new VersionInfo(versionId, null, null));
     }
-    return new SourceBlock(SearchRequest.BIOPORTAL, acronym, name, iri,
+    return new SourceBlock(sourceSystemOf(acronym), acronym, name, iri,
         SourceBlock.SERVED_LOCAL, authorityOf(acronym, versionId), versionId != null, version,
         versionsOf(acronym).size(), null, null, null);
+  }
+
+  private String sourceSystemOf(String acronym) throws SQLException {
+    if (acronym == null) return SearchRequest.BIOPORTAL;
+    var store = provider.forOntology(acronym);
+    return store.isEmpty() ? SearchRequest.BIOPORTAL : ResourceDescriptionService.presentation(store.get()).sourceSystem();
   }
 
   /**

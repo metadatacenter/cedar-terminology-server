@@ -300,8 +300,11 @@ public class SqliteTerminologyService implements ITerminologyService {
         break;
       }
       SearchIndexStore.IndexedTerm t = hit.term();
-      slice.add(ObjectConverter.toSearchResult(toClass(
-          new SnapshotStore.Concept(t.iri(), t.prefLabel(), t.obsolete(), t.hasChildren()), acronym)));
+      SearchResult result = ObjectConverter.toSearchResult(toClass(
+          new SnapshotStore.Concept(t.iri(), t.prefLabel(), t.obsolete(), t.hasChildren()), acronym));
+      result.setMatchedSynonyms(hit.matched().stream().map(SearchIndexStore.IndexedName::value)
+          .filter(name -> !name.equalsIgnoreCase(t.prefLabel())).distinct().toList());
+      slice.add(result);
     }
     int total = index.matchCount(query, List.of(acronym), false, INDEX_ROUTING_CAP);
     int pageCount = total == 0 ? 0 : (int) Math.ceil((double) total / size);
@@ -321,7 +324,7 @@ public class SqliteTerminologyService implements ITerminologyService {
   private PagedResults<SearchResult> pagedSearchResults(List<SnapshotStore.Concept> rows, String ontology,
                                                         int page, int pageSize) {
     try {
-      return pagedSearchResults(rows, ontology, page, pageSize, null, null);
+      return pagedSearchResults(rows, ontology, page, pageSize, null, null, null);
     } catch (SQLException impossible) {
       // The store is read only when lang is non-null; with lang null it is never touched.
       throw new RuntimeException(impossible);
@@ -332,9 +335,12 @@ public class SqliteTerminologyService implements ITerminologyService {
    * As above, but when {@code lang} is given re-labels each returned row in that language (falling back
    * to its served pref_label), reading from {@code st}. Only the paginated slice is re-labelled, so the
    * per-row label lookup runs at most {@code pageSize} times, not over the whole result set.
+   * Matching aliases travel with each result so clients can retain a synonym or identifier match
+   * even when its displayed preferred label does not contain the query.
    */
   private PagedResults<SearchResult> pagedSearchResults(List<SnapshotStore.Concept> rows, String ontology,
-                                                        int page, int pageSize, SnapshotStore st, String lang)
+                                                        int page, int pageSize, SnapshotStore st, String lang,
+                                                        String query)
       throws SQLException {
     int total = rows.size();
     if (total == 0) {
@@ -352,7 +358,14 @@ public class SqliteTerminologyService implements ITerminologyService {
         String label = st.labelInLang(c.iri(), lang).orElse(c.prefLabel());
         c = new SnapshotStore.Concept(c.iri(), label, c.obsolete(), c.hasChildren());
       }
-      slice.add(ObjectConverter.toSearchResult(toClass(c, ontology)));
+      SearchResult result = ObjectConverter.toSearchResult(toClass(c, ontology));
+      if (st != null && query != null && !query.isBlank()) {
+        String displayedLabel = c.prefLabel();
+        result.setMatchedSynonyms(st.matchingLabels(c.iri(), query).stream()
+            .map(SnapshotStore.LabelEntry::value)
+            .filter(name -> !name.equalsIgnoreCase(displayedLabel)).distinct().toList());
+      }
+      slice.add(result);
     }
     Integer prev = page > 1 ? page - 1 : null;
     Integer next = page < pageCount ? page + 1 : null;
@@ -672,22 +685,20 @@ public class SqliteTerminologyService implements ITerminologyService {
 
     // A single value set: its values are the children of the value-set class in its vsCollection
     // snapshot — BioPortal serves the same via GET /ontologies/{vsCollection}/classes/{vsId}/children.
-    // Enumerate (empty text) or filter by preferred-label substring, sorted by preferred label as
-    // BioPortal does. The vsCollection is served like any ontology snapshot.
+    // Enumerate (empty text) or match the snapshot's names, including synonyms and identifiers.
+    // The direct-member restriction is shared with exact membership verification.
     if (hasValueSets && valueSets.size() == 1 && !hasOntologies && !hasBranches && !hasClasses) {
       ValueSetValueConstraint vs = valueSets.get(0);
       String acronym = vsCollectionAcronym(vs.getVsCollection());
       try {
         SnapshotStore st = store(acronym, vs.getVersion());
-        List<SnapshotStore.Concept> values = new ArrayList<>(st.childrenDetailed(decodeIri(vs.getUri())));
         String query = q.map(String::trim).orElse("");
-        if (!query.isEmpty()) {
-          String needle = query.toLowerCase(Locale.ROOT);
-          values.removeIf(c -> c.prefLabel() == null || !c.prefLabel().toLowerCase(Locale.ROOT).contains(needle));
-        }
+        List<SnapshotStore.Concept> values = new ArrayList<>(query.isEmpty()
+            ? st.childrenDetailed(decodeIri(vs.getUri()))
+            : st.searchByLabelUnderRoot(decodeIri(vs.getUri()), query, false, 0, 1));
         values.sort(Comparator.comparing(c -> c.prefLabel() == null ? "" : c.prefLabel(),
             String.CASE_INSENSITIVE_ORDER));
-        return pagedSearchResults(values, acronym, page, pageSize, st, lang);
+        return pagedSearchResults(values, acronym, page, pageSize, st, lang, query);
       } catch (SQLException e) {
         throw new IOException(e);
       }
@@ -710,7 +721,7 @@ public class SqliteTerminologyService implements ITerminologyService {
         SnapshotStore st = store(ont.getAcronym(), ont.getVersion());
         List<SnapshotStore.Concept> rows =
             query.isEmpty() ? st.allConceptsDetailed() : st.searchByLabel(query, false, 0);
-        return pagedSearchResults(rows, ont.getAcronym(), page, pageSize, st, lang);
+        return pagedSearchResults(rows, ont.getAcronym(), page, pageSize, st, lang, query);
       } catch (SQLException e) {
         throw new IOException(e);
       }
@@ -725,7 +736,7 @@ public class SqliteTerminologyService implements ITerminologyService {
         SnapshotStore st = store(branch.getAcronym(), branch.getVersion());
         List<SnapshotStore.Concept> rows = st.searchByLabelUnderRoot(decodeIri(branch.getUri()), query, false, 0,
             branch.getMaxDepth() == null ? 0 : branch.getMaxDepth());
-        return pagedSearchResults(rows, branch.getAcronym(), page, pageSize, st, lang);
+        return pagedSearchResults(rows, branch.getAcronym(), page, pageSize, st, lang, query);
       } catch (SQLException e) {
         throw new IOException(e);
       }

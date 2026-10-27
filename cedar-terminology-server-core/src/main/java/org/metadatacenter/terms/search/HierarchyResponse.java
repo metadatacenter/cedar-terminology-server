@@ -45,7 +45,14 @@ public record HierarchyResponse(
     /** Where the returned children start: {@code offset}, under the name CEDAR's paging uses. */
     Long currentOffset,
     /** Links to the first, previous, next and last pages of children, keyed by relation. */
-    Map<String, String> paging) {
+    Map<String, String> paging, ResourceDescription resource) {
+  public HierarchyResponse(String sourceSystem, String sourceAcronym, SearchResponse.SourceBlock source, List<SearchResponse.TermRef> path, String termIri, String termLabel, List<Child> children, int childCount, int offset, int descendantCount, String definition, PagedListResponse.PageRequest request, Integer totalCount, Long currentOffset, Map<String, String> paging) {
+    this(sourceSystem, sourceAcronym, source, path, termIri, termLabel, children, childCount, offset, descendantCount, definition, request, totalCount, currentOffset, paging, null);
+  }
+  public HierarchyResponse withResource(ResourceDescription resource) {
+    return new HierarchyResponse(sourceSystem, sourceAcronym, source, path, termIri, termLabel, children, childCount, offset, descendantCount, definition, request, totalCount, currentOffset, paging, resource);
+  }
+
 
   /** The response with its children's page stated as CEDAR's paging states one. */
   public HierarchyResponse paged(int limit, String requestUrl) {
@@ -53,12 +60,19 @@ public record HierarchyResponse(
         : LinkHeaderUtil.getPagingLinkHeaders(requestUrl, (long) childCount, limit, offset);
     return new HierarchyResponse(sourceSystem, sourceAcronym, source, path, termIri, termLabel, children,
         childCount, offset, descendantCount, definition, new PagedListResponse.PageRequest(limit, offset),
-        childCount, (long) offset, links);
+        childCount, (long) offset, links, resource);
   }
 
   /** A step below the term, carrying enough to say whether it is worth opening in turn. */
   @JsonInclude(JsonInclude.Include.NON_NULL)
   public record Child(String termIri, String termLabel, boolean hasChildren, int descendantCount,
                       /** What the source says it means, so a tree says which term it is offering. */
-                      String definition) {}
+                      String definition, ResourceDescription resource) {
+  public Child(String termIri, String termLabel, boolean hasChildren, int descendantCount, String definition) {
+    this(termIri, termLabel, hasChildren, descendantCount, definition, null);
+  }
+  public Child withResource(ResourceDescription resource) {
+    return new Child(termIri, termLabel, hasChildren, descendantCount, definition, resource);
+  }
+}
 }

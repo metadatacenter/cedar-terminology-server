@@ -42,6 +42,40 @@ public class VersionAwareSearchServiceTest {
   private static final String BASE = "http://ex/";
   private static final String VS = "http://vs/";
 
+  @Test
+  public void existingAlternativeAuthoritySelectorsKeepTheirResolutionBehavior() throws Exception {
+    var response = service.search(request("cat", List.of("class"),
+        List.of(new SourceSelector("agroportal", "EX", new VersionSelector("hash-v1")))));
+    assertEquals(SourceBlock.SERVED_LOCAL, response.sources().get(0).served());
+    assertEquals("agroportal", response.sources().get(0).sourceSystem());
+    assertEquals(1, response.results().get("class").totalCount());
+  }
+
+  @Test
+  public void epaCollectionsKeepTheirOwnSourceIdentityInDiscoverySelectionAndHierarchy() throws Exception {
+    var old = catalog.resolveVersion("VSC", "hash-vs1").orElseThrow();
+    catalog.addSnapshot(new CatalogStore.SnapshotInfo("hash-epa", "VSC", null, "2026-10-27",
+        "2026-10-27T00:00:00Z", "EPA-PFAS-JSON", "membership", 4, 3, old.filePath(), "epa-raw", "public"));
+    catalog.setTag("VSC", CatalogStore.TAG_LATEST, "hash-epa");
+    catalog.setSnapshotBackend("hash-epa", "VSC", "epa");
+    try (var store = SnapshotStore.openFile(old.filePath())) {
+      store.setMeta(org.metadatacenter.terms.store.SourcePresentation.META_KEY,
+          "{\"sourceSystem\":\"epa\",\"authorityLabel\":\"EPA\",\"links\":{},\"resourceLinks\":{},\"capabilities\":{}}");
+    }
+    var response = withIndex().search(request("analyte", List.of("valueSet"), List.of()));
+    List<ValueSetHit> sets = hits(response, "valueSet");
+    assertEquals("epa", sets.get(0).sourceSystem());
+    var scoped = service.search(request("protein", List.of("valueSet"),
+        List.of(new SourceSelector("epa", "VSC", new VersionSelector("hash-epa")))));
+    assertEquals("epa", scoped.sources().get(0).sourceSystem());
+    assertEquals("epa", scoped.sources().get(0).authority());
+    assertEquals("hash-epa", scoped.sources().get(0).version().id());
+    var tree = assertInstanceOf(HierarchyLookup.Found.class, service.hierarchy("VSC", VS + "analyte-class", "hash-epa", 0));
+    assertEquals("epa", tree.hierarchy().sourceSystem());
+    var wrong = withIndex().search(request("analyte", List.of("valueSet"), List.of(new SourceSelector("bioportal", "VSC", null))));
+    assertEquals(SourceBlock.SERVED_UNAVAILABLE, wrong.sources().get(0).served());
+  }
+
   private Path tempDir;
   private CatalogStore catalog;
   private CatalogSnapshotProvider provider;

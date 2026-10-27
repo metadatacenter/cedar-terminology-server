@@ -5,6 +5,7 @@ import io.dropwizard.core.setup.Environment;
 import org.metadatacenter.cedar.terminology.health.TerminologyServerHealthCheck;
 import org.metadatacenter.cedar.terminology.resources.AbstractTerminologyServerResource;
 import org.metadatacenter.cedar.terminology.resources.VersionAwareSearchResource;
+import org.metadatacenter.cedar.terminology.resources.ResourceDescriptionResource;
 import org.metadatacenter.cedar.terminology.resources.VersionedPropertyResource;
 import org.metadatacenter.cedar.terminology.resources.bioportal.*;
 import org.metadatacenter.cedar.terminology.utils.logging.LogResponseFilter;
@@ -102,6 +103,7 @@ public class TerminologyServerApplication extends CedarMicroserviceApplication<T
     String catalogPath = firstNonBlank(System.getProperty(PROP_CATALOG_PATH),
         localStore == null ? null : localStore.getCatalogPath());
     VersionedPropertyResource.injectService(null);
+    ResourceDescriptionResource.injectService(new org.metadatacenter.terms.search.ResourceDescriptionService(null));
     Set<String> localOntologies = parseAllowlist(firstNonBlank(System.getProperty(PROP_LOCAL_ONTOLOGIES),
         localStore == null ? null : localStore.getLocalOntologies()));
     if (catalogPath == null || catalogPath.isBlank() || localOntologies.isEmpty()) {
@@ -134,6 +136,7 @@ public class TerminologyServerApplication extends CedarMicroserviceApplication<T
       // Over the union of the search and browse sets, like the provider: version-aware search has no
       // reason to refuse an ontology whose tree is served but whose search allowlist entry is absent.
       versionAwareSearchService = new VersionAwareSearchService(provider, index);
+      ResourceDescriptionResource.injectService(new org.metadatacenter.terms.search.ResourceDescriptionService(provider));
       VersionedPropertyResource.injectService(new org.metadatacenter.terms.search.VersionedPropertyService(provider, index));
       boolean localOnly = Boolean.parseBoolean(System.getProperty(PROP_LOCAL_ONLY, "false"));
       RoutingTerminologyService.LocalAvailability search =
@@ -205,6 +208,7 @@ public class TerminologyServerApplication extends CedarMicroserviceApplication<T
     environment.jersey().register(new SearchResource(cedarConfig));
     environment.jersey().register(new VersionAwareSearchResource(cedarConfig));
     environment.jersey().register(new VersionedPropertyResource());
+    environment.jersey().register(new ResourceDescriptionResource());
     environment.jersey().register(new IntegratedSearchResource(cedarConfig));
     environment.jersey().register(new TermVerificationResource(cedarConfig));
     environment.jersey().register(new IntegratedRetrieveResource(cedarConfig));

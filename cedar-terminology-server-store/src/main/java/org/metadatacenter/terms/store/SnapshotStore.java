@@ -35,6 +35,10 @@ import java.util.Optional;
  */
 public class SnapshotStore implements AutoCloseable {
 
+  /** New enumerable sources may include every searchable name in their immutable snapshot identity.
+   * Existing ontology snapshots retain their established hash contract unless explicitly opted in. */
+  public static final String HASH_ALL_NAMES = "content_hash_all_names";
+
   /** The source predicate of an edge drawn to the named genus of an {@code owl:equivalentClass} definition. */
   public static final String GENUS_PREDICATE = "equivalentClass:genus";
 
@@ -209,8 +213,8 @@ public class SnapshotStore implements AutoCloseable {
       // Every language variant of a concept's names — its labels and synonyms — with the BCP-47
       // language tag ('' = untagged, BioPortal's "none"). The served pref_label keeps the single
       // best-ranked label; this table preserves the rest so a multilingual ontology is not collapsed
-      // to one language. Outside content identity by construction: normalizedContentHash never reads
-      // it. CREATE ... IF NOT EXISTS, so opening a pre-existing snapshot migrates it to an empty table
+      // to one language. Outside existing ontology content identities; new enumerable sources can
+      // opt into HASH_ALL_NAMES. CREATE ... IF NOT EXISTS migrates an old snapshot to an empty table
       // that the label backfill then fills.
       s.executeUpdate("""
           CREATE TABLE IF NOT EXISTS label (
@@ -712,6 +716,20 @@ public class SnapshotStore implements AutoCloseable {
         String line = "R\t" + rs.getString("subj") + '\t' + rs.getString("pred")
             + '\t' + rs.getString("obj") + '\n';
         md.update(line.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+      }
+    }
+    if (includeLabels && "true".equals(getMeta(HASH_ALL_NAMES).orElse(null))) {
+      md.update("CEDAR-all-names-v1\n".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+      try (Statement s = connection().createStatement();
+           ResultSet rs = s.executeQuery("SELECT c.iri,l.property,l.lang,l.value FROM label l "
+               + "JOIN concept c ON c.id=l.concept_id ORDER BY c.iri,l.property,l.lang,l.value")) {
+        while (rs.next()) {
+          for (int column = 1; column <= 4; column++) {
+            byte[] bytes = rs.getString(column).getBytes(java.nio.charset.StandardCharsets.UTF_8);
+            md.update(java.nio.ByteBuffer.allocate(4).putInt(bytes.length).array());
+            md.update(bytes);
+          }
+        }
       }
     }
     properties().updateHash(md);
