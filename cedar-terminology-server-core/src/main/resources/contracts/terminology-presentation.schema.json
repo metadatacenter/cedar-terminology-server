@@ -1,0 +1,208 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CEDAR terminology presentation contract",
+  "$ref": "#/$defs/ResourceDescription",
+  "$defs": {
+    "ConstraintVersion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "effectiveDate": {
+          "type": "string"
+        },
+        "declaredVersion": {
+          "type": "string"
+        }
+      }
+    },
+    "ConstraintReference": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "sourceAcronym",
+            "termIri"
+          ],
+          "properties": {
+            "type": {
+              "enum": [
+                "class",
+                "property"
+              ]
+            },
+            "sourceSystem": {
+              "type": "string",
+              "minLength": 1
+            },
+            "sourceAcronym": {
+              "type": "string",
+              "minLength": 1
+            },
+            "sourceIri": {
+              "type": "string",
+              "format": "iri"
+            },
+            "version": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/ConstraintVersion"
+                },
+                {
+                  "const": "latest"
+                }
+              ]
+            },
+            "termIri": {
+              "type": "string",
+              "format": "iri"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "sourceAcronym",
+            "termBaseIri"
+          ],
+          "properties": {
+            "type": {
+              "enum": [
+                "branch",
+                "valueSet"
+              ]
+            },
+            "sourceSystem": {
+              "type": "string",
+              "minLength": 1
+            },
+            "sourceAcronym": {
+              "type": "string",
+              "minLength": 1
+            },
+            "sourceIri": {
+              "type": "string",
+              "format": "iri"
+            },
+            "version": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/ConstraintVersion"
+                },
+                {
+                  "const": "latest"
+                }
+              ]
+            },
+            "termBaseIri": {
+              "type": "string",
+              "format": "iri"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "sourceAcronym"
+          ],
+          "properties": {
+            "type": {
+              "enum": [
+                "ontology"
+              ]
+            },
+            "sourceSystem": {
+              "type": "string",
+              "minLength": 1
+            },
+            "sourceAcronym": {
+              "type": "string",
+              "minLength": 1
+            },
+            "sourceIri": {
+              "type": "string",
+              "format": "iri"
+            },
+            "version": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/ConstraintVersion"
+                },
+                {
+                  "const": "latest"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "Presentation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "href": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https?://"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "versionScope": {
+          "enum": [
+            "current",
+            "exact"
+          ]
+        },
+        "icon": {
+          "enum": [
+            "bioportal",
+            "external"
+          ]
+        }
+      },
+      "oneOf": [
+        {
+          "maxProperties": 0
+        },
+        {
+          "required": [
+            "href",
+            "label",
+            "versionScope"
+          ]
+        }
+      ]
+    },
+    "ResourceDescription": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "constraint",
+        "presentation"
+      ],
+      "properties": {
+        "constraint": {
+          "$ref": "#/$defs/ConstraintReference"
+        },
+        "presentation": {
+          "$ref": "#/$defs/Presentation"
+        }
+      }
+    }
+  }
+}

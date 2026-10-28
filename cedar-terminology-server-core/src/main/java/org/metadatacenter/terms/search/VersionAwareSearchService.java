@@ -23,6 +23,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 
 /**
@@ -218,15 +219,24 @@ public class VersionAwareSearchService {
           ? facetedPage(query, SearchRequest.TYPE_BRANCH.equals(type), all, offset, limit, scope)
           : paged(all, offset, limit));
     }
-    return describeResponse(new SearchResponse(query, List.copyOf(blocks.values()), results), request.lang());
+    return describeResponse(new SearchResponse(query, List.copyOf(blocks.values()), results));
   }
 
-  private SearchResponse describeResponse(SearchResponse response, String language) throws SQLException {
+  private SearchResponse describeResponse(SearchResponse response) throws SQLException {
     var descriptions = new ResourceDescriptionService(provider);
     Map<String, SourceBlock> sources = new LinkedHashMap<>();
     for (var source : response.sources()) {
-      sources.put(source.sourceAcronym(), SourceBlock.SERVED_LOCAL.equals(source.served())
-          ? source.withResource(descriptions.describe(reference(source, "vocabulary", source.sourceIri()), language)) : source);
+      if (SourceBlock.SERVED_LOCAL.equals(source.served())) {
+        var ref = reference(source, "ontology", source.sourceIri());
+        source = source.withPresentation(descriptions.presentationFor(ref));
+        var store = provider.forOntology(source.sourceAcronym(), source.version() == null ? null : source.version().id());
+        if (store.isPresent()) {
+          var profile = ResourceDescriptionService.presentation(store.get());
+          if (Objects.equals(source.authority(), profile.sourceSystem()))
+            source = source.withAuthorityLabel(profile.authorityLabel());
+        }
+      }
+      sources.put(source.sourceAcronym(), source);
     }
     Map<String, TypeResults> results = new LinkedHashMap<>();
     for (var entry : response.results().entrySet()) {
@@ -235,10 +245,10 @@ public class VersionAwareSearchService {
       for (var hit : page.collection()) {
         var source = sources.get(hit.sourceAcronym());
         if (source == null || !SourceBlock.SERVED_LOCAL.equals(source.served())) { hits.add(hit); continue; }
-        if (hit instanceof ClassHit h) hits.add(h.withResource(descriptions.describe(reference(source, "term", h.termIri()), language)));
-        else if (hit instanceof BranchHit h) hits.add(h.withResource(descriptions.describe(reference(source, "branch", h.termBaseIri()), language)));
-        else if (hit instanceof ValueSetHit h) hits.add(h.withResource(descriptions.describe(reference(source, "valueSet", h.termBaseIri()), language)));
-        else if (hit instanceof OntologyHit h) hits.add(h.withResource(source.resource()));
+        if (hit instanceof ClassHit h) hits.add(h.withPresentation(descriptions.presentationFor(reference(source, "class", h.termIri()))));
+        else if (hit instanceof BranchHit h) hits.add(h.withPresentation(descriptions.presentationFor(reference(source, "branch", h.termBaseIri()))));
+        else if (hit instanceof ValueSetHit h) hits.add(h.withPresentation(descriptions.presentationFor(reference(source, "valueSet", h.termBaseIri()))));
+        else if (hit instanceof OntologyHit h) hits.add(h.withPresentation(source.presentation()));
         else hits.add(hit);
       }
       results.put(entry.getKey(), new TypeResults(page.totalCount(), page.countCapped(), page.distinctLabelCount(),
@@ -247,9 +257,10 @@ public class VersionAwareSearchService {
     return new SearchResponse(response.query(), List.copyOf(sources.values()), results);
   }
 
-  private static ResourceDescription.Reference reference(SourceBlock source, String kind, String iri) {
-    return new ResourceDescription.Reference(kind, source.sourceSystem(), source.sourceAcronym(), source.sourceIri(),
-        iri, source.version() == null ? null : source.version().id());
+  private static ResourceDescription.Reference reference(SourceBlock source, String type, String iri) {
+    boolean base = "branch".equals(type) || "valueSet".equals(type);
+    return new ResourceDescription.Reference(type, source.sourceSystem(), source.sourceAcronym(), source.sourceIri(),
+        base || "ontology".equals(type) ? null : iri, base ? iri : null, source.version());
   }
 
   /* ----------------------------------------------------------------------------------------------
@@ -732,14 +743,14 @@ public class VersionAwareSearchService {
       children.add(new HierarchyResponse.Child(child.iri(), child.prefLabel(),
           !store.children(child.iri()).isEmpty(), store.descendantCount(child.iri()),
           SnapshotStore.servedDefinition(store.definitions(child.iri())))
-          .withResource(descriptions.describe(reference(resolved.block(), "term", child.iri()), null)));
+          .withPresentation(descriptions.describe(reference(resolved.block(), "class", child.iri())).presentation()));
     }
     List<TermRef> path = path(store, termIri);
     return new HierarchyLookup.Found(new HierarchyResponse(resolved.block().sourceSystem(), acronym,
         resolved.block(), path, termIri, label.orElse(null), children.isEmpty() ? null : children,
         store.childCount(termIri), from, store.descendantCount(termIri),
         SnapshotStore.servedDefinition(store.definitions(termIri)), null, null, null, null)
-        .withResource(descriptions.describe(reference(resolved.block(), "branch", termIri), null)).paged(limit, null));
+        .withPresentation(descriptions.describe(reference(resolved.block(), "branch", termIri)).presentation()).paged(limit, null));
   }
 
   /**

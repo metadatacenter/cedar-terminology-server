@@ -207,7 +207,7 @@ public class TerminologyServerApplicationSmokeTest {
       "GET /properties/roots", "GET /properties/versions",
       "POST /search",
       "GET /search/hierarchy",
-      "GET /resources/description",
+      "POST /resources/description",
       "POST /bioportal/integrated-search",
       "POST /bioportal/integrated-retrieve",
       "POST /bioportal/validate-term",

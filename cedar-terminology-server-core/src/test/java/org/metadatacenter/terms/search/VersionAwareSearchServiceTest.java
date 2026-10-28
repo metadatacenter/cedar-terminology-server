@@ -48,6 +48,7 @@ public class VersionAwareSearchServiceTest {
         List.of(new SourceSelector("agroportal", "EX", new VersionSelector("hash-v1")))));
     assertEquals(SourceBlock.SERVED_LOCAL, response.sources().get(0).served());
     assertEquals("agroportal", response.sources().get(0).sourceSystem());
+    assertEquals(ResourceDescription.Presentation.empty(), response.sources().get(0).presentation());
     assertEquals(1, response.results().get("class").totalCount());
   }
 
@@ -438,6 +439,8 @@ public class VersionAwareSearchServiceTest {
   public void withAnIndexASearchNeedsNoSource() throws Exception {
     SearchResponse response = withIndex().search(request("cat", List.of("class"), List.of()));
     assertEquals(2, response.results().get("class").totalCount(), "across every indexed ontology");
+    assertEquals(ResourceDescription.Presentation.empty(), response.sources().stream()
+        .filter(s -> s.sourceAcronym().equals("OTHER")).findFirst().orElseThrow().presentation());
     assertEquals(List.of("EX", "OTHER"),
         response.sources().stream().map(SourceBlock::sourceAcronym).sorted().toList());
   }

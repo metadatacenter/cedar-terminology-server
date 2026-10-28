@@ -20,7 +20,7 @@ class SourcePresentationTest {
       assertEquals(iri, profile.resourceLinks().get(iri).get(0).href());
     }
     assertTrue(profile.resourceLinks().get(EpaPfasSource.COMBINED_IRI).isEmpty());
-    assertEquals("CompTox", profile.links().get("term").get(0).label());
-    assertEquals("current", profile.links().get("term").get(0).versionScope());
+    assertEquals("CompTox", profile.links().get("class").get(0).label());
+    assertEquals("current", profile.links().get("class").get(0).versionScope());
   }
 }

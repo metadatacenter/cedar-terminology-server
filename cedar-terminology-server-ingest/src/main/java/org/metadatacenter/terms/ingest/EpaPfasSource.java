@@ -74,10 +74,8 @@ public final class EpaPfasSource implements SubmissionSource {
     // A locally composed set has no upstream page. Its constituent selections retain their own links.
     pages.put(COMBINED_IRI, List.of());
     return new org.metadatacenter.terms.store.SourcePresentation("epa", "EPA",
-        Map.of("term", List.of(new org.metadatacenter.terms.store.SourcePresentation.LinkPattern(
-            "landing", "{resourceIriRaw}", "CompTox", "current"))), pages,
-        Map.of("vocabulary", List.of("search", "versions"), "valueSet", List.of("search", "members", "versions"),
-            "term", List.of("versions")));
+        Map.of("class", List.of(new org.metadatacenter.terms.store.SourcePresentation.LinkPattern(
+            "landing", "{termIriRaw}", "CompTox", "current"))), pages);
   }
 
   @Override public OntologyAccess accessInfo(String acronym) {

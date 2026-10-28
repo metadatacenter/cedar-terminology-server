@@ -4421,52 +4421,18 @@
       }
     },
     "/resources/description" : {
-      "get" : {
+      "post" : {
         "operationId" : "describeTerminologyResource",
-        "parameters" : [ {
-          "in" : "query",
-          "name" : "kind",
-          "schema" : {
-            "type" : "string",
-            "default" : "term"
-          }
-        }, {
-          "in" : "query",
-          "name" : "sourceSystem",
-          "schema" : {
-            "type" : "string"
-          }
-        }, {
-          "in" : "query",
-          "name" : "sourceAcronym",
-          "schema" : {
-            "type" : "string"
-          }
-        }, {
-          "in" : "query",
-          "name" : "sourceIri",
-          "schema" : {
-            "type" : "string"
-          }
-        }, {
-          "in" : "query",
-          "name" : "resourceIri",
-          "schema" : {
-            "type" : "string"
-          }
-        }, {
-          "in" : "query",
-          "name" : "versionId",
-          "schema" : {
-            "type" : "string"
-          }
-        }, {
-          "in" : "query",
-          "name" : "language",
-          "schema" : {
-            "type" : "string"
-          }
-        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ConstraintReference"
+              }
+            }
+          },
+          "required" : true
+        },
         "responses" : {
           "200" : {
             "content" : {
@@ -4476,7 +4442,7 @@
                 }
               }
             },
-            "description" : "Public resource description; unavailable references are explicit"
+            "description" : "Constraint identity and generic presentation; an empty presentation means no known page"
           },
           "400" : {
             "content" : {
@@ -4486,10 +4452,20 @@
                 }
               }
             },
-            "description" : "Missing or invalid reference"
+            "description" : "Invalid constraint reference"
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CedarError"
+                }
+              }
+            },
+            "description" : "Source, resource or exact version unavailable"
           }
         },
-        "summary" : "Describe a terminology resource and its public links"
+        "summary" : "Resolve presentation for a CEDAR constraint reference"
       }
     },
     "/search" : {
@@ -4703,8 +4679,8 @@
               "$ref" : "#/components/schemas/TermRef"
             }
           },
-          "resource" : {
-            "$ref" : "#/components/schemas/ResourceDescription"
+          "presentation" : {
+            "$ref" : "#/components/schemas/TerminologyPresentation"
           },
           "sourceAcronym" : {
             "type" : "string"
@@ -4857,8 +4833,8 @@
           "hasChildren" : {
             "type" : "boolean"
           },
-          "resource" : {
-            "$ref" : "#/components/schemas/ResourceDescription"
+          "presentation" : {
+            "$ref" : "#/components/schemas/TerminologyPresentation"
           },
           "termIri" : {
             "type" : "string"
@@ -4905,11 +4881,11 @@
               "$ref" : "#/components/schemas/TermRef"
             }
           },
+          "presentation" : {
+            "$ref" : "#/components/schemas/TerminologyPresentation"
+          },
           "replacedBy" : {
             "$ref" : "#/components/schemas/TermRef"
-          },
-          "resource" : {
-            "$ref" : "#/components/schemas/ResourceDescription"
           },
           "sourceAcronym" : {
             "type" : "string"
@@ -4968,6 +4944,34 @@
           }
         },
         "required" : [ "prefLabel", "source", "type", "uri" ]
+      },
+      "ConstraintReference" : {
+        "type" : "object",
+        "additionalProperties" : false,
+        "properties" : {
+          "sourceAcronym" : {
+            "type" : "string"
+          },
+          "sourceIri" : {
+            "type" : "string"
+          },
+          "sourceSystem" : {
+            "type" : "string"
+          },
+          "termBaseIri" : {
+            "type" : "string"
+          },
+          "termIri" : {
+            "type" : "string"
+          },
+          "type" : {
+            "type" : "string",
+            "enum" : [ "class", "branch", "ontology", "valueSet", "property" ]
+          },
+          "version" : {
+            "$ref" : "#/components/schemas/VersionInfo"
+          }
+        }
       },
       "ControlledTermDefaultValue" : {
         "type" : "object",
@@ -5083,11 +5087,11 @@
               "$ref" : "#/components/schemas/TermRef"
             }
           },
+          "presentation" : {
+            "$ref" : "#/components/schemas/TerminologyPresentation"
+          },
           "request" : {
             "$ref" : "#/components/schemas/PageRequest"
-          },
-          "resource" : {
-            "$ref" : "#/components/schemas/ResourceDescription"
           },
           "source" : {
             "$ref" : "#/components/schemas/SourceBlock"
@@ -5694,26 +5698,6 @@
         },
         "required" : [ "branches", "classes", "ontologies", "valueSets" ]
       },
-      "Link" : {
-        "type" : "object",
-        "properties" : {
-          "href" : {
-            "type" : "string"
-          },
-          "icon" : {
-            "type" : "string"
-          },
-          "label" : {
-            "type" : "string"
-          },
-          "rel" : {
-            "type" : "string"
-          },
-          "versionScope" : {
-            "type" : "string"
-          }
-        }
-      },
       "Literal" : {
         "type" : "object",
         "properties" : {
@@ -5879,8 +5863,8 @@
           "matchType" : {
             "type" : "string"
           },
-          "resource" : {
-            "$ref" : "#/components/schemas/ResourceDescription"
+          "presentation" : {
+            "$ref" : "#/components/schemas/TerminologyPresentation"
           },
           "sourceAcronym" : {
             "type" : "string"
@@ -6248,29 +6232,6 @@
           }
         }
       },
-      "Reference" : {
-        "type" : "object",
-        "properties" : {
-          "kind" : {
-            "type" : "string"
-          },
-          "resourceIri" : {
-            "type" : "string"
-          },
-          "sourceAcronym" : {
-            "type" : "string"
-          },
-          "sourceIri" : {
-            "type" : "string"
-          },
-          "sourceSystem" : {
-            "type" : "string"
-          },
-          "versionId" : {
-            "type" : "string"
-          }
-        }
-      },
       "Relation" : {
         "type" : "object",
         "properties" : {
@@ -6345,42 +6306,13 @@
       },
       "ResourceDescription" : {
         "type" : "object",
+        "additionalProperties" : false,
         "properties" : {
-          "authorityLabel" : {
-            "type" : "string"
+          "constraint" : {
+            "$ref" : "#/components/schemas/ConstraintReference"
           },
-          "capabilities" : {
-            "type" : "array",
-            "items" : {
-              "type" : "string"
-            }
-          },
-          "description" : {
-            "type" : "string"
-          },
-          "label" : {
-            "type" : "string"
-          },
-          "language" : {
-            "type" : "string"
-          },
-          "links" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/Link"
-            }
-          },
-          "reason" : {
-            "type" : "string"
-          },
-          "ref" : {
-            "$ref" : "#/components/schemas/Reference"
-          },
-          "replacedBy" : {
-            "type" : "string"
-          },
-          "status" : {
-            "type" : "string"
+          "presentation" : {
+            "$ref" : "#/components/schemas/TerminologyPresentation"
           }
         }
       },
@@ -6586,14 +6518,14 @@
           "pinnable" : {
             "type" : "boolean"
           },
+          "presentation" : {
+            "$ref" : "#/components/schemas/TerminologyPresentation"
+          },
           "reason" : {
             "type" : "string"
           },
           "requestedVersion" : {
             "$ref" : "#/components/schemas/VersionSelector"
-          },
-          "resource" : {
-            "$ref" : "#/components/schemas/ResourceDescription"
           },
           "served" : {
             "type" : "string"
@@ -6698,6 +6630,26 @@
           "offset" : {
             "type" : "integer",
             "format" : "int32"
+          }
+        }
+      },
+      "TerminologyPresentation" : {
+        "type" : "object",
+        "additionalProperties" : false,
+        "properties" : {
+          "href" : {
+            "type" : "string"
+          },
+          "icon" : {
+            "type" : "string",
+            "enum" : [ "bioportal", "external" ]
+          },
+          "label" : {
+            "type" : "string"
+          },
+          "versionScope" : {
+            "type" : "string",
+            "enum" : [ "current", "exact" ]
           }
         }
       },
@@ -7010,8 +6962,8 @@
               "$ref" : "#/components/schemas/TermRef"
             }
           },
-          "resource" : {
-            "$ref" : "#/components/schemas/ResourceDescription"
+          "presentation" : {
+            "$ref" : "#/components/schemas/TerminologyPresentation"
           },
           "sourceAcronym" : {
             "type" : "string"

@@ -6,8 +6,7 @@ import java.util.Map;
 /** Adapter-owned public presentation metadata. It is not part of a resource's semantic identity. */
 public record SourcePresentation(String sourceSystem, String authorityLabel,
                                  Map<String, List<LinkPattern>> links,
-                                 Map<String, List<LinkPattern>> resourceLinks,
-                                 Map<String, List<String>> capabilities) {
+                                 Map<String, List<LinkPattern>> resourceLinks) {
   public static final String META_KEY = "resource_presentation_v1";
 
   /** Templates are expanded only by the server; browsers receive complete, validated URLs. */
@@ -19,12 +18,10 @@ public record SourcePresentation(String sourceSystem, String authorityLabel,
   public static SourcePresentation legacyBioPortal() {
     String base = "https://bioportal.bioontology.org/ontologies/{sourceAcronym}";
     var overview = List.of(new LinkPattern("landing", base, "BioPortal", "current", "bioportal"));
-    var concept = List.of(new LinkPattern("landing", base + "?p=classes&conceptid={resourceIri}", "BioPortal", "current", "bioportal"));
+    var concept = List.of(new LinkPattern("landing", base + "?p=classes&conceptid={termIri}", "BioPortal", "current", "bioportal"));
     return new SourcePresentation("bioportal", "BioPortal",
-        Map.of("vocabulary", overview, "valueSet", overview, "term", concept, "branch", concept,
+        Map.of("ontology", overview, "valueSet", overview, "class", concept, "branch", concept,
             "property", List.of()),
-        Map.of(), Map.of("vocabulary", List.of("search", "hierarchy", "versions"),
-            "branch", List.of("search", "hierarchy", "versions"), "term", List.of("hierarchy", "versions"),
-            "valueSet", List.of("search", "members", "versions"), "property", List.of("versions")));
+        Map.of());
   }
 }

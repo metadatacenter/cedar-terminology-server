@@ -10,12 +10,11 @@ import java.util.List;
  */
 public interface SubmissionSource {
 
-  /** Public links and supported interactions, captured alongside each ingested snapshot. */
+  /** Public link configuration, captured alongside each ingested snapshot. */
   default org.metadatacenter.terms.store.SourcePresentation presentation(String acronym) {
     // An unfamiliar download authority does not acquire BioPortal landing pages by inheritance.
     return new org.metadatacenter.terms.store.SourcePresentation("bioportal", backendId(),
-        java.util.Map.of(), java.util.Map.of(),
-        org.metadatacenter.terms.store.SourcePresentation.legacyBioPortal().capabilities());
+        java.util.Map.of(), java.util.Map.of());
   }
 
   /**
