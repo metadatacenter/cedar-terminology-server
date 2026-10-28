@@ -143,11 +143,30 @@ public class IngestJob {
   public IngestResult ingestSubmission(CatalogStore catalog, String acronym, Submission sub,
                                        Path snapshotDir, boolean setAsLatest)
       throws IOException, InterruptedException, SQLException {
+    Attempt attempt = new Attempt();
+    try {
+      return ingestSubmission(catalog, acronym, sub, snapshotDir, setAsLatest, attempt);
+    } catch (IOException | InterruptedException | SQLException | RuntimeException | Error failure) {
+      if (!attempt.recorded) {
+        try {
+          catalog.recordIngestEvent(attempt.event(catalog, acronym, sub, source.backendId(), null,
+              "failed", failure.getClass().getSimpleName()));
+        } catch (SQLException auditFailure) {
+          failure.addSuppressed(auditFailure);
+        }
+      }
+      throw failure;
+    }
+  }
+
+  private IngestResult ingestSubmission(CatalogStore catalog, String acronym, Submission sub,
+      Path snapshotDir, boolean setAsLatest, Attempt attempt)
+      throws IOException, InterruptedException, SQLException {
     log.info("Ingesting {} submission {} (version {}, format {})",
         acronym, sub.submissionId(), sub.version(), sub.format());
 
     Path ontoDir = snapshotDir.resolve(acronym);
-    Prepared prep = prepareSubmission(acronym, sub, ontoDir); // licensing guard + download + decompress + strip
+    Prepared prep = prepareSubmission(acronym, sub, ontoDir, attempt);
     OntologyAccess access = prep.access();
     String rawHash = prep.rawHash();     // hash of the archival download, kept as file_hash provenance
     // The ontology's self-declared owl:Ontology IRI, read cheaply from the file head. A fallback
@@ -192,12 +211,10 @@ public class IngestJob {
     }
     Path snapshotFile = ontoDir.resolve(versionId + ".sqlite");
 
-    // Register the snapshot and reconcile its canonical identity atomically. These steps are all
-    // idempotent upserts, so re-running the ingest after a crash heals any partial state; the
-    // transaction additionally ensures a concurrent reader never sees a half-registered snapshot (a
-    // snapshot row without its latest tag, or a served snapshot with no canonical iri). The snapshot
-    // file moves under the same writer reservation used by orphan cleanup, before registration.
-    // A rollback can leave an orphan, but cleanup cannot remove a file being registered.
+    // Publish a new content hash only once. Existing catalog metadata AND file bytes belong to the
+    // first observation; later downloads live in the audit history. The writer reservation also
+    // excludes orphan cleanup and competing ingests during the existence check and publication.
+    Path[] publishedFile = {snapshotFile};
     String ownNamespaceFinal = ownNamespace; // effectively-final copy for the transaction lambda
     // The source's human-readable title becomes the catalog display name (shown in the ontology
     // picker). BioPortal supplies one in its submission metadata; a direct-URL/OBO source does not, so
@@ -207,20 +224,22 @@ public class IngestJob {
         : OntologyHeaderTitle.fromFile(prep.loadable()).filter(t -> !t.isBlank()).orElse(acronym);
     try {
       catalog.inSnapshotTransaction(() -> {
-        Files.move(tempFile, snapshotFile, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+        var existing = catalog.resolveVersion(acronym, versionId);
+        if (existing.isPresent()) {
+          publishedFile[0] = Path.of(existing.get().filePath());
+          if (!Files.isRegularFile(publishedFile[0]))
+            throw new IOException("Existing snapshot file is missing; restore it before ingesting " + acronym);
+        } else {
+          Files.move(tempFile, snapshotFile, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+        }
         catalog.upsertOntology(new CatalogStore.OntologyInfo(acronym, displayName, null, sub.format()));
         catalog.addSnapshot(new CatalogStore.SnapshotInfo(
             versionId, acronym, sub.version(), sub.released(), Instant.now().toString(),
             sub.format(), "subsumption", extracted.classCount(), extracted.edgeCount(),
             catalogRelativePath(catalog, snapshotFile), rawHash,
-            access.viewingRestriction() == null ? "public" : access.viewingRestriction()));
-        // Display/audit-only provenance: BioPortal's reliable per-upload submission id (in hand here,
-        // unreconstructable offline later) and the version string's self-claimed date.
-        catalog.setSnapshotProvenance(versionId, acronym, sub.submissionId(),
-            CatalogStore.SnapshotProvenance.sourceDateFromDeclaredVersion(sub.version()));
-        // Record the backend the bytes came from (default bioportal). Identity is unaffected — the same
-        // release from a different authority resolves to the same content-hash version_id and merges here.
-        catalog.setSnapshotBackend(versionId, acronym, source.backendId());
+            access.viewingRestriction() == null ? "public" : access.viewingRestriction()),
+            new CatalogStore.SnapshotProvenance(source.backendId(), sub.submissionId(),
+                CatalogStore.SnapshotProvenance.sourceDateFromDeclaredVersion(sub.version())));
         if (setAsLatest) {
           catalog.setTag(acronym, CatalogStore.TAG_LATEST, versionId);
         }
@@ -250,14 +269,36 @@ public class IngestJob {
           IriDeconfliction.reconcile(catalog, headerCanonical);
           catalog.pruneOrphanIdentities();
         }
+        catalog.recordIngestEvent(attempt.event(catalog, acronym, sub, source.backendId(), versionId,
+            "succeeded", null));
       });
+      attempt.recorded = true;
     } finally {
       Files.deleteIfExists(tempFile);
     }
 
     log.info("Ingested {} submission {} -> {} ({} classes, {} edges)",
         acronym, sub.submissionId(), versionId, extracted.classCount(), extracted.edgeCount());
-    return new IngestResult(sub.submissionId(), versionId, snapshotFile, extracted.classCount(), extracted.edgeCount());
+    return new IngestResult(sub.submissionId(), versionId, publishedFile[0], extracted.classCount(), extracted.edgeCount());
+  }
+
+  /** Mutable only while this attempt runs, so even a parse failure retains its downloaded archive. */
+  private static final class Attempt {
+    final String id = java.util.UUID.randomUUID().toString();
+    final String startedAt = Instant.now().toString();
+    String retrievedAt;
+    Path raw;
+    String rawHash;
+    boolean recorded;
+
+    CatalogStore.IngestEvent event(CatalogStore catalog, String acronym, Submission sub, String backend,
+        String version, String status, String errorType) {
+      return new CatalogStore.IngestEvent(id, acronym, version, "ingest", status, backend,
+          sub.submissionId(), sub.version(), sub.released(),
+          CatalogStore.SnapshotProvenance.sourceDateFromDeclaredVersion(sub.version()), startedAt,
+          retrievedAt, Instant.now().toString(), raw == null ? null : catalogRelativePath(catalog, raw),
+          rawHash, errorType);
+    }
   }
 
   /** A downloaded, parse-ready submission: the loadable file, its raw-bytes hash, and its access info. */
@@ -274,6 +315,11 @@ public class IngestJob {
    */
   private Prepared prepareSubmission(String acronym, Submission sub, Path ontoDir)
       throws IOException, InterruptedException {
+    return prepareSubmission(acronym, sub, ontoDir, null);
+  }
+
+  private Prepared prepareSubmission(String acronym, Submission sub, Path ontoDir, Attempt attempt)
+      throws IOException, InterruptedException {
     // Licensing guard: never download or ingest content BioPortal marks as restricted/licensed.
     OntologyAccess access = source.accessInfo(acronym);
     if (!access.isPublic()) {
@@ -281,8 +327,13 @@ public class IngestJob {
           + " (viewingRestriction=" + access.viewingRestriction() + "); licensed content is not ingested");
     }
     Path raw = source.download(acronym, sub.submissionId(), ontoDir.resolve("raw"));
+    if (attempt != null) attempt.retrievedAt = Instant.now().toString();
     String rawHash = sha256(raw);
     raw = retainByHash(raw, rawHash);     // keep every download, named by what it is
+    if (attempt != null) {
+      attempt.raw = raw;
+      attempt.rawHash = rawHash;
+    }
     Path loadable = decompress(raw);      // .zip/.gz submissions must be expanded before parsing
     loadable = stripOboImports(loadable); // OBO import: declarations must be dropped before parsing
     return new Prepared(loadable, rawHash, access);

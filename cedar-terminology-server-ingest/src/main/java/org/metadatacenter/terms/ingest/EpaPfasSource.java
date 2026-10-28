@@ -84,7 +84,7 @@ public final class EpaPfasSource implements SubmissionSource {
     requireCollection(acronym);
     // EPA offers live data, not an immutable release download. The retrieval time is provenance;
     // the normalized content hash, including names, is the version that a template pins.
-    return List.of(new Submission(1, null, Instant.now().toString(), FORMAT));
+    return List.of(new Submission(1, null, null, FORMAT));
   }
 
   @Override public Submission latestSubmission(String acronym) { return listSubmissions(acronym).get(0); }

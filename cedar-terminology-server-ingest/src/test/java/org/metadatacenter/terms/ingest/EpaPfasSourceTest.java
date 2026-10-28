@@ -126,12 +126,24 @@ class EpaPfasSourceTest {
       catalog.initSchema();
       IngestJob job = new IngestJob(source);
       var first = job.ingestValueSetCollectionLatest(catalog, EpaPfasSource.ACRONYM, directory.resolve("snapshots"));
+      var firstSnapshot = catalog.resolveLatest(EpaPfasSource.ACRONYM).orElseThrow();
+      assertEquals(null, firstSnapshot.releasedAt(), "EPA capture time is not a source release date");
       var unchanged = job.ingestValueSetCollectionLatest(catalog, EpaPfasSource.ACRONYM, directory.resolve("snapshots"));
       assertEquals(first.versionId(), unchanged.versionId());
+      assertEquals(firstSnapshot, catalog.resolveLatest(EpaPfasSource.ACRONYM).orElseThrow());
       alias = "replacement abbreviation";
       var second = job.ingestValueSetCollectionLatest(catalog, EpaPfasSource.ACRONYM, directory.resolve("snapshots"));
       assertNotEquals(first.versionId(), second.versionId());
       assertEquals(2, catalog.listSnapshots(EpaPfasSource.ACRONYM).size());
+      var history = catalog.ingestHistory(EpaPfasSource.ACRONYM);
+      assertEquals(3, history.size());
+      assertEquals(List.of(first.versionId(), first.versionId(), second.versionId()),
+          history.stream().map(CatalogStore.IngestEvent::versionId).toList());
+      for (var event : history) {
+        assertEquals(null, event.releasedAt());
+        assertTrue(Files.exists(Path.of(event.rawFilePath())));
+        assertEquals(event.rawFileHash(), PropertyBackfillJob.sha256(Path.of(event.rawFilePath())));
+      }
       assertEquals(List.of(EpaPfasSource.ACRONYM), catalog.listValueSetCollections());
       assertEquals("epa", catalog.snapshotProvenance(second.versionId(), EpaPfasSource.ACRONYM).orElseThrow().backend());
       try (SnapshotStore old = SnapshotStore.openFile(first.snapshotFile().toString())) {

@@ -54,8 +54,19 @@ public class CatalogStore implements AutoCloseable {
       String licenseTier) {}
 
   /**
-   * Display/audit-only provenance for a snapshot: the {@code backend} it came from (currently always
-   * {@code bioportal}); the source's {@code submissionId} (BioPortal's monotonic, reliable per-upload
+   * One completed attempt, separate from content identity. Times are UTC instants; retrievedAt is
+   * when the download completed, never a publisher's release date. Raw paths are catalog-relative.
+   * Legacy entries preserve only facts known before history was introduced. Failed attempts need
+   * not have a snapshot or an archive. Error types, rather than messages/URLs, avoid retaining secrets.
+   */
+  public record IngestEvent(String id, String acronym, String versionId, String kind, String status,
+      String backend, Integer submissionId, String declaredVersion, String releasedAt, String sourceDate,
+      String startedAt, String retrievedAt, String completedAt, String rawFilePath, String rawFileHash,
+      String errorType) {}
+
+  /**
+   * First-observation provenance for a snapshot: the {@code backend} it came from;
+   * the source's {@code submissionId} (BioPortal's monotonic, reliable per-upload
    * key — captured at ingest, not reconstructable offline); and the {@code sourceDate}, the date the
    * source claims for itself, distinct from the upload date in {@code released_at}. None of these
    * participate in identity or resolution.
@@ -273,6 +284,77 @@ public class CatalogStore implements AutoCloseable {
     ensureColumn("snapshot", "backend", "TEXT DEFAULT 'bioportal'");
     ensureColumn("snapshot", "submission_id", "INTEGER");
     ensureColumn("snapshot", "source_date", "TEXT");
+    initIngestHistory();
+  }
+
+  private void initIngestHistory() throws SQLException {
+    inTransaction(() -> {
+      try (Statement s = connection().createStatement()) {
+        // Serialize migration with ingest/publication, including the initial legacy copy.
+        s.executeUpdate("UPDATE snapshot SET file_path=file_path WHERE 0");
+        if (tableHasColumn("ingest_event", "id")) return;
+        // No cascading FK: audit records survive explicit snapshot retirement or identity cutover.
+        // Ordinary ingest inserts successful events in the same transaction as their snapshot.
+        s.executeUpdate("""
+            CREATE TABLE ingest_event (
+              id TEXT PRIMARY KEY NOT NULL,
+              acronym TEXT NOT NULL, version_id TEXT,
+              kind TEXT NOT NULL CHECK(kind IN ('ingest', 'reextract', 'legacy')),
+              status TEXT NOT NULL CHECK(status IN ('succeeded', 'failed', 'unknown')),
+              backend TEXT, submission_id INTEGER, declared_version TEXT, released_at TEXT,
+              source_date TEXT, started_at TEXT, retrieved_at TEXT, completed_at TEXT,
+              raw_file_path TEXT, raw_file_hash TEXT, error_type TEXT,
+              CHECK(status != 'succeeded' OR version_id IS NOT NULL)
+            )""");
+        s.executeUpdate("CREATE INDEX idx_ingest_event_source ON ingest_event(acronym, completed_at)");
+        s.executeUpdate("CREATE INDEX idx_ingest_event_version ON ingest_event(acronym, version_id)");
+        s.executeUpdate("""
+            INSERT INTO ingest_event (id, acronym, version_id, kind, status, backend, submission_id,
+              declared_version, released_at, source_date, completed_at, raw_file_hash)
+            SELECT 'legacy:' || acronym || ':' || version_id, acronym, version_id, 'legacy', 'unknown',
+              backend, submission_id, declared_version, released_at, source_date, ingested_at, file_hash
+            FROM snapshot""");
+      }
+    });
+  }
+
+  /** Appends an event. There is deliberately no update/delete API for ingest history. */
+  public void recordIngestEvent(IngestEvent e) throws SQLException {
+    try (PreparedStatement ps = connection().prepareStatement("""
+        INSERT INTO ingest_event (id, acronym, version_id, kind, status, backend, submission_id,
+          declared_version, released_at, source_date, started_at, retrieved_at, completed_at,
+          raw_file_path, raw_file_hash, error_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""")) {
+      ps.setString(1, e.id()); ps.setString(2, e.acronym()); ps.setString(3, e.versionId());
+      ps.setString(4, e.kind()); ps.setString(5, e.status()); ps.setString(6, e.backend());
+      setNullableInt(ps, 7, e.submissionId()); ps.setString(8, e.declaredVersion());
+      ps.setString(9, e.releasedAt()); ps.setString(10, e.sourceDate());
+      ps.setString(11, e.startedAt()); ps.setString(12, e.retrievedAt());
+      ps.setString(13, e.completedAt()); ps.setString(14, e.rawFilePath());
+      ps.setString(15, e.rawFileHash()); ps.setString(16, e.errorType());
+      ps.executeUpdate();
+    }
+  }
+
+  /** Chronological audit history for a source, with raw paths resolved against this catalog. */
+  public List<IngestEvent> ingestHistory(String acronym) throws SQLException {
+    List<IngestEvent> events = new ArrayList<>();
+    try (PreparedStatement ps = connection().prepareStatement(
+        "SELECT * FROM ingest_event WHERE acronym = ? ORDER BY completed_at, rowid")) {
+      ps.setString(1, acronym);
+      try (ResultSet rs = ps.executeQuery()) {
+        while (rs.next()) {
+          String raw = rs.getString("raw_file_path");
+          if (raw != null && baseDir != null) raw = baseDir.resolve(raw).toString();
+          events.add(new IngestEvent(rs.getString("id"), acronym, rs.getString("version_id"),
+              rs.getString("kind"), rs.getString("status"), rs.getString("backend"),
+              getNullableInt(rs, "submission_id"), rs.getString("declared_version"),
+              rs.getString("released_at"), rs.getString("source_date"), rs.getString("started_at"),
+              rs.getString("retrieved_at"), rs.getString("completed_at"), raw,
+              rs.getString("raw_file_hash"), rs.getString("error_type")));
+        }
+      }
+    }
+    return events;
   }
 
   /**
@@ -395,22 +477,21 @@ public class CatalogStore implements AutoCloseable {
 
   /**
    * Records an ingested snapshot. Idempotent on {@code (version_id, acronym)}: re-ingesting the same
-   * content for the same ontology (same content-hash id) updates the existing row rather than
-   * failing, so a backfill can be re-run safely. A different ontology that happens to share the
-   * content hash gets its own row rather than overwriting this one.
+   * content for the same ontology (same content-hash id) preserves the existing row. A different
+   * ontology that happens to share the content hash gets its own row rather than overwriting this one.
    */
   public void addSnapshot(SnapshotInfo s) throws SQLException {
+    addSnapshot(s, new SnapshotProvenance("bioportal", null, null));
+  }
+
+  /** Registers first-observation provenance atomically; false means the snapshot already existed. */
+  public boolean addSnapshot(SnapshotInfo s, SnapshotProvenance provenance) throws SQLException {
     try (PreparedStatement ps = connection().prepareStatement("""
         INSERT INTO snapshot (version_id, acronym, declared_version, released_at, ingested_at, format,
-                              hierarchy_status, class_count, edge_count, file_path, file_hash, license_tier)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ON CONFLICT(version_id, acronym) DO UPDATE SET
-          declared_version = excluded.declared_version,
-          released_at = excluded.released_at, ingested_at = excluded.ingested_at,
-          format = excluded.format, hierarchy_status = excluded.hierarchy_status,
-          class_count = excluded.class_count, edge_count = excluded.edge_count,
-          file_path = excluded.file_path, file_hash = excluded.file_hash,
-          license_tier = excluded.license_tier""")) {
+                              hierarchy_status, class_count, edge_count, file_path, file_hash, license_tier,
+                              backend, submission_id, source_date)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(version_id, acronym) DO NOTHING""")) {
       ps.setString(1, s.versionId());
       ps.setString(2, s.acronym());
       ps.setString(3, s.declaredVersion());
@@ -423,7 +504,10 @@ public class CatalogStore implements AutoCloseable {
       ps.setString(10, s.filePath());
       ps.setString(11, s.fileHash());
       ps.setString(12, s.licenseTier());
-      ps.executeUpdate();
+      ps.setString(13, provenance.backend());
+      setNullableInt(ps, 14, provenance.submissionId());
+      ps.setString(15, provenance.sourceDate());
+      return ps.executeUpdate() == 1;
     }
   }
 
@@ -604,10 +688,9 @@ public class CatalogStore implements AutoCloseable {
   }
 
   /**
-   * Records display/audit-only provenance for a snapshot: its source {@code submissionId} and
-   * {@code sourceDate}. A no-op when the snapshot is unknown. Leaves {@code backend} at its default
-   * ({@code bioportal}) — every current snapshot is from BioPortal; a future non-BioPortal backend
-   * would set it at ingest. Idempotent.
+   * Explicit maintenance repair of a snapshot's submission selector and source date. Ordinary ingest
+   * supplies provenance to {@link #addSnapshot(SnapshotInfo, SnapshotProvenance)} so repeats cannot
+   * overwrite it. A no-op when the snapshot is unknown; leaves the backend unchanged.
    */
   public void setSnapshotProvenance(String versionId, String acronym, Integer submissionId, String sourceDate)
       throws SQLException {
