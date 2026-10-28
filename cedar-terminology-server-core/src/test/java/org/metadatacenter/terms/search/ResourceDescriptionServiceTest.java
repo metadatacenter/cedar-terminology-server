@@ -74,13 +74,45 @@ class ResourceDescriptionServiceTest {
     var service = new ResourceDescriptionService(null);
     assertThrows(ResourceDescriptionService.NotFoundException.class,
         () -> service.describe(ref("class", "urn:term:a", null)));
-    var legacy = service.describe(new ResourceDescription.Reference("branch", "bioportal", "A/B?x=1", null,
-        null, "urn:term:a#b", null));
-    assertEquals("https://bioportal.bioontology.org/ontologies/A%2FB%3Fx%3D1?p=classes&conceptid=urn%3Aterm%3Aa%23b", legacy.links().landingPage());
-    assertValid("ResourceDescription", legacy);
+    var unheld = new ResourceDescription.Reference("branch", "bioportal", "A/B?x=1", null,
+        null, "urn:term:a#b", null);
+    assertThrows(ResourceDescriptionService.NotFoundException.class, () -> service.describe(unheld));
+    assertNull(service.linksFor(unheld));
     assertThrows(ResourceDescriptionService.NotFoundException.class,
         () -> service.describe(new ResourceDescription.Reference("class", "bioportal", "EX", null,
             "urn:term:a", null, new SearchResponse.VersionInfo("missing", null, null))));
+  }
+
+  @Test void missingProfileDoesNotBorrowLinksFromAnotherVersionOrAssumeBioPortal() throws Exception {
+    try (var catalog = CatalogStore.openFile(dir.resolve("catalog.sqlite").toString())) {
+      catalog.initSchema();
+      catalog.upsertOntology(new CatalogStore.OntologyInfo("EX", "Example", null, "OWL"));
+      for (String version : List.of("old", "new")) {
+        Path file = dir.resolve(version + ".sqlite");
+        try (var store = SnapshotStore.openFile(file.toString())) {
+          store.initSchema();
+          store.addConcept("urn:term:a#b", "Term");
+          if (version.equals("new")) store.setMeta(SourcePresentation.META_KEY,
+              JSON.writeValueAsString(new SourcePresentation("bioportal", "BioPortal",
+                  Map.of("branch", new SourcePresentation.LinkPattern("https://example.org/{termIri}", null)), Map.of())));
+          else assertTrue(ResourceDescriptionService.presentation(store).isEmpty());
+        }
+        catalog.addSnapshot(new CatalogStore.SnapshotInfo(version, "EX", null, null, null,
+            "OWL", "subsumption", 1, 0, file.toString(), version, "public"));
+      }
+      catalog.setTag("EX", CatalogStore.TAG_LATEST, "new");
+      try (var provider = new CatalogSnapshotProvider(catalog, Set.of("EX"))) {
+        var service = new ResourceDescriptionService(provider);
+        var old = service.describe(new ResourceDescription.Reference("branch", "bioportal", "EX", null,
+            null, "urn:term:a#b", new SearchResponse.VersionInfo("old", null, null)));
+        assertEquals("old", old.constraint().version().id());
+        assertNull(old.links());
+        assertValid("ResourceDescription", old);
+        var latest = service.describe(new ResourceDescription.Reference("branch", "bioportal", "EX", null,
+            null, "urn:term:a#b", null));
+        assertEquals("https://example.org/urn%3Aterm%3Aa%23b", latest.links().landingPage());
+      }
+    }
   }
 
   @Test void linksUseTheCoreModelSchemaAndDoNotCarryVersions() throws Exception {

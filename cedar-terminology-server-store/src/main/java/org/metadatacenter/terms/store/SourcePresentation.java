@@ -8,13 +8,4 @@ public record SourcePresentation(String sourceSystem, String authorityLabel,
   public static final String META_KEY = "resource_presentation_v1";
   /** Only the server expands placeholders; clients receive complete URLs. */
   public record LinkPattern(String landingPage, String icon) {}
-  public static SourcePresentation legacyBioPortal() {
-    String base = "https://bioportal.bioontology.org/ontologies/{sourceAcronym}";
-    String icon = "{serviceBase}/resources/icons/bioportal.png";
-    var overview = new LinkPattern(base, icon);
-    var concept = new LinkPattern(base + "?p=classes&conceptid={termIri}", icon);
-    return new SourcePresentation("bioportal", "BioPortal",
-        Map.of("ontology", overview, "valueSet", overview, "class", concept, "branch", concept,
-            "property", new LinkPattern(null, null)), Map.of());
-  }
 }

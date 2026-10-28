@@ -75,7 +75,10 @@ public class TerminologyServerApplication extends CedarMicroserviceApplication<T
 
   @Override
   public void initializeApp() {
-    org.metadatacenter.terms.search.ResourceDescriptionService.configurePublicBase(cedarConfig.getServers().getTerminology().getBase());
+    // Links go to the browser-facing HTTPS endpoint. The inter-service base is a private hop,
+    // and its host is deliberately not part of this service's own filtered environment.
+    org.metadatacenter.terms.search.ResourceDescriptionService.configurePublicBase(
+        "https://terminology." + cedarConfig.getHost());
     // BioPortal's own connect and response timeouts, over the shared external class of outbound
     // call. Done before the service below makes its first request.
     HttpUtil.install(cedarConfig.getTerminologyConfig().getBioPortal().getConnectTimeout(),

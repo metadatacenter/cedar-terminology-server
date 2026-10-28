@@ -2,6 +2,8 @@ package org.metadatacenter.terms.ingest;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.metadatacenter.terms.store.SourcePresentation;
+import org.metadatacenter.terms.store.SourcePresentation.LinkPattern;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -16,6 +18,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Downloads ontology submissions from the BioPortal REST API.
@@ -47,10 +50,20 @@ public class BioPortalDownloader implements SubmissionSource {
         .build();
   }
 
-  @Override public org.metadatacenter.terms.store.SourcePresentation presentation(String acronym) {
+  @Override public SourcePresentation presentation(String acronym) {
     return DEFAULT_BASE_URL.equals(baseUrl)
-        ? org.metadatacenter.terms.store.SourcePresentation.legacyBioPortal()
+        ? publicLinks()
         : SubmissionSource.super.presentation(acronym);
+  }
+
+  /** Shared by new ingestion and the explicit offline backfill of BioPortal snapshots. */
+  public static SourcePresentation publicLinks() {
+    String base = "https://bioportal.bioontology.org/ontologies/{sourceAcronym}";
+    String icon = "{serviceBase}/resources/icons/bioportal.png";
+    var overview = new LinkPattern(base, icon);
+    var concept = new LinkPattern(base + "?p=classes&conceptid={termIri}", icon);
+    return new SourcePresentation("bioportal", "BioPortal",
+        Map.of("ontology", overview, "valueSet", overview, "class", concept, "branch", concept), Map.of());
   }
 
   private HttpRequest.Builder request(String url) {

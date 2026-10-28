@@ -22,11 +22,11 @@ public final class ResourceDescriptionService {
 
   public ResourceDescriptionService(CatalogSnapshotProvider provider) { this.provider = provider; }
 
-  public static SourcePresentation presentation(SnapshotStore store) throws SQLException {
+  public static Optional<SourcePresentation> presentation(SnapshotStore store) throws SQLException {
     var encoded = store.getMeta(SourcePresentation.META_KEY);
-    if (encoded.isEmpty()) return SourcePresentation.legacyBioPortal();
+    if (encoded.isEmpty()) return Optional.empty();
     try {
-      return JSON.readValue(encoded.get(), SourcePresentation.class);
+      return Optional.ofNullable(JSON.readValue(encoded.get(), SourcePresentation.class));
     } catch (java.io.IOException e) {
       throw new SQLException("Invalid stored resource presentation", e);
     }
@@ -49,22 +49,20 @@ public final class ResourceDescriptionService {
     boolean pinned = version != null && !version.isBlank() && !"latest".equalsIgnoreCase(version.trim());
     var store = provider == null ? Optional.<SnapshotStore>empty() : provider.forOntology(acronym, version);
     if (store.isEmpty()) {
-      // Existing unpinned, proxied BioPortal references keep their public links. This describes
-      // presentation only; it never asserts membership or remote availability.
-      if (!pinned && (requested.sourceSystem() == null || "bioportal".equals(requested.sourceSystem())))
-        return new ResourceDescription(requested, landingPage(SourcePresentation.legacyBioPortal(), type, acronym, iri, null));
       throw new NotFoundException(pinned ? "The requested version is not held" : "The source is not served");
     }
     SnapshotStore snapshot = store.get();
-    SourcePresentation profile = presentation(snapshot);
+    var profile = presentation(snapshot);
     String sourceIri = provider.catalog().ontologyIri(acronym).orElse(null);
-    if (requested.sourceSystem() != null && !requested.sourceSystem().equals(profile.sourceSystem()))
+    if (requested.sourceSystem() != null && profile.isPresent()
+        && !requested.sourceSystem().equals(profile.get().sourceSystem()))
       throw new NotFoundException("The source identity does not match");
     if (requested.sourceIri() != null && !requested.sourceIri().equals(sourceIri))
       throw new NotFoundException("The source identity does not match");
     var info = provider.snapshotInfo(acronym, version).orElseThrow();
     var resolved = new SearchResponse.VersionInfo(info.versionId(), info.releasedAt(), info.declaredVersion());
-    var constraint = new ResourceDescription.Reference(type, profile.sourceSystem(), acronym, sourceIri,
+    var constraint = new ResourceDescription.Reference(type,
+        profile.map(SourcePresentation::sourceSystem).orElse(requested.sourceSystem()), acronym, sourceIri,
         requested.termIri(), requested.termBaseIri(), resolved);
     if (type.equals("property")) {
       boolean found = false;
@@ -76,7 +74,8 @@ public final class ResourceDescriptionService {
     } else if (!type.equals("ontology") && snapshot.get(iri).isEmpty()) {
       throw new NotFoundException("The resource is not held in this version");
     }
-    return new ResourceDescription(constraint, landingPage(profile, type, acronym, iri, info.versionId()));
+    return new ResourceDescription(constraint,
+        profile.map(p -> landingPage(p, type, acronym, iri, info.versionId())).orElse(null));
   }
 
   /** Optional enrichment must not turn an otherwise usable search result into a failed search. */

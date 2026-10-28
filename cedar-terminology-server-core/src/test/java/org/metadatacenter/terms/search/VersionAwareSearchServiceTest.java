@@ -43,6 +43,17 @@ public class VersionAwareSearchServiceTest {
   private static final String VS = "http://vs/";
 
   @Test
+  public void snapshotsWithoutLinkMetadataRemainSearchableWithoutGuessedLinks() throws Exception {
+    var response = service.search(request("cat", List.of("class"),
+        List.of(new SourceSelector("bioportal", "EX", new VersionSelector("hash-v1")))));
+    assertEquals(SourceBlock.SERVED_LOCAL, response.sources().get(0).served());
+    assertEquals("hash-v1", response.sources().get(0).version().id());
+    assertNull(response.sources().get(0).links());
+    assertEquals(1, response.results().get("class").totalCount());
+    assertNull(assertInstanceOf(ClassHit.class, response.results().get("class").collection().get(0)).links());
+  }
+
+  @Test
   public void existingAlternativeAuthoritySelectorsKeepTheirResolutionBehavior() throws Exception {
     var response = service.search(request("cat", List.of("class"),
         List.of(new SourceSelector("agroportal", "EX", new VersionSelector("hash-v1")))));

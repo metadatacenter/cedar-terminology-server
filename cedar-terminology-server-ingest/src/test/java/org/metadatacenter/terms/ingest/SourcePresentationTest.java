@@ -4,8 +4,14 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
 class SourcePresentationTest {
-  @Test void onlyTheBioPortalAdapterInheritsBioPortalPublicPages() {
-    assertFalse(new BioPortalDownloader("test-key").presentation("EX").links().isEmpty());
+  @Test void onlyTheBioPortalAdapterSuppliesBioPortalPublicPages() {
+    var profile = new BioPortalDownloader("test-key").presentation("EX");
+    assertEquals(BioPortalDownloader.publicLinks(), profile);
+    for (String type : java.util.List.of("ontology", "valueSet", "class", "branch")) {
+      assertTrue(profile.links().get(type).landingPage().startsWith("https://bioportal.bioontology.org/ontologies/{sourceAcronym}"));
+      assertEquals("{serviceBase}/resources/icons/bioportal.png", profile.links().get(type).icon());
+    }
+    assertNull(profile.links().get("property"));
     assertTrue(new BioPortalDownloader("test-key", "https://new-api.example")
         .presentation("EX").links().isEmpty());
     assertTrue(new DirectUrlSubmissionSource("https://new-api.example/vocabulary.owl", "OWL", "future")

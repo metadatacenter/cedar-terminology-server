@@ -232,8 +232,8 @@ public class VersionAwareSearchService {
         var store = provider.forOntology(source.sourceAcronym(), source.version() == null ? null : source.version().id());
         if (store.isPresent()) {
           var profile = ResourceDescriptionService.presentation(store.get());
-          if (Objects.equals(source.authority(), profile.sourceSystem()))
-            source = source.withAuthorityLabel(profile.authorityLabel());
+          if (profile.isPresent() && Objects.equals(source.authority(), profile.get().sourceSystem()))
+            source = source.withAuthorityLabel(profile.get().authorityLabel());
         }
       }
       sources.put(source.sourceAcronym(), source);
@@ -314,8 +314,8 @@ public class VersionAwareSearchService {
     String heldSystem = sourceSystemOf(acronym);
     // New adapters declare their identity namespace; legacy snapshots keep their old resolution rules.
     var held = provider.forOntology(acronym, pinned);
-    if (held.isPresent() && held.get().getMeta(org.metadatacenter.terms.store.SourcePresentation.META_KEY).isPresent()
-        && !system.equals(ResourceDescriptionService.presentation(held.get()).sourceSystem())) {
+    if (held.isPresent() && ResourceDescriptionService.presentation(held.get())
+        .filter(profile -> !system.equals(profile.sourceSystem())).isPresent()) {
       return unavailable(system, acronym, name, iri, SourceBlock.REASON_SOURCE_UNKNOWN, selector.version());
     }
 
@@ -801,7 +801,9 @@ public class VersionAwareSearchService {
   private String sourceSystemOf(String acronym) throws SQLException {
     if (acronym == null) return SearchRequest.BIOPORTAL;
     var store = provider.forOntology(acronym);
-    return store.isEmpty() ? SearchRequest.BIOPORTAL : ResourceDescriptionService.presentation(store.get()).sourceSystem();
+    // The original addressing namespace remains the request default. It supplies no public URLs.
+    return store.isEmpty() ? SearchRequest.BIOPORTAL : ResourceDescriptionService.presentation(store.get())
+        .map(org.metadatacenter.terms.store.SourcePresentation::sourceSystem).orElse(SearchRequest.BIOPORTAL);
   }
 
   /**
