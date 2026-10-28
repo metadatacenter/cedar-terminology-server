@@ -284,7 +284,88 @@ public class CatalogStore implements AutoCloseable {
     ensureColumn("snapshot", "backend", "TEXT DEFAULT 'bioportal'");
     ensureColumn("snapshot", "submission_id", "INTEGER");
     ensureColumn("snapshot", "source_date", "TEXT");
+    migrateVersionTagSnapshotReference();
     initIngestHistory();
+  }
+
+  /** The old tag table referenced the hash alone, before snapshots became acronym-scoped. */
+  private boolean hasLegacyVersionTagReference() throws SQLException {
+    int snapshotColumns = 0;
+    boolean versionColumn = false;
+    try (Statement statement = connection().createStatement();
+         ResultSet rows = statement.executeQuery("PRAGMA foreign_key_list(version_tag)")) {
+      while (rows.next()) {
+        if ("snapshot".equals(rows.getString("table"))) {
+          snapshotColumns++;
+          versionColumn = "version_id".equals(rows.getString("from"))
+              && "version_id".equals(rows.getString("to"));
+        }
+      }
+    }
+    return snapshotColumns == 1 && versionColumn;
+  }
+
+  /**
+   * Rebuilds only the known legacy tag table. Validate the scoped references before replacing it;
+   * invalid rows, failed DDL, or interrupted work leave the original table and tags intact.
+   */
+  private void migrateVersionTagSnapshotReference() throws SQLException {
+    if (!hasLegacyVersionTagReference()) return;
+    if (!connection().getAutoCommit())
+      throw new SQLException("Catalog schema migration must run outside an existing transaction");
+    boolean foreignKeys;
+    try (Statement statement = connection().createStatement();
+         ResultSet rows = statement.executeQuery("PRAGMA foreign_keys")) {
+      foreignKeys = rows.next() && rows.getInt(1) != 0;
+    }
+    // SQLite requires this outside the transaction when rebuilding a table. In particular, the
+    // malformed old reference can otherwise reject even the zero-row writer-reservation UPDATE.
+    try (Statement statement = connection().createStatement()) {
+      statement.execute("PRAGMA foreign_keys=OFF");
+    }
+    try {
+      inTransaction(() -> {
+        try (Statement statement = connection().createStatement()) {
+          statement.executeUpdate("UPDATE snapshot SET file_path=file_path WHERE 0");
+          if (!hasLegacyVersionTagReference()) return; // another initializer migrated it first
+          List<String> columns = new ArrayList<>();
+          try (ResultSet rows = statement.executeQuery("PRAGMA table_info(version_tag)")) {
+            while (rows.next()) columns.add(rows.getString("name"));
+          }
+          if (!columns.equals(List.of("acronym", "tag", "version_id")))
+            throw new SQLException("Unsupported legacy version_tag columns; refusing to discard data");
+          List<String> schemaObjects = new ArrayList<>();
+          try (ResultSet rows = statement.executeQuery("""
+              SELECT sql FROM sqlite_master WHERE tbl_name='version_tag'
+                AND type IN ('index', 'trigger') AND sql IS NOT NULL ORDER BY type, name""")) {
+            while (rows.next()) schemaObjects.add(rows.getString(1));
+          }
+          statement.executeUpdate("""
+              CREATE TABLE version_tag_scoped (
+                acronym TEXT NOT NULL REFERENCES ontology_source(acronym),
+                tag TEXT NOT NULL,
+                version_id TEXT NOT NULL,
+                PRIMARY KEY (acronym, tag),
+                FOREIGN KEY (version_id, acronym) REFERENCES snapshot(version_id, acronym)
+              )""");
+          statement.executeUpdate("""
+              INSERT INTO version_tag_scoped (rowid, acronym, tag, version_id)
+              SELECT rowid, acronym, tag, version_id FROM version_tag""");
+          try (ResultSet violations = statement.executeQuery("PRAGMA foreign_key_check(version_tag_scoped)")) {
+            if (violations.next())
+              throw new SQLException("Cannot migrate version_tag: tag row " + violations.getLong("rowid")
+                  + " references a missing source or a snapshot outside its vocabulary");
+          }
+          statement.executeUpdate("DROP TABLE version_tag");
+          statement.executeUpdate("ALTER TABLE version_tag_scoped RENAME TO version_tag");
+          for (String sql : schemaObjects) statement.executeUpdate(sql);
+        }
+      });
+    } finally {
+      try (Statement statement = connection().createStatement()) {
+        statement.execute("PRAGMA foreign_keys=" + (foreignKeys ? "ON" : "OFF"));
+      }
+    }
   }
 
   private void initIngestHistory() throws SQLException {
@@ -742,12 +823,20 @@ public class CatalogStore implements AutoCloseable {
    */
   public void setTag(String acronym, String tag, String versionId) throws SQLException {
     try (PreparedStatement ps = connection().prepareStatement("""
-        INSERT INTO version_tag (acronym, tag, version_id) VALUES (?, ?, ?)
+        INSERT INTO version_tag (acronym, tag, version_id)
+        SELECT ?, ?, ? WHERE EXISTS (
+          SELECT 1 FROM snapshot s JOIN ontology_source o ON o.acronym = s.acronym
+          WHERE s.acronym = ? AND s.version_id = ?)
         ON CONFLICT(acronym, tag) DO UPDATE SET version_id = excluded.version_id""")) {
       ps.setString(1, acronym);
       ps.setString(2, tag);
       ps.setString(3, versionId);
-      ps.executeUpdate();
+      ps.setString(4, acronym);
+      ps.setString(5, versionId);
+      // Foreign-key enforcement is connection-specific in SQLite. Guard the same scoped target
+      // within this statement even when a caller has not enabled PRAGMA foreign_keys.
+      if (ps.executeUpdate() == 0)
+        throw new SQLException("Cannot tag unknown snapshot " + acronym + " at version " + versionId);
     }
   }
 
