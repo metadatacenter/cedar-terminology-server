@@ -10,12 +10,12 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import org.metadatacenter.terms.search.ResourceDescription;
 import org.metadatacenter.terms.search.ResourceDescriptionService;
-import org.metadatacenter.terms.search.TerminologyPresentationContract;
+import org.metadatacenter.terms.search.TerminologyLinksContract;
 import org.metadatacenter.util.json.JsonMapper;
 import org.metadatacenter.util.http.CedarResponse;
 import java.sql.SQLException;
 
-/** Read-only lookup using CEDAR constraint identity and one generic presentation schema. */
+/** Read-only lookup using CEDAR constraint identity and the core model links schema. */
 @Path("/resources/description")
 @Produces(MediaType.APPLICATION_JSON)
 public class ResourceDescriptionResource {
@@ -24,10 +24,10 @@ public class ResourceDescriptionResource {
 
   @POST
   @Consumes(MediaType.APPLICATION_JSON)
-  @Operation(operationId = "describeTerminologyResource", summary = "Resolve presentation for a CEDAR constraint reference")
+  @Operation(operationId = "describeTerminologyResource", summary = "Resolve public links for a CEDAR constraint reference")
   @RequestBody(required = true, content = @Content(schema = @Schema(implementation = ResourceDescription.Reference.class)))
   @io.swagger.v3.oas.annotations.responses.ApiResponses({
-      @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Constraint identity and generic presentation; an empty presentation means no known page",
+      @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Constraint identity and optional public links",
           content = @Content(schema = @Schema(implementation = ResourceDescription.class))),
       @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid constraint reference",
           content = @Content(schema = @Schema(implementation = org.metadatacenter.util.http.CedarError.class))),
@@ -37,7 +37,7 @@ public class ResourceDescriptionResource {
   public Response describe(@io.swagger.v3.oas.annotations.Parameter(hidden = true) JsonNode input) {
     try {
       return Response.ok(JsonMapper.STRICT_MAPPER.valueToTree(service.describe(
-          TerminologyPresentationContract.readReference(input))))
+          TerminologyLinksContract.readReference(input))))
           .header("Cache-Control", "private, no-cache").build();
     } catch (ResourceDescriptionService.NotFoundException e) {
       return CedarResponse.status(404).message(e.getMessage()).build();

@@ -8,16 +8,16 @@ import com.networknt.schema.JsonSchemaFactory;
 import com.networknt.schema.SpecVersion;
 
 /** The closed API contract, also used to generate the browser types. Not an artifact schema. */
-public final class TerminologyPresentationContract {
+public final class TerminologyLinksContract {
   private static final ObjectMapper JSON = new ObjectMapper();
   private static final JsonNode DOCUMENT = load();
   private static final JsonSchema REFERENCE = schema("ConstraintReference");
 
-  private TerminologyPresentationContract() {}
+  private TerminologyLinksContract() {}
 
   private static JsonNode load() {
-    try (var in = TerminologyPresentationContract.class.getResourceAsStream("/contracts/terminology-presentation.schema.json")) {
-      if (in == null) throw new IllegalStateException("Missing terminology presentation contract");
+    try (var in = TerminologyLinksContract.class.getResourceAsStream("/contracts/terminology-links.schema.json")) {
+      if (in == null) throw new IllegalStateException("Missing terminology links contract");
       return JSON.readTree(in);
     } catch (java.io.IOException e) { throw new ExceptionInInitializerError(e); }
   }

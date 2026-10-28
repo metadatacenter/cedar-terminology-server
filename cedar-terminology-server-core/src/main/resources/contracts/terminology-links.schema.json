@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "CEDAR terminology presentation contract",
+  "title": "CEDAR terminology resource links contract",
   "$ref": "#/$defs/ResourceDescription",
   "$defs": {
     "ConstraintVersion": {
@@ -149,60 +149,38 @@
         }
       ]
     },
-    "Presentation": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "href": {
-          "type": "string",
-          "format": "uri",
-          "pattern": "^https?://"
-        },
-        "label": {
-          "type": "string",
-          "minLength": 1
-        },
-        "versionScope": {
-          "enum": [
-            "current",
-            "exact"
-          ]
-        },
-        "icon": {
-          "enum": [
-            "bioportal",
-            "external"
-          ]
-        }
-      },
-      "oneOf": [
-        {
-          "maxProperties": 0
-        },
-        {
-          "required": [
-            "href",
-            "label",
-            "versionScope"
-          ]
-        }
-      ]
-    },
     "ResourceDescription": {
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "constraint",
-        "presentation"
+        "constraint"
       ],
       "properties": {
         "constraint": {
           "$ref": "#/$defs/ConstraintReference"
         },
-        "presentation": {
-          "$ref": "#/$defs/Presentation"
+        "links": {
+          "$ref": "#/$defs/ConstraintLinks"
         }
       }
+    },
+    "ConstraintLinks": {
+      "description": "Optional public navigation links for any controlled-term constraint. Version remains on the constraint.",
+      "type": "object",
+      "minProperties": 1,
+      "properties": {
+        "landingPage": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https?://[^/?#@\\s\\\\]+(?:[/?#][^\\s\\\\]*)?$"
+        },
+        "icon": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https?://[^/?#@\\s\\\\]+(?:[/?#][^\\s\\\\]*)?$"
+        }
+      },
+      "additionalProperties": false
     }
   }
 }

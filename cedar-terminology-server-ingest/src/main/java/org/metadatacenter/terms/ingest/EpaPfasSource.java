@@ -65,17 +65,14 @@ public final class EpaPfasSource implements SubmissionSource {
   }
 
   static org.metadatacenter.terms.store.SourcePresentation presentation() {
-    var pages = new LinkedHashMap<String, List<org.metadatacenter.terms.store.SourcePresentation.LinkPattern>>();
+    var pages = new LinkedHashMap<String, org.metadatacenter.terms.store.SourcePresentation.LinkPattern>();
     for (MethodList method : METHODS) {
       String page = "https://cdxapps.epa.gov/oms-substance-registry-services/substance-list-details/" + method.id();
-      pages.put(page, List.of(new org.metadatacenter.terms.store.SourcePresentation.LinkPattern(
-          "landing", page, "EPA Substance Registry Services", "current")));
+      pages.put(page, new org.metadatacenter.terms.store.SourcePresentation.LinkPattern(page, null));
     }
-    // A locally composed set has no upstream page. Its constituent selections retain their own links.
-    pages.put(COMBINED_IRI, List.of());
+    pages.put(COMBINED_IRI, new org.metadatacenter.terms.store.SourcePresentation.LinkPattern(null, null));
     return new org.metadatacenter.terms.store.SourcePresentation("epa", "EPA",
-        Map.of("class", List.of(new org.metadatacenter.terms.store.SourcePresentation.LinkPattern(
-            "landing", "{termIriRaw}", "CompTox", "current"))), pages);
+        Map.of("class", new org.metadatacenter.terms.store.SourcePresentation.LinkPattern("{termIriRaw}", null)), pages);
   }
 
   @Override public OntologyAccess accessInfo(String acronym) {

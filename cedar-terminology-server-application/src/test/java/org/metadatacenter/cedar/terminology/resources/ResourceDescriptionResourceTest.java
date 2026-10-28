@@ -2,7 +2,7 @@ package org.metadatacenter.cedar.terminology.resources;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
-import org.metadatacenter.terms.search.TerminologyPresentationContract;
+import org.metadatacenter.terms.search.TerminologyLinksContract;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -14,7 +14,7 @@ class ResourceDescriptionResourceTest {
     try (var response = resource.describe(JSON.readTree(
         "{\"type\":\"class\",\"sourceSystem\":\"bioportal\",\"sourceAcronym\":\"EX\",\"termIri\":\"urn:term:a\"}"))) {
       assertEquals(200, response.getStatus());
-      assertTrue(TerminologyPresentationContract.schema("ResourceDescription")
+      assertTrue(TerminologyLinksContract.schema("ResourceDescription")
           .validate(JSON.valueToTree(response.getEntity())).isEmpty());
     }
   }

@@ -83,6 +83,25 @@ class ValueConstraintsWireShapeTest {
         OntologyValueConstraint.class).getVersion());
   }
 
+  @Test void linksAreReadThroughTheCoreModelEvenWithPermissiveHttpMapping() throws Exception {
+    ObjectMapper http = org.metadatacenter.model.policy.JsonSourcePolicy.apply(new ObjectMapper())
+        .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
+    var good = http.readValue("{\"links\":{\"landingPage\":\"https://example.org/set\",\"icon\":\"https://example.org/icon.svg\"}}", ValueSetValueConstraint.class);
+    assertEquals("https://example.org/set", good.getLinks().landingPage());
+    // The real HTTP mapper rejects trailing JSON. Nested readers must stay in the active
+    // deserialization context, rather than treating the containing object's remainder as trailing data.
+    var nested = http.readValue("{\"valueSets\":[{\"links\":{\"landingPage\":\"https://example.org/one\"}," +
+        "\"uri\":\"urn:set:one\",\"vsCollection\":\"X\"}," +
+        "{\"uri\":\"urn:set:two\",\"vsCollection\":\"X\",\"links\":{\"icon\":\"https://example.org/icon.svg\"}}]}",
+        ValueConstraints.class);
+    assertEquals(2, nested.getValueSets().size());
+    assertEquals("https://example.org/one", nested.getValueSets().get(0).getLinks().landingPage());
+    assertEquals("https://example.org/icon.svg", nested.getValueSets().get(1).getLinks().icon());
+    for (String links : java.util.List.of("null", "{}", "{\"landingPage\":\"javascript:alert(1)\"}",
+        "{\"landingPage\":\"https://example.org\",\"versionScope\":\"current\"}"))
+      assertThrows(JsonMappingException.class, () -> http.readValue("{\"links\":" + links + "}", ValueSetValueConstraint.class));
+  }
+
   @Test
   void unknownConstraintFieldsFailLoudly() {
     String json = "{\"ontologies\":[],\"branches\":[],\"valueSets\":[],\"classes\":[]," +

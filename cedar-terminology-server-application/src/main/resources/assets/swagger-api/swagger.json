@@ -4442,7 +4442,7 @@
                 }
               }
             },
-            "description" : "Constraint identity and generic presentation; an empty presentation means no known page"
+            "description" : "Constraint identity and optional public links"
           },
           "400" : {
             "content" : {
@@ -4465,7 +4465,26 @@
             "description" : "Source, resource or exact version unavailable"
           }
         },
-        "summary" : "Resolve presentation for a CEDAR constraint reference"
+        "summary" : "Resolve public links for a CEDAR constraint reference"
+      }
+    },
+    "/resources/icons/bioportal.png" : {
+      "get" : {
+        "operationId" : "terminologySourceIcon",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "image/png" : {
+                "schema" : {
+                  "type" : "string",
+                  "format" : "binary"
+                }
+              }
+            },
+            "description" : "Source icon"
+          }
+        },
+        "summary" : "Get the BioPortal source icon"
       }
     },
     "/search" : {
@@ -4655,6 +4674,9 @@
               "$ref" : "#/components/schemas/TermRef"
             }
           },
+          "links" : {
+            "$ref" : "#/components/schemas/ConstraintLinks"
+          },
           "matchType" : {
             "type" : "string"
           },
@@ -4678,9 +4700,6 @@
             "items" : {
               "$ref" : "#/components/schemas/TermRef"
             }
-          },
-          "presentation" : {
-            "$ref" : "#/components/schemas/TerminologyPresentation"
           },
           "sourceAcronym" : {
             "type" : "string"
@@ -4709,6 +4728,9 @@
           },
           "iri" : {
             "type" : "string"
+          },
+          "links" : {
+            "$ref" : "#/components/schemas/ConstraintLinks"
           },
           "maxDepth" : {
             "type" : "integer",
@@ -4833,8 +4855,8 @@
           "hasChildren" : {
             "type" : "boolean"
           },
-          "presentation" : {
-            "$ref" : "#/components/schemas/TerminologyPresentation"
+          "links" : {
+            "$ref" : "#/components/schemas/ConstraintLinks"
           },
           "termIri" : {
             "type" : "string"
@@ -4856,6 +4878,9 @@
           },
           "hasChildren" : {
             "type" : "boolean"
+          },
+          "links" : {
+            "$ref" : "#/components/schemas/ConstraintLinks"
           },
           "matchType" : {
             "type" : "string"
@@ -4880,9 +4905,6 @@
             "items" : {
               "$ref" : "#/components/schemas/TermRef"
             }
-          },
-          "presentation" : {
-            "$ref" : "#/components/schemas/TerminologyPresentation"
           },
           "replacedBy" : {
             "$ref" : "#/components/schemas/TermRef"
@@ -4916,6 +4938,9 @@
           "label" : {
             "type" : "string"
           },
+          "links" : {
+            "$ref" : "#/components/schemas/ConstraintLinks"
+          },
           "prefLabel" : {
             "type" : "string",
             "maxLength" : 2147483647,
@@ -4944,6 +4969,17 @@
           }
         },
         "required" : [ "prefLabel", "source", "type", "uri" ]
+      },
+      "ConstraintLinks" : {
+        "type" : "object",
+        "properties" : {
+          "icon" : {
+            "type" : "string"
+          },
+          "landingPage" : {
+            "type" : "string"
+          }
+        }
       },
       "ConstraintReference" : {
         "type" : "object",
@@ -5071,6 +5107,9 @@
             "type" : "integer",
             "format" : "int32"
           },
+          "links" : {
+            "$ref" : "#/components/schemas/ConstraintLinks"
+          },
           "offset" : {
             "type" : "integer",
             "format" : "int32"
@@ -5086,9 +5125,6 @@
             "items" : {
               "$ref" : "#/components/schemas/TermRef"
             }
-          },
-          "presentation" : {
-            "$ref" : "#/components/schemas/TerminologyPresentation"
           },
           "request" : {
             "$ref" : "#/components/schemas/PageRequest"
@@ -5856,15 +5892,15 @@
       "OntologyHit" : {
         "type" : "object",
         "properties" : {
+          "links" : {
+            "$ref" : "#/components/schemas/ConstraintLinks"
+          },
           "matchCount" : {
             "type" : "integer",
             "format" : "int32"
           },
           "matchType" : {
             "type" : "string"
-          },
-          "presentation" : {
-            "$ref" : "#/components/schemas/TerminologyPresentation"
           },
           "sourceAcronym" : {
             "type" : "string"
@@ -5929,6 +5965,9 @@
           },
           "iri" : {
             "type" : "string"
+          },
+          "links" : {
+            "$ref" : "#/components/schemas/ConstraintLinks"
           },
           "name" : {
             "type" : "string"
@@ -6311,8 +6350,8 @@
           "constraint" : {
             "$ref" : "#/components/schemas/ConstraintReference"
           },
-          "presentation" : {
-            "$ref" : "#/components/schemas/TerminologyPresentation"
+          "links" : {
+            "$ref" : "#/components/schemas/ConstraintLinks"
           }
         }
       },
@@ -6515,11 +6554,11 @@
           "authorityLabel" : {
             "type" : "string"
           },
+          "links" : {
+            "$ref" : "#/components/schemas/ConstraintLinks"
+          },
           "pinnable" : {
             "type" : "boolean"
-          },
-          "presentation" : {
-            "$ref" : "#/components/schemas/TerminologyPresentation"
           },
           "reason" : {
             "type" : "string"
@@ -6630,26 +6669,6 @@
           "offset" : {
             "type" : "integer",
             "format" : "int32"
-          }
-        }
-      },
-      "TerminologyPresentation" : {
-        "type" : "object",
-        "additionalProperties" : false,
-        "properties" : {
-          "href" : {
-            "type" : "string"
-          },
-          "icon" : {
-            "type" : "string",
-            "enum" : [ "bioportal", "external" ]
-          },
-          "label" : {
-            "type" : "string"
-          },
-          "versionScope" : {
-            "type" : "string",
-            "enum" : [ "current", "exact" ]
           }
         }
       },
@@ -6953,6 +6972,9 @@
       "ValueSetHit" : {
         "type" : "object",
         "properties" : {
+          "links" : {
+            "$ref" : "#/components/schemas/ConstraintLinks"
+          },
           "matchType" : {
             "type" : "string"
           },
@@ -6961,9 +6983,6 @@
             "items" : {
               "$ref" : "#/components/schemas/TermRef"
             }
-          },
-          "presentation" : {
-            "$ref" : "#/components/schemas/TerminologyPresentation"
           },
           "sourceAcronym" : {
             "type" : "string"
@@ -6991,6 +7010,9 @@
         "properties" : {
           "iri" : {
             "type" : "string"
+          },
+          "links" : {
+            "$ref" : "#/components/schemas/ConstraintLinks"
           },
           "name" : {
             "type" : "string"

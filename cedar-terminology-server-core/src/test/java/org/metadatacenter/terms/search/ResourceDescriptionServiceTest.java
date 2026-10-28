@@ -19,10 +19,10 @@ class ResourceDescriptionServiceTest {
       catalog.initSchema();
       Path file = dir.resolve("snapshot.sqlite");
       var profile = new SourcePresentation("future-registry", "Future registry",
-          Map.of("class", List.of(new SourcePresentation.LinkPattern("landing",
-              "https://future.example/releases/{version.id}/record?iri={termIri}", "Future registry", "exact"))),
-          Map.of("urn:set:one", List.of(new SourcePresentation.LinkPattern("landing", "https://future.example/lists/1", "First list", "current")),
-              "urn:set:two", List.of(new SourcePresentation.LinkPattern("landing", "https://future.example/lists/2", "Second list", "current"))));
+          Map.of("class", new SourcePresentation.LinkPattern(
+              "https://future.example/releases/{version.id}/record?iri={termIri}", "https://future.example/icon.svg")),
+          Map.of("urn:set:one", new SourcePresentation.LinkPattern("https://future.example/lists/1", null),
+              "urn:set:two", new SourcePresentation.LinkPattern("https://future.example/lists/2", null)));
       try (SnapshotStore store = SnapshotStore.openFile(file.toString())) {
         store.initSchema();
         store.addConcept("urn:term:a", "Original label", true, "urn:term:b");
@@ -41,13 +41,13 @@ class ResourceDescriptionServiceTest {
         var service = new ResourceDescriptionService(provider);
         var term = service.describe(ref("class", "urn:term:a", "hash-v1"));
         assertEquals("hash-v1", term.constraint().version().id());
-        assertEquals("https://future.example/releases/hash-v1/record?iri=urn%3Aterm%3Aa", term.presentation().href());
-        assertEquals("exact", term.presentation().versionScope());
+        assertEquals("https://future.example/releases/hash-v1/record?iri=urn%3Aterm%3Aa", term.links().landingPage());
+        assertEquals("hash-v1", term.constraint().version().id());
         assertValid("ResourceDescription", term);
         var first = service.describe(ref("valueSet", "urn:set:one", null));
         var second = service.describe(ref("valueSet", "urn:set:two", null));
-        assertEquals("https://future.example/lists/1", first.presentation().href());
-        assertEquals("https://future.example/lists/2", second.presentation().href());
+        assertEquals("https://future.example/lists/1", first.links().landingPage());
+        assertEquals("https://future.example/lists/2", second.links().landingPage());
         assertValid("ResourceDescription", first); assertValid("ResourceDescription", second);
         assertThrows(ResourceDescriptionService.NotFoundException.class,
             () -> service.describe(ref("class", "urn:term:a", "missing-pin")));
@@ -61,43 +61,66 @@ class ResourceDescriptionServiceTest {
   }
 
   @Test void validatesLinksAndDoesNotInventPagesForUnknownProviders() throws Exception {
-    for (String href : List.of("javascript:alert(1)", "/relative", "https://user:secret@example.org/", "https://example.org/{unknown}")) {
-      var profile = new SourcePresentation("future", "Future", Map.of("class", List.of(
-          new SourcePresentation.LinkPattern("landing", href, "Read more", "current"))), Map.of());
-      assertEquals(ResourceDescription.Presentation.empty(), ResourceDescriptionService.landingPage(profile, "class", "F", "urn:term:a", "v1"));
+    for (String href : List.of("javascript:alert(1)", "/relative", "https://user:secret@example.org/",
+        "https://example.org/{unknown}", "https://example.org/{resourceIri}", "{resourceIriRaw}",
+        "https://example.org/{versionId}")) {
+      var profile = new SourcePresentation("future", "Future", Map.of("class", new SourcePresentation.LinkPattern(href, null)), Map.of());
+      assertEquals(null, ResourceDescriptionService.landingPage(profile, "class", "F", "urn:term:a", "v1"));
     }
-    var international = new SourcePresentation("future", "Future", Map.of("class", List.of(
-        new SourcePresentation.LinkPattern("landing", "https://example.org/café", "Read more", "current"))), Map.of());
+    var international = new SourcePresentation("future", "Future", Map.of("class", new SourcePresentation.LinkPattern("https://example.org/café", null)), Map.of());
     var page = ResourceDescriptionService.landingPage(international, "class", "F", "urn:term:猫", "v1");
-    assertEquals("https://example.org/caf%C3%A9", page.href());
-    assertValid("Presentation", page);
+    assertEquals("https://example.org/caf%C3%A9", page.landingPage());
+    assertValid("ConstraintLinks", page);
     var service = new ResourceDescriptionService(null);
     assertThrows(ResourceDescriptionService.NotFoundException.class,
         () -> service.describe(ref("class", "urn:term:a", null)));
     var legacy = service.describe(new ResourceDescription.Reference("branch", "bioportal", "A/B?x=1", null,
         null, "urn:term:a#b", null));
-    assertEquals("https://bioportal.bioontology.org/ontologies/A%2FB%3Fx%3D1?p=classes&conceptid=urn%3Aterm%3Aa%23b", legacy.presentation().href());
+    assertEquals("https://bioportal.bioontology.org/ontologies/A%2FB%3Fx%3D1?p=classes&conceptid=urn%3Aterm%3Aa%23b", legacy.links().landingPage());
     assertValid("ResourceDescription", legacy);
     assertThrows(ResourceDescriptionService.NotFoundException.class,
         () -> service.describe(new ResourceDescription.Reference("class", "bioportal", "EX", null,
             "urn:term:a", null, new SearchResponse.VersionInfo("missing", null, null))));
   }
 
-  @Test void allProvidersHaveExactlyTheSamePresentationKeywords() throws Exception {
-    for (String label : List.of("EPA CompTox", "BioPortal", "A future provider")) {
-      var page = new ResourceDescription.Presentation("https://example.org/term", label, "current", null);
-      assertValid("Presentation", page);
-      for (String extra : List.of("epa", "bioportal", "capabilities", "resourceIri", "versionId", "description")) {
-        ObjectNode extended = JSON.valueToTree(page);
-        extended.put(extra, "provider-specific");
-        assertFalse(TerminologyPresentationContract.schema("Presentation").validate(extended).isEmpty(), extra);
+  @Test void linksUseTheCoreModelSchemaAndDoNotCarryVersions() throws Exception {
+    var page = new org.metadatacenter.artifacts.model.core.fields.constraints.ConstraintLinks(
+        "https://example.org/term", "https://example.org/icon.svg");
+    assertValid("ConstraintLinks", page);
+    for (String extra : List.of("epa", "bioportal", "capabilities", "version", "versionScope", "label")) {
+      ObjectNode extended = JSON.valueToTree(page);
+      extended.put(extra, "unexpected");
+      assertFalse(TerminologyLinksContract.schema("ConstraintLinks").validate(extended).isEmpty());
+      assertThrows(IllegalArgumentException.class,
+          () -> org.metadatacenter.model.validation.ConstraintLinksValidation.validate(extended));
+    }
+    try (var in = org.metadatacenter.model.validation.ConstraintLinksValidation.class.getResourceAsStream("/iri-field-meta-schema.json");
+         var contract = getClass().getResourceAsStream("/contracts/terminology-links.schema.json")) {
+      assertEquals(JSON.readTree(in).path("definitions").path("valueConstraintsLinksFieldContent"),
+          JSON.readTree(contract).path("$defs").path("ConstraintLinks"));
+    }
+  }
+
+  @Test void obsoleteStoredProfilesAreRejectedWithoutTranslation() throws Exception {
+    try (var store = SnapshotStore.openFile(dir.resolve("legacy.sqlite").toString())) {
+      store.initSchema();
+      for (String encoded : List.of(
+          "{\"sourceSystem\":\"epa\",\"links\":{\"class\":[{\"rel\":\"landing\",\"href\":\"{termIriRaw}\",\"label\":\"CompTox\",\"versionScope\":\"current\"}]}}",
+          "{\"sourceSystem\":\"epa\",\"links\":{\"class\":{\"href\":\"{termIriRaw}\"}}}",
+          "{\"sourceSystem\":\"epa\",\"links\":{},\"capabilities\":{}}")) {
+        store.setMeta(SourcePresentation.META_KEY, encoded);
+        assertThrows(java.sql.SQLException.class, () -> ResourceDescriptionService.presentation(store));
+        assertEquals(encoded, store.getMeta(SourcePresentation.META_KEY).orElseThrow());
       }
     }
-    assertValid("Presentation", ResourceDescription.Presentation.empty());
-    for (String invalid : List.of("{\"href\":\"https://example.org\"}",
-        "{\"href\":\"https://example.org\",\"label\":\"Page\",\"versionScope\":\"custom\"}",
-        "{\"href\":\"https://example.org\",\"label\":\"Page\",\"versionScope\":\"current\",\"icon\":\"custom\"}"))
-      assertFalse(TerminologyPresentationContract.schema("Presentation").validate(JSON.readTree(invalid)).isEmpty());
+  }
+
+  @Test void obsoleteResourceTypeAliasesAreNotResolved() {
+    var pattern = new SourcePresentation.LinkPattern("https://example.org/term", null);
+    var profile = new SourcePresentation("future", "Future",
+        Map.of("term", pattern, "vocabulary", pattern), Map.of());
+    assertNull(ResourceDescriptionService.landingPage(profile, "class", "F", "urn:term:a", "v1"));
+    assertNull(ResourceDescriptionService.landingPage(profile, "ontology", "F", "urn:source", "v1"));
   }
 
   @Test void identityUsesOnlyCedarConstraintNamesAndItsVersionObject() throws Exception {
@@ -106,20 +129,20 @@ class ResourceDescriptionServiceTest {
       if (Set.of("class", "property").contains(type)) reference.put("termIri", "urn:term:a");
       if (Set.of("branch", "valueSet").contains(type)) reference.put("termBaseIri", "urn:set:a");
       reference.putObject("version").put("id", "hash-v1");
-      assertEquals("hash-v1", TerminologyPresentationContract.readReference(reference).version().id());
+      assertEquals("hash-v1", TerminologyLinksContract.readReference(reference).version().id());
       reference.put("version", "latest");
-      assertNull(TerminologyPresentationContract.readReference(reference).version());
+      assertNull(TerminologyLinksContract.readReference(reference).version());
       for (String extra : List.of("kind", "resourceIri", "versionId", "epa")) {
         ObjectNode extended = reference.deepCopy().put(extra, "custom");
-        assertThrows(IllegalArgumentException.class, () -> TerminologyPresentationContract.readReference(extended));
+        assertThrows(IllegalArgumentException.class, () -> TerminologyLinksContract.readReference(extended));
       }
     }
     var blankPin = JSON.createObjectNode().put("type", "ontology").put("sourceAcronym", "EX");
     blankPin.putObject("version").put("id", "  ");
-    assertThrows(IllegalArgumentException.class, () -> TerminologyPresentationContract.readReference(blankPin),
+    assertThrows(IllegalArgumentException.class, () -> TerminologyLinksContract.readReference(blankPin),
         "A blank pin must not be interpreted as latest");
-    assertThrows(IllegalArgumentException.class, () -> TerminologyPresentationContract.readReference(null));
-    assertThrows(IllegalArgumentException.class, () -> TerminologyPresentationContract.readReference(
+    assertThrows(IllegalArgumentException.class, () -> TerminologyLinksContract.readReference(null));
+    assertThrows(IllegalArgumentException.class, () -> TerminologyLinksContract.readReference(
         JSON.readTree("{\"type\":\"term\",\"sourceAcronym\":\"EX\",\"termIri\":\"urn:a\"}")));
   }
 
@@ -127,16 +150,16 @@ class ResourceDescriptionServiceTest {
     for (String iri : List.of("urn:term:猫", "https://example.org/café")) {
       var reference = JSON.createObjectNode().put("type", "class").put("sourceAcronym", "EX")
           .put("sourceIri", "urn:source:例").put("termIri", iri);
-      assertEquals(iri, TerminologyPresentationContract.readReference(reference).termIri());
+      assertEquals(iri, TerminologyLinksContract.readReference(reference).termIri());
     }
     for (String invalid : List.of("/relative", "urn:broken%zz", "https://example.org/a b")) {
       var reference = JSON.createObjectNode().put("type", "class").put("sourceAcronym", "EX").put("termIri", invalid);
-      assertThrows(IllegalArgumentException.class, () -> TerminologyPresentationContract.readReference(reference));
+      assertThrows(IllegalArgumentException.class, () -> TerminologyLinksContract.readReference(reference));
     }
   }
 
   private static void assertValid(String type, Object value) {
-    var errors = TerminologyPresentationContract.schema(type).validate(JSON.valueToTree(value));
+    var errors = TerminologyLinksContract.schema(type).validate(JSON.valueToTree(value));
     assertTrue(errors.isEmpty(), errors.toString());
   }
 

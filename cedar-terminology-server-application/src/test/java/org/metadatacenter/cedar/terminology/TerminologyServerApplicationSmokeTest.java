@@ -208,6 +208,7 @@ public class TerminologyServerApplicationSmokeTest {
       "POST /search",
       "GET /search/hierarchy",
       "POST /resources/description",
+      "GET /resources/icons/bioportal.png",
       "POST /bioportal/integrated-search",
       "POST /bioportal/integrated-retrieve",
       "POST /bioportal/validate-term",

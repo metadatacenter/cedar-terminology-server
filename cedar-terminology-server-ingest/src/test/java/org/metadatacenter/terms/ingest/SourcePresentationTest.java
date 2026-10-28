@@ -17,10 +17,10 @@ class SourcePresentationTest {
     assertEquals("epa", profile.sourceSystem());
     for (String id : java.util.List.of("477", "475")) {
       String iri = "https://cdxapps.epa.gov/oms-substance-registry-services/substance-list-details/" + id;
-      assertEquals(iri, profile.resourceLinks().get(iri).get(0).href());
+      assertEquals(iri, profile.resourceLinks().get(iri).landingPage());
     }
-    assertTrue(profile.resourceLinks().get(EpaPfasSource.COMBINED_IRI).isEmpty());
-    assertEquals("CompTox", profile.links().get("class").get(0).label());
-    assertEquals("current", profile.links().get("class").get(0).versionScope());
+    assertNull(profile.resourceLinks().get(EpaPfasSource.COMBINED_IRI).landingPage());
+    assertEquals("{termIriRaw}", profile.links().get("class").landingPage());
+    assertNull(profile.links().get("class").icon());
   }
 }

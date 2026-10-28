@@ -228,7 +228,7 @@ public class VersionAwareSearchService {
     for (var source : response.sources()) {
       if (SourceBlock.SERVED_LOCAL.equals(source.served())) {
         var ref = reference(source, "ontology", source.sourceIri());
-        source = source.withPresentation(descriptions.presentationFor(ref));
+        source = source.withLinks(descriptions.linksFor(ref));
         var store = provider.forOntology(source.sourceAcronym(), source.version() == null ? null : source.version().id());
         if (store.isPresent()) {
           var profile = ResourceDescriptionService.presentation(store.get());
@@ -245,10 +245,10 @@ public class VersionAwareSearchService {
       for (var hit : page.collection()) {
         var source = sources.get(hit.sourceAcronym());
         if (source == null || !SourceBlock.SERVED_LOCAL.equals(source.served())) { hits.add(hit); continue; }
-        if (hit instanceof ClassHit h) hits.add(h.withPresentation(descriptions.presentationFor(reference(source, "class", h.termIri()))));
-        else if (hit instanceof BranchHit h) hits.add(h.withPresentation(descriptions.presentationFor(reference(source, "branch", h.termBaseIri()))));
-        else if (hit instanceof ValueSetHit h) hits.add(h.withPresentation(descriptions.presentationFor(reference(source, "valueSet", h.termBaseIri()))));
-        else if (hit instanceof OntologyHit h) hits.add(h.withPresentation(source.presentation()));
+        if (hit instanceof ClassHit h) hits.add(h.withLinks(descriptions.linksFor(reference(source, "class", h.termIri()))));
+        else if (hit instanceof BranchHit h) hits.add(h.withLinks(descriptions.linksFor(reference(source, "branch", h.termBaseIri()))));
+        else if (hit instanceof ValueSetHit h) hits.add(h.withLinks(descriptions.linksFor(reference(source, "valueSet", h.termBaseIri()))));
+        else if (hit instanceof OntologyHit h) hits.add(h.withLinks(source.links()));
         else hits.add(hit);
       }
       results.put(entry.getKey(), new TypeResults(page.totalCount(), page.countCapped(), page.distinctLabelCount(),
@@ -743,14 +743,14 @@ public class VersionAwareSearchService {
       children.add(new HierarchyResponse.Child(child.iri(), child.prefLabel(),
           !store.children(child.iri()).isEmpty(), store.descendantCount(child.iri()),
           SnapshotStore.servedDefinition(store.definitions(child.iri())))
-          .withPresentation(descriptions.describe(reference(resolved.block(), "class", child.iri())).presentation()));
+          .withLinks(descriptions.describe(reference(resolved.block(), "class", child.iri())).links()));
     }
     List<TermRef> path = path(store, termIri);
     return new HierarchyLookup.Found(new HierarchyResponse(resolved.block().sourceSystem(), acronym,
         resolved.block(), path, termIri, label.orElse(null), children.isEmpty() ? null : children,
         store.childCount(termIri), from, store.descendantCount(termIri),
         SnapshotStore.servedDefinition(store.definitions(termIri)), null, null, null, null)
-        .withPresentation(descriptions.describe(reference(resolved.block(), "branch", termIri)).presentation()).paged(limit, null));
+        .withLinks(descriptions.describe(reference(resolved.block(), "branch", termIri)).links()).paged(limit, null));
   }
 
   /**

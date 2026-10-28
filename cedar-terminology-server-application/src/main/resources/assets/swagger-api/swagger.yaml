@@ -3079,8 +3079,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ResourceDescription"
-          description: Constraint identity and generic presentation; an empty presentation
-            means no known page
+          description: Constraint identity and optional public links
         "400":
           content:
             application/json:
@@ -3093,7 +3092,19 @@ paths:
               schema:
                 $ref: "#/components/schemas/CedarError"
           description: "Source, resource or exact version unavailable"
-      summary: Resolve presentation for a CEDAR constraint reference
+      summary: Resolve public links for a CEDAR constraint reference
+  /resources/icons/bioportal.png:
+    get:
+      operationId: terminologySourceIcon
+      responses:
+        "200":
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+          description: Source icon
+      summary: Get the BioPortal source icon
   /search:
     post:
       description: "Search the local terminology store at a named version or the current\
@@ -3242,6 +3253,8 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/TermRef"
+        links:
+          $ref: "#/components/schemas/ConstraintLinks"
         matchType:
           type: string
         matchedLabels:
@@ -3258,8 +3271,6 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/TermRef"
-        presentation:
-          $ref: "#/components/schemas/TerminologyPresentation"
         sourceAcronym:
           type: string
         sourceSystem:
@@ -3279,6 +3290,8 @@ components:
           minLength: 1
         iri:
           type: string
+        links:
+          $ref: "#/components/schemas/ConstraintLinks"
         maxDepth:
           type: integer
           format: int32
@@ -3527,8 +3540,8 @@ components:
           format: int32
         hasChildren:
           type: boolean
-        presentation:
-          $ref: "#/components/schemas/TerminologyPresentation"
+        links:
+          $ref: "#/components/schemas/ConstraintLinks"
         termIri:
           type: string
         termLabel:
@@ -3543,6 +3556,8 @@ components:
           format: int32
         hasChildren:
           type: boolean
+        links:
+          $ref: "#/components/schemas/ConstraintLinks"
         matchType:
           type: string
         matchedLabels:
@@ -3559,8 +3574,6 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/TermRef"
-        presentation:
-          $ref: "#/components/schemas/TerminologyPresentation"
         replacedBy:
           $ref: "#/components/schemas/TermRef"
         sourceAcronym:
@@ -3582,6 +3595,8 @@ components:
           type: string
         label:
           type: string
+        links:
+          $ref: "#/components/schemas/ConstraintLinks"
         prefLabel:
           type: string
           maxLength: 2147483647
@@ -3607,6 +3622,13 @@ components:
       - source
       - type
       - uri
+    ConstraintLinks:
+      type: object
+      properties:
+        icon:
+          type: string
+        landingPage:
+          type: string
     ConstraintReference:
       type: object
       additionalProperties: false
@@ -3704,6 +3726,8 @@ components:
         descendantCount:
           type: integer
           format: int32
+        links:
+          $ref: "#/components/schemas/ConstraintLinks"
         offset:
           type: integer
           format: int32
@@ -3715,8 +3739,6 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/TermRef"
-        presentation:
-          $ref: "#/components/schemas/TerminologyPresentation"
         request:
           $ref: "#/components/schemas/PageRequest"
         source:
@@ -4351,13 +4373,13 @@ components:
     OntologyHit:
       type: object
       properties:
+        links:
+          $ref: "#/components/schemas/ConstraintLinks"
         matchCount:
           type: integer
           format: int32
         matchType:
           type: string
-        presentation:
-          $ref: "#/components/schemas/TerminologyPresentation"
         sourceAcronym:
           type: string
         sourceSystem:
@@ -4401,6 +4423,8 @@ components:
           minLength: 1
         iri:
           type: string
+        links:
+          $ref: "#/components/schemas/ConstraintLinks"
         name:
           type: string
         numTerms:
@@ -4668,8 +4692,8 @@ components:
       properties:
         constraint:
           $ref: "#/components/schemas/ConstraintReference"
-        presentation:
-          $ref: "#/components/schemas/TerminologyPresentation"
+        links:
+          $ref: "#/components/schemas/ConstraintLinks"
     Result:
       type: object
       properties:
@@ -4806,10 +4830,10 @@ components:
           type: string
         authorityLabel:
           type: string
+        links:
+          $ref: "#/components/schemas/ConstraintLinks"
         pinnable:
           type: boolean
-        presentation:
-          $ref: "#/components/schemas/TerminologyPresentation"
         reason:
           type: string
         requestedVersion:
@@ -4884,24 +4908,6 @@ components:
         offset:
           type: integer
           format: int32
-    TerminologyPresentation:
-      type: object
-      additionalProperties: false
-      properties:
-        href:
-          type: string
-        icon:
-          type: string
-          enum:
-          - bioportal
-          - external
-        label:
-          type: string
-        versionScope:
-          type: string
-          enum:
-          - current
-          - exact
     TreeNode:
       type: object
       properties:
@@ -5107,14 +5113,14 @@ components:
     ValueSetHit:
       type: object
       properties:
+        links:
+          $ref: "#/components/schemas/ConstraintLinks"
         matchType:
           type: string
         matchedTerms:
           type: array
           items:
             $ref: "#/components/schemas/TermRef"
-        presentation:
-          $ref: "#/components/schemas/TerminologyPresentation"
         sourceAcronym:
           type: string
         sourceSystem:
@@ -5133,6 +5139,8 @@ components:
       properties:
         iri:
           type: string
+        links:
+          $ref: "#/components/schemas/ConstraintLinks"
         name:
           type: string
         numTerms:

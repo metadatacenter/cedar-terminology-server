@@ -46,18 +46,18 @@ public record SearchResponse(String query, List<SourceBlock> sources, Map<String
       /** The versions themselves, newest first, when the request asked for them. */
       List<VersionInfo> versions,
       String reason,
-      SearchRequest.VersionSelector requestedVersion, ResourceDescription.Presentation presentation, String authorityLabel) {
+      SearchRequest.VersionSelector requestedVersion, org.metadatacenter.artifacts.model.core.fields.constraints.ConstraintLinks links, String authorityLabel) {
     public SourceBlock(String sourceSystem, String sourceAcronym, String sourceName, String sourceIri, String served, String authority, boolean pinnable, VersionInfo version, Integer versionCount, List<VersionInfo> versions, String reason, SearchRequest.VersionSelector requestedVersion) {
       this(sourceSystem, sourceAcronym, sourceName, sourceIri, served, authority, pinnable, version, versionCount, versions, reason, requestedVersion, null, authorityName(authority));
     }
 
-    public SourceBlock withPresentation(ResourceDescription.Presentation presentation) {
-      return new SourceBlock(sourceSystem, sourceAcronym, sourceName, sourceIri, served, authority, pinnable, version, versionCount, versions, reason, requestedVersion, presentation, authorityLabel);
+    public SourceBlock withLinks(org.metadatacenter.artifacts.model.core.fields.constraints.ConstraintLinks links) {
+      return new SourceBlock(sourceSystem, sourceAcronym, sourceName, sourceIri, served, authority, pinnable, version, versionCount, versions, reason, requestedVersion, links, authorityLabel);
     }
 
 
     public SourceBlock withAuthorityLabel(String label) {
-      return new SourceBlock(sourceSystem, sourceAcronym, sourceName, sourceIri, served, authority, pinnable, version, versionCount, versions, reason, requestedVersion, presentation, label);
+      return new SourceBlock(sourceSystem, sourceAcronym, sourceName, sourceIri, served, authority, pinnable, version, versionCount, versions, reason, requestedVersion, links, label);
     }
 
     private static String authorityName(String authority) {
@@ -208,13 +208,13 @@ public record SearchResponse(String query, List<SourceBlock> sources, Map<String
        * "disease" from three upstream vocabularies and a label cannot tell them apart. Absent for
        * roughly half the corpus, which asserts no definition at all.
        */
-      String definition, ResourceDescription.Presentation presentation) implements Hit {
+      String definition, org.metadatacenter.artifacts.model.core.fields.constraints.ConstraintLinks links) implements Hit {
     public ClassHit(String type, String sourceSystem, String sourceAcronym, String termIri, String termType, String termLabel, String matchType, List<MatchedLabel> matchedLabels, boolean obsolete, TermRef replacedBy, boolean hasChildren, int descendantCount, List<TermRef> path, List<MatchedLabel> names, String definition) {
       this(type, sourceSystem, sourceAcronym, termIri, termType, termLabel, matchType, matchedLabels, obsolete, replacedBy, hasChildren, descendantCount, path, names, definition, null);
     }
 
-    public ClassHit withPresentation(ResourceDescription.Presentation presentation) {
-      return new ClassHit(type, sourceSystem, sourceAcronym, termIri, termType, termLabel, matchType, matchedLabels, obsolete, replacedBy, hasChildren, descendantCount, path, names, definition, presentation);
+    public ClassHit withLinks(org.metadatacenter.artifacts.model.core.fields.constraints.ConstraintLinks links) {
+      return new ClassHit(type, sourceSystem, sourceAcronym, termIri, termType, termLabel, matchType, matchedLabels, obsolete, replacedBy, hasChildren, descendantCount, path, names, definition, links);
     }
 }
 
@@ -232,13 +232,13 @@ public record SearchResponse(String query, List<SourceBlock> sources, Map<String
       boolean obsolete,
       List<TermRef> path,
       List<TermRef> examples,
-      List<MatchedLabel> names, ResourceDescription.Presentation presentation) implements Hit {
+      List<MatchedLabel> names, org.metadatacenter.artifacts.model.core.fields.constraints.ConstraintLinks links) implements Hit {
     public BranchHit(String type, String sourceSystem, String sourceAcronym, String termBaseIri, String termBaseLabel, int descendantCount, String matchType, List<MatchedLabel> matchedLabels, boolean obsolete, List<TermRef> path, List<TermRef> examples, List<MatchedLabel> names) {
       this(type, sourceSystem, sourceAcronym, termBaseIri, termBaseLabel, descendantCount, matchType, matchedLabels, obsolete, path, examples, names, null);
     }
 
-    public BranchHit withPresentation(ResourceDescription.Presentation presentation) {
-      return new BranchHit(type, sourceSystem, sourceAcronym, termBaseIri, termBaseLabel, descendantCount, matchType, matchedLabels, obsolete, path, examples, names, presentation);
+    public BranchHit withLinks(org.metadatacenter.artifacts.model.core.fields.constraints.ConstraintLinks links) {
+      return new BranchHit(type, sourceSystem, sourceAcronym, termBaseIri, termBaseLabel, descendantCount, matchType, matchedLabels, obsolete, path, examples, names, links);
     }
 }
 
@@ -257,13 +257,13 @@ public record SearchResponse(String query, List<SourceBlock> sources, Map<String
       String sourceAcronym,
       Integer termCount,
       String matchType,
-      Integer matchCount, ResourceDescription.Presentation presentation) implements Hit {
+      Integer matchCount, org.metadatacenter.artifacts.model.core.fields.constraints.ConstraintLinks links) implements Hit {
     public OntologyHit(String type, String sourceSystem, String sourceAcronym, Integer termCount, String matchType, Integer matchCount) {
       this(type, sourceSystem, sourceAcronym, termCount, matchType, matchCount, null);
     }
 
-    public OntologyHit withPresentation(ResourceDescription.Presentation presentation) {
-      return new OntologyHit(type, sourceSystem, sourceAcronym, termCount, matchType, matchCount, presentation);
+    public OntologyHit withLinks(org.metadatacenter.artifacts.model.core.fields.constraints.ConstraintLinks links) {
+      return new OntologyHit(type, sourceSystem, sourceAcronym, termCount, matchType, matchCount, links);
     }
 }
 
@@ -277,13 +277,13 @@ public record SearchResponse(String query, List<SourceBlock> sources, Map<String
       String termBaseLabel,
       Integer termCount,
       String matchType,
-      List<TermRef> matchedTerms, ResourceDescription.Presentation presentation) implements Hit {
+      List<TermRef> matchedTerms, org.metadatacenter.artifacts.model.core.fields.constraints.ConstraintLinks links) implements Hit {
     public ValueSetHit(String type, String sourceSystem, String sourceAcronym, String termBaseIri, String termBaseLabel, Integer termCount, String matchType, List<TermRef> matchedTerms) {
       this(type, sourceSystem, sourceAcronym, termBaseIri, termBaseLabel, termCount, matchType, matchedTerms, null);
     }
 
-    public ValueSetHit withPresentation(ResourceDescription.Presentation presentation) {
-      return new ValueSetHit(type, sourceSystem, sourceAcronym, termBaseIri, termBaseLabel, termCount, matchType, matchedTerms, presentation);
+    public ValueSetHit withLinks(org.metadatacenter.artifacts.model.core.fields.constraints.ConstraintLinks links) {
+      return new ValueSetHit(type, sourceSystem, sourceAcronym, termBaseIri, termBaseLabel, termCount, matchType, matchedTerms, links);
     }
 }
 }

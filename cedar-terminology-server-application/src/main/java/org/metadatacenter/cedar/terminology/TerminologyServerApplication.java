@@ -75,6 +75,7 @@ public class TerminologyServerApplication extends CedarMicroserviceApplication<T
 
   @Override
   public void initializeApp() {
+    org.metadatacenter.terms.search.ResourceDescriptionService.configurePublicBase(cedarConfig.getServers().getTerminology().getBase());
     // BioPortal's own connect and response timeouts, over the shared external class of outbound
     // call. Done before the service below makes its first request.
     HttpUtil.install(cedarConfig.getTerminologyConfig().getBioPortal().getConnectTimeout(),
@@ -209,6 +210,7 @@ public class TerminologyServerApplication extends CedarMicroserviceApplication<T
     environment.jersey().register(new VersionAwareSearchResource(cedarConfig));
     environment.jersey().register(new VersionedPropertyResource());
     environment.jersey().register(new ResourceDescriptionResource());
+    environment.jersey().register(new org.metadatacenter.cedar.terminology.resources.ResourceIconResource());
     environment.jersey().register(new IntegratedSearchResource(cedarConfig));
     environment.jersey().register(new TermVerificationResource(cedarConfig));
     environment.jersey().register(new IntegratedRetrieveResource(cedarConfig));

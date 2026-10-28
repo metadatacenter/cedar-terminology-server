@@ -22,6 +22,10 @@
   </properties>
 
   <dependencies>
+    <dependency>
+      <groupId>org.metadatacenter</groupId>
+      <artifactId>cedar-artifact-library</artifactId>
+    </dependency>
 
     <dependency>
       <groupId>com.networknt</groupId>

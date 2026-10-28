@@ -1,12 +1,12 @@
 package org.metadatacenter.terms.search;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.metadatacenter.terms.CatalogSnapshotProvider;
 import org.metadatacenter.terms.store.SourcePresentation;
 import org.metadatacenter.terms.store.SnapshotStore;
 
 import java.net.URI;
+import org.metadatacenter.artifacts.model.core.fields.constraints.ConstraintLinks;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
@@ -16,6 +16,9 @@ import java.util.*;
 public final class ResourceDescriptionService {
   private static final ObjectMapper JSON = new ObjectMapper();
   private final CatalogSnapshotProvider provider;
+  private static String publicBase;
+  public static void configurePublicBase(String base) { publicBase = base == null ? null : base.replaceAll("/+$", ""); }
+
 
   public ResourceDescriptionService(CatalogSnapshotProvider provider) { this.provider = provider; }
 
@@ -23,10 +26,8 @@ public final class ResourceDescriptionService {
     var encoded = store.getMeta(SourcePresentation.META_KEY);
     if (encoded.isEmpty()) return SourcePresentation.legacyBioPortal();
     try {
-      ObjectNode node = (ObjectNode) JSON.readTree(encoded.get());
-      node.remove("capabilities"); // v1 snapshot compatibility, never exposed as presentation
-      return JSON.treeToValue(node, SourcePresentation.class);
-    } catch (java.io.IOException | ClassCastException e) {
+      return JSON.readValue(encoded.get(), SourcePresentation.class);
+    } catch (java.io.IOException e) {
       throw new SQLException("Invalid stored resource presentation", e);
     }
   }
@@ -79,43 +80,39 @@ public final class ResourceDescriptionService {
   }
 
   /** Optional enrichment must not turn an otherwise usable search result into a failed search. */
-  public ResourceDescription.Presentation presentationFor(ResourceDescription.Reference reference) throws SQLException {
-    try { return describe(reference).presentation(); }
-    catch (NotFoundException e) { return ResourceDescription.Presentation.empty(); }
+  public ConstraintLinks linksFor(ResourceDescription.Reference reference) throws SQLException {
+    try { return describe(reference).links(); }
+    catch (NotFoundException e) { return null; }
   }
 
   public static final class NotFoundException extends RuntimeException {
     public NotFoundException(String message) { super(message); }
   }
 
-  static ResourceDescription.Presentation landingPage(SourcePresentation profile, String type, String acronym,
-                                                       String iri, String version) {
-    // Old snapshot profiles are read at this boundary. Public references and new profiles use
-    // CEDAR's class/ontology names; no second set of type aliases crosses the API.
-    String legacyType = "class".equals(type) ? "term" : "ontology".equals(type) ? "vocabulary" : type;
-    var defaults = profile.links() == null ? List.<SourcePresentation.LinkPattern>of()
-        : profile.links().getOrDefault(type, profile.links().getOrDefault(legacyType, List.of()));
-    var patterns = iri != null && profile.resourceLinks() != null && profile.resourceLinks().containsKey(iri)
-        ? profile.resourceLinks().get(iri) : defaults;
-    for (var pattern : patterns) {
-      if (!"landing".equals(pattern.rel()) || pattern.href() == null || pattern.label() == null || pattern.label().isBlank()
-          || (!"current".equals(pattern.versionScope()) && !"exact".equals(pattern.versionScope()))) continue;
-      if ("exact".equals(pattern.versionScope()) && version == null) continue;
-      String href = pattern.href().replace("{sourceAcronym}", encode(acronym))
-          .replace("{sourceIri}", "ontology".equals(type) ? encode(iri) : "")
-          .replace("{termIri}", encode(iri)).replace("{termBaseIri}", encode(iri))
-          .replace("{termIriRaw}", iri == null ? "" : iri).replace("{version.id}", encode(version))
-          .replace("{resourceIri}", encode(iri)).replace("{resourceIriRaw}", iri == null ? "" : iri)
-          .replace("{versionId}", encode(version));
-      try {
-        URI uri = URI.create(href);
-        if (!("https".equalsIgnoreCase(uri.getScheme()) || "http".equalsIgnoreCase(uri.getScheme()))
-            || uri.getHost() == null || uri.getUserInfo() != null) continue;
-        String icon = Set.of("bioportal", "external").contains(Objects.toString(pattern.icon(), "")) ? pattern.icon() : null;
-        return new ResourceDescription.Presentation(uri.toASCIIString(), pattern.label(), pattern.versionScope(), icon);
-      } catch (IllegalArgumentException ignored) { /* A malformed template produces no page. */ }
-    }
-    return ResourceDescription.Presentation.empty();
+  static ConstraintLinks landingPage(SourcePresentation profile, String type, String acronym, String iri, String version) {
+    var pattern = profile.links() == null ? null : profile.links().get(type);
+    if (iri != null && profile.resourceLinks() != null && profile.resourceLinks().containsKey(iri))
+      pattern = profile.resourceLinks().get(iri);
+    if (pattern == null) return null;
+    String page = expand(pattern.landingPage(), type, acronym, iri, version);
+    String icon = expand(pattern.icon(), type, acronym, iri, version);
+    return page == null && icon == null ? null : new ConstraintLinks(page, icon);
+  }
+
+  private static String expand(String pattern, String type, String acronym, String iri, String version) {
+    if (pattern == null || pattern.contains("{serviceBase}") && publicBase == null
+        || version == null && pattern.contains("{version.id}")) return null;
+    String href = pattern.replace("{sourceAcronym}", encode(acronym))
+        .replace("{sourceIri}", "ontology".equals(type) ? encode(iri) : "")
+        .replace("{termIri}", encode(iri)).replace("{termBaseIri}", encode(iri))
+        .replace("{termIriRaw}", iri == null ? "" : iri).replace("{version.id}", encode(version))
+        .replace("{serviceBase}", publicBase == null ? "" : publicBase);
+    try {
+      URI uri = URI.create(href);
+      if (!("https".equalsIgnoreCase(uri.getScheme()) || "http".equalsIgnoreCase(uri.getScheme()))
+          || uri.getHost() == null || uri.getUserInfo() != null) return null;
+      return uri.toASCIIString();
+    } catch (IllegalArgumentException ignored) { return null; }
   }
 
   private static String encode(String text) {
