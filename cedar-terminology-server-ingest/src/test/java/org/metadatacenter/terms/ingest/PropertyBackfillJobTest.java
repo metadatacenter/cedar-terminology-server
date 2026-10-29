@@ -73,6 +73,13 @@ class PropertyBackfillJobTest {
         assertTrue(s.properties().property("urn:property", "object").isPresent());
         assertEquals(combined, s.normalizedContentHash(true));
       }
+      var first = c.resolveVersion("EX", combined).orElseThrow();
+      byte[] enrichedBytes = Files.readAllBytes(Path.of(first.filePath()));
+      assertEquals(combined, PropertyBackfillJob.enrich(c, old, raw));
+      assertEquals(first, c.resolveVersion("EX", combined).orElseThrow());
+      assertArrayEquals(enrichedBytes, Files.readAllBytes(Path.of(first.filePath())));
+      assertEquals(2, c.ingestHistory("EX").size());
+      assertTrue(c.ingestHistory("EX").stream().allMatch(e -> e.kind().equals("reextract") && e.retrievedAt() == null));
       Files.writeString(raw, "different bytes");
       assertThrows(IllegalArgumentException.class, () -> PropertyBackfillJob.enrich(c, old, raw));
     }

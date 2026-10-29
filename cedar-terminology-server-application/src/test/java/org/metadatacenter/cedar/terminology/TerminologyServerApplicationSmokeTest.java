@@ -84,6 +84,33 @@ public class TerminologyServerApplicationSmokeTest {
     Assertions.assertEquals(200, response.statusCode());
   }
 
+  @Test
+  public void adapterIconsUseThePublicHostFromTheBootedApplication(@org.junit.jupiter.api.io.TempDir java.nio.file.Path dir)
+      throws Exception {
+    var file = dir.resolve("snapshot.sqlite");
+    try (var store = org.metadatacenter.terms.store.SnapshotStore.openFile(file.toString())) {
+      store.initSchema();
+      store.setMeta(org.metadatacenter.terms.store.SourcePresentation.META_KEY,
+          "{\"sourceSystem\":\"example\",\"links\":{\"ontology\":{\"icon\":\"{serviceBase}/resources/icons/bioportal.png\"}}}");
+    }
+    try (var catalog = org.metadatacenter.terms.store.CatalogStore.openFile(dir.resolve("catalog.sqlite").toString())) {
+      catalog.initSchema();
+      catalog.upsertOntology(new org.metadatacenter.terms.store.CatalogStore.OntologyInfo("EX", "Example", null, "OWL"));
+      catalog.addSnapshot(new org.metadatacenter.terms.store.CatalogStore.SnapshotInfo("v1", "EX", null, null, null,
+          "OWL", "subsumption", 0, 0, file.toString(), "raw", "public"));
+      catalog.setTag("EX", "latest", "v1");
+      try (var provider = new org.metadatacenter.terms.CatalogSnapshotProvider(catalog, Set.of("EX"))) {
+        var description = new org.metadatacenter.terms.search.ResourceDescriptionService(provider).describe(
+            new org.metadatacenter.terms.search.ResourceDescription.Reference("ontology", "example", "EX", null,
+                null, null, null));
+        Assertions.assertNotNull(description.links(), "A private or unresolved service base must not silently drop icons");
+        String host = org.metadatacenter.config.CedarConfig.getInstanceEnvironment().get("CEDAR_HOST");
+        Assertions.assertEquals("https://terminology." + host + "/resources/icons/bioportal.png", description.links().icon());
+      }
+    }
+    Assertions.assertEquals(200, get("/resources/icons/bioportal.png").statusCode());
+  }
+
   /**
    * Terminology ships an API spec, so it advertises the documentation links and serves the document.
    *
@@ -207,6 +234,8 @@ public class TerminologyServerApplicationSmokeTest {
       "GET /properties/roots", "GET /properties/versions",
       "POST /search",
       "GET /search/hierarchy",
+      "POST /resources/description",
+      "GET /resources/icons/bioportal.png",
       "POST /bioportal/integrated-search",
       "POST /bioportal/integrated-retrieve",
       "POST /bioportal/validate-term",

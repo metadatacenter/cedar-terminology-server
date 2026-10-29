@@ -3,7 +3,7 @@
   "info" : {
     "description" : "CEDAR Terminology Server API",
     "title" : "CEDAR Terminology Server API",
-    "version" : "2.9.30"
+    "version" : "2.9.31"
   },
   "paths" : {
     "/" : {
@@ -4420,6 +4420,73 @@
         "summary" : "Ontology releases and their property extraction availability"
       }
     },
+    "/resources/description" : {
+      "post" : {
+        "operationId" : "describeTerminologyResource",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ConstraintReference"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ResourceDescription"
+                }
+              }
+            },
+            "description" : "Constraint identity and optional public links"
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CedarError"
+                }
+              }
+            },
+            "description" : "Invalid constraint reference"
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CedarError"
+                }
+              }
+            },
+            "description" : "Source, resource or exact version unavailable"
+          }
+        },
+        "summary" : "Resolve public links for a CEDAR constraint reference"
+      }
+    },
+    "/resources/icons/bioportal.png" : {
+      "get" : {
+        "operationId" : "terminologySourceIcon",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "image/png" : {
+                "schema" : {
+                  "type" : "string",
+                  "format" : "binary"
+                }
+              }
+            },
+            "description" : "Source icon"
+          }
+        },
+        "summary" : "Get the BioPortal source icon"
+      }
+    },
     "/search" : {
       "post" : {
         "description" : "Search the local terminology store at a named version or the current one, across the constraint types a controlled-term field can carry: ontology, branch, class and valueSet. Returns per-type counts and each type's first page, and describes every source it searched — the version that answered, and whether a constraint on it can be pinned.",
@@ -4607,6 +4674,9 @@
               "$ref" : "#/components/schemas/TermRef"
             }
           },
+          "links" : {
+            "$ref" : "#/components/schemas/ConstraintLinks"
+          },
           "matchType" : {
             "type" : "string"
           },
@@ -4658,6 +4728,9 @@
           },
           "iri" : {
             "type" : "string"
+          },
+          "links" : {
+            "$ref" : "#/components/schemas/ConstraintLinks"
           },
           "maxDepth" : {
             "type" : "integer",
@@ -4782,6 +4855,9 @@
           "hasChildren" : {
             "type" : "boolean"
           },
+          "links" : {
+            "$ref" : "#/components/schemas/ConstraintLinks"
+          },
           "termIri" : {
             "type" : "string"
           },
@@ -4802,6 +4878,9 @@
           },
           "hasChildren" : {
             "type" : "boolean"
+          },
+          "links" : {
+            "$ref" : "#/components/schemas/ConstraintLinks"
           },
           "matchType" : {
             "type" : "string"
@@ -4859,6 +4938,9 @@
           "label" : {
             "type" : "string"
           },
+          "links" : {
+            "$ref" : "#/components/schemas/ConstraintLinks"
+          },
           "prefLabel" : {
             "type" : "string",
             "maxLength" : 2147483647,
@@ -4887,6 +4969,45 @@
           }
         },
         "required" : [ "prefLabel", "source", "type", "uri" ]
+      },
+      "ConstraintLinks" : {
+        "type" : "object",
+        "properties" : {
+          "icon" : {
+            "type" : "string"
+          },
+          "landingPage" : {
+            "type" : "string"
+          }
+        }
+      },
+      "ConstraintReference" : {
+        "type" : "object",
+        "additionalProperties" : false,
+        "properties" : {
+          "sourceAcronym" : {
+            "type" : "string"
+          },
+          "sourceIri" : {
+            "type" : "string"
+          },
+          "sourceSystem" : {
+            "type" : "string"
+          },
+          "termBaseIri" : {
+            "type" : "string"
+          },
+          "termIri" : {
+            "type" : "string"
+          },
+          "type" : {
+            "type" : "string",
+            "enum" : [ "class", "branch", "ontology", "valueSet", "property" ]
+          },
+          "version" : {
+            "$ref" : "#/components/schemas/VersionInfo"
+          }
+        }
       },
       "ControlledTermDefaultValue" : {
         "type" : "object",
@@ -4985,6 +5106,9 @@
           "descendantCount" : {
             "type" : "integer",
             "format" : "int32"
+          },
+          "links" : {
+            "$ref" : "#/components/schemas/ConstraintLinks"
           },
           "offset" : {
             "type" : "integer",
@@ -5768,6 +5892,9 @@
       "OntologyHit" : {
         "type" : "object",
         "properties" : {
+          "links" : {
+            "$ref" : "#/components/schemas/ConstraintLinks"
+          },
           "matchCount" : {
             "type" : "integer",
             "format" : "int32"
@@ -5838,6 +5965,9 @@
           },
           "iri" : {
             "type" : "string"
+          },
+          "links" : {
+            "$ref" : "#/components/schemas/ConstraintLinks"
           },
           "name" : {
             "type" : "string"
@@ -6213,6 +6343,18 @@
           }
         }
       },
+      "ResourceDescription" : {
+        "type" : "object",
+        "additionalProperties" : false,
+        "properties" : {
+          "constraint" : {
+            "$ref" : "#/components/schemas/ConstraintReference"
+          },
+          "links" : {
+            "$ref" : "#/components/schemas/ConstraintLinks"
+          }
+        }
+      },
       "Result" : {
         "type" : "object",
         "properties" : {
@@ -6408,6 +6550,12 @@
         "properties" : {
           "authority" : {
             "type" : "string"
+          },
+          "authorityLabel" : {
+            "type" : "string"
+          },
+          "links" : {
+            "$ref" : "#/components/schemas/ConstraintLinks"
           },
           "pinnable" : {
             "type" : "boolean"
@@ -6824,6 +6972,9 @@
       "ValueSetHit" : {
         "type" : "object",
         "properties" : {
+          "links" : {
+            "$ref" : "#/components/schemas/ConstraintLinks"
+          },
           "matchType" : {
             "type" : "string"
           },
@@ -6859,6 +7010,9 @@
         "properties" : {
           "iri" : {
             "type" : "string"
+          },
+          "links" : {
+            "$ref" : "#/components/schemas/ConstraintLinks"
           },
           "name" : {
             "type" : "string"

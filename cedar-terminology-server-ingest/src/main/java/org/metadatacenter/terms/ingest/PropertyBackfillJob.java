@@ -46,6 +46,7 @@ public final class PropertyBackfillJob {
 
   public static String enrich(CatalogStore catalog, CatalogStore.SnapshotInfo old, Path raw)
       throws Exception {
+    String startedAt = Instant.now().toString();
     if (!sha256(raw).equals(old.fileHash()))
       throw new IllegalArgumentException("Archive hash does not match the catalog release");
     Path base = catalog.baseDir().orElseThrow();
@@ -70,7 +71,13 @@ public final class PropertyBackfillJob {
       // Use the same writer reservation as ingestion and orphan cleanup.
       catalog.inSnapshotTransaction(
           () -> {
-            if (!Files.exists(enriched)) Files.move(temp, enriched, StandardCopyOption.ATOMIC_MOVE);
+            var existing = catalog.resolveVersion(old.acronym(), version);
+            if (existing.isPresent() && !Files.isRegularFile(Path.of(existing.get().filePath())))
+              throw new java.io.IOException("Existing enriched snapshot is missing; restore it first");
+            if (existing.isEmpty())
+              Files.move(temp, enriched, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+            var provenance = catalog.snapshotProvenance(old.versionId(), old.acronym())
+                .orElse(new CatalogStore.SnapshotProvenance(null, null, null));
             catalog.addSnapshot(
                 new CatalogStore.SnapshotInfo(
                     version,
@@ -84,18 +91,16 @@ public final class PropertyBackfillJob {
                     old.edgeCount(),
                     base.relativize(enriched).toString(),
                     old.fileHash(),
-                    old.licenseTier()));
-            var provenance = catalog.snapshotProvenance(old.versionId(), old.acronym());
-            if (provenance.isPresent()) {
-              var p = provenance.get();
-              catalog.setSnapshotProvenance(
-                  version, old.acronym(), p.submissionId(), p.sourceDate());
-              catalog.setSnapshotBackend(version, old.acronym(), p.backend());
-            }
+                    old.licenseTier()), provenance);
             catalog.recordPropertyEnrichment(old.acronym(), old.versionId(), version);
             var current = catalog.resolveLatest(old.acronym());
             if (current.isPresent() && current.get().versionId().equals(old.versionId()))
               catalog.setTag(old.acronym(), CatalogStore.TAG_LATEST, version);
+            catalog.recordIngestEvent(new CatalogStore.IngestEvent(UUID.randomUUID().toString(),
+                old.acronym(), version, "reextract", "succeeded", provenance.backend(),
+                provenance.submissionId(), old.declaredVersion(), old.releasedAt(), provenance.sourceDate(),
+                startedAt, null, Instant.now().toString(), base.relativize(raw.toAbsolutePath()).toString(),
+                old.fileHash(), null));
           });
       return version;
     } finally {

@@ -10,6 +10,13 @@ import java.util.List;
  */
 public interface SubmissionSource {
 
+  /** Public link configuration, captured alongside each ingested snapshot. */
+  default org.metadatacenter.terms.store.SourcePresentation presentation(String acronym) {
+    // An unfamiliar download authority does not acquire BioPortal landing pages by inheritance.
+    return new org.metadatacenter.terms.store.SourcePresentation("bioportal", backendId(),
+        java.util.Map.of(), java.util.Map.of());
+  }
+
   /**
    * The backend this source ingests from, recorded on each snapshot as audit provenance (the
    * {@code snapshot.backend} column). BioPortal is the default; a second backend overrides it so the

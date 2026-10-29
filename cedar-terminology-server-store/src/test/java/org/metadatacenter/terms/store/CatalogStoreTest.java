@@ -178,12 +178,43 @@ public class CatalogStoreTest {
 
   @Test
   public void addSnapshotIsIdempotentOnVersionId() throws Exception {
-    // Re-adding the same version_id (e.g. a re-run backfill) updates rather than failing.
+    // Re-adding content never changes its first observation's metadata.
+    var before = catalog.getSnapshot("hashV1").orElseThrow();
     catalog.addSnapshot(new SnapshotInfo("hashV1", "DOID", "release/updated", "2025-01-01",
         "2026-01-01T00:00:00Z", "OWL", "subsumption", 15000, 21000,
         "/snapshots/DOID/hashV1.sqlite", "hashV1", "open"));
     assertEquals(2, catalog.listSnapshots("DOID").size()); // still two, not three
-    assertEquals("release/updated", catalog.getSnapshot("hashV1").orElseThrow().declaredVersion());
+    assertEquals(before, catalog.getSnapshot("hashV1").orElseThrow());
+  }
+
+  @Test
+  public void legacyHistoryMigrationIsAtomicAndRunsOnlyOnce(@TempDir Path directory) throws Exception {
+    Path file = directory.resolve("catalog.sqlite");
+    try (CatalogStore c = CatalogStore.openFile(file.toString())) {
+      c.initSchema();
+      c.upsertOntology(new OntologyInfo("DOID", "Disease", null, "OWL"));
+      c.addSnapshot(doidSnapshot("old", "2025-01-01"));
+    }
+    // Emulate a pre-history catalog, with a snapshot but no audit table.
+    try (var db = java.sql.DriverManager.getConnection("jdbc:sqlite:" + file);
+         var statement = db.createStatement()) {
+      statement.executeUpdate("DROP TABLE ingest_event");
+    }
+    try (CatalogStore c = CatalogStore.openFile(file.toString())) {
+      c.initSchema();
+      var legacy = c.ingestHistory("DOID");
+      assertEquals(1, legacy.size());
+      assertEquals("legacy", legacy.get(0).kind());
+      assertEquals("unknown", legacy.get(0).status());
+      assertEquals(null, legacy.get(0).retrievedAt());
+      assertEquals(null, legacy.get(0).rawFilePath());
+      assertEquals("2026-07-24T00:00:00Z", legacy.get(0).completedAt());
+      c.addSnapshot(doidSnapshot("new", "2025-06-01"));
+      c.initSchema();
+      assertEquals(legacy, c.ingestHistory("DOID"));
+      // A repeated event ID is refused, not overwritten.
+      assertThrows(java.sql.SQLException.class, () -> c.recordIngestEvent(legacy.get(0)));
+    }
   }
 
   @Test

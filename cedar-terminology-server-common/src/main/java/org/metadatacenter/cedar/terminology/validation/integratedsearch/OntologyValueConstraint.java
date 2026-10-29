@@ -6,6 +6,12 @@ import org.hibernate.validator.constraints.NotEmpty;
 
 public class OntologyValueConstraint extends RejectUnknownFields {
 
+  @JsonDeserialize(using = ConstraintLinksDeserializer.class)
+  private org.metadatacenter.artifacts.model.core.fields.constraints.ConstraintLinks links;
+  public org.metadatacenter.artifacts.model.core.fields.constraints.ConstraintLinks getLinks() { return links; }
+
+
+
   private String uri;
   @NotEmpty
   private String acronym;

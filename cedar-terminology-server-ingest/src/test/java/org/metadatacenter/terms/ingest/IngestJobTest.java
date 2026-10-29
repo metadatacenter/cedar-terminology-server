@@ -216,6 +216,14 @@ public class IngestJobTest {
       String resolved = fileCatalog.resolveLatest("EX").orElseThrow().filePath();
       assertEquals(tempDir.resolve("snapshots/EX/" + r.versionId() + ".sqlite").toString(), resolved);
       assertTrue(Files.exists(Path.of(resolved)));
+      var event = fileCatalog.ingestHistory("EX").get(0);
+      assertTrue(Path.of(event.rawFilePath()).isAbsolute());
+      try (var db = java.sql.DriverManager.getConnection("jdbc:sqlite:" + catalogFile);
+           var statement = db.createStatement();
+           var rows = statement.executeQuery("SELECT raw_file_path FROM ingest_event")) {
+        assertTrue(rows.next());
+        assertTrue(rows.getString(1).startsWith("snapshots/EX/raw/"));
+      }
     }
   }
 
@@ -240,6 +248,53 @@ public class IngestJobTest {
     assertNotEquals(rawHash, r.versionId());
     assertEquals(64, r.versionId().length());
     assertEquals(rawHash, catalog.getSnapshot(r.versionId()).orElseThrow().fileHash());
+  }
+
+  @Test
+  public void repeatedContentPreservesFileAndProvenanceButRecordsEveryDownload() throws Exception {
+    var first = new IngestJob(fakeSource()).ingestLatest(catalog, "EX", tempDir.resolve("snapshots"));
+    var before = catalog.resolveLatest("EX").orElseThrow();
+    var provenance = catalog.snapshotProvenance(first.versionId(), "EX").orElseThrow();
+    // Metadata outside identity must survive, even if the next source would supply different links.
+    try (SnapshotStore snapshot = SnapshotStore.openFile(first.snapshotFile().toString())) {
+      snapshot.setMeta("original-observation", "preserved");
+    }
+    byte[] original = Files.readAllBytes(first.snapshotFile());
+    // Different raw serialization, identical normalized content.
+    Files.writeString(sourceOwl, "\n", java.nio.file.StandardOpenOption.APPEND);
+    SubmissionSource delegate = fakeSource();
+    SubmissionSource other = new SubmissionSource() {
+      public String backendId() { return "ols"; }
+      public OntologyAccess accessInfo(String acronym) throws IOException, InterruptedException {
+        return delegate.accessInfo(acronym);
+      }
+      public List<Submission> listSubmissions(String acronym) { return List.of(submission()); }
+      public Submission latestSubmission(String acronym) { return submission(); }
+      public Path download(String acronym, int id, Path directory) throws IOException, InterruptedException {
+        return delegate.download(acronym, id, directory);
+      }
+    };
+    var second = new IngestJob(other).ingestSubmission(catalog, "EX",
+        new Submission(99, "another release", null, "OWL"), tempDir.resolve("different-output"), true);
+    assertEquals(first.versionId(), second.versionId());
+    assertEquals(first.snapshotFile(), second.snapshotFile());
+    assertEquals(before, catalog.resolveLatest("EX").orElseThrow());
+    assertEquals(provenance, catalog.snapshotProvenance(first.versionId(), "EX").orElseThrow());
+    org.junit.jupiter.api.Assertions.assertArrayEquals(original, Files.readAllBytes(first.snapshotFile()));
+    assertEquals(1, catalog.listSnapshots("EX").size());
+    var history = catalog.ingestHistory("EX");
+    assertEquals(2, history.size());
+    assertEquals(List.of("bioportal", "ols"), history.stream().map(CatalogStore.IngestEvent::backend).toList());
+    assertEquals(List.of(7, 99), history.stream().map(CatalogStore.IngestEvent::submissionId).toList());
+    assertNotEquals(history.get(0).rawFileHash(), history.get(1).rawFileHash());
+    for (var event : history) {
+      assertEquals(first.versionId(), event.versionId());
+      assertEquals("succeeded", event.status());
+      assertTrue(Files.isRegularFile(Path.of(event.rawFilePath())));
+      assertEquals(event.rawFileHash(), PropertyBackfillJob.sha256(Path.of(event.rawFilePath())));
+      assertFalse(java.time.Instant.parse(event.retrievedAt()).isBefore(java.time.Instant.parse(event.startedAt())));
+      assertFalse(java.time.Instant.parse(event.completedAt()).isBefore(java.time.Instant.parse(event.retrievedAt())));
+    }
   }
 
   @Test
@@ -269,6 +324,12 @@ public class IngestJobTest {
     IngestJob job = new IngestJob(restricted);
     assertThrows(IOException.class, () -> job.ingestLatest(catalog, "RESTRICTED", tempDir.resolve("snapshots")));
     assertTrue(catalog.resolveLatest("RESTRICTED").isEmpty());
+    var event = catalog.ingestHistory("RESTRICTED").get(0);
+    assertEquals("failed", event.status());
+    assertEquals(null, event.versionId());
+    assertEquals(null, event.retrievedAt());
+    assertEquals(null, event.rawFilePath());
+    assertEquals("IOException", event.errorType());
   }
 
   @Test
@@ -905,6 +966,33 @@ public class IngestJobTest {
     IngestJob job = new IngestJob(fakeSource());
     assertThrows(IOException.class, () -> job.ingestLatest(catalog, "EX", tempDir.resolve("snapshots")));
     assertTrue(catalog.resolveLatest("EX").isEmpty());
+    var event = catalog.ingestHistory("EX").get(0);
+    assertEquals("failed", event.status());
+    assertEquals(null, event.versionId());
+    assertTrue(Files.isRegularFile(Path.of(event.rawFilePath())));
+    assertEquals(event.rawFileHash(), PropertyBackfillJob.sha256(Path.of(event.rawFilePath())));
+  }
+
+  @Test
+  public void auditFailureRollsBackSnapshotRegistrationAndLatestTag() throws Exception {
+    Path file = tempDir.resolve("rollback.sqlite");
+    try (CatalogStore c = CatalogStore.openFile(file.toString())) {
+      c.initSchema();
+      var job = new IngestJob(fakeSource());
+      var first = job.ingestLatest(c, "EX", tempDir.resolve("snapshots"));
+      buildOntologyWithAnExtraClass(sourceOwl);
+      try (var db = java.sql.DriverManager.getConnection("jdbc:sqlite:" + file);
+           var statement = db.createStatement()) {
+        statement.executeUpdate("CREATE TRIGGER refuse_success BEFORE INSERT ON ingest_event "
+            + "WHEN NEW.status = 'succeeded' BEGIN SELECT RAISE(ABORT, 'audit refused'); END");
+      }
+      assertThrows(java.sql.SQLException.class,
+          () -> job.ingestLatest(c, "EX", tempDir.resolve("snapshots")));
+      assertEquals(first.versionId(), c.resolveLatest("EX").orElseThrow().versionId());
+      assertEquals(1, c.listSnapshots("EX").size());
+      assertEquals(List.of("succeeded", "failed"),
+          c.ingestHistory("EX").stream().map(CatalogStore.IngestEvent::status).toList());
+    }
   }
 
   @Test

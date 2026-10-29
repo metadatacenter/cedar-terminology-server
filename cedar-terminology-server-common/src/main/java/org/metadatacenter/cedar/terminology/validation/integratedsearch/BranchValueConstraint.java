@@ -6,6 +6,12 @@ import org.hibernate.validator.constraints.NotEmpty;
 
 public class BranchValueConstraint extends RejectUnknownFields {
 
+  @JsonDeserialize(using = ConstraintLinksDeserializer.class)
+  private org.metadatacenter.artifacts.model.core.fields.constraints.ConstraintLinks links;
+  public org.metadatacenter.artifacts.model.core.fields.constraints.ConstraintLinks getLinks() { return links; }
+
+
+
   @NotEmpty
   private String uri;
   @NotEmpty
