@@ -907,20 +907,13 @@ public class SearchIndexStore implements AutoCloseable {
    * truncated and its sources are whichever happened to rank highest, which undercounts. Measured
    * 2026-08-13, "melanoma" is in 113 vocabularies where the first thousand hits come from 88.
    *
-   * {@code cap} bounds how many matched terms are grouped. Grouping every one of them costs time in
-   * proportion to how broadly the query matches, and a short prefix matches very broadly. An author
-   * reaching for "cell" types "ce" on the way. The cap is the one {@link #matchCount} already
-   * applies, and it buys that time with accuracy rather than for free.
-   *
-   * Which matches fall inside the cap follows the order the index holds them rather than rank, and
-   * that order tracks the acronym. A capped facet therefore drops vocabularies whose acronyms sort
-   * late and reorders the ones it keeps. Measured 2026-08-25 against a 1,266-ontology store, "ce"
-   * fell from 821 vocabularies to 48 and kept one of the uncapped top ten. "disease" fell from 463
-   * to 100, also keeping one. "melanoma" matches fewer terms than the cap and came back unchanged.
-   * A caller tells an exact facet from a cut one by the total: counts that sum to {@code cap} were
-   * cut, and a smaller sum saw the whole match.
+   * Unlike a result-count badge, ontology discovery cannot stop after a fixed number of terms:
+   * doing so drops entire vocabularies later in index order. Both membership and counts here are
+   * exact. Deduplicate the narrow term identifiers before joining their ontology records, so a
+   * term found through several names needs only one record lookup. The caller pages the complete
+   * ranked list; neither term nor ontology limits belong before that pagination.
    */
-  public List<VocabularyMatch> vocabularyFacet(String query, int limit, int cap) throws SQLException {
+  public List<VocabularyMatch> vocabularyFacet(String query) throws SQLException {
     String match = toPrefixMatch(query);
     if (match.isEmpty()) {
       return List.of();
@@ -928,24 +921,21 @@ public class SearchIndexStore implements AutoCloseable {
     MatchPlan plan = toMatchPlan(query);
     List<VocabularyMatch> out = new ArrayList<>();
     try (PreparedStatement ps = connection().prepareStatement("""
-        SELECT acronym, COUNT(*) c FROM (
-          SELECT DISTINCT t.acronym, t.term_id
+        SELECT t.acronym, COUNT(*) c FROM (
+          SELECT DISTINCT n.term_id
           FROM name_fts f
           JOIN name n ON n.name_id = f.rowid
-          JOIN term t ON t.term_id = n.term_id
           WHERE name_fts MATCH ?"""
         + residualFilter(plan) + """
-          LIMIT ?)
-        GROUP BY acronym
-        ORDER BY c DESC, acronym
-        LIMIT ?""")) {
+          ) matches
+        JOIN term t ON t.term_id = matches.term_id
+        GROUP BY t.acronym
+        ORDER BY c DESC, t.acronym""")) {
       int p = 1;
-      ps.setString(p++, match);
+      ps.setString(p++, scopedMatch(match, List.of()));
       if (!plan.residual().isEmpty()) {
         ps.setString(p++, String.join(" ", plan.residual()));
       }
-      ps.setInt(p++, cap);
-      ps.setInt(p, limit);
       try (ResultSet rs = ps.executeQuery()) {
         while (rs.next()) {
           out.add(new VocabularyMatch(rs.getString(1), rs.getInt(2)));
