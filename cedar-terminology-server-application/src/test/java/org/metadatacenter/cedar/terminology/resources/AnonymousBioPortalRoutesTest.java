@@ -108,6 +108,16 @@ public class AnonymousBioPortalRoutesTest {
   }
 
   @Test
+  public void healthDoesNotDependOnBioPortal() throws Exception {
+    int before = ASKED.get();
+    HttpResponse<String> response = CLIENT.send(HttpRequest.newBuilder()
+        .uri(URI.create("http://localhost:" + SERVER.getAdminPort() + "/healthcheck"))
+        .GET().build(), HttpResponse.BodyHandlers.ofString());
+    assertEquals(200, response.statusCode(), response.body());
+    assertEquals(before, ASKED.get(), "health polling must not call the unavailable BioPortal service");
+  }
+
+  @Test
   public void aGatedSiblingRefusesTheSameAnonymousRequest() throws Exception {
     ASKED.set(0);
     HttpResponse<String> response = send("GET", "/bioportal/ontologies/NCIT/classes/" + CLASS + "/children", null);
