@@ -113,7 +113,12 @@ public class AnonymousBioPortalRoutesTest {
     HttpResponse<String> response = CLIENT.send(HttpRequest.newBuilder()
         .uri(URI.create("http://localhost:" + SERVER.getAdminPort() + "/healthcheck"))
         .GET().build(), HttpResponse.BodyHandlers.ofString());
-    assertEquals(200, response.statusCode(), response.body());
+    // Shared probes can fail without Neo4j or Keycloak, which this backend-free suite does not run.
+    // Either aggregate status must still be a health report that never consults BioPortal.
+    assertTrue(response.statusCode() == 200 || response.statusCode() == 500, response.body());
+    JsonNode health = JsonMapper.STRICT_MAPPER.readTree(response.body());
+    assertTrue(health.path("deadlocks").path("healthy").asBoolean(), response.body());
+    assertFalse(health.has("ontology-catalogue"), "BioPortal availability is not process health");
     assertEquals(before, ASKED.get(), "health polling must not call the unavailable BioPortal service");
   }
 
