@@ -172,7 +172,18 @@ public class VersionAwareSearchServiceTest {
     // NOTSERVED is in the catalog but not the allowlist; UNKNOWN is in neither.
     catalog.upsertOntology(new CatalogStore.OntologyInfo("NOTSERVED", "Absent Ontology", null, "OWL"));
 
-    provider = new CatalogSnapshotProvider(catalog, Set.of("EX", "VSC"));
+    Path other = tempDir.resolve("OTHER.sqlite");
+    try (SnapshotStore store = SnapshotStore.openFile(other.toString())) {
+      store.initSchema();
+      store.addConcept("http://other/cat", "Cat");
+      store.materialize();
+    }
+    catalog.upsertOntology(new CatalogStore.OntologyInfo("OTHER", "Other Ontology", null, "OWL"));
+    catalog.addSnapshot(new CatalogStore.SnapshotInfo("hash-o1", "OTHER", "1.0", "2025-03-01",
+        "2025-03-02T00:00:00Z", "OWL", "subsumption", 1, 0, other.toString(), "other", "open"));
+    catalog.setTag("OTHER", CatalogStore.TAG_LATEST, "hash-o1");
+
+    provider = new CatalogSnapshotProvider(catalog, Set.of("EX", "VSC", "OTHER"));
     service = new VersionAwareSearchService(provider);
   }
 
@@ -401,13 +412,20 @@ public class VersionAwareSearchServiceTest {
           .mapToObj(i -> new SearchIndexStore.IndexedTerm("EX", BASE + "organ/" + i,
               "organ " + i, false, null, false, 0)).toList();
       index.replaceOntology("EX", "hash-v2", "now", many, java.util.Map.of());
+      var allowed = new java.util.HashSet<>(Set.of("EX"));
       for (int i = 0; i < 1001; i++) {
         String acronym = String.format("SOURCE%04d", i);
+        allowed.add(acronym);
+        catalog.upsertOntology(new CatalogStore.OntologyInfo(acronym, acronym, null, "OWL"));
+        catalog.addSnapshot(new CatalogStore.SnapshotInfo("v1", acronym, "1", null, "now", "OWL",
+            "subsumption", 1, 0, tempDir.resolve("OTHER.sqlite").toString(), "other", "open"));
+        catalog.setTag(acronym, CatalogStore.TAG_LATEST, "v1");
         index.replaceOntology(acronym, "v1", "now", List.of(
             new SearchIndexStore.IndexedTerm(acronym, "http://source/" + i, "organ", false, null, false, 0)),
             java.util.Map.of());
       }
-      var indexed = new VersionAwareSearchService(provider, index);
+      var discoveryProvider = new CatalogSnapshotProvider(catalog, allowed);
+      var indexed = new VersionAwareSearchService(discoveryProvider, index);
       SearchRequest first = new SearchRequest("organ", List.of("ontology"), List.of(), null,
           null, null, null, SearchRequest.ORDER_BY_MATCHES, 200, 0);
       TypeResults head = indexed.search(first).results().get("ontology");
@@ -485,11 +503,82 @@ public class VersionAwareSearchServiceTest {
   @Test
   public void withAnIndexASearchNeedsNoSource() throws Exception {
     SearchResponse response = withIndex().search(request("cat", List.of("class"), List.of()));
-    assertEquals(2, response.results().get("class").totalCount(), "across every indexed ontology");
+    assertEquals(2, response.results().get("class").totalCount(), "across every served, indexed ontology");
     assertEquals(null, response.sources().stream()
         .filter(s -> s.sourceAcronym().equals("OTHER")).findFirst().orElseThrow().links());
     assertEquals(List.of("EX", "OTHER"),
         response.sources().stream().map(SourceBlock::sourceAcronym).sorted().toList());
+  }
+
+  @Test
+  public void excludedIndexedSourcesCannotChangeCountsLabelGroupsPagingOrOntologyDiscovery() throws Exception {
+    try (SearchIndexStore index = SearchIndexStore.openInMemory()) {
+      index.initSchema();
+      for (String acronym : List.of("EX", "NOTSERVED", "UNKNOWN")) {
+        index.replaceOntology(acronym, acronym.equals("EX") ? "hash-v2" : "missing", "now",
+            List.of(new SearchIndexStore.IndexedTerm(acronym, "http://" + acronym + "/cat", "Cat", false, null, true, 3),
+                new SearchIndexStore.IndexedTerm(acronym, "http://" + acronym + "/catalog", "Catalog", false, null, true, 2)),
+            java.util.Map.of());
+      }
+      // This label would take the first page if filtering happened after paging.
+      index.replaceOntology("OTHER", "not-held", "now",
+          List.of(new SearchIndexStore.IndexedTerm("OTHER", "http://other/cat", "Ca", false, null, true, 1)),
+          java.util.Map.of());
+      index.rebuildFullText();
+      var indexed = new VersionAwareSearchService(provider, index);
+      for (String type : List.of("class", "branch")) {
+        for (int page = 1; page <= 2; page++) {
+          var response = indexed.search(new SearchRequest("ca", List.of(type), List.of(), null, page, 1));
+          var result = response.results().get(type);
+          assertEquals(2, result.totalCount());
+          assertEquals(2, result.distinctLabelCount());
+          assertEquals(1, result.collection().size());
+          assertEquals("EX", result.collection().get(0).sourceAcronym());
+          assertEquals("hash-v2", response.sources().get(0).version().id());
+          assertTrue(response.sources().get(0).pinnable());
+          assertEquals(page == 1 ? "Cat" : "Catalog", type.equals("class")
+              ? ((ClassHit) result.collection().get(0)).termLabel()
+              : ((BranchHit) result.collection().get(0)).termBaseLabel());
+        }
+      }
+      var discovery = indexed.search(request("ca", List.of("ontology"), List.of()));
+      assertEquals(List.of("EX"), discovery.results().get("ontology").collection().stream()
+          .map(SearchResponse.Hit::sourceAcronym).toList());
+      assertEquals(2, ((OntologyHit) discovery.results().get("ontology").collection().get(0)).matchCount());
+      for (String acronym : List.of("NOTSERVED", "UNKNOWN")) {
+        var response = indexed.search(request("cat", List.of("class", "branch", "ontology"),
+            List.of(new SourceSelector(null, acronym, null))));
+        assertEquals(SourceBlock.SERVED_UNAVAILABLE, response.sources().get(0).served());
+        assertFalse(response.sources().get(0).pinnable());
+        response.results().values().forEach(r -> assertEquals(0, r.totalCount()));
+      }
+      var mixed = indexed.search(request("cat", List.of("class"),
+          List.of(ex(null), new SourceSelector(null, "NOTSERVED", null))));
+      assertEquals(1, mixed.results().get("class").totalCount());
+      assertEquals("EX", mixed.results().get("class").collection().get(0).sourceAcronym());
+    }
+  }
+
+  @Test
+  public void anEmptyServedIndexDoesNotMeanSearchEverything() throws Exception {
+    try (SearchIndexStore index = SearchIndexStore.openInMemory()) {
+      index.initSchema();
+      index.replaceOntology("NOTSERVED", "missing", "now",
+          List.of(new SearchIndexStore.IndexedTerm("NOTSERVED", "http://absent/cat", "Cat", false, null, true, 1)),
+          java.util.Map.of());
+      // Also allowlisted and catalogued, but its file has disappeared.
+      index.replaceOntology("OTHER", "hash-o1", "now",
+          List.of(new SearchIndexStore.IndexedTerm("OTHER", "http://other/cat", "Cat", false, null, true, 1)),
+          java.util.Map.of());
+      index.rebuildFullText();
+      Files.delete(tempDir.resolve("OTHER.sqlite"));
+      var indexed = new VersionAwareSearchService(provider, index);
+      var response = indexed.search(request("cat", List.of("class", "branch", "ontology"), List.of()));
+      assertTrue(response.sources().isEmpty());
+      response.results().values().forEach(r -> assertEquals(0, r.totalCount()));
+      assertEquals(0, indexed.search(request("Other", List.of("ontology"), List.of()))
+          .results().get("ontology").totalCount(), "name discovery also needs a held snapshot");
+    }
   }
 
   @Test

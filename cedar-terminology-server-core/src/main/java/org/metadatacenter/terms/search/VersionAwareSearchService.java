@@ -16,6 +16,8 @@ import org.metadatacenter.terms.store.CatalogStore;
 import org.metadatacenter.terms.store.SearchIndexStore;
 import org.metadatacenter.terms.store.SnapshotStore;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -150,6 +152,9 @@ public class VersionAwareSearchService {
       }
     }
     boolean corpusWide = useIndex && scope.isEmpty();
+    if (corpusWide) {
+      scope = servedIndexScope();
+    }
     if (corpusWide && query.length() < MIN_CORPUS_QUERY_LENGTH) {
       throw new BadSearchRequestException(query.isEmpty()
           ? "A corpus-wide search needs a query."
@@ -175,7 +180,7 @@ public class VersionAwareSearchService {
         continue;
       }
       List<? extends Hit> all = switch (type) {
-        case SearchRequest.TYPE_ONTOLOGY -> ontologyHits(query, resolved, request.ordersOntologiesByMatches());
+        case SearchRequest.TYPE_ONTOLOGY -> ontologyHits(query, resolved, request.ordersOntologiesByMatches(), scope);
         case SearchRequest.TYPE_CLASS -> useIndex
             ? corpusHits(query, false, offset, limit, scope) : classHits(query, searchable, request.lang());
         case SearchRequest.TYPE_BRANCH -> useIndex
@@ -189,7 +194,9 @@ public class VersionAwareSearchService {
         // and saying otherwise would attribute results to a version that did not produce them.
         for (Hit hit : all) {
           if (!blocks.containsKey(hit.sourceAcronym())) {
-            blocks.put(hit.sourceAcronym(), indexedSourceBlock(hit.sourceAcronym()));
+            blocks.put(hit.sourceAcronym(), scope.contains(hit.sourceAcronym())
+                ? indexedSourceBlock(hit.sourceAcronym())
+                : resolveSource(new SourceSelector(hit.sourceSystem(), hit.sourceAcronym(), null)).block());
           }
         }
       }
@@ -367,7 +374,8 @@ public class VersionAwareSearchService {
    * The tab is therefore empty for a query like "melanoma", where no vocabulary is named that —
    * which is a true answer, and one a client has to render as such.
    */
-  private List<OntologyHit> ontologyHits(String query, List<Resolved> resolved, boolean byMatches)
+  private List<OntologyHit> ontologyHits(String query, List<Resolved> resolved, boolean byMatches,
+                                          List<String> indexScope)
       throws SQLException {
     if (query.isEmpty()) {
       return List.of();
@@ -377,7 +385,8 @@ public class VersionAwareSearchService {
     // A name that begins with the query is a strong match; one that merely contains it is not.
     java.util.Set<String> startsWithName = new java.util.LinkedHashSet<>();
     for (CatalogStore.OntologyInfo ontology : provider.catalog().listOntologies()) {
-      if (!provider.serves(ontology.acronym())) {
+      if (!provider.serves(ontology.acronym())
+          || !readableSnapshot(provider.snapshotInfo(ontology.acronym(), null))) {
         continue;
       }
       if (!resolved.isEmpty() && resolved.stream().noneMatch(r -> r.isLocal() && r.acronym().equals(ontology.acronym()))) {
@@ -404,9 +413,11 @@ public class VersionAwareSearchService {
     // So a name match earns its place only when it is strong: an exact acronym, or a name that
     // starts with the query. A name that merely contains the query ranks by how many of its terms
     // matched, like every other vocabulary.
-    Map<String, Integer> matches = index == null || !resolved.isEmpty()
+    java.util.Set<String> eligible = java.util.Set.copyOf(indexScope);
+    Map<String, Integer> matches = index == null || !resolved.isEmpty() || eligible.isEmpty()
         ? Map.of()
         : index.vocabularyFacet(query).stream()
+            .filter(match -> eligible.contains(match.acronym()))
             .collect(java.util.stream.Collectors.toMap(
                 SearchIndexStore.VocabularyMatch::acronym, SearchIndexStore.VocabularyMatch::matchCount,
                 (a, b) -> a, LinkedHashMap::new));
@@ -553,6 +564,9 @@ public class VersionAwareSearchService {
    */
   private List<? extends Hit> corpusHits(String query, boolean branchesOnly, int offset, int limit,
                                          List<String> scope) throws SQLException {
+    if (scope.isEmpty()) {
+      return List.of();
+    }
     // Fetch the page, not a thousand rows to slice one page out of. Ranking a broad match is where
     // the time goes — "ce" cost 2.2 seconds fetching a thousand and 0.2 fetching twenty, measured
     // 2026-08-13 — and the counts come from the facets rather than from the length of this list.
@@ -662,11 +676,11 @@ public class VersionAwareSearchService {
    */
   private TypeResults facetedPage(String query, boolean branchesOnly, List<? extends Hit> hits,
                                   int offset, int limit, List<String> scope) throws SQLException {
-    int total = index.matchCount(query, scope, false, branchesOnly, FACET_CAP);
+    int total = scope.isEmpty() ? 0 : index.matchCount(query, scope, false, branchesOnly, FACET_CAP);
     // Only the terms results carry a collapsed count. It is what that tab's badge shows, and each
     // facet is a second pass over the match: computing one nobody reads doubles the cost of a broad
     // query for nothing.
-    Integer labels = index.matchCount(query, scope, true, branchesOnly, FACET_CAP);
+    Integer labels = scope.isEmpty() ? 0 : index.matchCount(query, scope, true, branchesOnly, FACET_CAP);
     // The terms list is already the page — it holds every hit of the page's labels, which is more
     // rows than pageSize on purpose. Slicing it again would cut a label in half and leave a client
     // folding a partial group.
@@ -773,21 +787,30 @@ public class VersionAwareSearchService {
     return chain.isEmpty() ? null : chain;
   }
 
-  private SourceBlock indexedSourceBlock(String acronym) throws SQLException {
-    CatalogStore catalog = provider.catalog();
-    String name = catalog.ontologyName(acronym);
-    String iri = catalog.ontologyIri(acronym).orElse(null);
-    String versionId = index.indexedVersion(acronym).orElse(null);
-    VersionInfo version = null;
-    if (versionId != null) {
-      Optional<CatalogStore.SnapshotInfo> snapshot = catalog.resolveVersion(acronym, versionId);
-      version = snapshot
-          .map(s -> new VersionInfo(s.versionId(), s.releasedAt(), s.declaredVersion()))
-          .orElseGet(() -> new VersionInfo(versionId, null, null));
+  /**
+   * The index is an inventory, not permission to serve its sources. Apply the allowlist and check
+   * that each indexed content hash is still held before SQL counts, ranks or pages any results.
+   * Metadata and file checks avoid opening every snapshot for every corpus-wide request.
+   */
+  private List<String> servedIndexScope() throws SQLException {
+    List<String> scope = new ArrayList<>();
+    for (var entry : index.indexedVersions().entrySet()) {
+      if (provider.serves(entry.getKey())
+          && readableSnapshot(provider.catalog().resolveVersion(entry.getKey(), entry.getValue()))) {
+        scope.add(entry.getKey());
+      }
     }
-    return new SourceBlock(sourceSystemOf(acronym), acronym, name, iri,
-        SourceBlock.SERVED_LOCAL, authorityOf(acronym, versionId), versionId != null, version,
-        versionsOf(acronym).size(), null, null, null);
+    return scope;
+  }
+
+  private static boolean readableSnapshot(Optional<CatalogStore.SnapshotInfo> snapshot) {
+    return snapshot.filter(s -> s.filePath() != null).map(s -> Path.of(s.filePath()))
+        .filter(Files::isRegularFile).filter(Files::isReadable).isPresent();
+  }
+
+  private SourceBlock indexedSourceBlock(String acronym) throws SQLException {
+    return resolveSource(new SourceSelector(null, acronym,
+        new SearchRequest.VersionSelector(index.indexedVersion(acronym).orElseThrow()))).block();
   }
 
   private String sourceSystemOf(String acronym) throws SQLException {
