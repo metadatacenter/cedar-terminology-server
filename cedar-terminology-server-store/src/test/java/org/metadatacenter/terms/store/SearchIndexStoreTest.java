@@ -65,6 +65,35 @@ public class SearchIndexStoreTest {
   }
 
   @Test
+  public void ontologyDiscoveryDoesNotLoseLaterSourcesOrCountMatchingNamesTwice() throws Exception {
+    var many = java.util.stream.IntStream.range(0, 10_001)
+        .mapToObj(i -> new SearchIndexStore.IndexedTerm("AAA", "http://aaa/" + i,
+            "organ " + i, false, null, false, 0)).toList();
+    index.replaceOntology("AAA", "a1", "now", many, Map.of());
+    index.replaceOntology("UBERON", "u1", "now", List.of(
+        new SearchIndexStore.IndexedTerm("UBERON", "http://uberon/organ", "organ", false, null, false, 0)),
+        Map.of("http://uberon/organ", List.of(
+            new SearchIndexStore.IndexedName("synonym", "en", "body organ"),
+            new SearchIndexStore.IndexedName("synonym", "en", "organ system"))));
+
+    assertEquals(List.of(new SearchIndexStore.VocabularyMatch("AAA", 10_001),
+        new SearchIndexStore.VocabularyMatch("UBERON", 1)), index.vocabularyFacet("organ"));
+    // A fresh lookup must reflect re-ingestion, including retired terms.
+    index.replaceOntology("AAA", "a2", "later", List.of(), Map.of());
+    assertEquals(List.of(new SearchIndexStore.VocabularyMatch("UBERON", 1)), index.vocabularyFacet("organ"));
+  }
+
+  @Test
+  public void ontologyDiscoveryUsesTheSameResidualTokensAndDiacriticFoldingAsTermSearch() throws Exception {
+    index.replaceOntology("CHEM", "c1", "now", List.of(
+        new SearchIndexStore.IndexedTerm("CHEM", "http://chem/d", "D-mannitol", false, null, false, 0),
+        new SearchIndexStore.IndexedTerm("CHEM", "http://chem/l", "L-mannitol", false, null, false, 0)), Map.of());
+    assertEquals(List.of(new SearchIndexStore.VocabularyMatch("CHEM", 1)), index.vocabularyFacet("D-mannitol"));
+    assertEquals(List.of(new SearchIndexStore.VocabularyMatch("EX", 1)), index.vocabularyFacet("aquifere"));
+    assertEquals(List.of(), index.vocabularyFacet("?!"));
+  }
+
+  @Test
   public void aTokenMatchesAsAPrefix() throws Exception {
     // What a picker's search means: "melano" reaches melanoma while it is still being typed.
     assertEquals(2, index.search("melano", List.of(), 20).size());

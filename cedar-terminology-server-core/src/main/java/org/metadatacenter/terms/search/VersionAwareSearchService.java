@@ -71,15 +71,6 @@ public class VersionAwareSearchService {
    */
   static final int MIN_CORPUS_QUERY_LENGTH = 2;
 
-  /**
-   * How many vocabularies the ontology results can name.
-   *
-   * Generous, because the facet is a group-by over the match either way and the limit only trims its
-   * output — and because every name match needs its count from the same map, however far down the
-   * ranking it sits.
-   */
-  private static final int VOCABULARY_FACET_LIMIT = 1000;
-
   /** Deep enough for any vocabulary the store holds, and a bound on a hierarchy that cycles. */
   private static final int MAX_ANCESTOR_DEPTH = 32;
 
@@ -217,7 +208,8 @@ public class VersionAwareSearchService {
           && (SearchRequest.TYPE_CLASS.equals(type) || SearchRequest.TYPE_BRANCH.equals(type));
       results.put(type, facetable
           ? facetedPage(query, SearchRequest.TYPE_BRANCH.equals(type), all, offset, limit, scope)
-          : paged(all, offset, limit));
+          : paged(all, offset, limit,
+              !SearchRequest.TYPE_ONTOLOGY.equals(type) && all.size() >= COUNT_CAP));
     }
     return describeResponse(new SearchResponse(query, List.copyOf(blocks.values()), results));
   }
@@ -414,7 +406,7 @@ public class VersionAwareSearchService {
     // matched, like every other vocabulary.
     Map<String, Integer> matches = index == null || !resolved.isEmpty()
         ? Map.of()
-        : index.vocabularyFacet(query, VOCABULARY_FACET_LIMIT, FACET_CAP).stream()
+        : index.vocabularyFacet(query).stream()
             .collect(java.util.stream.Collectors.toMap(
                 SearchIndexStore.VocabularyMatch::acronym, SearchIndexStore.VocabularyMatch::matchCount,
                 (a, b) -> a, LinkedHashMap::new));
@@ -978,9 +970,8 @@ public class VersionAwareSearchService {
     return 2;
   }
 
-  private static TypeResults paged(List<? extends Hit> all, int offset, int limit) {
+  private static TypeResults paged(List<? extends Hit> all, int offset, int limit, boolean capped) {
     int total = all.size();
-    boolean capped = total >= COUNT_CAP;
     int from = Math.min(offset, total);
     int to = Math.min(from + limit, total);
     return TypeResults.at(total, capped, offset, limit, List.copyOf(all.subList(from, to)));

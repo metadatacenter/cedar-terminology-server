@@ -2,7 +2,6 @@ package org.metadatacenter.cedar.terminology;
 
 import io.dropwizard.core.setup.Bootstrap;
 import io.dropwizard.core.setup.Environment;
-import org.metadatacenter.cedar.terminology.health.TerminologyServerHealthCheck;
 import org.metadatacenter.cedar.terminology.resources.AbstractTerminologyServerResource;
 import org.metadatacenter.cedar.terminology.resources.VersionAwareSearchResource;
 import org.metadatacenter.cedar.terminology.resources.ResourceDescriptionResource;
@@ -230,7 +229,6 @@ public class TerminologyServerApplication extends CedarMicroserviceApplication<T
     //environment.jersey().register(new LogRequestFilter());
     environment.jersey().register(new LogResponseFilter());
 
-    environment.healthChecks().register("ontology-catalogue", new TerminologyServerHealthCheck());
   }
 
 }

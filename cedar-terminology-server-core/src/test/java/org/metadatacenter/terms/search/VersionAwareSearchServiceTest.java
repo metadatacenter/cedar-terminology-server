@@ -394,6 +394,42 @@ public class VersionAwareSearchServiceTest {
   }
 
   @Test
+  public void ontologyDiscoveryPagesAllSourcesPastBothFormerCutoffsWithExactCounts() throws Exception {
+    try (SearchIndexStore index = SearchIndexStore.openInMemory()) {
+      index.initSchema();
+      var many = java.util.stream.IntStream.range(0, 10_001)
+          .mapToObj(i -> new SearchIndexStore.IndexedTerm("EX", BASE + "organ/" + i,
+              "organ " + i, false, null, false, 0)).toList();
+      index.replaceOntology("EX", "hash-v2", "now", many, java.util.Map.of());
+      for (int i = 0; i < 1001; i++) {
+        String acronym = String.format("SOURCE%04d", i);
+        index.replaceOntology(acronym, "v1", "now", List.of(
+            new SearchIndexStore.IndexedTerm(acronym, "http://source/" + i, "organ", false, null, false, 0)),
+            java.util.Map.of());
+      }
+      var indexed = new VersionAwareSearchService(provider, index);
+      SearchRequest first = new SearchRequest("organ", List.of("ontology"), List.of(), null,
+          null, null, null, SearchRequest.ORDER_BY_MATCHES, 200, 0);
+      TypeResults head = indexed.search(first).results().get("ontology");
+      assertEquals(1002, head.totalCount());
+      assertFalse(head.countCapped(), "a complete ontology count is exact even above 1000");
+      assertEquals(200, head.collection().size());
+      OntologyHit leading = assertInstanceOf(OntologyHit.class, head.collection().get(0));
+      assertEquals("EX", leading.sourceAcronym());
+      assertEquals(10_001, leading.matchCount());
+
+      SearchRequest last = new SearchRequest("organ", List.of("ontology"), List.of(), null,
+          null, null, null, SearchRequest.ORDER_BY_MATCHES, 200, 1000);
+      TypeResults tail = indexed.search(last).results().get("ontology");
+      assertEquals(1002, tail.totalCount());
+      assertFalse(tail.countCapped());
+      assertEquals(List.of("SOURCE0999", "SOURCE1000"),
+          tail.collection().stream().map(hit -> hit.sourceAcronym()).toList());
+      assertEquals(1, assertInstanceOf(OntologyHit.class, tail.collection().get(1)).matchCount());
+    }
+  }
+
+  @Test
   public void ontologySearchNeedsNoSourceButEveryOtherTypeDoes() throws Exception {
     assertNotNull(service.search(request("mammal", List.of("ontology"), List.of())));
     assertThrows(VersionAwareSearchService.BadSearchRequestException.class,
