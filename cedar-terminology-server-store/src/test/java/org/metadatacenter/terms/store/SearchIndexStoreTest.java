@@ -51,6 +51,22 @@ public class SearchIndexStoreTest {
   }
 
   @Test
+  public void aScopeCoveringMostOfTheIndexStillFiltersCountsAndWholeLabelGroups() throws Exception {
+    index.replaceOntology("EXCLUDED", "v1", "now",
+        List.of(new SearchIndexStore.IndexedTerm("EXCLUDED", "http://excluded/melanoma", "melanoma",
+            false, null, true, 10)), Map.of());
+    index.rebuildFullText();
+    var scope = List.of("EX", "OTHER");
+    assertEquals(2, index.matchCount("melanoma", scope, false, 100));
+    assertEquals(1, index.matchCount("melanoma", scope, true, 100));
+    assertEquals(1, index.matchCount("melanoma", scope, false, true, 100));
+    assertEquals(List.of("EX", "OTHER"), index.searchByLabelRange("melanoma", scope, false, 0, 1)
+        .stream().map(h -> h.term().acronym()).sorted().toList());
+    assertTrue(index.searchByLabelRange("melanoma", scope, false, 1, 1).isEmpty());
+    assertEquals(3, index.matchCount("melanoma", List.of("EX", "OTHER", "EXCLUDED"), false, 100));
+  }
+
+  @Test
   public void aQuerySpansEveryIndexedOntology() throws Exception {
     List<SearchIndexStore.IndexHit> hits = index.search("melanoma", List.of(), 20);
     assertEquals(List.of("EX", "OTHER"),

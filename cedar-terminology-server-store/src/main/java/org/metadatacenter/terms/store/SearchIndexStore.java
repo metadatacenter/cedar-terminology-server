@@ -981,6 +981,18 @@ public class SearchIndexStore implements AutoCloseable {
     if (acronyms == null || acronyms.isEmpty() || !scopesInIndex()) {
       return "value: (" + match + ")";
     }
+    // A serving allowlist commonly includes almost the entire corpus. OR-ing a thousand ontology
+    // postings makes a broad text query walk nearly every name. Subtract the smaller complement
+    // instead; the SQL acronym filter remains authoritative in either plan.
+    boolean exclude = acronyms.size() > indexedOntologyCount() / 2;
+    if (exclude) {
+      var omitted = new java.util.LinkedHashSet<>(indexedVersions().keySet());
+      omitted.removeAll(acronyms);
+      if (omitted.isEmpty()) {
+        return "value: (" + match + ")";
+      }
+      acronyms = omitted;
+    }
     StringBuilder scope = new StringBuilder();
     for (String acronym : acronyms) {
       if (!scope.isEmpty()) {
@@ -988,7 +1000,8 @@ public class SearchIndexStore implements AutoCloseable {
       }
       scope.append(ontToken(acronym));
     }
-    return "ont: (" + scope + ") AND value: (" + match + ")";
+    return exclude ? "value: (" + match + ") NOT ont: (" + scope + ")"
+        : "ont: (" + scope + ") AND value: (" + match + ")";
   }
 
   /** Whether this index carries the ontology alongside the text, so a scope can narrow the match. */
