@@ -8,6 +8,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -194,6 +195,9 @@ public class SearchIndexStore implements AutoCloseable {
    */
   private static final int READ_CONNECTION_LIMIT = 64;
 
+  /** How the index splits and folds a name. {@link #fold} mirrors it for a held-back token. */
+  static final String TOKENIZER = "unicode61 remove_diacritics 2";
+
   /** The SQL name of the function applying {@link #carriesResidual}. */
   static final String RESIDUAL_FN = "cedar_carries_residual";
 
@@ -348,8 +352,8 @@ public class SearchIndexStore implements AutoCloseable {
             ont,
             content='name',
             content_rowid='name_id',
-            tokenize="unicode61 remove_diacritics 2"
-          )""");
+            tokenize="%s"
+          )""".formatted(TOKENIZER));
       // replaceOntology batches postings inside the same transaction as the content rows.
       // Remove the previous per-name triggers on upgrade, or postings would be applied twice.
       st.executeUpdate("DROP TRIGGER IF EXISTS name_fts_insert");
@@ -569,8 +573,8 @@ public class SearchIndexStore implements AutoCloseable {
               ont,
               content='name',
               content_rowid='name_id',
-              tokenize="unicode61 remove_diacritics 2"
-            )""");
+              tokenize="%s"
+            )""".formatted(TOKENIZER));
         scopedIndex = null;
       }
       st.executeUpdate("INSERT INTO name_fts(name_fts) VALUES('rebuild')");
@@ -1033,7 +1037,7 @@ public class SearchIndexStore implements AutoCloseable {
       return List.of();
     }
     List<String> out = new ArrayList<>();
-    for (String token : query.trim().toLowerCase(Locale.ROOT).split("\\s+")) {
+    for (String token : fold(query).trim().split("\\s+")) {
       String cleaned = token.replaceAll("[^\\p{L}\\p{N}]+", " ").trim();
       if (cleaned.isEmpty()) {
         continue;
@@ -1041,6 +1045,66 @@ public class SearchIndexStore implements AutoCloseable {
       out.addAll(Arrays.asList(cleaned.split("\\s+")));
     }
     return out;
+  }
+
+  /**
+   * Folds text as the index's tokenizer does: lower case, and a Latin letter without its diacritics.
+   *
+   * The index is built with {@code unicode61 remove_diacritics 2}, which reduces a letter to its
+   * ASCII base where it has one and leaves the letters of other scripts as they are. A held-back
+   * token is compared with a name here and not by the index, so the two have to fold alike: without
+   * this, "e" held back from "e coli" refused "échoendoscopie colique", which the index matches.
+   */
+  static String fold(String text) {
+    String lower = text.toLowerCase(Locale.ROOT);
+    int plain = 0;
+    while (plain < lower.length() && lower.charAt(plain) < 0x80) {
+      plain++;
+    }
+    if (plain == lower.length()) {
+      return lower;
+    }
+    StringBuilder out = new StringBuilder(lower.length());
+    out.append(lower, 0, plain);
+    for (int i = plain; i < lower.length(); ) {
+      int codePoint = lower.codePointAt(i);
+      i += Character.charCount(codePoint);
+      if (codePoint < 0x80) {
+        out.append((char) codePoint);
+      } else if (!isRemovedMark(codePoint)) {
+        out.appendCodePoint(foldLetter(codePoint));
+      }
+    }
+    return out.toString();
+  }
+
+  /** The combining marks the tokenizer removes from a token. It ends the token at any other mark. */
+  private static boolean isRemovedMark(int codePoint) {
+    if (codePoint < 0x300 || codePoint > 0x331) {
+      return false;
+    }
+    int bit = codePoint - 0x300;
+    return bit < 32 ? (0x08029FDF & (1 << bit)) != 0 : (0x000361F8 & (1 << (bit - 32))) != 0;
+  }
+
+  private static int foldLetter(int codePoint) {
+    switch (codePoint) {
+      case 0x00B5: return 0x03BC; // the micro sign, which the tokenizer reads as mu
+      case 0x017F: return 's';    // long s
+      case 0x01E1: return codePoint; // the one Latin letter whose diacritics the tokenizer keeps
+      case 0x03C2: return 0x03C3; // final sigma, and the symbol forms of six Greek letters
+      case 0x03D0: return 0x03B2;
+      case 0x03D1: return 0x03B8;
+      case 0x03D5: return 0x03C6;
+      case 0x03D6: return 0x03C0;
+      case 0x03F0: return 0x03BA;
+      case 0x03F1: return 0x03C1;
+      case 0x03F5: return 0x03B5;
+      default:
+        String decomposed = Normalizer.normalize(Character.toString(codePoint), Normalizer.Form.NFD);
+        char base = decomposed.charAt(0) == 0x017F ? 's' : decomposed.charAt(0);
+        return decomposed.length() > 1 && base >= 'a' && base <= 'z' ? base : codePoint;
+    }
   }
 
   private static String prefixExpr(List<String> tokens) {
