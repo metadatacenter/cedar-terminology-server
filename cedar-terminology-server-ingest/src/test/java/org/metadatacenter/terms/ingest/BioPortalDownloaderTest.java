@@ -9,7 +9,6 @@ import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -37,7 +36,7 @@ class BioPortalDownloaderTest {
 
   @BeforeEach
   void startTheOntoPortal() throws IOException {
-    server = HttpServer.create(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0), 0);
+    server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
     server.createContext("/", exchange -> {
       authorizations.add(exchange.getRequestHeaders().getFirst("Authorization"));
       String path = exchange.getRequestURI().getPath();

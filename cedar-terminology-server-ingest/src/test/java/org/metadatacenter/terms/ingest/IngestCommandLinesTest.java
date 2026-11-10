@@ -19,7 +19,6 @@ import org.semanticweb.owlapi.vocab.OWLRDFVocabulary;
 import java.io.ByteArrayOutputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -53,7 +52,7 @@ class IngestCommandLinesTest {
   static void ingestTheOntology() throws Exception {
     ontologyFile = dir.resolve("dtest.owl");
     writeOntology(ontologyFile);
-    server = HttpServer.create(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0), 0);
+    server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
     server.createContext("/files/dtest.owl", exchange -> {
       byte[] bytes = Files.readAllBytes(ontologyFile);
       exchange.sendResponseHeaders(200, bytes.length);
