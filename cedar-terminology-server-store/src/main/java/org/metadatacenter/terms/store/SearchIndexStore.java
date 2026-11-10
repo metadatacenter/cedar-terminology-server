@@ -607,9 +607,7 @@ public class SearchIndexStore implements AutoCloseable {
    */
   public List<IndexHit> search(String query, Collection<String> acronyms, boolean branchesOnly, int limit)
       throws SQLException {
-    // Planned by its tokens alone. This query limits its rows before a held-back token is applied
-    // to them, so holding more back here would return fewer hits than there are.
-    MatchPlan plan = toMatchPlan(query);
+    MatchPlan plan = planFor(query, acronyms);
     String match = plan.match();
     if (match.isEmpty()) {
       return List.of();
@@ -624,6 +622,9 @@ public class SearchIndexStore implements AutoCloseable {
         JOIN name n ON n.name_id = f.rowid
         JOIN term t ON t.term_id = n.term_id
         WHERE name_fts MATCH ?""");
+    // A held-back token is applied here, before the rows are ranked and limited. Applied to the
+    // rows that came back, it left a page short whenever names without it ranked first.
+    sql.append(residualFilter(plan));
     if (branchesOnly) {
       sql.append(" AND t.has_children = 1");
     }
@@ -645,6 +646,9 @@ public class SearchIndexStore implements AutoCloseable {
     try (PreparedStatement ps = connection().prepareStatement(sql.toString())) {
       int p = 1;
       ps.setString(p++, match);
+      if (!plan.residual().isEmpty()) {
+        ps.setString(p++, String.join(" ", plan.residual()));
+      }
       if (acronyms != null) {
         for (String acronym : acronyms) {
           ps.setString(p++, acronym);
@@ -658,9 +662,6 @@ public class SearchIndexStore implements AutoCloseable {
       ps.setInt(p, Math.max(limit, 1) * 4);
       try (ResultSet rs = ps.executeQuery()) {
         while (rs.next()) {
-          if (!carriesResidual(rs.getString(10), plan.residual())) {
-            continue;
-          }
           long termId = rs.getLong(11);
           IndexHit hit = byTerm.get(termId);
           if (hit == null) {

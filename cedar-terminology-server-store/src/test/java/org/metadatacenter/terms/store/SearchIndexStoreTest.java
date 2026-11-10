@@ -273,6 +273,26 @@ public class SearchIndexStoreTest {
   }
 
   @Test
+  public void aHeldBackTokenIsAppliedBeforeTheUnpagedSearchLimitsItsRows() throws Exception {
+    // Eight short names match "type" and "diabetes" and hold no token beginning with 2. They rank
+    // ahead of the one name that does, and the query asks the index for four rows for one term.
+    List<SearchIndexStore.IndexedTerm> terms = new java.util.ArrayList<>();
+    for (char letter = 'a'; letter <= 'h'; letter++) {
+      terms.add(new SearchIndexStore.IndexedTerm("DIAB", "http://diab/" + letter, "type " + letter + " diabetes",
+          false, null, false, 0));
+    }
+    terms.add(new SearchIndexStore.IndexedTerm("DIAB", "http://diab/2", "type 2 diabetes of the young",
+        false, null, false, 0));
+    index.replaceOntology("DIAB", "d1", "now", terms, Map.of());
+    index.rebuildFullText();
+
+    assertEquals(List.of("2"), SearchIndexStore.toMatchPlan("type-2 diabetes").residual());
+    List<SearchIndexStore.IndexHit> hits = index.search("type-2 diabetes", List.of(), 1);
+    assertEquals(1, hits.size());
+    assertEquals("http://diab/2", hits.get(0).term().iri());
+  }
+
+  @Test
   public void aHeldBackTokenFoldsANameAsTheIndexDoes() {
     // The index reaches these names through "e" and "a", so a held-back token must as well.
     assertTrue(SearchIndexStore.carriesResidual("échoendoscopie colique", List.of("e")));
