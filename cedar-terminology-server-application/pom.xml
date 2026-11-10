@@ -38,6 +38,16 @@
     </dependency>
 
     <dependency>
+      <groupId>com.networknt</groupId>
+      <artifactId>json-schema-validator</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.metadatacenter</groupId>
+      <artifactId>cedar-terminology-server-store</artifactId>
+    </dependency>
+
+    <dependency>
       <groupId>org.metadatacenter</groupId>
       <artifactId>cedar-terminology-server-common</artifactId>
     </dependency>
@@ -48,8 +58,23 @@
     </dependency>
 
     <dependency>
+      <groupId>jakarta.ws.rs</groupId>
+      <artifactId>jakarta.ws.rs-api</artifactId>
+    </dependency>
+
+    <dependency>
       <groupId>org.metadatacenter</groupId>
       <artifactId>cedar-config-library</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.metadatacenter</groupId>
+      <artifactId>cedar-core-library</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.metadatacenter</groupId>
+      <artifactId>cedar-model-library</artifactId>
     </dependency>
 
     <dependency>
@@ -69,6 +94,21 @@
     </dependency>
 
     <dependency>
+      <groupId>io.dropwizard.metrics</groupId>
+      <artifactId>metrics-annotation</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>jakarta.validation</groupId>
+      <artifactId>jakarta.validation-api</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-api</artifactId>
+    </dependency>
+
+    <dependency>
       <groupId>io.dropwizard</groupId>
       <artifactId>dropwizard-jersey</artifactId>
     </dependency>
@@ -76,6 +116,11 @@
     <dependency>
       <groupId>io.dropwizard</groupId>
       <artifactId>dropwizard-testing</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.glassfish.jersey.core</groupId>
+      <artifactId>jersey-client</artifactId>
     </dependency>
 
     <dependency>
@@ -92,6 +137,11 @@
     <dependency>
       <groupId>ch.qos.logback</groupId>
       <artifactId>logback-classic</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>ch.qos.logback</groupId>
+      <artifactId>logback-core</artifactId>
     </dependency>
 
     <dependency>

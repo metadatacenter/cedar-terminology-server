@@ -28,8 +28,18 @@
     </dependency>
 
     <dependency>
+      <groupId>org.metadatacenter</groupId>
+      <artifactId>cedar-model-library</artifactId>
+    </dependency>
+
+    <dependency>
       <groupId>com.networknt</groupId>
       <artifactId>json-schema-validator</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-api</artifactId>
     </dependency>
 
     <dependency>
@@ -49,8 +59,17 @@
       <artifactId>cedar-server-rest-library</artifactId>
     </dependency>
     <dependency>
+      <groupId>jakarta.ws.rs</groupId>
+      <artifactId>jakarta.ws.rs-api</artifactId>
+    </dependency>
+    <dependency>
       <groupId>org.metadatacenter</groupId>
       <artifactId>cedar-server-globals-library</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.metadatacenter</groupId>
+      <artifactId>cedar-config-library</artifactId>
     </dependency>
 
     <dependency>
