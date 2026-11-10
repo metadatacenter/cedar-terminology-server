@@ -3,8 +3,6 @@ package org.metadatacenter.terms.util;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.xml.ws.http.HTTPException;
-
 /**
  * Records what BioPortal answered, and builds the exception that carries its status onward.
  *

@@ -31,6 +31,8 @@
       <artifactId>cedar-artifact-library</artifactId>
     </dependency>
 
+    <!-- No class here references dropwizard-core itself. It supplies what the request models do
+         use: dropwizard-jackson, the validation API and Hibernate Validator. -->
     <dependency>
       <groupId>io.dropwizard</groupId>
       <artifactId>dropwizard-core</artifactId>

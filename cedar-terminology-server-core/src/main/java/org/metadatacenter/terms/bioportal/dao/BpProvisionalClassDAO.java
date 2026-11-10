@@ -10,13 +10,13 @@ import org.apache.hc.core5.util.Timeout;
 import org.metadatacenter.cedar.terminology.util.Constants;
 import org.metadatacenter.terms.bioportal.customObjects.BpPagedResults;
 import org.metadatacenter.terms.bioportal.domainObjects.BpProvisionalClass;
+import org.metadatacenter.terms.util.HTTPException;
 import org.metadatacenter.terms.util.HttpUtil;
 import org.metadatacenter.terms.util.Util;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import jakarta.ws.rs.core.Response.Status;
-import javax.xml.ws.http.HTTPException;
 import org.metadatacenter.terms.util.BioPortalFailure;
 import java.io.IOException;
 import java.util.List;

@@ -2,8 +2,6 @@ package org.metadatacenter.terms.util;
 
 import org.junit.jupiter.api.Test;
 
-import javax.xml.ws.http.HTTPException;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**

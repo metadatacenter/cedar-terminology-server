@@ -1,6 +1,7 @@
 package org.metadatacenter.terms;
 
 import org.metadatacenter.cedar.terminology.validation.integratedsearch.*;
+import org.metadatacenter.terms.util.HTTPException;
 import org.metadatacenter.terms.util.IntegratedSearchUtil.SourceType;
 import org.metadatacenter.http.CedarResponseStatus;
 import org.metadatacenter.terms.bioportal.BioPortalService;
@@ -16,7 +17,6 @@ import org.metadatacenter.terms.util.ValueSetIds;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.xml.ws.http.HTTPException;
 import java.io.IOException;
 import java.util.*;
 

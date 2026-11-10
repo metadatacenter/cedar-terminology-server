@@ -10,12 +10,12 @@ import org.metadatacenter.http.CedarResponseStatus;
 import org.metadatacenter.terms.bioportal.customObjects.BpPagedResults;
 import org.metadatacenter.terms.bioportal.dao.*;
 import org.metadatacenter.terms.bioportal.domainObjects.*;
+import org.metadatacenter.terms.util.HTTPException;
 import org.metadatacenter.terms.util.HttpUtil;
 import org.metadatacenter.terms.util.Util;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.xml.ws.http.HTTPException;
 import org.metadatacenter.terms.util.BioPortalFailure;
 import java.io.IOException;
 import java.util.List;
@@ -24,7 +24,6 @@ import java.util.stream.Collectors;
 import static org.metadatacenter.cedar.terminology.util.Constants.*;
 import static org.metadatacenter.util.json.JsonMapper.STRICT_MAPPER;
 import static org.metadatacenter.util.json.JsonMapper.TOLERANT_MAPPER;
-
 
 public class BioPortalService implements IBioPortalService {
   private static final Logger logger = LoggerFactory.getLogger(BioPortalService.class);

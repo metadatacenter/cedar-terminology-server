@@ -3,8 +3,8 @@ package org.metadatacenter.terms;
 import org.metadatacenter.cedar.terminology.validation.integratedsearch.*;
 import org.metadatacenter.terms.domainObjects.OntologyClass;
 import org.metadatacenter.terms.store.SnapshotStore;
+import org.metadatacenter.terms.util.HTTPException;
 
-import javax.xml.ws.http.HTTPException;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.util.*;

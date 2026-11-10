@@ -7,13 +7,13 @@ import org.apache.hc.core5.http.ContentType;
 import org.apache.hc.core5.http.HttpResponse;
 import org.apache.hc.core5.util.Timeout;
 import org.metadatacenter.terms.bioportal.domainObjects.BpProvisionalRelation;
+import org.metadatacenter.terms.util.HTTPException;
 import org.metadatacenter.terms.util.HttpUtil;
 import org.metadatacenter.terms.util.Util;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import jakarta.ws.rs.core.Response.Status;
-import javax.xml.ws.http.HTTPException;
 import org.metadatacenter.terms.util.BioPortalFailure;
 import java.io.IOException;
 
