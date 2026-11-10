@@ -4,6 +4,8 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -55,20 +57,41 @@ final class ReadConnections implements AutoCloseable {
   private final Configurer configurer;
   private final Connection shared;
   private final int limit;
+  private final boolean counted;
   private final AtomicInteger created = new AtomicInteger(1);
   private final List<Connection> opened = new CopyOnWriteArrayList<>();
   private final ThreadLocal<Connection> perThread = new ThreadLocal<>();
+  /** Which thread each opened connection was handed to, so a finished thread's can be reused. */
+  private final Map<Connection, Thread> owners = new ConcurrentHashMap<>();
 
-  private ReadConnections(String url, Connection shared, Configurer configurer, int limit) {
+  private ReadConnections(String url, Connection shared, Configurer configurer, int limit, boolean counted) {
     this.url = url;
     this.shared = shared;
     this.configurer = configurer;
     this.limit = limit;
+    this.counted = counted;
   }
 
+  /** Connections for a store a process caches many of, counted against the shared allowance. */
   static ReadConnections of(String path, Connection first, Configurer configurer, int limit)
       throws SQLException {
-    ReadConnections connections = new ReadConnections("jdbc:sqlite:" + path, first, configurer, limit);
+    ReadConnections connections = new ReadConnections("jdbc:sqlite:" + path, first, configurer, limit, true);
+    connections.opened.add(first);
+    return connections;
+  }
+
+  /**
+   * Connections for a store a process holds exactly one of: the catalog and the search index.
+   *
+   * The shared allowance exists because a per-store limit multiplies by the number of snapshots
+   * cached. These two do not multiply, and every lookup reads one or both, so their limit is their
+   * own. Counted with the snapshots, they got whatever the snapshots had left, and a thread without
+   * its own connection to the index waited behind whichever query held the first one. A corpus-wide
+   * search holds it for seconds.
+   */
+  static ReadConnections single(String path, Connection first, Configurer configurer, int limit)
+      throws SQLException {
+    ReadConnections connections = new ReadConnections("jdbc:sqlite:" + path, first, configurer, limit, false);
     connections.opened.add(first);
     return connections;
   }
@@ -80,17 +103,17 @@ final class ReadConnections implements AutoCloseable {
       return mine;
     }
     if (created.get() >= limit) {
-      return shared;
+      return inherited();
     }
     // Two threads can pass the test at once, so the count is what decides rather than the test.
     if (created.incrementAndGet() > limit) {
       created.decrementAndGet();
-      return shared;
+      return inherited();
     }
-    if (TOTAL_OPEN.incrementAndGet() > TOTAL_LIMIT) {
+    if (counted && TOTAL_OPEN.incrementAndGet() > TOTAL_LIMIT) {
       TOTAL_OPEN.decrementAndGet();
       created.decrementAndGet();
-      return shared;
+      return inherited();
     }
     Connection fresh = null;
     try {
@@ -99,7 +122,7 @@ final class ReadConnections implements AutoCloseable {
     } catch (SQLException | RuntimeException e) {
       // Give back what was counted. A failed open would otherwise hold its place in both allowances
       // for good, and enough of them would leave every thread sharing one connection.
-      TOTAL_OPEN.decrementAndGet();
+      if (counted) TOTAL_OPEN.decrementAndGet();
       created.decrementAndGet();
       if (fresh != null) {
         try {
@@ -111,8 +134,29 @@ final class ReadConnections implements AutoCloseable {
       throw e;
     }
     opened.add(fresh);
+    owners.put(fresh, Thread.currentThread());
     perThread.set(fresh);
     return fresh;
+  }
+
+  /**
+   * A connection whose thread has finished, taken over by this one, or the shared first connection.
+   *
+   * A server's worker pool retires idle threads and starts new ones, and a connection handed to a
+   * thread stays counted after the thread is gone. Without this, every allowance is eventually held
+   * by threads that no longer exist, and every living thread shares the first connection and waits,
+   * which is the state per-thread connections were introduced to end.
+   */
+  private Connection inherited() {
+    Thread current = Thread.currentThread();
+    for (Map.Entry<Connection, Thread> entry : owners.entrySet()) {
+      Thread owner = entry.getValue();
+      if (!owner.isAlive() && owners.replace(entry.getKey(), owner, current)) {
+        perThread.set(entry.getKey());
+        return entry.getKey();
+      }
+    }
+    return shared;
   }
 
   /** How many connections this store has taken from its allowance, its first included. */
@@ -138,8 +182,9 @@ final class ReadConnections implements AutoCloseable {
       }
     }
     // Give back what this store took, so a store closed for going quiet returns its allowance.
-    TOTAL_OPEN.addAndGet(-Math.max(opened.size() - 1, 0));
+    if (counted) TOTAL_OPEN.addAndGet(-Math.max(opened.size() - 1, 0));
     opened.clear();
+    owners.clear();
     if (first != null) {
       throw first;
     }

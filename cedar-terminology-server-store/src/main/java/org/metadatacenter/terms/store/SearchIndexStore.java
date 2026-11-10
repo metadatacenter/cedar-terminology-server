@@ -187,8 +187,12 @@ public class SearchIndexStore implements AutoCloseable {
    */
   private final ReadConnections reads;
 
-  /** Connections a serving store will open before threads start sharing one again. */
-  private static final int READ_CONNECTION_LIMIT = 8;
+  /**
+   * Connections a serving store will open before threads start sharing one again. Every search
+   * consults the index, and a thread sharing a connection waits for the query that holds it, so the
+   * limit covers the worker threads a busy server uses rather than a handful of them.
+   */
+  private static final int READ_CONNECTION_LIMIT = 64;
 
   /** The SQL name of the function applying {@link #carriesResidual}. */
   static final String RESIDUAL_FN = "cedar_carries_residual";
@@ -201,7 +205,7 @@ public class SearchIndexStore implements AutoCloseable {
     this.connection = connection;
     registerResidualFunction(connection);
     this.reads = readPath == null ? null
-        : ReadConnections.of(readPath, connection, SearchIndexStore::prepareRead,
+        : ReadConnections.single(readPath, connection, SearchIndexStore::prepareRead,
             READ_CONNECTION_LIMIT);
   }
 
