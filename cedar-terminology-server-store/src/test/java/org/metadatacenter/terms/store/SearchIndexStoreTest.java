@@ -225,14 +225,63 @@ public class SearchIndexStoreTest {
   }
 
   @Test
+  public void aSingleLetterCanBeHeldBackWhereverAWordRemains() {
+    // A possessive leaves a one-letter token, because the index splits on the apostrophe.
+    SearchIndexStore.MatchPlan held = SearchIndexStore.toMatchPlan("Crohn's disease", true);
+    assertEquals("\"crohn\"* \"disease\"*", held.match());
+    assertEquals(List.of("s"), held.residual());
+    assertEquals(SearchIndexStore.toMatchPlan("e coli", true),
+        new SearchIndexStore.MatchPlan("\"coli\"*", List.of("e")));
+
+    // Two letters stay with the rule that needs a long token, and a query of short tokens stays whole.
+    assertTrue(SearchIndexStore.toMatchPlan("cell ca", true).residual().isEmpty());
+    assertTrue(SearchIndexStore.toMatchPlan("e co", true).residual().isEmpty());
+    // Where a long token already carries the match, both forms hold the same tokens.
+    assertEquals(SearchIndexStore.toMatchPlan("type-2 diabetes"), SearchIndexStore.toMatchPlan("type-2 diabetes", true));
+  }
+
+  @Test
+  public void aSingleLetterIsHeldBackOnlyWhileFewNamesRemainForItToBeCheckedAgainst() throws Exception {
+    index.replaceOntology("VIT", "v1", "now", List.of(
+        new SearchIndexStore.IndexedTerm("VIT", "http://vit/d", "vitamin D", false, null, false, 0),
+        new SearchIndexStore.IndexedTerm("VIT", "http://vit/d2", "vitamin D2", false, null, false, 0),
+        new SearchIndexStore.IndexedTerm("VIT", "http://vit/k", "vitamin K", false, null, false, 0),
+        new SearchIndexStore.IndexedTerm("VIT", "http://vit/c", "vitamin C", false, null, false, 0),
+        new SearchIndexStore.IndexedTerm("VIT", "http://vit/b12", "vitamin B12", false, null, false, 0)), Map.of());
+    index.rebuildFullText();
+
+    // Five names carry "vitamin". Within the limit, "d" waits and is checked against those five.
+    index.residualRowLimit(5);
+    assertEquals(List.of("d"), index.planFor("vitamin d", List.of()).residual());
+    List<String> held = iris(index.searchByLabelRange("vitamin d", List.of(), false, 0, 20));
+    int heldCount = index.matchCount("vitamin d", List.of(), false, 100);
+
+    // Past the limit the index applies "d" itself, and the answer is the same.
+    index.residualRowLimit(4);
+    assertTrue(index.planFor("vitamin d", List.of()).residual().isEmpty());
+    assertEquals(held, iris(index.searchByLabelRange("vitamin d", List.of(), false, 0, 20)));
+    assertEquals(heldCount, index.matchCount("vitamin d", List.of(), false, 100));
+    assertEquals(List.of("http://vit/d", "http://vit/d2"), held);
+    assertEquals(List.of(new SearchIndexStore.VocabularyMatch("VIT", 2)), index.vocabularyFacet("vitamin d"));
+
+    // The limit counts the names in the scope asked for, so a scope with nothing in it holds back.
+    assertEquals(List.of("d"), index.planFor("vitamin d", List.of("EX")).residual());
+  }
+
+  private static List<String> iris(List<SearchIndexStore.IndexHit> hits) {
+    return hits.stream().map(hit -> hit.term().iri()).sorted().toList();
+  }
+
+  @Test
   public void aHeldBackTokenFoldsANameAsTheIndexDoes() {
     // The index reaches these names through "e" and "a", so a held-back token must as well.
     assertTrue(SearchIndexStore.carriesResidual("échoendoscopie colique", List.of("e")));
     assertTrue(SearchIndexStore.carriesResidual("groupe électrogène à essence", List.of("a")));
     assertTrue(SearchIndexStore.carriesResidual("Ångström unit", List.of("a")));
     assertFalse(SearchIndexStore.carriesResidual("école", List.of("c")));
-    // A query typed with the diacritic is read as the same tokens.
+    // A query typed with the diacritic is read as the same tokens, and holds back the same one.
     assertEquals(List.of("e", "coli"), SearchIndexStore.matchTokens("É coli"));
+    assertEquals(List.of("e"), SearchIndexStore.toMatchPlan("É coli", true).residual());
   }
 
   @Test

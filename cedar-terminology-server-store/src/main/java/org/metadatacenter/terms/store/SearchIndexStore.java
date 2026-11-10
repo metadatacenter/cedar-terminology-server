@@ -607,6 +607,8 @@ public class SearchIndexStore implements AutoCloseable {
    */
   public List<IndexHit> search(String query, Collection<String> acronyms, boolean branchesOnly, int limit)
       throws SQLException {
+    // Planned by its tokens alone. This query limits its rows before a held-back token is applied
+    // to them, so holding more back here would return fewer hits than there are.
     MatchPlan plan = toMatchPlan(query);
     String match = plan.match();
     if (match.isEmpty()) {
@@ -698,7 +700,7 @@ public class SearchIndexStore implements AutoCloseable {
   /** The labels from {@code offset} on, at most {@code limit} of them, with every hit of each. */
   public List<IndexHit> searchByLabelRange(String query, Collection<String> acronyms, boolean branchesOnly,
                                            int offset, int limit) throws SQLException {
-    MatchPlan plan = toMatchPlan(query);
+    MatchPlan plan = planFor(query, acronyms);
     String match = plan.match();
     if (match.isEmpty()) {
       return List.of();
@@ -865,11 +867,11 @@ public class SearchIndexStore implements AutoCloseable {
    */
   public int matchCount(String query, Collection<String> acronyms, boolean distinctLabels,
                         boolean branchesOnly, int cap) throws SQLException {
-    String match = toPrefixMatch(query);
+    MatchPlan plan = planFor(query, acronyms);
+    String match = plan.match();
     if (match.isEmpty()) {
       return 0;
     }
-    MatchPlan plan = toMatchPlan(query);
     match = scopedMatch(match, acronyms);
     String selected = distinctLabels ? "DISTINCT LOWER(t.pref_label)" : "DISTINCT t.term_id";
     // The space matters: a text block drops the newline after its opening delimiter, so without it
@@ -922,11 +924,11 @@ public class SearchIndexStore implements AutoCloseable {
    * ranked list; neither term nor ontology limits belong before that pagination.
    */
   public List<VocabularyMatch> vocabularyFacet(String query) throws SQLException {
-    String match = toPrefixMatch(query);
+    MatchPlan plan = planFor(query, List.of());
+    String match = plan.match();
     if (match.isEmpty()) {
       return List.of();
     }
-    MatchPlan plan = toMatchPlan(query);
     List<VocabularyMatch> out = new ArrayList<>();
     try (PreparedStatement ps = connection().prepareStatement("""
         SELECT t.acronym, COUNT(*) c FROM (
@@ -1134,6 +1136,16 @@ public class SearchIndexStore implements AutoCloseable {
    * when a token is long enough to be selective on its own, which leaves every query that has no
    * such token exactly as it was. Measured over 300 labels drawn from six ontologies, the plans
    * agree with the unconditional form on all 300 and take a third of the time.
+   *
+   * A single letter can be held back more often than that rule allows. A possessive leaves one,
+   * since the index splits on the apostrophe, and "Crohn's disease" put whole to the index walks
+   * every name with a token beginning with s: 1.5 s within one ontology, and 23 ms with "s" held
+   * back. The exchange still fails when the word that remains is common. "t cell" put to the whole
+   * corpus takes 1.7 s, and about 7 s with "t" held back, because "cell" alone reaches more than a
+   * million names and each is read to be checked. So {@link #planFor} holds a single letter back
+   * only while the rest of the query matches few names in the scope asked for, which one count
+   * against the index decides. Measured over 453 queries drawn from six ontologies, every plan
+   * returned the page, the counts and the vocabulary list of the unconditional form.
    */
   record MatchPlan(String match, List<String> residual) {}
 
@@ -1143,18 +1155,90 @@ public class SearchIndexStore implements AutoCloseable {
   /** Long enough that a prefix match on it can carry a query by itself. */
   private static final int DRIVING_LENGTH = 8;
 
+  /**
+   * The most names a held-back single letter is checked against.
+   *
+   * A token held back is checked against every name the rest of the query matches, and each check
+   * reads the name's row. Up to this many rows that costs less than the index pays to intersect a
+   * single letter. Past it the index is faster, so the query is put to it whole.
+   */
+  static final int RESIDUAL_ROW_LIMIT = 50_000;
+
+  private int residualRowLimit = RESIDUAL_ROW_LIMIT;
+
+  /**
+   * Whether an expression matches few enough names, by expression. The answer decides how fast a
+   * query runs and never what it returns, so one that the corpus has since outgrown is harmless.
+   */
+  private final Map<String, Boolean> matchesFew = Collections.synchronizedMap(
+      new LinkedHashMap<>(256, 0.75f, true) {
+        @Override
+        protected boolean removeEldestEntry(Map.Entry<String, Boolean> eldest) {
+          return size() > 4096;
+        }
+      });
+
+  void residualRowLimit(int limit) {
+    residualRowLimit = limit;
+    matchesFew.clear();
+  }
+
   static MatchPlan toMatchPlan(String query) {
+    return toMatchPlan(query, false);
+  }
+
+  /**
+   * @param singleLetters also hold a one-letter token back when a token of at least
+   *                      {@link #MIN_SELECTIVE_LENGTH} characters remains, whatever its length
+   */
+  static MatchPlan toMatchPlan(String query, boolean singleLetters) {
     List<String> tokens = matchTokens(query);
     if (tokens.isEmpty()) {
       return new MatchPlan("", List.of());
     }
-    List<String> held = tokens.stream().filter(t -> t.length() < MIN_SELECTIVE_LENGTH).toList();
     boolean canDrive = tokens.stream().anyMatch(t -> t.length() >= DRIVING_LENGTH);
-    if (held.isEmpty() || !canDrive) {
+    boolean canCarry = tokens.stream().anyMatch(t -> t.length() >= MIN_SELECTIVE_LENGTH);
+    java.util.function.Predicate<String> isHeld = t -> t.length() < MIN_SELECTIVE_LENGTH
+        && (canDrive || (singleLetters && t.length() == 1 && canCarry));
+    List<String> held = tokens.stream().filter(isHeld).toList();
+    if (held.isEmpty()) {
       return new MatchPlan(prefixExpr(tokens), List.of());
     }
-    return new MatchPlan(
-        prefixExpr(tokens.stream().filter(t -> t.length() >= MIN_SELECTIVE_LENGTH).toList()), held);
+    return new MatchPlan(prefixExpr(tokens.stream().filter(isHeld.negate()).toList()), held);
+  }
+
+  /**
+   * The plan for a query in a scope.
+   *
+   * A query with a long token is planned by its tokens alone. One without is also planned with its
+   * single letters held back, and that plan is used while the names left for them to be checked
+   * against stay within {@link #RESIDUAL_ROW_LIMIT}. The count is of the scope asked for, so the
+   * same query can be held back within one ontology and put whole to the corpus.
+   */
+  MatchPlan planFor(String query, Collection<String> acronyms) throws SQLException {
+    MatchPlan settled = toMatchPlan(query, false);
+    MatchPlan selective = toMatchPlan(query, true);
+    if (selective.equals(settled)) {
+      return settled;
+    }
+    String scoped = scopedMatch(selective.match(), acronyms);
+    Boolean few = matchesFew.get(scoped);
+    if (few == null) {
+      few = matchesAtMost(scoped, residualRowLimit);
+      matchesFew.put(scoped, few);
+    }
+    return few ? selective : settled;
+  }
+
+  private boolean matchesAtMost(String scopedMatch, int limit) throws SQLException {
+    try (PreparedStatement ps = connection().prepareStatement(
+        "SELECT COUNT(*) FROM (SELECT rowid FROM name_fts WHERE name_fts MATCH ? LIMIT ?)")) {
+      ps.setString(1, scopedMatch);
+      ps.setInt(2, limit + 1);
+      try (ResultSet rs = ps.executeQuery()) {
+        return rs.next() && rs.getInt(1) <= limit;
+      }
+    }
   }
 
   /**
