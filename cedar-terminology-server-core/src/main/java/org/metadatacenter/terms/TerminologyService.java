@@ -926,19 +926,21 @@ public class TerminologyService implements ITerminologyService {
     return vs;
   }
 
+  /**
+   * The value set holding a value. A provisional value names its value set, as {@link #findValue} reads it; a
+   * published value is a class whose parent is its value set, in CEDARVS as in every other collection.
+   */
   public ValueSet findValueSetByValue(String id, String vsCollection, String apiKey) throws IOException {
-    ValueSet vs = null;
-    if (vsCollection.compareTo(CEDAR_VALUE_SETS_ONTOLOGY) == 0) {
+    if (Util.isProvisionalClass(id)) {
       Value v = findProvisionalValue(id, apiKey);
-      vs = findValueSet(v.getVsId(), vsCollection, apiKey);
-    } else {
-      List<BpClass> bpParents = bpService.getClassParents(id, vsCollection, apiKey);
-      // Keep only the first parent
-      for (int i = 0; i < 1; i++) {
-        vs = ObjectConverter.toValueSet(bpParents.get(i));
-      }
+      return findValueSet(v.getVsId(), vsCollection, apiKey);
     }
-    return vs;
+    List<BpClass> bpParents = bpService.getClassParents(id, vsCollection, apiKey);
+    if (bpParents.isEmpty()) {
+      // A class with no parent belongs to no value set.
+      throw new HTTPException(CedarResponseStatus.NOT_FOUND.getStatusCode());
+    }
+    return ObjectConverter.toValueSet(bpParents.get(0));
   }
 
   public PagedResults<ValueSet> findValueSetsByVsCollection(String vsCollection, int page, int pageSize, String

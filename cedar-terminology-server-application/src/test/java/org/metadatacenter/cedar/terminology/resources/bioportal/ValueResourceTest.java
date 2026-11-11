@@ -1,7 +1,7 @@
 package org.metadatacenter.cedar.terminology.resources.bioportal;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.ws.rs.core.GenericType;
-import jakarta.ws.rs.core.Response.Status;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.metadatacenter.terms.customObjects.PagedResults;
@@ -21,9 +21,7 @@ import static org.metadatacenter.cedar.terminology.utils.Constants.BP_VALUE_SETS
  *
  * <p>The routes do not all take the same path through the service. A value and a page of values are read from
  * CEDARVS, the collection CEDAR publishes. The routes that resolve a value's containing value set go through
- * {@code findValueSetByValue}, which treats every CEDARVS value as provisional and so cannot serve a published one.
- * They are read from NLMVS, whose values take the other branch, and the CEDARVS failure is pinned separately below.
- * A value's tree and a value set's values are covered by {@code BioPortalSuccessPathsTest.valueSetsAndTheirValuesAreRead}.
+ * {@code findValueSetByValue}, and are asked of both CEDARVS and NLMVS. A value's tree and a value set's values are covered by {@code BioPortalSuccessPathsTest.valueSetsAndTheirValuesAreRead}.
  */
 public class ValueResourceTest extends AbstractTerminologyServerResourceTest {
 
@@ -70,22 +68,22 @@ public class ValueResourceTest extends AbstractTerminologyServerResourceTest {
   }
 
   /**
-   * Pins a defect rather than the intended behaviour: neither route that resolves a value's containing value set
-   * can serve a published CEDARVS value.
-   *
-   * <p>Both call {@code TerminologyService.findValueSetByValue}, which branches on the collection and, for CEDARVS
-   * alone, looks the value up as a provisional class. CEDARVS holds published values too — every member of Study
-   * File Type is one — and for those the provisional lookup finds nothing, so the routes answer 404 for a value that
-   * {@link #findValueTest()} retrieves without trouble. The same two routes answer for NLMVS, which takes the other
-   * branch. Replace these assertions with ones like the NLMVS assertions when the branch is fixed.
+   * A published CEDARVS value resolves through its value set, as an NLMVS value does. The lookup once treated every
+   * CEDARVS value as provisional, which no member of Study File Type is, so both routes answered 404.
    */
   @Test
-  public void valueSetResolutionFailsForAPublishedCedarvsValueTest() {
-    Assertions.assertEquals(Status.NOT_FOUND.getStatusCode(), statusOf(valueUrl(CEDARVS, STUDY_MEDICATION) + "/" + BP_TREE),
-        "The value tree now resolves for a published CEDARVS value; assert the NLMVS behaviour instead");
-    Assertions.assertEquals(Status.NOT_FOUND.getStatusCode(),
-        statusOf(valueUrl(CEDARVS, STUDY_MEDICATION) + "/" + BP_ALL_VALUES),
-        "The sibling values now resolve for a published CEDARVS value; assert the NLMVS behaviour instead");
+  public void aPublishedCedarvsValueResolvesThroughItsValueSetTest() {
+    PagedResults<Value> fromValue =
+        read(valueUrl(CEDARVS, STUDY_MEDICATION) + "/" + BP_ALL_VALUES, new GenericType<>() {});
+    PagedResults<Value> fromValueSet =
+        read(valueSetUrl(CEDARVS, STUDY_FILE_TYPE) + "/" + BP_VALUES, new GenericType<>() {});
+    Assertions.assertTrue(ldIds(fromValue).contains(STUDY_MEDICATION), "The value is missing from its own value set");
+    Assertions.assertEquals(ldIds(fromValueSet), ldIds(fromValue),
+        "Reaching the values by value and by value set disagreed");
+
+    JsonNode tree = read(valueUrl(CEDARVS, STUDY_MEDICATION) + "/" + BP_TREE, JsonNode.class);
+    Assertions.assertEquals("Study File Type", tree.get("prefLabel").asText(), tree.toString());
+    Assertions.assertEquals(ldIds(fromValueSet).size(), tree.get("children").size(), tree.toString());
   }
 
 }

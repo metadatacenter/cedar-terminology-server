@@ -21,8 +21,7 @@ import static org.metadatacenter.cedar.terminology.utils.Constants.BP_VALUE_SETS
  * collection, and the gate of the route that resolves a value's containing value set.
  *
  * <p>The value sets read here come from CEDARVS, the collection CEDAR publishes. The route that resolves a value's
- * containing value set goes through {@code findValueSetByValue}, which treats every CEDARVS value as provisional and
- * so cannot serve a published one. That defect is pinned separately below. A collection's value sets, a value's
+ * containing value set is asked of a CEDARVS value here. A collection's value sets, a value's
  * value set and a value set's tree are covered by {@code BioPortalSuccessPathsTest.valueSetsAndTheirValuesAreRead}.
  */
 public class ValueSetResourceTest extends AbstractTerminologyServerResourceTest {
@@ -53,17 +52,21 @@ public class ValueSetResourceTest extends AbstractTerminologyServerResourceTest 
   }
 
   /**
-   * Pins a defect rather than the intended behaviour: this route cannot resolve a published CEDARVS value.
-   *
-   * <p>{@code TerminologyService.findValueSetByValue} branches on the collection and, for CEDARVS alone, looks the
-   * value up as a provisional class. CEDARVS holds published values too — every member of Study File Type is one —
-   * so the lookup finds nothing and the route answers 404 for a value {@code ValueResourceTest.findValueTest}
-   * retrieves without trouble. Replace this with an assertion of the containing value set when the branch is fixed.
+   * A published CEDARVS value resolves to the value set holding it. The lookup once treated every CEDARVS value as
+   * provisional, which no member of Study File Type is, so the route answered 404.
    */
   @Test
-  public void findValueSetByValueFailsForAPublishedCedarvsValueTest() {
-    Assertions.assertEquals(Status.NOT_FOUND.getStatusCode(), statusOf(valueSetByValueUrl(CEDARVS, STUDY_MEDICATION)),
-        "A published CEDARVS value now resolves to its value set; assert that instead of the 404");
+  public void findValueSetByValueTest() {
+    ValueSet valueSet = read(valueSetByValueUrl(CEDARVS, STUDY_MEDICATION), ValueSet.class);
+    Assertions.assertEquals(STUDY_FILE_TYPE, valueSet.getLdId(), "Wrong value set IRI");
+    Assertions.assertEquals("Study File Type", valueSet.getPrefLabel(), "Wrong preferred label");
+    Assertions.assertFalse(valueSet.isProvisional(), "A CEDARVS value set is not provisional");
+  }
+
+  /** A value set has no parent, so no value set holds it, and the route answers 404 rather than failing. */
+  @Test
+  public void findValueSetByValueOfAValueSetIsNotFoundTest() {
+    Assertions.assertEquals(Status.NOT_FOUND.getStatusCode(), statusOf(valueSetByValueUrl(CEDARVS, STUDY_FILE_TYPE)));
   }
 
   /**
