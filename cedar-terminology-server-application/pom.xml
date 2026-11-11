@@ -18,12 +18,6 @@
     <!-- Opt in to the cedar-shade execution managed in cedar-parent. -->
     <cedar.shade.phase>package</cedar.shade.phase>
     <cedar.shade.main.class>org.metadatacenter.cedar.terminology.TerminologyServerApplication</cedar.shade.main.class>
-    <!--
-      The JUnit tags surefire excludes below. Declared as a property, not written into the plugin
-      configuration, because an explicit plugin value cannot be overridden from the command line:
-      -DexcludedGroups= only clears the exclusion when the configuration reads a property.
-    -->
-    <excludedGroups>bioportal</excludedGroups>
     <!-- Line coverage measured on 2026-10-26: 74.7%. The build fails below this floor. -->
     <cedar.coverage.line.minimum>0.72</cedar.coverage.line.minimum>
     <!-- Branch coverage measured on 2026-10-26: 78.3%. The build fails below this floor. -->
@@ -166,21 +160,6 @@
   <build>
 
     <plugins>
-
-      <!--
-        The resource tests tagged "bioportal" call the live BioPortal API and fail without a
-        configured key or network access. They are excluded from the default build; run them with
-        -DexcludedGroups= to clear the exclusion when BioPortal is reachable. The local-snapshot
-        tests (LocalStoreResourceTest, EquivalenceTest) and the boot smoke test are untagged and
-        always run.
-      -->
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-surefire-plugin</artifactId>
-        <configuration>
-          <excludedGroups>${excludedGroups}</excludedGroups>
-        </configuration>
-      </plugin>
 
       <!--
         Filters the base OpenAPI document (src/main/swagger/openapi-base.yaml) so ${project.version}

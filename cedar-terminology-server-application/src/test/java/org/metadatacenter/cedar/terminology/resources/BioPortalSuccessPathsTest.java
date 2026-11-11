@@ -118,7 +118,7 @@ public class BioPortalSuccessPathsTest {
   @Test
   void provisionalClassesAndRelationsAreRead() {
     JsonNode all = get("/bioportal/classes/provisional");
-    assertEquals(List.of("Provisional Heart"), labels(all.get("collection")));
+    assertEquals(List.of("Provisional Heart", "Provisional Lung"), labels(all.get("collection")));
     JsonNode inOntology = get("/bioportal/ontologies/" + ONTOLOGY + "/classes/provisional");
     JsonNode provisional = inOntology.get("collection").get(0);
     assertTrue(provisional.get("provisional").asBoolean());

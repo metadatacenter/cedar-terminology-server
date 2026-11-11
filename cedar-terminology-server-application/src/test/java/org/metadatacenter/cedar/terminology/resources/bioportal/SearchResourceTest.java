@@ -1,415 +1,172 @@
 package org.metadatacenter.cedar.terminology.resources.bioportal;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import jakarta.ws.rs.core.HttpHeaders;
-import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.GenericType;
 import jakarta.ws.rs.core.Response.Status;
 import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.metadatacenter.terms.customObjects.PagedResults;
+import org.metadatacenter.terms.domainObjects.SearchResult;
+import org.metadatacenter.terms.util.Util;
 
-import java.io.IOException;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
-import static org.metadatacenter.constant.HttpConstants.HTTP_HEADER_AUTHORIZATION;
+import static org.metadatacenter.cedar.terminology.resources.FakeBioPortal.*;
 
 /**
- * Integration tests. They are done by starting a test server that makes it possible to test the real HTTP stack.
+ * Searches for classes, value sets and values, and for properties. In this world "vaccine" matches two classes of
+ * VIRONT, the value set Coronavirus Vaccines and its three values, so each scope is told apart by what it leaves out.
+ * A class found by its label or by a synonym, and the kind given to each result from a value-set collection, are
+ * covered by {@code BioPortalSuccessPathsTest.aSearchClassifiesWhatItFinds}.
  */
-
-// Exercises live BioPortal; excluded from the default build (surefire excludedGroups).
-// Run with -DexcludedGroups= (or a bioportal profile) when a BioPortal API key is configured.
-@Tag("bioportal")
 public class SearchResourceTest extends AbstractTerminologyServerResourceTest {
+
+  private static final Set<String> VACCINE_CLASSES = Set.of(VACCINE, CORONAVIRUS_VACCINE);
+  private static final Set<String> VACCINE_VALUES = Set.of(MRNA_VACCINE, VECTOR_VACCINE, INACTIVATED_VACCINE);
+
+  private static PagedResults<SearchResult> search(String query) {
+    return read(baseUrlBpSearch + "?" + query, new GenericType<>() {});
+  }
+
+  private static PagedResults<SearchResult> searchProperties(String query) {
+    return read(baseUrlBpPropertySearch + "?" + query, new GenericType<>() {});
+  }
+
+  private static List<String> ids(PagedResults<SearchResult> results) {
+    return results.getCollection().stream().map(SearchResult::getLdId).toList();
+  }
+
+  private static Set<String> types(PagedResults<SearchResult> results) {
+    return results.getCollection().stream().map(SearchResult::getType).collect(Collectors.toSet());
+  }
+
+  private static Set<String> sources(PagedResults<SearchResult> results) {
+    return results.getCollection().stream().map(r -> Util.getShortIdentifier(r.getSource()))
+        .collect(Collectors.toSet());
+  }
+
+  private static Set<String> union(Set<String> a, Set<String> b) {
+    return Stream.concat(a.stream(), b.stream()).collect(Collectors.toSet());
+  }
 
   @Test
   public void searchAllTest() {
-    // Query parameters
-    String q = "white blood cell";
-    // Service invocation
-    Response response = clientBuilder.build().target(baseUrlBpSearch).queryParam("q", q).request()
-        .header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
-    // Check HTTP response
-    Assertions.assertEquals(Status.OK.getStatusCode(), response.getStatus());
-    // Check Content-Type
-    Assertions.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
-    // Check the number of results
-    JsonNode jsonResponse = response.readEntity(JsonNode.class);
-    response.close();
-    int pageCount = jsonResponse.get("pageCount").asInt();
-    int lowLimitPageCount = 2000;
-    Assertions.assertTrue( pageCount >
-        lowLimitPageCount,"The number of search results for '" + q + "' is lower than expected");
+    PagedResults<SearchResult> results = search("q=vaccine");
+    Assertions.assertEquals(union(union(VACCINE_CLASSES, VACCINE_VALUES), Set.of(CORONAVIRUS_VACCINES)),
+        Set.copyOf(ids(results)));
+    Assertions.assertEquals(Set.of("OntologyClass", "ValueSet", "Value"), types(results));
   }
 
   @Test
   public void searchClassesTest() {
-    // Query parameters
-    String q = "white blood cell";
-    String scope = "classes";
-    // Service invocation
-    Response response =
-        clientBuilder.build().target(baseUrlBpSearch).queryParam("q", q).queryParam("scope", scope).request()
-        .header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
-    // Check HTTP response
-    Assertions.assertEquals(Status.OK.getStatusCode(), response.getStatus());
-    // Check Content-Type
-    Assertions.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
-    // Check the number of results
-    JsonNode jsonResponse = response.readEntity(JsonNode.class);
-    response.close();
-    int pageCount = jsonResponse.get("pageCount").asInt();
-    int lowLimitPageCount = 2000;
-    Assertions.assertTrue( pageCount >
-        lowLimitPageCount,"The number of search results for '" + q + "' is lower than expected");
+    PagedResults<SearchResult> results = search("q=vaccine&scope=classes");
+    Assertions.assertEquals(VACCINE_CLASSES, Set.copyOf(ids(results)));
+    Assertions.assertEquals(Set.of("OntologyClass"), types(results));
   }
 
-  /**
-   * The following test will only work if the BioPortal API flag 'also_search_properties' has been set to true
-   **/
+  /** A class is found by a property value, because the server asks BioPortal to search property values too. */
   @Test
   public void searchClassByPropertyValue() {
-    // Query parameters
-    String q = "audiodisc";
-    String source = "BIBLIOTEK-O";
-    String scope = "classes";
-    // Service invocation
-    Response response = clientBuilder.build().target(baseUrlBpSearch)
-        .queryParam("q", q)
-        .queryParam("scope", scope)
-        .queryParam("sources", source)
-        .request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
-    // Check HTTP response
-    Assertions.assertEquals(Status.OK.getStatusCode(), response.getStatus());
-    // Check Content-Type
-    Assertions.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
-    // Check the number of results
-    JsonNode jsonResponse = response.readEntity(JsonNode.class);
-    response.close();
-    int pageCount = jsonResponse.get("pageCount").asInt();
-    int lowLimitPageCount = 1;
-    Assertions.assertTrue(
-        pageCount >= lowLimitPageCount,"The number of search results for '" + q + "' is lower than expected");
+    // 229E is the strain of Human coronavirus, which neither its label nor a synonym holds.
+    PagedResults<SearchResult> results = search("q=229e&scope=classes&sources=" + VIRUSES);
+    Assertions.assertEquals(List.of(HUMAN_CORONAVIRUS), ids(results));
   }
 
   @Test
   public void searchClassesAndValuesTest() {
-    // Query parameters
-    String q = "white blood cell";
-    String scope = "classes,values";
-    // Service invocation
-    Response response =
-        clientBuilder.build().target(baseUrlBpSearch).queryParam("q", q).queryParam("scope", scope).request()
-        .header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
-    // Check HTTP response
-    Assertions.assertEquals(Status.OK.getStatusCode(), response.getStatus());
-    // Check Content-Type
-    Assertions.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
-    // Check the number of results
-    JsonNode jsonResponse = response.readEntity(JsonNode.class);
-    response.close();
-    int pageCount = jsonResponse.get("pageCount").asInt();
-    int lowLimitPageCount = 2000;
-    Assertions.assertTrue( pageCount >
-        lowLimitPageCount,"The number of search results for '" + q + "' is lower than expected");
+    PagedResults<SearchResult> results = search("q=vaccine&scope=classes,values");
+    Assertions.assertEquals(union(VACCINE_CLASSES, VACCINE_VALUES), Set.copyOf(ids(results)),
+        "The value set should be left out");
+    Assertions.assertEquals(Set.of("OntologyClass", "Value"), types(results));
   }
 
   @Test
   public void searchClassesBySourceTest() {
-    // Query parameters
-    String q = "cell";
-    String scope = "classes";
-    String source = "OBI";
-    // Service invocation
-    Response response = clientBuilder.build().target(baseUrlBpSearch)
-        .queryParam("q", q)
-        .queryParam("scope", scope)
-        .queryParam("sources", source)
-        .request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
-    // Check HTTP response
-    Assertions.assertEquals(Status.OK.getStatusCode(), response.getStatus());
-    // Check Content-Type
-    Assertions.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
-    // Check that there are some results
-    JsonNode jsonResponse = response.readEntity(JsonNode.class);
-    response.close();
-    JsonNode results = jsonResponse.get("collection");
-    Assertions.assertTrue( results.size() > 1,"The number of search results for '" + q + "' is lower than expected");
-    // Check that the retrieved classes are from the right source
-    for (JsonNode r : results) {
-      String resultSource = r.get("source").asText();
-      String shortResultSource = resultSource.substring(resultSource.lastIndexOf("/") + 1);
-      Assertions.assertTrue(
-          source.compareTo(shortResultSource) == 0,"Class source does not match the expected source");
-    }
+    // "organ" matches Organ in TESTONT and Organism in VIRONT.
+    Assertions.assertEquals(Set.of(ONTOLOGY, VIRUSES), sources(search("q=organ&scope=classes")));
+    PagedResults<SearchResult> results = search("q=organ&scope=classes&sources=" + VIRUSES);
+    Assertions.assertEquals(List.of(ORGANISM), ids(results));
+    Assertions.assertEquals(Set.of(VIRUSES), sources(results), "Class source does not match the expected source");
   }
 
   @Test
   public void searchClassesBySourceCheckMatchTypePrefLabelTest() {
-    // Query parameters
-    String q = "Autism";
-    String scope = "classes";
-    String source = "NCIT";
-    // Service invocation
-    Response response = clientBuilder.build().target(baseUrlBpSearch)
-        .queryParam("q", q)
-        .queryParam("scope", scope)
-        .queryParam("sources", source)
-        .request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
-    // Check HTTP response
-    Assertions.assertEquals(Status.OK.getStatusCode(), response.getStatus());
-    // Check Content-Type
-    Assertions.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
-    // Check that there are some results
-    JsonNode jsonResponse = response.readEntity(JsonNode.class);
-    response.close();
-    JsonNode results = jsonResponse.get("collection");
-    Assertions.assertTrue( results.size() > 1,"The number of search results for '" + q + "' is lower than expected");
-    // Check synonyms information
-    JsonNode firstResult = results.get(0);
-    String matchType = firstResult.get("matchType").asText();
-    Assertions.assertTrue( matchType.equals("prefLabel"),"Returned 'matchType' does not match the expected value");
-  }
-
-  @Test
-  public void searchClassesBySourceCheckMatchTypeSynonymTest() throws IOException {
-    // Query parameters
-    String q = "Autistic Disorder"; // 'Autistic Disorder' is a synonym of 'autism' in NCIT
-    String scope = "classes";
-    String source = "NCIT";
-    // Service invocation
-    Response response = clientBuilder.build().target(baseUrlBpSearch)
-        .queryParam("q", q)
-        .queryParam("scope", scope)
-        .queryParam("sources", source)
-        .request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
-    // Check HTTP response
-    Assertions.assertEquals(Status.OK.getStatusCode(), response.getStatus());
-    // Check Content-Type
-    Assertions.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
-    // Check that there are some results
-    JsonNode jsonResponse = response.readEntity(JsonNode.class);
-    response.close();
-    JsonNode results = jsonResponse.get("collection");
-    Assertions.assertTrue( results.size() > 1,"The number of search results for '" + q + "' is lower than expected");
-    // Check synonyms information
-    JsonNode firstResult = results.get(0);
-    String matchType = firstResult.get("matchType").asText();
-    Assertions.assertTrue( matchType.equals("synonym"),"Returned 'matchType' does not match the expected value");
-
-    List<String> matchedSynonyms = mapper.readValue(firstResult.get("matchedSynonyms").traverse(),
-        mapper.getTypeFactory().constructCollectionType(List.class, String.class));
-    Assertions.assertTrue(
-        matchedSynonyms.size() == 1,"Returned 'matchedSynonyms' does not match the expected value");
-    Assertions.assertTrue(
-        matchedSynonyms.get(0).equals(q),"Returned 'matchedSynonyms' does not match the expected value");
+    PagedResults<SearchResult> results = search("q=coronavirus&scope=classes&sources=" + VIRUSES);
+    Assertions.assertTrue(results.getCollection().size() > 1, "The number of search results is lower than expected");
+    SearchResult first = results.getCollection().get(0);
+    Assertions.assertEquals(CORONAVIRUS, first.getLdId());
+    Assertions.assertEquals("prefLabel", first.getMatchType(), "Returned 'matchType' does not match the expected value");
+    Assertions.assertEquals(List.of(), first.getMatchedSynonyms(), "A match by label should name no synonyms");
   }
 
   @Test
   public void searchClassesByWrongSourceTest() {
-    // Query parameters
-    String q = "cell";
-    String scope = "classes";
-    String source = "WRONG-SOURCE";
-    // Service invocation
-    Response response = clientBuilder.build().target(baseUrlBpSearch)
-        .queryParam("q", q)
-        .queryParam("scope", scope)
-        .queryParam("sources", source)
-        .request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
-    // Check HTTP response
-    Assertions.assertEquals(Status.NOT_FOUND.getStatusCode(), response.getStatus());
+    Assertions.assertEquals(Status.NOT_FOUND.getStatusCode(),
+        statusOf(baseUrlBpSearch + "?q=virus&scope=classes&sources=WRONG-SOURCE"));
   }
 
   @Test
   public void searchValueSetTest() {
-    // Query parameters
-    String q = "Amblyopia";
-    String scope = "value_sets";
-    // Service invocation
-    Response response = clientBuilder.build().target(baseUrlBpSearch)
-        .queryParam("q", q)
-        .queryParam("scope", scope)
-        .request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
-    // Check HTTP response
-    Assertions.assertEquals(Status.OK.getStatusCode(), response.getStatus());
-    // Check Content-Type
-    Assertions.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
-    // Check that there are some results
-    JsonNode jsonResponse = response.readEntity(JsonNode.class);
-    response.close();
-    JsonNode results = jsonResponse.get("collection");
-    Assertions.assertTrue( results.size() > 0,"The number of search results for '" + q + "' is lower than expected");
+    PagedResults<SearchResult> results = search("q=vaccine&scope=value_sets");
+    Assertions.assertEquals(List.of(CORONAVIRUS_VACCINES), ids(results));
+    Assertions.assertEquals(Set.of("ValueSet"), types(results));
   }
 
   @Test
   public void searchValuesTest() {
-    // Query parameters
-    String q = "inclusion";
-    String scope = "values";
-    // Service invocation
-    Response response = clientBuilder.build().target(baseUrlBpSearch)
-        .queryParam("q", q)
-        .queryParam("scope", scope)
-        .request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
-    // Check HTTP response
-    Assertions.assertEquals(Status.OK.getStatusCode(), response.getStatus());
-    // Check Content-Type
-    Assertions.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
-    // Check that there are some results
-    JsonNode jsonResponse = response.readEntity(JsonNode.class);
-    response.close();
-    JsonNode results = jsonResponse.get("collection");
-    Assertions.assertTrue( results.size() > 0,"The number of search results for '" + q + "' is lower than expected");
+    PagedResults<SearchResult> results = search("q=vaccine&scope=values");
+    Assertions.assertTrue(ids(results).containsAll(VACCINE_VALUES), "Values missing from the results: " + ids(results));
+    Assertions.assertFalse(types(results).contains("OntologyClass"), "A values search returned a class");
   }
 
   @Test
   public void searchPropertiesTest() {
-    // Query parameters
-    String q = "has title";
-    // Service invocation
-    Response response =
-        clientBuilder.build().target(baseUrlBpPropertySearch).queryParam("q", q).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
-    // Check HTTP response
-    Assertions.assertEquals(Status.OK.getStatusCode(), response.getStatus());
-    // Check Content-Type
-    Assertions.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
-    // Check the number of results
-    JsonNode jsonResponse = response.readEntity(JsonNode.class);
-    response.close();
-    int pageCount = jsonResponse.get("pageCount").asInt();
-    int lowLimitPageCount = 100;
-    Assertions.assertTrue( pageCount >
-        lowLimitPageCount,"The number of search results for '" + q + "' is lower than expected");
+    PagedResults<SearchResult> results = searchProperties("q=has");
+    Assertions.assertEquals(Set.of(HAS_PART, HAS_CHAMBER, HAS_HOST, HAS_HUMAN_HOST, HAS_HOST_RANGE),
+        Set.copyOf(ids(results)));
+    Assertions.assertEquals(Set.of(ONTOLOGY, VIRUSES), sources(results), "An unscoped search reads every ontology");
   }
 
   @Test
   public void searchWrongPropertyTest() {
-    // Query parameters
-    String q = "wrongproperty333";
-    // Service invocation
-    Response response =
-        clientBuilder.build().target(baseUrlBpPropertySearch).queryParam("q", q).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
-    // Check HTTP response
-    Assertions.assertEquals(Status.OK.getStatusCode(), response.getStatus());
-    // Check Content-Type
-    Assertions.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
-    // Check the number of results
-    JsonNode jsonResponse = response.readEntity(JsonNode.class);
-    response.close();
-    int pageSize = jsonResponse.get("pageSize").asInt();
-    int expectedCount = 0;
-    Assertions.assertTrue(
-        pageSize == expectedCount,"The number of search results for '" + q + "' is different than expected");
+    PagedResults<SearchResult> results = searchProperties("q=wrongproperty333");
+    Assertions.assertTrue(results.getCollection().isEmpty());
+    Assertions.assertEquals(0, results.getPageSize());
+    Assertions.assertEquals(0, results.getTotalCount());
   }
 
   @Test
   public void searchPropertiesBySourceTest() {
-    // Query parameters
-    String q = "main title";
-    String source = "BIBFRAME";
-    // Service invocation
-    Response response = clientBuilder.build().target(baseUrlBpPropertySearch)
-        .queryParam("q", q)
-        .queryParam("sources", source)
-        .request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
-    // Check HTTP response
-    Assertions.assertEquals(Status.OK.getStatusCode(), response.getStatus());
-    // Check Content-Type
-    Assertions.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
-    // Check that there are some results
-    JsonNode jsonResponse = response.readEntity(JsonNode.class);
-    response.close();
-    JsonNode results = jsonResponse.get("collection");
-    // The ontology may change over time, so we define a range for the number of properties found
-    int lowerLimitResultsCount = 4;
-    int upperLimitResultsCount = 20;
-    int pageSize = jsonResponse.get("pageSize").asInt();
-    int pageCount = jsonResponse.get("pageCount").asInt();
-    int approxResultsCount = pageSize * pageCount;
-    Assertions.assertTrue(
-        approxResultsCount > lowerLimitResultsCount,"The number of search results for '" + q + "' is lower than expected");
-    Assertions.assertTrue(
-        approxResultsCount < upperLimitResultsCount,"The number of search results for '" + q + "' is higher than expected");
-    // Check that the retrieved classes are from the right source
-    for (JsonNode r : results) {
-      String resultSource = r.get("source").asText();
-      String shortResultSource = resultSource.substring(resultSource.lastIndexOf("/") + 1);
-      Assertions.assertTrue(
-          source.compareTo(shortResultSource) == 0,"Class source does not match the expected source");
-    }
+    PagedResults<SearchResult> results = searchProperties("q=has&sources=" + VIRUSES);
+    Assertions.assertEquals(Set.of(HAS_HOST, HAS_HUMAN_HOST, HAS_HOST_RANGE), Set.copyOf(ids(results)));
+    Assertions.assertEquals(Set.of(VIRUSES), sources(results), "Property source does not match the expected source");
   }
 
   @Test
   public void searchPropertiesBySourceExactMatchTest() {
-    // Query parameters
-    String q = "main title";
-    String source = "BIBFRAME";
-    boolean exactMatch = true;
-    // Service invocation
-    Response response = clientBuilder.build().target(baseUrlBpPropertySearch)
-        .queryParam("q", q)
-        .queryParam("sources", source)
-        .queryParam("exact_match", exactMatch)
-        .request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
-    // Check HTTP response
-    Assertions.assertEquals(Status.OK.getStatusCode(), response.getStatus());
-    // Check Content-Type
-    Assertions.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
-    // Check that there are some results
-    JsonNode jsonResponse = response.readEntity(JsonNode.class);
-    response.close();
-    JsonNode results = jsonResponse.get("collection");
-    // Enabling exact_match should only return one property
-    Assertions.assertTrue( results.size() == 1,"The number of search results for '" + q + "' is different than expected");
-    // Check that the retrieved classes are from the right source
-    for (JsonNode r : results) {
-      String resultSource = r.get("source").asText();
-      String shortResultSource = resultSource.substring(resultSource.lastIndexOf("/") + 1);
-      Assertions.assertTrue(
-          source.compareTo(shortResultSource) == 0,"Class source does not match the expected source");
-    }
+    String query = "q=" + encode("has host") + "&sources=" + VIRUSES;
+    Assertions.assertEquals(List.of(HAS_HOST, HAS_HOST_RANGE), ids(searchProperties(query)));
+    Assertions.assertEquals(List.of(HAS_HOST), ids(searchProperties(query + "&exact_match=true")),
+        "exact_match should keep only the property whose label is the query");
   }
 
   @Test
   public void searchPropertiesByWrongSourceTest() {
-    // Query parameters
-    String q = "main title";
-    String source = "WRONG-SOURCE";
-    // Service invocation
-    Response response = clientBuilder.build().target(baseUrlBpPropertySearch)
-        .queryParam("q", q)
-        .queryParam("sources", source)
-        .request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
-    // Check HTTP response
-    Assertions.assertEquals(Status.NOT_FOUND.getStatusCode(), response.getStatus());
+    Assertions.assertEquals(Status.NOT_FOUND.getStatusCode(),
+        statusOf(baseUrlBpPropertySearch + "?q=has&sources=WRONG-SOURCE"));
   }
 
   @Test
   public void searchPropertiesRequireDefinitionsTest() {
-    // Query parameters
-    String q = "main title";
-    boolean requireDefinitions = true;
-    // Service invocation
-    Response response = clientBuilder.build().target(baseUrlBpPropertySearch)
-        .queryParam("q", q)
-        .queryParam("require_definitions", requireDefinitions)
-        .request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
-    // Check HTTP response
-    Assertions.assertEquals(Status.OK.getStatusCode(), response.getStatus());
-    // Check Content-Type
-    Assertions.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
-    JsonNode jsonResponse = response.readEntity(JsonNode.class);
-    response.close();
-    JsonNode results = jsonResponse.get("collection");
-    // Check that there are some results
-    Assertions.assertTrue( results.size() > 0,"No search results obtained for '" + q + "'");
-    // Check that all properties found contain at least one definition
-    // TODO: We are just checking the first page of results. Check all of them.
-    for (JsonNode r : results) {
-      Assertions.assertTrue( r.get("definition") != null,"A property with no definitions has been returned");
-      Assertions.assertTrue( r.get("definition").asText().length() > 0,"A property with no definitions has been returned");
+    Assertions.assertTrue(ids(searchProperties("q=host")).contains(HAS_HOST_RANGE),
+        "Without the flag, the property with no definition is found");
+    PagedResults<SearchResult> results = searchProperties("q=host&require_definitions=true");
+    Assertions.assertEquals(List.of(HAS_HOST, HAS_HUMAN_HOST), ids(results));
+    for (SearchResult r : results.getCollection()) {
+      Assertions.assertFalse(r.getDefinition() == null || r.getDefinition().isEmpty(),
+          "A property with no definitions has been returned: " + r.getLdId());
     }
   }
 

@@ -8,128 +8,34 @@ import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.Status;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Tag;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.metadatacenter.cedar.terminology.validation.integratedsearch.ClassValueConstraint;
 import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.terms.domainObjects.SearchResult;
-import org.metadatacenter.terms.domainObjects.Value;
-import org.metadatacenter.terms.domainObjects.ValueSet;
 import org.metadatacenter.terms.util.Util;
 
 import java.io.IOException;
 import java.util.*;
+import java.util.stream.Collectors;
 
+import static org.metadatacenter.cedar.terminology.resources.FakeBioPortal.*;
 import static org.metadatacenter.cedar.terminology.util.Constants.*;
 import static org.metadatacenter.constant.HttpConstants.BAD_REQUEST;
-import static org.metadatacenter.constant.HttpConstants.HTTP_HEADER_AUTHORIZATION;
 import static org.metadatacenter.model.ModelNodeNames.*;
 
 /**
- * Integration tests. They are done by starting a test server that makes it possible to test the real HTTP stack.
+ * The integrated search, which finds a field's terms from its value constraints: an ontology, a branch, a value set,
+ * a list of enumerated classes, or several of these at once. Enumerated classes describe themselves, so a search of
+ * them alone makes no BioPortal call, and neither does a request the server refuses.
  */
-// Exercises live BioPortal; excluded from the default build (surefire excludedGroups).
-// Run with -DexcludedGroups= (or a bioportal profile) when a BioPortal API key is configured.
-@Tag("bioportal")
 public class IntegratedSearchResourceTest extends AbstractTerminologyServerResourceTest {
 
-
-  /* Objects used by the test methods */
-  // Enumerated classes
-  private static ObjectNode enumeratedClass1;
-  private static String enumeratedClass1Uri = "http://purl.obolibrary.org/obo/DOID_0050134";
-  private static String enumeratedClass1PrefLabel = "cutaneous mycosis";
-  private static String enumeratedClass1Type = "OntologyClass";
-  private static String enumeratedClass1Label = "cutaneous mycosis";
-  private static String enumeratedClass1Source = "DOID";
-
-  private static ObjectNode enumeratedClass2;
-  private static String enumeratedClass2Uri = "http://purl.obolibrary.org/obo/DOID_0080014";
-  private static String enumeratedClass2PrefLabel = "chromosomal disease";
-  private static String enumeratedClass2Type = "OntologyClass";
-  private static String enumeratedClass2Label = "chromosomal disease";
-  private static String enumeratedClass2Source = "DOID";
-
-  private static ObjectNode enumeratedClass3;
-  private static String enumeratedClass3Uri = "http://purl.obolibrary.org/obo/DOID_0060072";
-  private static String enumeratedClass3PrefLabel = "benign neoplasm";
-  private static String enumeratedClass3Type = "OntologyClass";
-  private static String enumeratedClass3Label = "benign neoplasm";
-  private static String enumeratedClass3Source = "DOID";
-
-  // Ontologies
-  private static ObjectNode ontology1;
-  private static int ontology1Size = 157000; // Approx size of NCIT (slightly lower than the actual size) 
-  // Branches
-  private static ObjectNode branch1;
-  private static int branch1Size = 240; // Approx size of branch (slightly lower than the actual size)
-  // Value sets
-  private static ObjectNode valueSet1;
-  private static int valueSet1Size = 89;
-
-
-  /**
-   * One-time initialization code.
-   * (Called once before any of the test methods in the class).
-   */
-  @BeforeAll
-  public static void oneTimeSetUp() {
-    enumeratedClass1 = mapper.createObjectNode();
-    enumeratedClass1.put(VALUE_CONSTRAINTS_URI, enumeratedClass1Uri);
-    enumeratedClass1.put(VALUE_CONSTRAINTS_PREFLABEL, enumeratedClass1PrefLabel);
-    enumeratedClass1.put(VALUE_CONSTRAINTS_TYPE, enumeratedClass1Type);
-    enumeratedClass1.put(VALUE_CONSTRAINTS_LABEL, enumeratedClass1Label);
-    enumeratedClass1.put(VALUE_CONSTRAINTS_SOURCE, enumeratedClass1Source);
-
-    enumeratedClass2 = mapper.createObjectNode();
-    enumeratedClass2.put(VALUE_CONSTRAINTS_URI, enumeratedClass2Uri);
-    enumeratedClass2.put(VALUE_CONSTRAINTS_PREFLABEL, enumeratedClass2PrefLabel);
-    enumeratedClass2.put(VALUE_CONSTRAINTS_TYPE, enumeratedClass2Type);
-    enumeratedClass2.put(VALUE_CONSTRAINTS_LABEL, enumeratedClass2Label);
-    enumeratedClass2.put(VALUE_CONSTRAINTS_SOURCE, enumeratedClass2Source);
-
-    enumeratedClass3 = mapper.createObjectNode();
-    enumeratedClass3.put(VALUE_CONSTRAINTS_URI, enumeratedClass3Uri);
-    enumeratedClass3.put(VALUE_CONSTRAINTS_PREFLABEL, enumeratedClass3PrefLabel);
-    enumeratedClass3.put(VALUE_CONSTRAINTS_TYPE, enumeratedClass3Type);
-    enumeratedClass3.put(VALUE_CONSTRAINTS_LABEL, enumeratedClass3Label);
-    enumeratedClass3.put(VALUE_CONSTRAINTS_SOURCE, enumeratedClass3Source);
-
-    ontology1 = mapper.createObjectNode();
-    ontology1.put(VALUE_CONSTRAINTS_ACRONYM, "NCIT");
-
-    branch1 = mapper.createObjectNode();
-    branch1.put(VALUE_CONSTRAINTS_URI, "http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C14283"); // "Virus" branch
-    branch1.put(VALUE_CONSTRAINTS_ACRONYM, "NCIT");
-
-    valueSet1 = mapper.createObjectNode();
-    valueSet1.put(VALUE_CONSTRAINTS_URI, "http://purl.bioontology.org/ontology/NLMVS/2.16.840.1.113762.1.4.1045.59"); // "Delivery Procedures" value set
-    valueSet1.put(VALUE_CONSTRAINTS_VS_COLLECTION, "NLMVS");
-  }
-
-  /**
-   * Sets up the test fixture.
-   * (Called before every test case method.)
-   */
-  @BeforeEach
-  public void setUp() {
-  }
-
-  /**
-   * Tears down the test fixture.
-   * (Called after every test case method.)
-   */
-  @AfterEach
-  public void tearDown() {
-  }
-
-  /* Tests */
+  private static final String ENUMERATED_CLASS_1_URI = "http://purl.obolibrary.org/obo/DOID_0050134";
+  private static final String ENUMERATED_CLASS_2_URI = "http://purl.obolibrary.org/obo/DOID_0080014";
+  private static final String ENUMERATED_CLASS_3_URI = "http://purl.obolibrary.org/obo/DOID_0060072";
+  private static final String ENUMERATED_CLASS_TYPE = "OntologyClass";
+  private static final String ENUMERATED_CLASS_SOURCE = "DOID";
 
   /**
    * Invalid input
@@ -138,32 +44,20 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
   @Test
   public void searchEmptyBody() {
     ObjectNode emptyBody = mapper.createObjectNode();
-    // Service invocation
-    Response response = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
-        .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(emptyBody));
-    // Check HTTP response
-    Assertions.assertEquals(STATUS_CODE_UNPROCESSABLE_ENTITY, response.getStatus());
+    Assertions.assertEquals(STATUS_CODE_UNPROCESSABLE_ENTITY, statusOfPost(baseUrlBpIntegratedSearch, emptyBody));
   }
 
   @Test
   public void retrieveEmptyBody() {
     ObjectNode emptyBody = mapper.createObjectNode();
-    // Service invocation
-    Response response = clientBuilder.build().target(baseUrlBpIntegratedRetrieve).request()
-      .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(emptyBody));
-    // Check HTTP response
-    Assertions.assertEquals(STATUS_CODE_UNPROCESSABLE_ENTITY, response.getStatus());
+    Assertions.assertEquals(STATUS_CODE_UNPROCESSABLE_ENTITY, statusOfPost(baseUrlBpIntegratedRetrieve, emptyBody));
   }
 
   @Test
   public void searchEmptyParamObject() {
     ObjectNode requestBody = mapper.createObjectNode();
     requestBody.set(BP_INTEGRATED_SEARCH_PARAMS_FIELD, mapper.createObjectNode());
-    // Service invocation
-    Response response = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
-        .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
-    // Check HTTP response
-    Assertions.assertEquals(STATUS_CODE_UNPROCESSABLE_ENTITY, response.getStatus());
+    Assertions.assertEquals(STATUS_CODE_UNPROCESSABLE_ENTITY, statusOfPost(baseUrlBpIntegratedSearch, requestBody));
   }
 
   @Test
@@ -172,22 +66,14 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     ObjectNode parameterObject = mapper.createObjectNode();
     parameterObject.set(BP_INTEGRATED_SEARCH_PARAM_VALUE_CONSTRAINTS, mapper.createObjectNode());
     requestBody.set(BP_INTEGRATED_SEARCH_PARAMS_FIELD, parameterObject);
-    // Service invocation
-    Response response = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
-        .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
-    // Check HTTP response
-    Assertions.assertEquals(STATUS_CODE_UNPROCESSABLE_ENTITY, response.getStatus());
+    Assertions.assertEquals(STATUS_CODE_UNPROCESSABLE_ENTITY, statusOfPost(baseUrlBpIntegratedSearch, requestBody));
   }
 
   @Test
   public void searchInvalidField() {
     ObjectNode requestBody = mapper.createObjectNode();
     requestBody.put("invalidField", "invalidFieldValue");
-    // Service invocation
-    Response response = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
-        .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
-    // Check HTTP response
-    Assertions.assertEquals(BAD_REQUEST, response.getStatus());
+    Assertions.assertEquals(BAD_REQUEST, statusOfPost(baseUrlBpIntegratedSearch, requestBody));
   }
 
   /**
@@ -195,132 +81,44 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
    */
 
   @Test
-  public void searchClassesInOntologyEmptyInputText() { // It should retrieve all the ontology classes
-    int pageSize = 10; // Small page size to speed up test execution
-    ObjectNode requestBody = generateRequestBody("", mapper.createArrayNode().add(ontology1),
-        mapper.createArrayNode(), mapper.createArrayNode(), mapper.createArrayNode(), Optional.empty(),
-        Optional.of(pageSize));
-
-    // Service invocation
-    Response response = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
-        .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
-    // Check HTTP response
-    Assertions.assertEquals(Status.OK.getStatusCode(), response.getStatus());
-    // Check Content-Type
-    Assertions.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
-    // Check the number of results retrieved
-    PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
-    });
-    response.close();
-    Assertions.assertTrue( results.getCollection().size() == pageSize,"Wrong number of results");
-    // Check pagination information
-    Assertions.assertTrue( results.getPage() == 1,"Wrong page");
-    Assertions.assertTrue( results.getPageCount() == 1,"Wrong pageCount");
-    Assertions.assertTrue( results.getPageSize() == pageSize,"Wrong pageSize");
-    Assertions.assertTrue( results.getTotalCount() >= ontology1Size,"Wrong totalCount");
-    Assertions.assertTrue( results.getPrevPage() == null,"Wrong prevPage");
-    Assertions.assertTrue( results.getNextPage() == null,"Wrong prevPage");
+  public void searchClassesInOntologyEmptyInputText() { // It should retrieve all the ontology classes, by label
+    PagedResults<SearchResult> results = search(generateRequestBody("", ontology(ONTOLOGY), none(), none(), none(),
+        Optional.empty(), Optional.of(3)));
+    Assertions.assertEquals(List.of("Heart", "Organ", "Root"), labels(results));
+    assertPaging(results, 1, 2, 3, 4, null, 2);
   }
 
   @Test
-  public void searchClassesInOntologyMissingInputText() { // It should retrieve all the ontology classes
-    int pageSize = 10; // Small page size to speed up test execution
-    ObjectNode requestBody = generateRequestBody(null, mapper.createArrayNode().add(ontology1),
-        mapper.createArrayNode(), mapper.createArrayNode(), mapper.createArrayNode(), Optional.empty(),
-        Optional.of(pageSize));
-
-    // Service invocation
-    Response response = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
-        .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
-    // Check HTTP response
-    Assertions.assertEquals(Status.OK.getStatusCode(), response.getStatus());
-    // Check Content-Type
-    Assertions.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
-    // Check the number of results retrieved
-    PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
-    });
-    response.close();
-    Assertions.assertTrue( results.getCollection().size() == pageSize,"Wrong number of results");
-    // Check pagination information
-    Assertions.assertTrue( results.getPage() == 1,"Wrong page");
-    Assertions.assertTrue( results.getPageCount() == 1,"Wrong pageCount");
-    Assertions.assertTrue( results.getPageSize() == pageSize,"Wrong pageSize");
-    Assertions.assertTrue( results.getTotalCount() >= ontology1Size,"Wrong totalCount");
-    Assertions.assertTrue( results.getPrevPage() == null,"Wrong prevPage");
-    Assertions.assertTrue( results.getNextPage() == null,"Wrong prevPage");
+  public void searchClassesInOntologyMissingInputText() { // It should retrieve all the ontology classes, by label
+    PagedResults<SearchResult> results = search(generateRequestBody(null, ontology(ONTOLOGY), none(), none(), none(),
+        Optional.empty(), Optional.of(3)));
+    Assertions.assertEquals(List.of("Heart", "Organ", "Root"), labels(results));
+    assertPaging(results, 1, 2, 3, 4, null, 2);
   }
 
   @Test
-  public void searchClassesInOntologyWrongLabel() { // Search for ontology classes in a given branch
+  public void searchClassesInOntologyWrongLabel() {
     String inputText = "aaabbbcccddd"; // Non-existing class label
-    int pageSize = 10;
-    int expectedNumberOfResults = 0;
-
-    ObjectNode requestBody = generateRequestBody(inputText, mapper.createArrayNode().add(ontology1),
-        mapper.createArrayNode(), mapper.createArrayNode(), mapper.createArrayNode(), Optional.empty(),
-        Optional.of(pageSize));
-
-    // Service invocation
-    Response response = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
-        .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
-    // Check HTTP response
-    Assertions.assertEquals(Status.OK.getStatusCode(), response.getStatus());
-    // Check Content-Type
-    Assertions.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
-    // Check the number of results retrieved
-    PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
-    });
-    response.close();
-    Assertions.assertTrue( results.getCollection().size() == expectedNumberOfResults,"Wrong number of results");
-    // Check pagination information
-    Assertions.assertTrue( results.getPage() == 1,"Wrong page");
-    Assertions.assertTrue( results.getPageCount() == 0,"Wrong pageCount");
-    Assertions.assertTrue( results.getPageSize() == 0,"Wrong pageSize");
-    Assertions.assertTrue( results.getTotalCount() == 0,"Wrong totalCount");
-    Assertions.assertTrue( results.getPrevPage() == null,"Wrong prevPage");
-    Assertions.assertTrue( results.getNextPage() == null,"Wrong prevPage");
+    PagedResults<SearchResult> results = search(generateRequestBody(inputText, ontology(ONTOLOGY), none(), none(),
+        none(), Optional.empty(), Optional.of(10)));
+    Assertions.assertTrue(results.getCollection().isEmpty(), "Wrong number of results");
+    assertPaging(results, 1, 0, 0, 0, null, null);
   }
 
   @Test
-  public void searchClassesInOntology() { // Search for ontology classes in a given ontology
-    String inputText = "virus"; // Class: http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C14283"
-    int pageSize = 20;
-    int expectedPageCountLowerLimit = 35;
-    int expectedTotalCountLowerLimit = 694;
-
-    ObjectNode requestBody = generateRequestBody(inputText, mapper.createArrayNode().add(ontology1),
-        mapper.createArrayNode(), mapper.createArrayNode(), mapper.createArrayNode(), Optional.empty(),
-        Optional.of(pageSize));
-
-    // Service invocation
-    Response response = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
-        .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
-    // Check HTTP response
-    Assertions.assertEquals(Status.OK.getStatusCode(), response.getStatus());
-    // Check Content-Type
-    Assertions.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
-    // Check the number of results retrieved
-    PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
-    });
-    response.close();
-    Assertions.assertTrue( results.getCollection().size() == pageSize,"Wrong number of results");
-    // Check that the first result is right
-    Assertions.assertTrue(
-        results.getCollection().get(0).getPrefLabel().toLowerCase().contains(inputText.toLowerCase()),"Unexpected result: ");
-    // Check that the retrieved classes are from the right source. We limit this check to the first page or results
-    // to speed up the tests
+  public void searchClassesInOntology() {
+    String inputText = "virus";
+    PagedResults<SearchResult> results = search(generateRequestBody(inputText, ontology(VIRUSES), none(), none(),
+        none(), Optional.empty(), Optional.of(4)));
+    Assertions.assertEquals(4, results.getCollection().size(), "Wrong number of results");
     for (SearchResult r : results.getCollection()) {
-      String resultSourceAcronym = r.getSource().substring(r.getSource().lastIndexOf("/") + 1);
-      Assertions.assertTrue(
-          resultSourceAcronym.equals(ontology1.get(VALUE_CONSTRAINTS_ACRONYM).asText()),"Class source does not match the expected source");
+      Assertions.assertTrue(r.getPrefLabel().toLowerCase(Locale.ROOT).contains(inputText),
+          "Unexpected result: " + r.getPrefLabel());
+      Assertions.assertEquals(VIRUSES, Util.getShortIdentifier(r.getSource()),
+          "Class source does not match the expected source");
     }
-    // Check pagination information
-    Assertions.assertTrue( results.getPage() == 1,"Wrong page");
-    Assertions.assertTrue( results.getPageCount() >= expectedPageCountLowerLimit,"Wrong pageCount");
-    Assertions.assertTrue( results.getPageSize() == pageSize,"Wrong pageSize");
-    Assertions.assertTrue( results.getTotalCount() >= expectedTotalCountLowerLimit,"Wrong totalCount");
-    Assertions.assertTrue( results.getPrevPage() == null,"Wrong prevPage");
-    Assertions.assertTrue( results.getNextPage() == 2,"Wrong prevPage");
+    // Six classes of VIRONT have "virus" in their label, so a second page holds the other two.
+    assertPaging(results, 1, 2, 4, 6, null, 2);
   }
 
   /**
@@ -328,137 +126,45 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
    */
 
   @Test
-  public void searchClassesInBranchEmptyInputText() { // It should retrieve all the classes in the branch
-    String inputText = "";
-    int pageSize = 10;
-
-    ObjectNode requestBody = generateRequestBody(inputText, mapper.createArrayNode(),
-        mapper.createArrayNode().add(branch1), mapper.createArrayNode(), mapper.createArrayNode(), Optional.empty(),
-        Optional.of(pageSize));
-
-    // Service invocation
-    Response response = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
-        .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
-    // Check HTTP response
-    Assertions.assertEquals(Status.OK.getStatusCode(), response.getStatus());
-    // Check Content-Type
-    Assertions.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
-    // Check the number of results retrieved
-    PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
-    });
-    response.close();
-    Assertions.assertTrue( results.getCollection().size() == pageSize,"Wrong number of results");
-    // Check pagination information
-    Assertions.assertTrue( results.getPage() == 1,"Wrong page");
-    Assertions.assertTrue( results.getPageCount() == 1,"Wrong pageCount");
-    Assertions.assertTrue( results.getPageSize() == pageSize,"Wrong pageSize");
-    Assertions.assertTrue( results.getTotalCount() >= branch1Size,"Wrong totalCount");
-    Assertions.assertTrue( results.getPrevPage() == null,"Wrong prevPage");
-    Assertions.assertTrue( results.getNextPage() == null,"Wrong prevPage");
+  public void searchClassesInBranchEmptyInputText() { // It should retrieve all the classes in the branch, by label
+    PagedResults<SearchResult> results = search(generateRequestBody("", none(), branch(VIRUSES, VIRUS), none(), none(),
+        Optional.empty(), Optional.of(3)));
+    Assertions.assertEquals(List.of("Bat coronavirus", "Coronavirus", "Human coronavirus"), labels(results));
+    assertPaging(results, 1, 2, 3, 4, null, 2);
   }
 
   @Test
-  public void searchClassesInBranchMissingInputText() {  // It should retrieve all the classes in the branch
-    int pageSize = 10;
-    ObjectNode requestBody = generateRequestBody(null, mapper.createArrayNode(),
-        mapper.createArrayNode().add(branch1), mapper.createArrayNode(), mapper.createArrayNode(), Optional.empty(),
-        Optional.of(pageSize));
-
-    // Service invocation
-    Response response = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
-        .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
-    // Check HTTP response
-    Assertions.assertEquals(Status.OK.getStatusCode(), response.getStatus());
-    // Check Content-Type
-    Assertions.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
-    // Check the number of results retrieved
-    PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
-    });
-    response.close();
-    Assertions.assertTrue( results.getCollection().size() == pageSize,"Wrong number of results");
-    // Check pagination information
-    Assertions.assertTrue( results.getPage() == 1,"Wrong page");
-    Assertions.assertTrue( results.getPageCount() == 1,"Wrong pageCount");
-    Assertions.assertTrue( results.getPageSize() == pageSize,"Wrong pageSize");
-    Assertions.assertTrue( results.getTotalCount() >= branch1Size,"Wrong totalCount");
-    Assertions.assertTrue( results.getPrevPage() == null,"Wrong prevPage");
-    Assertions.assertTrue( results.getNextPage() == null,"Wrong prevPage");
+  public void searchClassesInBranchMissingInputText() { // It should retrieve all the classes in the branch, by label
+    PagedResults<SearchResult> results = search(generateRequestBody(null, none(), branch(VIRUSES, VIRUS), none(),
+        none(), Optional.empty(), Optional.of(3)));
+    Assertions.assertEquals(List.of("Bat coronavirus", "Coronavirus", "Human coronavirus"), labels(results));
+    assertPaging(results, 1, 2, 3, 4, null, 2);
   }
 
   @Test
-  public void searchClassesInBranch() { // Search for ontology classes in a given branch
-    String inputText = "coronavirus"; // Search for 'coronavirus' in the 'virus' branch of NCIT
-    int pageSize = 100;
-    int expectedNumberOfResultsLowerLimit = 7; // There are at least 7 'coronavirus' classes in the branch
-    int expectedNumberOfResultsUpperLimit = branch1Size;
-
-    ObjectNode requestBody = generateRequestBody(inputText, mapper.createArrayNode(),
-        mapper.createArrayNode().add(branch1), mapper.createArrayNode(), mapper.createArrayNode(), Optional.empty(),
-        Optional.of(pageSize));
-
-    // Service invocation
-    Response response = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
-        .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
-    // Check HTTP response
-    Assertions.assertEquals(Status.OK.getStatusCode(), response.getStatus());
-    // Check Content-Type
-    Assertions.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
-    // Check the number of results retrieved
-    PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
-    });
-    response.close();
-    Assertions.assertTrue( results.getCollection().size() >= expectedNumberOfResultsLowerLimit,"Wrong number of results");
-    Assertions.assertTrue( results.getCollection().size() <= expectedNumberOfResultsUpperLimit,"Wrong number of results");
-    // Check that the first result is right
-    Assertions.assertTrue(
-        results.getCollection().get(0).getPrefLabel().toLowerCase().contains(inputText.toLowerCase()),"Unexpected result: ");
-    // Check that the retrieved classes are from the right source. We limit this check to the first page or results
-    // to speed up the tests
+  public void searchClassesInBranch() {
+    String inputText = "coronavirus";
+    PagedResults<SearchResult> results = search(generateRequestBody(inputText, none(), branch(VIRUSES, VIRUS), none(),
+        none(), Optional.empty(), Optional.of(100)));
+    // Coronavirus vaccine matches too, but lies outside the Virus branch.
+    Assertions.assertEquals(Set.of(CORONAVIRUS, HUMAN_CORONAVIRUS, BAT_CORONAVIRUS),
+        results.getCollection().stream().map(SearchResult::getLdId).collect(Collectors.toSet()));
+    String first = results.getCollection().get(0).getPrefLabel();
+    Assertions.assertTrue(first.toLowerCase(Locale.ROOT).contains(inputText), "Unexpected result: " + first);
     for (SearchResult r : results.getCollection()) {
-      String resultSourceAcronym = r.getSource().substring(r.getSource().lastIndexOf("/") + 1);
-      Assertions.assertTrue(
-          resultSourceAcronym.equals(ontology1.get(VALUE_CONSTRAINTS_ACRONYM).asText()),"Class source does not match the expected source");
+      Assertions.assertEquals(VIRUSES, Util.getShortIdentifier(r.getSource()),
+          "Class source does not match the expected source");
     }
-    // Check pagination information
-    Assertions.assertTrue( results.getPage() == 1,"Wrong page");
-    Assertions.assertTrue( results.getPageCount() > 0,"Wrong pageCount");
-    Assertions.assertTrue( results.getPageSize() >= expectedNumberOfResultsLowerLimit,"Wrong pageSize");
-    Assertions.assertTrue( results.getPageSize() <= pageSize,"Wrong pageSize");
-    Assertions.assertTrue( results.getTotalCount() >= expectedNumberOfResultsLowerLimit,"Wrong totalCount");
-    Assertions.assertTrue( results.getTotalCount() <= expectedNumberOfResultsUpperLimit,"Wrong totalCount");
-    Assertions.assertTrue( results.getPrevPage() == null,"Wrong prevPage");
-    Assertions.assertTrue( results.getNextPage() == null,"Wrong prevPage");
+    assertPaging(results, 1, 1, 3, 3, null, null);
   }
 
   @Test
-  public void searchClassesInBranchWrongLabel() { // Search for ontology classes in a given branch
+  public void searchClassesInBranchWrongLabel() {
     String inputText = "aaabbbcccddd"; // Non-existing class label
-    int pageSize = 1;
-    int expectedNumberOfResults = 0;
-
-    ObjectNode requestBody = generateRequestBody(inputText, mapper.createArrayNode(),
-        mapper.createArrayNode().add(branch1), mapper.createArrayNode(), mapper.createArrayNode(), Optional.empty(),
-        Optional.of(pageSize));
-
-    // Service invocation
-    Response response = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
-        .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
-    // Check HTTP response
-    Assertions.assertEquals(Status.OK.getStatusCode(), response.getStatus());
-    // Check Content-Type
-    Assertions.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
-    // Check the number of results retrieved
-    PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
-    });
-    response.close();
-    Assertions.assertTrue( results.getCollection().size() == expectedNumberOfResults,"Wrong number of results");
-    // Check pagination information
-    Assertions.assertTrue( results.getPage() == 1,"Wrong page");
-    Assertions.assertTrue( results.getPageCount() == 0,"Wrong pageCount");
-    Assertions.assertTrue( results.getTotalCount() == 0,"Wrong totalCount");
-    Assertions.assertTrue( results.getPageSize() == 0,"Wrong pageSize");
-    Assertions.assertTrue( results.getPrevPage() == null,"Wrong prevPage");
-    Assertions.assertTrue( results.getNextPage() == null,"Wrong prevPage");
+    PagedResults<SearchResult> results = search(generateRequestBody(inputText, none(), branch(VIRUSES, VIRUS), none(),
+        none(), Optional.empty(), Optional.of(1)));
+    Assertions.assertTrue(results.getCollection().isEmpty(), "Wrong number of results");
+    assertPaging(results, 1, 0, 0, 0, null, null);
   }
 
   /**
@@ -466,153 +172,21 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
    */
 
   @Test
-  public void searchValuesNonProvisionalValueSetEmptyInputText() { // It should retrieve all the values in the value set
-    String inputText = "";
-    int pageSize = 200; // higher than valueSet1Size to ensure that all the results are returned
-    ObjectNode requestBody = generateRequestBody(inputText, mapper.createArrayNode(),
-        mapper.createArrayNode(), mapper.createArrayNode().add(valueSet1), mapper.createArrayNode(), Optional.empty()
-        , Optional.of(pageSize));
-
-    // Service invocation
-    Response response = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
-        .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
-    // Check HTTP response
-    Assertions.assertEquals(Status.OK.getStatusCode(), response.getStatus());
-    // Check Content-Type
-    Assertions.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
-    // Check the number of results retrieved
-    PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
-    });
-    response.close();
-    Assertions.assertTrue( results.getCollection().size() == valueSet1Size,"Wrong number of results");
-    // Check pagination information
-    Assertions.assertTrue( results.getPage() == 1,"Wrong page");
-    Assertions.assertTrue( results.getPageCount() == 1,"Wrong pageCount");
-    Assertions.assertTrue( results.getTotalCount() == valueSet1Size,"Wrong totalCount");
-    Assertions.assertTrue( results.getPageSize() == valueSet1Size,"Wrong pageSize");
-    Assertions.assertTrue( results.getPrevPage() == null,"Wrong prevPage");
-    Assertions.assertTrue( results.getNextPage() == null,"Wrong prevPage");
+  public void searchValuesNonProvisionalValueSetEmptyInputText() { // It should retrieve all the values, by label
+    PagedResults<SearchResult> results = search(generateRequestBody("", none(), none(),
+        valueSet(NLMVS, CORONAVIRUS_VACCINES), none(), Optional.empty(), Optional.of(200)));
+    Assertions.assertEquals(List.of("Inactivated virus vaccine", "mRNA coronavirus vaccine",
+        "Viral vector coronavirus vaccine"), labels(results));
+    assertPaging(results, 1, 1, 3, 3, null, null);
   }
 
   @Test
   public void searchValuesNonProvisionalValueSet() { // Search for values that match the inputText in the value set
-    String inputText = "barton";
-    int expectedResultsCount = 2;
-    ObjectNode requestBody = generateRequestBody(inputText, mapper.createArrayNode(),
-        mapper.createArrayNode(), mapper.createArrayNode().add(valueSet1), mapper.createArrayNode(), Optional.empty()
-        , Optional.empty());
-
-    // Service invocation
-    Response response = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
-        .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
-    // Check HTTP response
-    Assertions.assertEquals(Status.OK.getStatusCode(), response.getStatus());
-    // Check Content-Type
-    Assertions.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
-    // Check the number of results retrieved
-    PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
-    });
-    response.close();
-    Assertions.assertTrue( results.getCollection().size() == expectedResultsCount,"Wrong number of results");
-    // Check pagination information
-    Assertions.assertTrue( results.getPage() == 1,"Wrong page");
-    Assertions.assertTrue( results.getPageCount() == 1,"Wrong pageCount");
-    Assertions.assertTrue( results.getTotalCount() == expectedResultsCount,"Wrong totalCount");
-    Assertions.assertTrue( results.getPageSize() == expectedResultsCount,"Wrong pageSize");
-    Assertions.assertTrue( results.getPrevPage() == null,"Wrong prevPage");
-    Assertions.assertTrue( results.getNextPage() == null,"Wrong prevPage");
-  }
-
-  @Test
-  public void searchValuesProvisionalValueSetEmptyInputText() { // It should retrieve all the values in the value set
-    // Create provisional value set with two values
-    ValueSet createdVs = createValueSet(vs1);
-    Value createdValue1 = createValue(createdVs.getLdId(), value1);
-    Value createdValue2 = createValue(createdVs.getLdId(), value2);
-    int createdVsSize = 2;
-    // Wait
-    //shortWaitToEnsureBioPortalIndexUpdated();
-    longWaitToEnsureBioPortalIndexUpdated();
-
-    // Generate input body based on the created value set
-    ObjectNode vs = mapper.createObjectNode();
-    vs.put(VALUE_CONSTRAINTS_URI, createdVs.getLdId());
-    vs.put(VALUE_CONSTRAINTS_VS_COLLECTION, Util.getShortIdentifier(createdVs.getVsCollection()));
-
-    String inputText = "";
-    ObjectNode requestBody = generateRequestBody(inputText, mapper.createArrayNode(),
-        mapper.createArrayNode(), mapper.createArrayNode().add(vs), mapper.createArrayNode(),
-        Optional.empty(), Optional.empty());
-
-    // Service invocation
-    Response response = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
-        .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
-    // Check HTTP response
-    Assertions.assertEquals(Status.OK.getStatusCode(), response.getStatus());
-    // Check Content-Type
-    Assertions.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
-    // Check the number of results retrieved
-    PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
-    });
-    response.close();
-    Assertions.assertTrue( results.getCollection().size() == createdVsSize,"Wrong number of results");
-    // Check that the results are right
-    for (SearchResult r : results.getCollection()) {
-      Assertions.assertTrue( r.getLdId().equals(createdValue1.getLdId()) ||
-          r.getLdId().equals(createdValue2.getLdId()),"Unexpected value");
-    }
-    // Check pagination information
-    Assertions.assertTrue( results.getPage() == 1,"Wrong page");
-    Assertions.assertTrue( results.getPageCount() == 1,"Wrong pageCount");
-    Assertions.assertTrue( results.getTotalCount() == createdVsSize,"Wrong totalCount");
-    Assertions.assertTrue( results.getPageSize() == createdVsSize,"Wrong pageSize");
-    Assertions.assertTrue( results.getPrevPage() == null,"Wrong prevPage");
-    Assertions.assertTrue( results.getNextPage() == null,"Wrong prevPage");
-  }
-
-  @Test
-  public void searchValuesProvisionalValueSet() { // Search for values in the value set that match the inputText
-    // Create provisional value set with two values
-    ValueSet createdVs = createValueSet(vs2);
-    createValue(createdVs.getLdId(), value1);
-    Value createdValue2 = createValue(createdVs.getLdId(), value2);
-    // Wait
-    //shortWaitToEnsureBioPortalIndexUpdated();
-    longWaitToEnsureBioPortalIndexUpdated();
-
-    // Generate input body based on the created value set
-    ObjectNode vs = mapper.createObjectNode();
-    vs.put(VALUE_CONSTRAINTS_URI, createdVs.getLdId());
-    vs.put(VALUE_CONSTRAINTS_VS_COLLECTION, Util.getShortIdentifier(createdVs.getVsCollection()));
-
-    String inputText = "Value2"; // Note that the label of the second value created is value2_test
-    ObjectNode requestBody = generateRequestBody(inputText, mapper.createArrayNode(),
-        mapper.createArrayNode(), mapper.createArrayNode().add(vs), mapper.createArrayNode(), Optional.empty(),
-        Optional.empty());
-
-    // Service invocation
-    Response response = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
-        .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
-    // Check HTTP response
-    Assertions.assertEquals(Status.OK.getStatusCode(), response.getStatus());
-    // Check Content-Type
-    Assertions.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
-    // Check the number of results retrieved
-    int expectedNumberOfResults = 1;
-    PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
-    });
-    response.close();
-    Assertions.assertTrue( results.getCollection().size() == expectedNumberOfResults,"Wrong number of results");
-    // Check that the result found matches the expected result
-    Assertions.assertTrue(
-        results.getCollection().get(0).getLdId().equals(createdValue2.getLdId()),"Unexpected value");
-    // Check pagination information
-    Assertions.assertTrue( results.getPage() == 1,"Wrong page");
-    Assertions.assertTrue( results.getPageCount() == 1,"Wrong pageCount");
-    Assertions.assertTrue( results.getTotalCount() == 1,"Wrong totalCount");
-    Assertions.assertTrue( results.getPageSize() == 1,"Wrong pageSize");
-    Assertions.assertTrue( results.getPrevPage() == null,"Wrong prevPage");
-    Assertions.assertTrue( results.getNextPage() == null,"Wrong prevPage");
+    PagedResults<SearchResult> results = search(generateRequestBody("coronavirus", none(), none(),
+        valueSet(NLMVS, CORONAVIRUS_VACCINES), none(), Optional.empty(), Optional.empty()));
+    Assertions.assertEquals(List.of(MRNA_VACCINE, VECTOR_VACCINE),
+        results.getCollection().stream().map(SearchResult::getLdId).toList());
+    assertPaging(results, 1, 1, 2, 2, null, null);
   }
 
   /**
@@ -621,185 +195,38 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
 
   @Test
   public void searchEnumeratedClassesEmptySearch() throws IOException {
-    String inputText = "";
-    int pageSize = 10;
-    ArrayNode enumeratedClasses =
-        mapper.createArrayNode().add(enumeratedClass1).add(enumeratedClass2).add(enumeratedClass3);
-
-    // Add 3 enumerated classes
-    ObjectNode requestBody = generateRequestBody(inputText, mapper.createArrayNode(),
-        mapper.createArrayNode(), mapper.createArrayNode(),
-        enumeratedClasses, Optional.empty(), Optional.of(pageSize));
-
-    // Service invocation
-    Response response = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
-        .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
-    // Check HTTP response
-    Assertions.assertEquals(Status.OK.getStatusCode(), response.getStatus());
-    // Check Content-Type
-    Assertions.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
-    // Check the number of results retrieved
-    PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
-    });
-    response.close();
-    Assertions.assertTrue( results.getCollection().size() == enumeratedClasses.size(),"Wrong number of results");
-    // Check that the results are right
-    // Sort the enumerated classes by prefLabel so that we can compare them in order with the returned results
-    List<ClassValueConstraint> classes = Arrays.asList(mapper.readValue(enumeratedClasses.toString(),
-        ClassValueConstraint[].class));
-    classes.sort(Comparator.comparing(ClassValueConstraint::getPrefLabel, String.CASE_INSENSITIVE_ORDER));
-
-    for (int i = 0; i < classes.size(); i++) {
-      String ldId = classes.get(i).getUri();
-      String id = Util.getShortIdentifier(ldId);
-      String type = classes.get(i).getType();
-      String ldType = BP_TYPE_BASE + type;
-      String prefLabel = classes.get(i).getPrefLabel();
-      String source = BP_API_BASE + BP_ONTOLOGIES + classes.get(i).getSource();
-      Assertions.assertTrue( results.getCollection().get(i).getLdId().equals(ldId),"Wrong ldId");
-      Assertions.assertTrue( results.getCollection().get(i).getId().equals(id),"Wrong id");
-      Assertions.assertTrue( results.getCollection().get(i).getType().equals(type),"Wrong type");
-      Assertions.assertTrue( results.getCollection().get(i).getLdType().equals(ldType),"Wrong ldType");
-      Assertions.assertTrue( results.getCollection().get(i).getPrefLabel().equals(prefLabel),"Wrong prefLabel");
-      Assertions.assertTrue( results.getCollection().get(i).getSource().equals(source),"Wrong source");
-      Assertions.assertTrue( results.getCollection().get(i).getDefinition() == null,"Wrong definition");
-    }
-    // Check pagination information
-    Assertions.assertTrue( results.getPage() == 1,"Wrong page");
-    Assertions.assertTrue( results.getPageCount() == 1,"Wrong pageCount");
-    Assertions.assertTrue( results.getPageSize() == 3,"Wrong pageSize");
-    Assertions.assertTrue( results.getTotalCount() == 3,"Wrong totalCount");
-    Assertions.assertTrue( results.getPrevPage() == null,"Wrong prevPage");
-    Assertions.assertTrue( results.getNextPage() == null,"Wrong prevPage");
+    ArrayNode enumeratedClasses = enumeratedClasses();
+    PagedResults<SearchResult> results = search(generateRequestBody("", none(), none(), none(), enumeratedClasses,
+        Optional.empty(), Optional.of(10)));
+    Assertions.assertEquals(enumeratedClasses.size(), results.getCollection().size(), "Wrong number of results");
+    assertEnumeratedClassesInLabelOrder(enumeratedClasses, results.getCollection());
+    assertPaging(results, 1, 1, 3, 3, null, null);
   }
 
   @Test
   public void searchEnumeratedClassesEmptySearchTwoPages() throws IOException {
-    String inputText = "";
-    int pageSize = 2;
-    ArrayNode enumeratedClasses =
-        mapper.createArrayNode().add(enumeratedClass1).add(enumeratedClass2).add(enumeratedClass3);
+    ArrayNode enumeratedClasses = enumeratedClasses();
+    PagedResults<SearchResult> resultsPage1 = search(generateRequestBody("", none(), none(), none(), enumeratedClasses,
+        Optional.of(1), Optional.of(2)));
+    PagedResults<SearchResult> resultsPage2 = search(generateRequestBody("", none(), none(), none(), enumeratedClasses,
+        Optional.of(2), Optional.of(2)));
+    Assertions.assertEquals(2, resultsPage1.getCollection().size(), "Wrong number of results");
+    Assertions.assertEquals(1, resultsPage2.getCollection().size(), "Wrong number of results");
 
-    // 3 enumerated classes. Page 1
-    ObjectNode requestBodyPage1 = generateRequestBody(inputText, mapper.createArrayNode(),
-        mapper.createArrayNode(), mapper.createArrayNode(),
-        enumeratedClasses, Optional.of(1), Optional.of(pageSize));
-    ObjectNode requestBodyPage2 = generateRequestBody(inputText, mapper.createArrayNode(),
-        mapper.createArrayNode(), mapper.createArrayNode(),
-        enumeratedClasses, Optional.of(2), Optional.of(pageSize));
-
-    // Service invocation
-    Response responsePage1 = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
-        .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBodyPage1));
-    Response responsePage2 = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
-        .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBodyPage2));
-    // Check HTTP response
-    Assertions.assertEquals(Status.OK.getStatusCode(), responsePage1.getStatus());
-    Assertions.assertEquals(Status.OK.getStatusCode(), responsePage2.getStatus());
-    // Check Content-Type
-    Assertions.assertEquals(MediaType.APPLICATION_JSON, responsePage1.getHeaderString(HttpHeaders.CONTENT_TYPE));
-    Assertions.assertEquals(MediaType.APPLICATION_JSON, responsePage2.getHeaderString(HttpHeaders.CONTENT_TYPE));
-    // Check the number of results retrieved
-    PagedResults<SearchResult> resultsPage1 = responsePage1.readEntity(new GenericType<PagedResults<SearchResult>>() {
-    });
-    responsePage1.close();
-    PagedResults<SearchResult> resultsPage2 = responsePage2.readEntity(new GenericType<PagedResults<SearchResult>>() {
-    });
-    responsePage2.close();
-    Assertions.assertTrue( resultsPage1.getCollection().size() == 2,"Wrong number of results");
-    Assertions.assertTrue( resultsPage2.getCollection().size() == 1,"Wrong number of results");
-
-    List<SearchResult> results = new ArrayList<>();
-    results.add(resultsPage1.getCollection().get(0));
-    results.add(resultsPage1.getCollection().get(1));
-    results.add(resultsPage2.getCollection().get(0));
-
-    // Check that the results are right
-    // Sort the enumerated classes by prefLabel so that we can compare them in order with the returned results
-    List<ClassValueConstraint> classes = Arrays.asList(mapper.readValue(enumeratedClasses.toString(),
-        ClassValueConstraint[].class));
-    classes.sort(Comparator.comparing(ClassValueConstraint::getPrefLabel, String.CASE_INSENSITIVE_ORDER));
-    for (int i = 0; i < classes.size(); i++) {
-      String ldId = classes.get(i).getUri();
-      String id = Util.getShortIdentifier(ldId);
-      String type = classes.get(i).getType();
-      String ldType = BP_TYPE_BASE + type;
-      String prefLabel = classes.get(i).getPrefLabel();
-      String source = BP_API_BASE + BP_ONTOLOGIES + classes.get(i).getSource();
-
-      Assertions.assertTrue( results.get(i).getLdId().equals(ldId),"Wrong ldId");
-      Assertions.assertTrue( results.get(i).getId().equals(id),"Wrong id");
-      Assertions.assertTrue( results.get(i).getType().equals(type),"Wrong type");
-      Assertions.assertTrue( results.get(i).getLdType().equals(ldType),"Wrong ldType");
-      Assertions.assertTrue( results.get(i).getPrefLabel().equals(prefLabel),"Wrong prefLabel");
-      Assertions.assertTrue( results.get(i).getSource().equals(source),"Wrong source");
-      Assertions.assertTrue( results.get(i).getDefinition() == null,"Wrong definition");
-    }
-    // Check pagination information (page 1)
-    Assertions.assertTrue( resultsPage1.getPage() == 1,"Wrong page");
-    Assertions.assertTrue( resultsPage1.getPageCount() == 2,"Wrong pageCount");
-    Assertions.assertTrue( resultsPage1.getPageSize() == 2,"Wrong pageSize");
-    Assertions.assertTrue( resultsPage1.getTotalCount() == 3,"Wrong totalCount");
-    Assertions.assertTrue( resultsPage1.getPrevPage() == null,"Wrong prevPage");
-    Assertions.assertTrue( resultsPage1.getNextPage() == 2,"Wrong prevPage");
-
-    // Check pagination information (page 2)
-    Assertions.assertTrue( resultsPage2.getPage() == 2,"Wrong page");
-    Assertions.assertTrue( resultsPage2.getPageCount() == 2,"Wrong pageCount");
-    Assertions.assertTrue( resultsPage2.getPageSize() == 1,"Wrong pageSize");
-    Assertions.assertTrue( resultsPage2.getTotalCount() == 3,"Wrong totalCount");
-    Assertions.assertTrue( resultsPage2.getPrevPage() == 1,"Wrong prevPage");
-    Assertions.assertTrue( resultsPage2.getNextPage() == null,"Wrong prevPage");
+    List<SearchResult> results = new ArrayList<>(resultsPage1.getCollection());
+    results.addAll(resultsPage2.getCollection());
+    assertEnumeratedClassesInLabelOrder(enumeratedClasses, results);
+    assertPaging(resultsPage1, 1, 2, 2, 3, null, 2);
+    assertPaging(resultsPage2, 2, 2, 1, 3, 1, null);
   }
 
   @Test
   public void searchEnumeratedClasses() {
-    String inputText = "Mycosis";
-    int pageSize = 10;
-    int numberOfExpectedResults = 1;
-    ArrayNode enumeratedClasses =
-        mapper.createArrayNode().add(enumeratedClass1).add(enumeratedClass2).add(enumeratedClass3);
-
-    // Add 3 enumerated classes
-    ObjectNode requestBody = generateRequestBody(inputText, mapper.createArrayNode(),
-        mapper.createArrayNode(), mapper.createArrayNode(),
-        enumeratedClasses, Optional.empty(), Optional.of(pageSize));
-
-    // Service invocation
-    Response response = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
-        .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
-    // Check HTTP response
-    Assertions.assertEquals(Status.OK.getStatusCode(), response.getStatus());
-    // Check Content-Type
-    Assertions.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
-    // Check the number of results retrieved
-    PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
-    });
-    response.close();
-    Assertions.assertTrue( results.getCollection().size() == 1,"Wrong number of results");
-    // Check that the result is right
-    String ldId = enumeratedClass1.get(VALUE_CONSTRAINTS_URI).asText();
-    String id = Util.getShortIdentifier(ldId);
-    String type = enumeratedClass1.get(VALUE_CONSTRAINTS_TYPE).asText();
-    String ldType = BP_TYPE_BASE + type;
-    String prefLabel = enumeratedClass1.get(VALUE_CONSTRAINTS_PREFLABEL).asText();
-    String source = BP_API_BASE + BP_ONTOLOGIES + enumeratedClass1.get(VALUE_CONSTRAINTS_SOURCE).asText();
-
-    Assertions.assertTrue( results.getCollection().get(0).getLdId().equals(ldId),"Wrong ldId");
-    Assertions.assertTrue( results.getCollection().get(0).getId().equals(id),"Wrong id");
-    Assertions.assertTrue( results.getCollection().get(0).getType().equals(type),"Wrong type");
-    Assertions.assertTrue( results.getCollection().get(0).getLdType().equals(ldType),"Wrong ldType");
-    Assertions.assertTrue( results.getCollection().get(0).getPrefLabel().equals(prefLabel),"Wrong prefLabel");
-    Assertions.assertTrue( results.getCollection().get(0).getSource().equals(source),"Wrong source");
-    Assertions.assertTrue( results.getCollection().get(0).getDefinition() == null,"Wrong definition");
-
-    // Check pagination information
-    Assertions.assertTrue( results.getPage() == 1,"Wrong page");
-    Assertions.assertTrue( results.getPageCount() == 1,"Wrong pageCount");
-    Assertions.assertTrue( results.getTotalCount() == 1,"Wrong totalCount");
-    Assertions.assertTrue( results.getPageSize() == 1,"Wrong pageSize");
-    Assertions.assertTrue( results.getPrevPage() == null,"Wrong prevPage");
-    Assertions.assertTrue( results.getNextPage() == null,"Wrong prevPage");
+    PagedResults<SearchResult> results = search(generateRequestBody("Mycosis", none(), none(), none(),
+        enumeratedClasses(), Optional.empty(), Optional.of(10)));
+    Assertions.assertEquals(1, results.getCollection().size(), "Wrong number of results");
+    assertEnumeratedClass(ENUMERATED_CLASS_1_URI, "cutaneous mycosis", results.getCollection().get(0));
+    assertPaging(results, 1, 1, 1, 1, null, null);
   }
 
   /**
@@ -808,101 +235,106 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
 
   @Test
   public void searchEnumeratedClassesAndOntologyEmptySearch() {
-    String inputText = "";
-    int pageSize = 10;
+    // The labels "000" and "zzz" sort the two enumerated classes to either end of the ontology's classes.
+    ArrayNode enumeratedClasses = mapper.createArrayNode()
+        .add(enumeratedClass(ENUMERATED_CLASS_1_URI, "000"))
+        .add(enumeratedClass(ENUMERATED_CLASS_2_URI, "zzz"));
+    PagedResults<SearchResult> results = search(generateRequestBody("", ontology(ONTOLOGY), none(), none(),
+        enumeratedClasses, Optional.empty(), Optional.of(3)));
 
-    // I will set the label of one enumerated class to "000" to ensure that it shows up at the top, and the label of
-    // other class to "zzz" to ensure that it's not in the first page
-    enumeratedClass1.put(VALUE_CONSTRAINTS_PREFLABEL, "000");
-    enumeratedClass2.put(VALUE_CONSTRAINTS_PREFLABEL, "zzz");
-    ArrayNode enumeratedClasses =
-        mapper.createArrayNode().add(enumeratedClass1).add(enumeratedClass2);
-    ArrayNode ontologies = mapper.createArrayNode().add(ontology1);
-
-    // Generate request
-    ObjectNode requestBody = generateRequestBody(inputText, ontologies,
-        mapper.createArrayNode(), mapper.createArrayNode(),
-        enumeratedClasses, Optional.empty(), Optional.of(pageSize));
-
-    // Initial request to get some results (20) from the ontology, so that I can check when making the other request
-    // that nothing is missing
-    ObjectNode ontSizeRequestBody = generateRequestBody(inputText, ontologies,
-        mapper.createArrayNode(), mapper.createArrayNode(),
-        mapper.createArrayNode(), Optional.of(1), Optional.of(pageSize));
-    Response ontSizeResponse = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
-        .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(ontSizeRequestBody));
-    PagedResults<SearchResult> ontology1Response =
-        ontSizeResponse.readEntity(new GenericType<PagedResults<SearchResult>>() {
-    });
-    ontSizeResponse.close();
-    List<SearchResult> ontology1Classes = ontology1Response.getCollection();
-    int ontology1CurrentSize = ontology1Response.getTotalCount();
-
-    // Service invocation
-    Response response = clientBuilder.build().target(baseUrlBpIntegratedSearch).request()
-        .header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(requestBody));
-    // Check HTTP response
-    Assertions.assertEquals(Status.OK.getStatusCode(), response.getStatus());
-    // Check Content-Type
-    Assertions.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
-    // Check the number of results retrieved
-    PagedResults<SearchResult> results = response.readEntity(new GenericType<PagedResults<SearchResult>>() {
-    });
-    response.close();
-    Assertions.assertTrue( pageSize == results.getPageSize(),"Wrong page size");
-    Assertions.assertTrue( pageSize == results.getCollection().size(),"Wrong page size");
-
-    // Check that the class with label "000" is returned at the top
-    String ldId = enumeratedClass1.get(VALUE_CONSTRAINTS_URI).asText();
-    String id = Util.getShortIdentifier(ldId);
-    String type = enumeratedClass1.get(VALUE_CONSTRAINTS_TYPE).asText();
-    String ldType = BP_TYPE_BASE + type;
-    String prefLabel = enumeratedClass1.get(VALUE_CONSTRAINTS_PREFLABEL).asText();
-    String source = BP_API_BASE + BP_ONTOLOGIES + enumeratedClass1.get(VALUE_CONSTRAINTS_SOURCE).asText();
-
-    Assertions.assertTrue( results.getCollection().get(0).getLdId().equals(ldId),"Wrong ldId");
-    Assertions.assertTrue( results.getCollection().get(0).getId().equals(id),"Wrong id");
-    Assertions.assertTrue( results.getCollection().get(0).getType().equals(type),"Wrong type");
-    Assertions.assertTrue( results.getCollection().get(0).getLdType().equals(ldType),"Wrong ldType");
-    Assertions.assertTrue( results.getCollection().get(0).getPrefLabel().equals(prefLabel),"Wrong prefLabel");
-    Assertions.assertTrue( results.getCollection().get(0).getSource().equals(source),"Wrong source");
-    Assertions.assertTrue( results.getCollection().get(0).getDefinition() == null,"Wrong definition");
-
-    // Check that the rest of the results are right. We start with i=1 because we've already checked the first result
-    int ontologyClassesIndex = 0;
-    for (int i = 1; i < pageSize; i++) {
-      ldId = ontology1Classes.get(ontologyClassesIndex).getLdId();
-      id = ontology1Classes.get(ontologyClassesIndex).getId();
-      type = ontology1Classes.get(ontologyClassesIndex).getType();
-      ldType = ontology1Classes.get(ontologyClassesIndex).getLdType();
-      prefLabel = ontology1Classes.get(ontologyClassesIndex).getPrefLabel();
-      String definition = ontology1Classes.get(ontologyClassesIndex).getDefinition();
-      source = ontology1Classes.get(ontologyClassesIndex).getSource();
-      ontologyClassesIndex++;
-
-      Assertions.assertTrue( results.getCollection().get(i).getLdId().equals(ldId),"Wrong ldId");
-      Assertions.assertTrue( results.getCollection().get(i).getId().equals(id),"Wrong id");
-      Assertions.assertTrue( results.getCollection().get(i).getType().equals(type),"Wrong type");
-      Assertions.assertTrue( results.getCollection().get(i).getLdType().equals(ldType),"Wrong ldType");
-      Assertions.assertTrue( results.getCollection().get(i).getPrefLabel().equals(prefLabel),"Wrong prefLabel");
-      Assertions.assertTrue( results.getCollection().get(i).getSource().equals(source),"Wrong source");
-      if (definition != null) {
-        Assertions.assertTrue( results.getCollection().get(i).getDefinition().equals(definition),"Wrong definition");
-      }
+    Assertions.assertEquals(List.of("000", "Heart", "Organ"), labels(results));
+    assertEnumeratedClass(ENUMERATED_CLASS_1_URI, "000", results.getCollection().get(0));
+    Assertions.assertEquals(List.of(HEART, ORGAN),
+        results.getCollection().subList(1, 3).stream().map(SearchResult::getLdId).toList());
+    for (SearchResult r : results.getCollection().subList(1, 3)) {
+      Assertions.assertEquals(ONTOLOGY, Util.getShortIdentifier(r.getSource()), "Wrong source");
     }
-    // Check pagination information. Note that when doing search on multiple sources we set totalCount, pageCount,
-    // and nextPage to null to maximize performance.
-    Assertions.assertTrue( results.getPage() == 1,"Wrong page");
-    Assertions.assertTrue( results.getPageCount() == null,"Wrong pageCount");
-    Assertions.assertTrue( results.getTotalCount() == ontology1CurrentSize + 2,"Wrong totalCount");
-    Assertions.assertTrue( results.getPageSize() == pageSize,"Wrong pageSize");
-    Assertions.assertTrue( results.getPrevPage() == null,"Wrong prevPage");
-    Assertions.assertTrue( results.getNextPage() == null,"Wrong prevPage");
+    // Both sources are sorted together and paged as one list: two enumerated classes and four of the ontology.
+    assertPaging(results, 1, 2, 3, 6, null, 2);
   }
 
   /**
    * Utility methods
    */
+
+  private static ArrayNode none() {
+    return mapper.createArrayNode();
+  }
+
+  private static ArrayNode ontology(String acronym) {
+    ObjectNode ontology = mapper.createObjectNode().put(VALUE_CONSTRAINTS_ACRONYM, acronym);
+    return mapper.createArrayNode().add(ontology);
+  }
+
+  private static ArrayNode branch(String acronym, String uri) {
+    ObjectNode branch = mapper.createObjectNode().put(VALUE_CONSTRAINTS_URI, uri).put(VALUE_CONSTRAINTS_ACRONYM, acronym);
+    return mapper.createArrayNode().add(branch);
+  }
+
+  private static ArrayNode valueSet(String vsCollection, String uri) {
+    ObjectNode valueSet =
+        mapper.createObjectNode().put(VALUE_CONSTRAINTS_URI, uri).put(VALUE_CONSTRAINTS_VS_COLLECTION, vsCollection);
+    return mapper.createArrayNode().add(valueSet);
+  }
+
+  private static ObjectNode enumeratedClass(String uri, String prefLabel) {
+    ObjectNode enumeratedClass = mapper.createObjectNode();
+    enumeratedClass.put(VALUE_CONSTRAINTS_URI, uri);
+    enumeratedClass.put(VALUE_CONSTRAINTS_PREFLABEL, prefLabel);
+    enumeratedClass.put(VALUE_CONSTRAINTS_TYPE, ENUMERATED_CLASS_TYPE);
+    enumeratedClass.put(VALUE_CONSTRAINTS_LABEL, prefLabel);
+    enumeratedClass.put(VALUE_CONSTRAINTS_SOURCE, ENUMERATED_CLASS_SOURCE);
+    return enumeratedClass;
+  }
+
+  private static ArrayNode enumeratedClasses() {
+    return mapper.createArrayNode()
+        .add(enumeratedClass(ENUMERATED_CLASS_1_URI, "cutaneous mycosis"))
+        .add(enumeratedClass(ENUMERATED_CLASS_2_URI, "chromosomal disease"))
+        .add(enumeratedClass(ENUMERATED_CLASS_3_URI, "benign neoplasm"));
+  }
+
+  /** Asserts that a search result is the enumerated class it was given, described as the constraint describes it. */
+  private static void assertEnumeratedClass(String uri, String prefLabel, SearchResult result) {
+    Assertions.assertEquals(uri, result.getLdId(), "Wrong ldId");
+    Assertions.assertEquals(Util.getShortIdentifier(uri), result.getId(), "Wrong id");
+    Assertions.assertEquals(ENUMERATED_CLASS_TYPE, result.getType(), "Wrong type");
+    Assertions.assertEquals(BP_TYPE_BASE + ENUMERATED_CLASS_TYPE, result.getLdType(), "Wrong ldType");
+    Assertions.assertEquals(prefLabel, result.getPrefLabel(), "Wrong prefLabel");
+    Assertions.assertEquals(BP_API_BASE + BP_ONTOLOGIES + ENUMERATED_CLASS_SOURCE, result.getSource(), "Wrong source");
+    Assertions.assertNull(result.getDefinition(), "Wrong definition");
+  }
+
+  /** Asserts that the results are the enumerated classes, sorted by label. */
+  private static void assertEnumeratedClassesInLabelOrder(ArrayNode enumeratedClasses, List<SearchResult> results)
+      throws IOException {
+    List<ClassValueConstraint> classes =
+        new ArrayList<>(Arrays.asList(mapper.readValue(enumeratedClasses.toString(), ClassValueConstraint[].class)));
+    classes.sort(Comparator.comparing(ClassValueConstraint::getPrefLabel, String.CASE_INSENSITIVE_ORDER));
+    for (int i = 0; i < classes.size(); i++) {
+      assertEnumeratedClass(classes.get(i).getUri(), classes.get(i).getPrefLabel(), results.get(i));
+    }
+  }
+
+  private static List<String> labels(PagedResults<SearchResult> results) {
+    return results.getCollection().stream().map(SearchResult::getPrefLabel).toList();
+  }
+
+  private static PagedResults<SearchResult> search(ObjectNode requestBody) {
+    try (Response response = request(baseUrlBpIntegratedSearch).post(Entity.json(requestBody))) {
+      if (response.getStatus() != Status.OK.getStatusCode()) {
+        Assertions.fail("The search answered " + response.getStatus() + ": " + response.readEntity(String.class));
+      }
+      Assertions.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
+      return response.readEntity(new GenericType<>() {});
+    }
+  }
+
+  private static int statusOfPost(String url, ObjectNode requestBody) {
+    try (Response response = request(url).post(Entity.json(requestBody))) {
+      return response.getStatus();
+    }
+  }
 
   private static ObjectNode generateRequestBody(String inputText, ArrayNode ontologies, ArrayNode branches,
                                                 ArrayNode valueSets, ArrayNode classes, Optional<Integer> page,
@@ -922,13 +354,8 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     // Request body
     ObjectNode requestBody = mapper.createObjectNode();
     requestBody.set(BP_INTEGRATED_SEARCH_PARAMS_FIELD, parameterObject);
-    if (page.isPresent()) {
-      requestBody.put(BP_PAGE_PARAM, page.get());
-    }
-    if (pageSize.isPresent()) {
-      requestBody.put(BP_PAGE_SIZE_PARAM, pageSize.get());
-    }
-
+    page.ifPresent(p -> requestBody.put(BP_PAGE_PARAM, p));
+    pageSize.ifPresent(s -> requestBody.put(BP_PAGE_SIZE_PARAM, s));
     return requestBody;
   }
 
