@@ -1,5 +1,6 @@
 package org.metadatacenter.cedar.terminology.resources.bioportal;
 
+import org.metadatacenter.terms.util.HTTPException;
 import org.metadatacenter.terms.util.OffsetPaging;
 import com.codahale.metrics.annotation.Timed;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -28,7 +29,6 @@ import org.metadatacenter.util.json.JsonMapper;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import javax.xml.ws.http.HTTPException;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;

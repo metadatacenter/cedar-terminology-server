@@ -5,7 +5,7 @@
   <parent>
     <groupId>org.metadatacenter</groupId>
     <artifactId>cedar-terminology-server</artifactId>
-    <version>2.9.34</version>
+    <version>2.9.35</version>
   </parent>
 
   <groupId>org.metadatacenter</groupId>
@@ -32,14 +32,22 @@
     </dependency>
 
     <dependency>
+      <groupId>org.metadatacenter</groupId>
+      <artifactId>cedar-model-library</artifactId>
+    </dependency>
+
+    <!-- No class here references dropwizard-core itself. It supplies what the request models do
+         use: dropwizard-jackson, the validation API and Hibernate Validator. -->
+    <dependency>
       <groupId>io.dropwizard</groupId>
       <artifactId>dropwizard-core</artifactId>
     </dependency>
 
     <dependency>
-      <groupId>io.dropwizard</groupId>
-      <artifactId>dropwizard-testing</artifactId>
+      <groupId>jakarta.validation</groupId>
+      <artifactId>jakarta.validation-api</artifactId>
     </dependency>
+
 
     <!-- Jackson -->
     <dependency>

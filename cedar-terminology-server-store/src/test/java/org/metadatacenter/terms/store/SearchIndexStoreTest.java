@@ -225,6 +225,120 @@ public class SearchIndexStoreTest {
   }
 
   @Test
+  public void aSingleLetterCanBeHeldBackWhereverAWordRemains() {
+    // A possessive leaves a one-letter token, because the index splits on the apostrophe.
+    SearchIndexStore.MatchPlan held = SearchIndexStore.toMatchPlan("Crohn's disease", true);
+    assertEquals("\"crohn\"* \"disease\"*", held.match());
+    assertEquals(List.of("s"), held.residual());
+    assertEquals(SearchIndexStore.toMatchPlan("e coli", true),
+        new SearchIndexStore.MatchPlan("\"coli\"*", List.of("e")));
+
+    // Two letters stay with the rule that needs a long token, and a query of short tokens stays whole.
+    assertTrue(SearchIndexStore.toMatchPlan("cell ca", true).residual().isEmpty());
+    assertTrue(SearchIndexStore.toMatchPlan("e co", true).residual().isEmpty());
+    // Where a long token already carries the match, both forms hold the same tokens.
+    assertEquals(SearchIndexStore.toMatchPlan("type-2 diabetes"), SearchIndexStore.toMatchPlan("type-2 diabetes", true));
+  }
+
+  @Test
+  public void aSingleLetterIsHeldBackOnlyWhileFewNamesRemainForItToBeCheckedAgainst() throws Exception {
+    index.replaceOntology("VIT", "v1", "now", List.of(
+        new SearchIndexStore.IndexedTerm("VIT", "http://vit/d", "vitamin D", false, null, false, 0),
+        new SearchIndexStore.IndexedTerm("VIT", "http://vit/d2", "vitamin D2", false, null, false, 0),
+        new SearchIndexStore.IndexedTerm("VIT", "http://vit/k", "vitamin K", false, null, false, 0),
+        new SearchIndexStore.IndexedTerm("VIT", "http://vit/c", "vitamin C", false, null, false, 0),
+        new SearchIndexStore.IndexedTerm("VIT", "http://vit/b12", "vitamin B12", false, null, false, 0)), Map.of());
+    index.rebuildFullText();
+
+    // Five names carry "vitamin". Within the limit, "d" waits and is checked against those five.
+    index.residualRowLimit(5);
+    assertEquals(List.of("d"), index.planFor("vitamin d", List.of()).residual());
+    List<String> held = iris(index.searchByLabelRange("vitamin d", List.of(), false, 0, 20));
+    int heldCount = index.matchCount("vitamin d", List.of(), false, 100);
+
+    // Past the limit the index applies "d" itself, and the answer is the same.
+    index.residualRowLimit(4);
+    assertTrue(index.planFor("vitamin d", List.of()).residual().isEmpty());
+    assertEquals(held, iris(index.searchByLabelRange("vitamin d", List.of(), false, 0, 20)));
+    assertEquals(heldCount, index.matchCount("vitamin d", List.of(), false, 100));
+    assertEquals(List.of("http://vit/d", "http://vit/d2"), held);
+    assertEquals(List.of(new SearchIndexStore.VocabularyMatch("VIT", 2)), index.vocabularyFacet("vitamin d"));
+
+    // The limit counts the names in the scope asked for, so a scope with nothing in it holds back.
+    assertEquals(List.of("d"), index.planFor("vitamin d", List.of("EX")).residual());
+  }
+
+  private static List<String> iris(List<SearchIndexStore.IndexHit> hits) {
+    return hits.stream().map(hit -> hit.term().iri()).sorted().toList();
+  }
+
+  @Test
+  public void aHeldBackTokenIsAppliedBeforeTheUnpagedSearchLimitsItsRows() throws Exception {
+    // Eight short names match "type" and "diabetes" and hold no token beginning with 2. They rank
+    // ahead of the one name that does, and the query asks the index for four rows for one term.
+    List<SearchIndexStore.IndexedTerm> terms = new java.util.ArrayList<>();
+    for (char letter = 'a'; letter <= 'h'; letter++) {
+      terms.add(new SearchIndexStore.IndexedTerm("DIAB", "http://diab/" + letter, "type " + letter + " diabetes",
+          false, null, false, 0));
+    }
+    terms.add(new SearchIndexStore.IndexedTerm("DIAB", "http://diab/2", "type 2 diabetes of the young",
+        false, null, false, 0));
+    index.replaceOntology("DIAB", "d1", "now", terms, Map.of());
+    index.rebuildFullText();
+
+    assertEquals(List.of("2"), SearchIndexStore.toMatchPlan("type-2 diabetes").residual());
+    List<SearchIndexStore.IndexHit> hits = index.search("type-2 diabetes", List.of(), 1);
+    assertEquals(1, hits.size());
+    assertEquals("http://diab/2", hits.get(0).term().iri());
+  }
+
+  @Test
+  public void aHeldBackTokenFoldsANameAsTheIndexDoes() {
+    // The index reaches these names through "e" and "a", so a held-back token must as well.
+    assertTrue(SearchIndexStore.carriesResidual("échoendoscopie colique", List.of("e")));
+    assertTrue(SearchIndexStore.carriesResidual("groupe électrogène à essence", List.of("a")));
+    assertTrue(SearchIndexStore.carriesResidual("Ångström unit", List.of("a")));
+    assertFalse(SearchIndexStore.carriesResidual("école", List.of("c")));
+    // A query typed with the diacritic is read as the same tokens, and holds back the same one.
+    assertEquals(List.of("e", "coli"), SearchIndexStore.matchTokens("É coli"));
+    assertEquals(List.of("e"), SearchIndexStore.toMatchPlan("É coli", true).residual());
+  }
+
+  @Test
+  public void foldingAgreesWithTheIndexTokenizerForLatinGreekAndCyrillicLetters() throws Exception {
+    // One token around each code point, put through the tokenizer the index is built with.
+    java.util.Map<Integer, List<String>> indexed = new java.util.TreeMap<>();
+    try (java.sql.Connection c = java.sql.DriverManager.getConnection("jdbc:sqlite::memory:");
+         java.sql.Statement st = c.createStatement()) {
+      st.execute("CREATE VIRTUAL TABLE t USING fts5(v, tokenize=\"" + SearchIndexStore.TOKENIZER + "\")");
+      st.execute("CREATE VIRTUAL TABLE tv USING fts5vocab(t, instance)");
+      try (java.sql.PreparedStatement ps = c.prepareStatement("INSERT INTO t(rowid, v) VALUES (?, ?)")) {
+        for (int codePoint = 0x80; codePoint <= 0x1EFF; codePoint++) {
+          boolean covered = codePoint <= 0x0527 || codePoint >= 0x1E00;
+          // U+037F entered Unicode after the tokenizer's tables were drawn, so it is not lower-cased.
+          if (!covered || codePoint == 0x037F || Character.getType(codePoint) == Character.UNASSIGNED) {
+            continue;
+          }
+          ps.setInt(1, codePoint);
+          ps.setString(2, "q" + Character.toString(codePoint) + "z");
+          ps.addBatch();
+        }
+        ps.executeBatch();
+      }
+      try (java.sql.ResultSet rs = st.executeQuery("SELECT doc, term FROM tv ORDER BY doc, offset")) {
+        while (rs.next()) {
+          indexed.computeIfAbsent(rs.getInt(1), k -> new java.util.ArrayList<>()).add(rs.getString(2));
+        }
+      }
+    }
+    assertTrue(indexed.size() > 1400, "the tokenizer answered for " + indexed.size() + " code points");
+    for (var entry : indexed.entrySet()) {
+      assertEquals(entry.getValue(), SearchIndexStore.matchTokens("q" + Character.toString(entry.getKey()) + "z"),
+          () -> String.format("U+%04X %s", entry.getKey(), Character.getName(entry.getKey())));
+    }
+  }
+
+  @Test
   public void aHeldBackTokenMatchesTheStartOfAWordJustAsTheIndexWould() {
     // The rule has to be the prefix match it replaced: "d" reaches "D2", which is why holding it
     // back cannot become an exact comparison.

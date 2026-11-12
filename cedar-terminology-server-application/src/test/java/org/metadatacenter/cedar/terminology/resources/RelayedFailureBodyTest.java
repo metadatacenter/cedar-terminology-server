@@ -1,7 +1,7 @@
 package org.metadatacenter.cedar.terminology.resources;
 
 import jakarta.ws.rs.core.Response;
-import javax.xml.ws.http.HTTPException;
+import org.metadatacenter.terms.util.HTTPException;
 import org.metadatacenter.util.http.CedarError;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

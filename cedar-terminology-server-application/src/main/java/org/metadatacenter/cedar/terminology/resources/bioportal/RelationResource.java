@@ -15,13 +15,13 @@ import org.metadatacenter.exception.CedarException;
 import org.metadatacenter.exception.CedarProcessingException;
 import org.metadatacenter.rest.context.CedarRequestContext;
 import org.metadatacenter.terms.domainObjects.Relation;
+import org.metadatacenter.terms.util.HTTPException;
 import org.metadatacenter.util.http.CedarError;
 import org.metadatacenter.util.json.JsonMapper;
 
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import javax.xml.ws.http.HTTPException;
 import java.io.IOException;
 import java.net.URI;
 

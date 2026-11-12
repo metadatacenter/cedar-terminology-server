@@ -8,6 +8,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -187,8 +188,15 @@ public class SearchIndexStore implements AutoCloseable {
    */
   private final ReadConnections reads;
 
-  /** Connections a serving store will open before threads start sharing one again. */
-  private static final int READ_CONNECTION_LIMIT = 8;
+  /**
+   * Connections a serving store will open before threads start sharing one again. Every search
+   * consults the index, and a thread sharing a connection waits for the query that holds it, so the
+   * limit covers the worker threads a busy server uses rather than a handful of them.
+   */
+  private static final int READ_CONNECTION_LIMIT = 64;
+
+  /** How the index splits and folds a name. {@link #fold} mirrors it for a held-back token. */
+  static final String TOKENIZER = "unicode61 remove_diacritics 2";
 
   /** The SQL name of the function applying {@link #carriesResidual}. */
   static final String RESIDUAL_FN = "cedar_carries_residual";
@@ -201,7 +209,7 @@ public class SearchIndexStore implements AutoCloseable {
     this.connection = connection;
     registerResidualFunction(connection);
     this.reads = readPath == null ? null
-        : ReadConnections.of(readPath, connection, SearchIndexStore::prepareRead,
+        : ReadConnections.single(readPath, connection, SearchIndexStore::prepareRead,
             READ_CONNECTION_LIMIT);
   }
 
@@ -344,8 +352,8 @@ public class SearchIndexStore implements AutoCloseable {
             ont,
             content='name',
             content_rowid='name_id',
-            tokenize="unicode61 remove_diacritics 2"
-          )""");
+            tokenize="%s"
+          )""".formatted(TOKENIZER));
       // replaceOntology batches postings inside the same transaction as the content rows.
       // Remove the previous per-name triggers on upgrade, or postings would be applied twice.
       st.executeUpdate("DROP TRIGGER IF EXISTS name_fts_insert");
@@ -565,8 +573,8 @@ public class SearchIndexStore implements AutoCloseable {
               ont,
               content='name',
               content_rowid='name_id',
-              tokenize="unicode61 remove_diacritics 2"
-            )""");
+              tokenize="%s"
+            )""".formatted(TOKENIZER));
         scopedIndex = null;
       }
       st.executeUpdate("INSERT INTO name_fts(name_fts) VALUES('rebuild')");
@@ -599,7 +607,7 @@ public class SearchIndexStore implements AutoCloseable {
    */
   public List<IndexHit> search(String query, Collection<String> acronyms, boolean branchesOnly, int limit)
       throws SQLException {
-    MatchPlan plan = toMatchPlan(query);
+    MatchPlan plan = planFor(query, acronyms);
     String match = plan.match();
     if (match.isEmpty()) {
       return List.of();
@@ -614,6 +622,9 @@ public class SearchIndexStore implements AutoCloseable {
         JOIN name n ON n.name_id = f.rowid
         JOIN term t ON t.term_id = n.term_id
         WHERE name_fts MATCH ?""");
+    // A held-back token is applied here, before the rows are ranked and limited. Applied to the
+    // rows that came back, it left a page short whenever names without it ranked first.
+    sql.append(residualFilter(plan));
     if (branchesOnly) {
       sql.append(" AND t.has_children = 1");
     }
@@ -635,6 +646,9 @@ public class SearchIndexStore implements AutoCloseable {
     try (PreparedStatement ps = connection().prepareStatement(sql.toString())) {
       int p = 1;
       ps.setString(p++, match);
+      if (!plan.residual().isEmpty()) {
+        ps.setString(p++, String.join(" ", plan.residual()));
+      }
       if (acronyms != null) {
         for (String acronym : acronyms) {
           ps.setString(p++, acronym);
@@ -648,9 +662,6 @@ public class SearchIndexStore implements AutoCloseable {
       ps.setInt(p, Math.max(limit, 1) * 4);
       try (ResultSet rs = ps.executeQuery()) {
         while (rs.next()) {
-          if (!carriesResidual(rs.getString(10), plan.residual())) {
-            continue;
-          }
           long termId = rs.getLong(11);
           IndexHit hit = byTerm.get(termId);
           if (hit == null) {
@@ -690,7 +701,7 @@ public class SearchIndexStore implements AutoCloseable {
   /** The labels from {@code offset} on, at most {@code limit} of them, with every hit of each. */
   public List<IndexHit> searchByLabelRange(String query, Collection<String> acronyms, boolean branchesOnly,
                                            int offset, int limit) throws SQLException {
-    MatchPlan plan = toMatchPlan(query);
+    MatchPlan plan = planFor(query, acronyms);
     String match = plan.match();
     if (match.isEmpty()) {
       return List.of();
@@ -857,11 +868,11 @@ public class SearchIndexStore implements AutoCloseable {
    */
   public int matchCount(String query, Collection<String> acronyms, boolean distinctLabels,
                         boolean branchesOnly, int cap) throws SQLException {
-    String match = toPrefixMatch(query);
+    MatchPlan plan = planFor(query, acronyms);
+    String match = plan.match();
     if (match.isEmpty()) {
       return 0;
     }
-    MatchPlan plan = toMatchPlan(query);
     match = scopedMatch(match, acronyms);
     String selected = distinctLabels ? "DISTINCT LOWER(t.pref_label)" : "DISTINCT t.term_id";
     // The space matters: a text block drops the newline after its opening delimiter, so without it
@@ -914,11 +925,11 @@ public class SearchIndexStore implements AutoCloseable {
    * ranked list; neither term nor ontology limits belong before that pagination.
    */
   public List<VocabularyMatch> vocabularyFacet(String query) throws SQLException {
-    String match = toPrefixMatch(query);
+    MatchPlan plan = planFor(query, List.of());
+    String match = plan.match();
     if (match.isEmpty()) {
       return List.of();
     }
-    MatchPlan plan = toMatchPlan(query);
     List<VocabularyMatch> out = new ArrayList<>();
     try (PreparedStatement ps = connection().prepareStatement("""
         SELECT t.acronym, COUNT(*) c FROM (
@@ -1029,7 +1040,7 @@ public class SearchIndexStore implements AutoCloseable {
       return List.of();
     }
     List<String> out = new ArrayList<>();
-    for (String token : query.trim().toLowerCase(Locale.ROOT).split("\\s+")) {
+    for (String token : fold(query).trim().split("\\s+")) {
       String cleaned = token.replaceAll("[^\\p{L}\\p{N}]+", " ").trim();
       if (cleaned.isEmpty()) {
         continue;
@@ -1037,6 +1048,66 @@ public class SearchIndexStore implements AutoCloseable {
       out.addAll(Arrays.asList(cleaned.split("\\s+")));
     }
     return out;
+  }
+
+  /**
+   * Folds text as the index's tokenizer does: lower case, and a Latin letter without its diacritics.
+   *
+   * The index is built with {@code unicode61 remove_diacritics 2}, which reduces a letter to its
+   * ASCII base where it has one and leaves the letters of other scripts as they are. A held-back
+   * token is compared with a name here and not by the index, so the two have to fold alike: without
+   * this, "e" held back from "e coli" refused "échoendoscopie colique", which the index matches.
+   */
+  static String fold(String text) {
+    String lower = text.toLowerCase(Locale.ROOT);
+    int plain = 0;
+    while (plain < lower.length() && lower.charAt(plain) < 0x80) {
+      plain++;
+    }
+    if (plain == lower.length()) {
+      return lower;
+    }
+    StringBuilder out = new StringBuilder(lower.length());
+    out.append(lower, 0, plain);
+    for (int i = plain; i < lower.length(); ) {
+      int codePoint = lower.codePointAt(i);
+      i += Character.charCount(codePoint);
+      if (codePoint < 0x80) {
+        out.append((char) codePoint);
+      } else if (!isRemovedMark(codePoint)) {
+        out.appendCodePoint(foldLetter(codePoint));
+      }
+    }
+    return out.toString();
+  }
+
+  /** The combining marks the tokenizer removes from a token. It ends the token at any other mark. */
+  private static boolean isRemovedMark(int codePoint) {
+    if (codePoint < 0x300 || codePoint > 0x331) {
+      return false;
+    }
+    int bit = codePoint - 0x300;
+    return bit < 32 ? (0x08029FDF & (1 << bit)) != 0 : (0x000361F8 & (1 << (bit - 32))) != 0;
+  }
+
+  private static int foldLetter(int codePoint) {
+    switch (codePoint) {
+      case 0x00B5: return 0x03BC; // the micro sign, which the tokenizer reads as mu
+      case 0x017F: return 's';    // long s
+      case 0x01E1: return codePoint; // the one Latin letter whose diacritics the tokenizer keeps
+      case 0x03C2: return 0x03C3; // final sigma, and the symbol forms of six Greek letters
+      case 0x03D0: return 0x03B2;
+      case 0x03D1: return 0x03B8;
+      case 0x03D5: return 0x03C6;
+      case 0x03D6: return 0x03C0;
+      case 0x03F0: return 0x03BA;
+      case 0x03F1: return 0x03C1;
+      case 0x03F5: return 0x03B5;
+      default:
+        String decomposed = Normalizer.normalize(Character.toString(codePoint), Normalizer.Form.NFD);
+        char base = decomposed.charAt(0) == 0x017F ? 's' : decomposed.charAt(0);
+        return decomposed.length() > 1 && base >= 'a' && base <= 'z' ? base : codePoint;
+    }
   }
 
   private static String prefixExpr(List<String> tokens) {
@@ -1066,6 +1137,16 @@ public class SearchIndexStore implements AutoCloseable {
    * when a token is long enough to be selective on its own, which leaves every query that has no
    * such token exactly as it was. Measured over 300 labels drawn from six ontologies, the plans
    * agree with the unconditional form on all 300 and take a third of the time.
+   *
+   * A single letter can be held back more often than that rule allows. A possessive leaves one,
+   * since the index splits on the apostrophe, and "Crohn's disease" put whole to the index walks
+   * every name with a token beginning with s: 1.5 s within one ontology, and 23 ms with "s" held
+   * back. The exchange still fails when the word that remains is common. "t cell" put to the whole
+   * corpus takes 1.7 s, and about 7 s with "t" held back, because "cell" alone reaches more than a
+   * million names and each is read to be checked. So {@link #planFor} holds a single letter back
+   * only while the rest of the query matches few names in the scope asked for, which one count
+   * against the index decides. Measured over 453 queries drawn from six ontologies, every plan
+   * returned the page, the counts and the vocabulary list of the unconditional form.
    */
   record MatchPlan(String match, List<String> residual) {}
 
@@ -1075,18 +1156,90 @@ public class SearchIndexStore implements AutoCloseable {
   /** Long enough that a prefix match on it can carry a query by itself. */
   private static final int DRIVING_LENGTH = 8;
 
+  /**
+   * The most names a held-back single letter is checked against.
+   *
+   * A token held back is checked against every name the rest of the query matches, and each check
+   * reads the name's row. Up to this many rows that costs less than the index pays to intersect a
+   * single letter. Past it the index is faster, so the query is put to it whole.
+   */
+  static final int RESIDUAL_ROW_LIMIT = 50_000;
+
+  private int residualRowLimit = RESIDUAL_ROW_LIMIT;
+
+  /**
+   * Whether an expression matches few enough names, by expression. The answer decides how fast a
+   * query runs and never what it returns, so one that the corpus has since outgrown is harmless.
+   */
+  private final Map<String, Boolean> matchesFew = Collections.synchronizedMap(
+      new LinkedHashMap<>(256, 0.75f, true) {
+        @Override
+        protected boolean removeEldestEntry(Map.Entry<String, Boolean> eldest) {
+          return size() > 4096;
+        }
+      });
+
+  void residualRowLimit(int limit) {
+    residualRowLimit = limit;
+    matchesFew.clear();
+  }
+
   static MatchPlan toMatchPlan(String query) {
+    return toMatchPlan(query, false);
+  }
+
+  /**
+   * @param singleLetters also hold a one-letter token back when a token of at least
+   *                      {@link #MIN_SELECTIVE_LENGTH} characters remains, whatever its length
+   */
+  static MatchPlan toMatchPlan(String query, boolean singleLetters) {
     List<String> tokens = matchTokens(query);
     if (tokens.isEmpty()) {
       return new MatchPlan("", List.of());
     }
-    List<String> held = tokens.stream().filter(t -> t.length() < MIN_SELECTIVE_LENGTH).toList();
     boolean canDrive = tokens.stream().anyMatch(t -> t.length() >= DRIVING_LENGTH);
-    if (held.isEmpty() || !canDrive) {
+    boolean canCarry = tokens.stream().anyMatch(t -> t.length() >= MIN_SELECTIVE_LENGTH);
+    java.util.function.Predicate<String> isHeld = t -> t.length() < MIN_SELECTIVE_LENGTH
+        && (canDrive || (singleLetters && t.length() == 1 && canCarry));
+    List<String> held = tokens.stream().filter(isHeld).toList();
+    if (held.isEmpty()) {
       return new MatchPlan(prefixExpr(tokens), List.of());
     }
-    return new MatchPlan(
-        prefixExpr(tokens.stream().filter(t -> t.length() >= MIN_SELECTIVE_LENGTH).toList()), held);
+    return new MatchPlan(prefixExpr(tokens.stream().filter(isHeld.negate()).toList()), held);
+  }
+
+  /**
+   * The plan for a query in a scope.
+   *
+   * A query with a long token is planned by its tokens alone. One without is also planned with its
+   * single letters held back, and that plan is used while the names left for them to be checked
+   * against stay within {@link #RESIDUAL_ROW_LIMIT}. The count is of the scope asked for, so the
+   * same query can be held back within one ontology and put whole to the corpus.
+   */
+  MatchPlan planFor(String query, Collection<String> acronyms) throws SQLException {
+    MatchPlan settled = toMatchPlan(query, false);
+    MatchPlan selective = toMatchPlan(query, true);
+    if (selective.equals(settled)) {
+      return settled;
+    }
+    String scoped = scopedMatch(selective.match(), acronyms);
+    Boolean few = matchesFew.get(scoped);
+    if (few == null) {
+      few = matchesAtMost(scoped, residualRowLimit);
+      matchesFew.put(scoped, few);
+    }
+    return few ? selective : settled;
+  }
+
+  private boolean matchesAtMost(String scopedMatch, int limit) throws SQLException {
+    try (PreparedStatement ps = connection().prepareStatement(
+        "SELECT COUNT(*) FROM (SELECT rowid FROM name_fts WHERE name_fts MATCH ? LIMIT ?)")) {
+      ps.setString(1, scopedMatch);
+      ps.setInt(2, limit + 1);
+      try (ResultSet rs = ps.executeQuery()) {
+        return rs.next() && rs.getInt(1) <= limit;
+      }
+    }
   }
 
   /**

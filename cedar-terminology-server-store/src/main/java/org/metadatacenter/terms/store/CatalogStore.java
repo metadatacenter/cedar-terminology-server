@@ -124,7 +124,7 @@ public class CatalogStore implements AutoCloseable {
   private final ReadConnections reads;
 
   /** Connections a serving catalog will open before threads start sharing one again. */
-  private static final int READ_CONNECTION_LIMIT = 8;
+  private static final int READ_CONNECTION_LIMIT = 64;
   /**
    * Directory the catalog file lives in, used to resolve snapshot {@code file_path}s stored relative
    * to it. Null for an in-memory catalog, in which case relative paths are left as-is (resolved
@@ -162,7 +162,7 @@ public class CatalogStore implements AutoCloseable {
     Path parent = Paths.get(path).toAbsolutePath().getParent();
     Connection first = DriverManager.getConnection("jdbc:sqlite:" + path);
     return new CatalogStore(first, parent,
-        ReadConnections.of(path, first, c -> { }, READ_CONNECTION_LIMIT));
+        ReadConnections.single(path, first, c -> { }, READ_CONNECTION_LIMIT));
   }
 
   /** How long a write waits for a lock held by another connection (e.g. a live server reading the

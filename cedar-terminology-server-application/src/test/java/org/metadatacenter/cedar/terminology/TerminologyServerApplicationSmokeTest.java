@@ -141,10 +141,8 @@ public class TerminologyServerApplicationSmokeTest {
   /**
    * The relation and integrated-retrieve routes answer, and answer with the authentication gate.
    *
-   * <p>Every other test of these two resources exercises live BioPortal and is excluded from the
-   * default build, so neither received an HTTP request from any test that ordinarily runs: a
-   * resource dropped from registration, or a path that stopped matching, would have shown up
-   * nowhere. Both checks stop at the credential, so neither needs the network.
+   * <p>A resource dropped from registration, or a path that stopped matching, is caught here. Both
+   * checks stop at the credential, so neither needs BioPortal.
    */
   @Test
   public void theRelationRouteIsReachableAndGuarded() throws Exception {
@@ -245,11 +243,9 @@ public class TerminologyServerApplicationSmokeTest {
   /**
    * Every terminology route that declares an authentication gate stops an anonymous caller at it.
    *
-   * <p>Most behavioural tests of these resources exercise live BioPortal and are excluded from the
-   * default build, which left the greater part of the route surface receiving no HTTP request from
-   * any test that ordinarily runs. The probe reaches only as far as the logged-in assertion, so it
-   * needs no network access, and it catches what a refactor breaks: a resource dropped from
-   * registration, a path that stopped matching, a verb that changed, or a gate that was lost.
+   * <p>The probe reaches only as far as the logged-in assertion, so it needs no BioPortal, and it
+   * catches what a refactor breaks: a resource dropped from registration, a path that stopped
+   * matching, a verb that changed, or a gate that was lost.
    * {@code findValueSetByValue} went without its gate long enough to be found by an audit rather
    * than by a test, which is the case this probe exists to make impossible.
    *

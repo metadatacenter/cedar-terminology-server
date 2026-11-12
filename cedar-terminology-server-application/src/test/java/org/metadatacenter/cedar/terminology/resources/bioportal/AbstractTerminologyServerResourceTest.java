@@ -3,37 +3,34 @@ package org.metadatacenter.cedar.terminology.resources.bioportal;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.dropwizard.testing.DropwizardTestSupport;
 import io.dropwizard.testing.ResourceHelpers;
+import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.ClientBuilder;
-import jakarta.ws.rs.client.Entity;
+import jakarta.ws.rs.client.Invocation;
 import jakarta.ws.rs.core.GenericType;
 import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.Response.Status;
 import org.glassfish.jersey.client.ClientProperties;
 import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Tag;
-import org.junit.jupiter.api.Test;
 import org.metadatacenter.cedar.terminology.TerminologyServerApplication;
 import org.metadatacenter.cedar.terminology.TerminologyServerConfiguration;
+import org.metadatacenter.cedar.terminology.resources.FakeBioPortal;
 import org.metadatacenter.config.CedarConfig;
+import org.metadatacenter.config.environment.CedarEnvironmentSource;
 import org.metadatacenter.config.environment.CedarEnvironmentVariableProvider;
-import org.metadatacenter.http.CedarResponseStatus;
 import org.metadatacenter.model.SystemComponent;
 import org.metadatacenter.terms.customObjects.PagedResults;
-import org.metadatacenter.terms.domainObjects.*;
-import org.metadatacenter.terms.util.Util;
+import org.metadatacenter.terms.domainObjects.TreeNode;
 import org.metadatacenter.util.test.TestAuthUtil;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import java.io.UnsupportedEncodingException;
-import java.util.ArrayList;
-import java.util.List;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Map;
 
 import static org.metadatacenter.cedar.terminology.util.Constants.BP_PROPERTY_SEARCH;
@@ -42,55 +39,13 @@ import static org.metadatacenter.cedar.terminology.utils.Constants.*;
 import static org.metadatacenter.constant.HttpConstants.HTTP_HEADER_AUTHORIZATION;
 
 /**
- * Integration tests. They are done by starting a test server that makes it possible to test the real HTTP stack.
+ * The harness the BioPortal resource tests share: a terminology server on the real HTTP stack, reading a
+ * {@link FakeBioPortal} started for each test class, and a client signed in as the first test user.
  */
 @Tag("integration")
 public abstract class AbstractTerminologyServerResourceTest {
 
-  static {
-    redirectEnvironment();
-  }
-
-  private static void redirectEnvironment() {
-    // Must run before the test support boots the server, which reads the port env vars.
-    // OS-assigned server ports, so the test instance never collides with a running dev server.
-    java.util.Map<String, String> environment =
-        new java.util.HashMap<>(org.metadatacenter.config.environment.CedarEnvironmentSource.getAll());
-    environment.put("CEDAR_TERMINOLOGY_HTTP_PORT", "0");
-    environment.put("CEDAR_TERMINOLOGY_ADMIN_PORT", "0");
-    environment.put("CEDAR_TERMINOLOGY_STOP_PORT", "0");
-    org.metadatacenter.config.environment.CedarEnvironmentSource.setOverride(environment);
-  }
-
-  protected static CedarConfig cedarConfig;
-  protected static ClientBuilder clientBuilder;
-  protected static String authHeader;
-  protected static ObjectMapper mapper;
   protected static final String BASE_URL = "http://localhost";
-  protected static String baseUrlBp;
-  protected static String baseUrlBpSearch;
-  protected static String baseUrlBpIntegratedSearch;
-  protected static String baseUrlBpIntegratedRetrieve;
-  protected static String baseUrlBpPropertySearch;
-  protected static String baseUrlBpOntologies;
-  protected static String baseUrlBpVSCollections;
-
-  protected static List<OntologyClass> createdClasses;
-  protected static List<Relation> createdRelations;
-  protected static List<ValueSet> createdValueSets;
-  protected static List<Value> createdValues;
-
-  protected static OntologyClass class1;
-  protected static Relation relation1;
-  protected static ValueSet vs1;
-  protected static ValueSet vs2;
-  protected static Value value1;
-  protected static Value value2;
-
-  protected final static String classCreator = "https://data.bioontology.org/users/cedar-test";
-  protected final static String classOntology = "https://data.bioontology.org/ontologies/CEDARPC";
-
-  protected static final Logger log = LoggerFactory.getLogger(AbstractTerminologyServerResourceTest.class);
 
   /**
    * Status codes not part of the JAX-RS Status enum.
@@ -101,21 +56,37 @@ public abstract class AbstractTerminologyServerResourceTest {
       new DropwizardTestSupport<>(TerminologyServerApplication.class,
           ResourceHelpers.resourceFilePath("test-config.yml"));
 
-  /**
-   * One-time initialization code.
-   * (Called once before any test class).
-   */
+  protected static FakeBioPortal bioPortal;
+  protected static Client client;
+  protected static String authHeader;
+  protected static ObjectMapper mapper;
+  protected static String baseUrlBp;
+  protected static String baseUrlBpSearch;
+  protected static String baseUrlBpIntegratedSearch;
+  protected static String baseUrlBpIntegratedRetrieve;
+  protected static String baseUrlBpPropertySearch;
+  protected static String baseUrlBpOntologies;
+  protected static String baseUrlBpVSCollections;
+
   @BeforeAll
   public static void oneTimeSetUpAbstract() throws Exception {
-    // Concrete subclasses share this abstract harness, so restore its redirect for each class.
-    redirectEnvironment();
+    bioPortal = new FakeBioPortal();
+    // The server reads its environment as it boots, so the override comes first. Its ports are assigned by the
+    // system, so it never collides with a running development server.
+    Map<String, String> environment = new HashMap<>(CedarEnvironmentSource.getAll());
+    environment.put("CEDAR_TERMINOLOGY_HTTP_PORT", "0");
+    environment.put("CEDAR_TERMINOLOGY_ADMIN_PORT", "0");
+    environment.put("CEDAR_TERMINOLOGY_STOP_PORT", "0");
+    environment.put("CEDAR_BIOPORTAL_REST_BASE", bioPortal.base());
+    CedarEnvironmentSource.setOverride(environment);
     RULE.before();
 
-    SystemComponent systemComponent = SystemComponent.SERVER_TERMINOLOGY;
-    Map<String, String> environment = CedarEnvironmentVariableProvider.getFor(systemComponent);
-    CedarConfig cedarConfig = CedarConfig.getInstance(environment);
-
-    AbstractTerminologyServerResourceTest.cedarConfig = cedarConfig;
+    CedarConfig cedarConfig =
+        CedarConfig.getInstance(CedarEnvironmentVariableProvider.getFor(SystemComponent.SERVER_TERMINOLOGY));
+    // The application wires a Neo4j-backed user service. An in-memory one authenticates the API key without
+    // Neo4j or Keycloak.
+    TestAuthUtil.installInMemoryUserService(cedarConfig);
+    authHeader = TestAuthUtil.getTestUser1AuthHeader(cedarConfig);
 
     baseUrlBp = BASE_URL + ":" + RULE.getLocalPort() + "/" + BP_ENDPOINT;
     baseUrlBpSearch = baseUrlBp + "/" + BP_SEARCH;
@@ -125,400 +96,64 @@ public abstract class AbstractTerminologyServerResourceTest {
     baseUrlBpOntologies = baseUrlBp + "/" + BP_ONTOLOGIES;
     baseUrlBpVSCollections = baseUrlBp + "/" + BP_VALUE_SET_COLLECTIONS;
 
-    clientBuilder = ClientBuilder.newBuilder();
-    clientBuilder.property(ClientProperties.CONNECT_TIMEOUT, cedarConfig.getTerminologyConfig().getBioPortal()
-        .getConnectTimeout());
-    clientBuilder.property(ClientProperties.READ_TIMEOUT,
-        cedarConfig.getTerminologyConfig().getBioPortal().getSocketTimeout
-            () * 20); // enough time to build the ontologies and value sets cache if it has not been created yet
-
-    // Replace the Neo4j-backed user service wired at application startup with an in-memory one,
-    // so API-key authentication needs no live Neo4j (and no Keycloak)
-    TestAuthUtil.installInMemoryUserService(cedarConfig);
-    authHeader = TestAuthUtil.getTestUser1AuthHeader(cedarConfig);
-
+    // A request the server never answers fails its test rather than holding up the build.
+    client = ClientBuilder.newBuilder()
+        .property(ClientProperties.CONNECT_TIMEOUT, 10_000)
+        .property(ClientProperties.READ_TIMEOUT, 60_000)
+        .build();
     mapper = new ObjectMapper();
-
-    log.info("CEDAR Config - Test User:");
-    log.info("Id: " + cedarConfig.getTestUsers().getTestUser1().getId());
-    log.info("authHeader: " + authHeader);
-  }
-
-  /**
-   * Sets up the test fixture.
-   * (Called before every test case method.)
-   */
-  @BeforeEach
-  public void setUpAbstract() {
-
-    // OPTIONAL. This block cleans up all the provisional classes created for testing. Uncomment and run it when needed
-//    try {
-//      deleteProvisionalClassesCreatedForTesting();
-//      System.exit(1);
-//    } catch (Exception e) {
-//      e.printStackTrace();
-//    }
-
-    createdClasses = new ArrayList<>();
-    createdRelations = new ArrayList<>();
-    createdValueSets = new ArrayList<>();
-    createdValues = new ArrayList<>();
-
-    // Initialize test class
-    String classLabel = "class1_test";
-    List classDefinitions = new ArrayList<>();
-    classDefinitions.add("classDefinition1");
-    classDefinitions.add("classDefinition2");
-    List classSynonyms = new ArrayList<>();
-    classSynonyms.add("classSynonym1");
-    classSynonyms.add("classSynonym2");
-    List classRelations = new ArrayList<>();
-    class1 = new OntologyClass(null, null, classLabel, classCreator, classOntology, classDefinitions,
-        classSynonyms, null, classRelations, true, null, false);
-
-    // Initialize test relation - the source class id will be set later
-    String relationType = "http://www.w3.org/2004/02/skos/core#closeMatch";
-    String relationCreator = "https://data.bioontology.org/users/cedar-test";
-    String targetClassId = "http://purl.bioontology.org/ontology/CPT/1002796";
-    String targetClassOntology = "https://data.bioontology.org/ontologies/CPT";
-    relation1 = new Relation(null, null, null, relationType, targetClassId, targetClassOntology, null, relationCreator);
-
-    // Initialize test value set 1
-    String vs1Label = "vs1_test";
-    String vs1Creator = "https://data.bioontology.org/users/cedar-test";
-    String vs1Collection = "https://data.bioontology.org/ontologies/CEDARVS";
-    List vs1Definitions = new ArrayList<>();
-    vs1Definitions.add("vs1Definition1");
-    vs1Definitions.add("vs1Definition2");
-    List vs1Synonyms = new ArrayList<>();
-    vs1Synonyms.add("vs1Synonym1");
-    vs1Synonyms.add("vs1Synonym2");
-    List vs1Relations = new ArrayList<>();
-    vs1 = new ValueSet(null, null, vs1Label, vs1Creator, vs1Collection, vs1Definitions, vs1Synonyms, vs1Relations,
-        true, null);
-
-    // Initialize test value set 2
-    String vs2Label = "vs2_test";
-    String vs2Creator = "https://data.bioontology.org/users/cedar-test";
-    String vs2Collection = "https://data.bioontology.org/ontologies/CEDARVS";
-    List vs2Definitions = new ArrayList<>();
-    vs2Definitions.add("vs2Definition1");
-    vs2Definitions.add("vs2Definition2");
-    List vs2Synonyms = new ArrayList<>();
-    vs2Synonyms.add("vs2Synonym1");
-    vs2Synonyms.add("vs2Synonym2");
-    List vs2Relations = new ArrayList<>();
-    vs2 = new ValueSet(null, null, vs2Label, vs2Creator, vs2Collection, vs2Definitions, vs2Synonyms, vs2Relations,
-        true, null);
-
-    // Initialize test value 1 - the vsId will be set later
-    String value1Label = "value1_test";
-    String value1Creator = "https://data.bioontology.org/users/cedar-test";
-    String value1VsCollection = "https://data.bioontology.org/ontologies/CEDARVS";
-    List value1Definitions = new ArrayList<>();
-    value1Definitions.add("value1Definition1");
-    value1Definitions.add("value1Definition2");
-    List value1Synonyms = new ArrayList<>();
-    value1Synonyms.add("value1Synonym1");
-    value1Synonyms.add("value1Synonym2");
-    List valueRelations = new ArrayList<>();
-    value1 = new Value(null, null, value1Label, null, null, value1Creator, null, value1VsCollection, value1Definitions,
-        value1Synonyms, valueRelations, true, null);
-
-    // Initialize test value 2 - the vsId will be set later
-    String value2Label = "value2_test";
-    String value2Creator = "https://data.bioontology.org/users/cedar-test";
-    String value2VsCollection = "https://data.bioontology.org/ontologies/CEDARVS";
-    List value2Definitions = new ArrayList<>();
-    value2Definitions.add("value2Definition1");
-    value2Definitions.add("value2Definition2");
-    List value2Synonyms = new ArrayList<>();
-    value2Synonyms.add("value2Synonym1");
-    value2Synonyms.add("value2Synonym2");
-    List value2Relations = new ArrayList<>();
-    value2 = new Value(null, null, value2Label, null, null, value2Creator, null, value2VsCollection, value2Definitions,
-        value2Synonyms, value2Relations, true, null);
-  }
-
-  /**
-   * Tears down the test fixture.
-   * (Called after every test case method.)
-   */
-  @AfterEach
-  public void tearDownAbstract() {
-    try {
-      // Relations should be removed before classes. Otherwise, when removing a class, BioPortal will
-      // automatically remove the associated relation(s)
-      deleteCreatedRelations();
-      deleteCreatedClasses();
-      deleteCreatedValueSets();
-      deleteCreatedValues();
-    } catch (Exception e) {
-      e.printStackTrace();
-    }
   }
 
   @AfterAll
-  public static void oneTearDownAbstract() {
+  public static void oneTimeTearDownAbstract() {
+    client.close();
     RULE.after();
+    bioPortal.close();
   }
 
-  /**
-   * Test Utils
-   */
+  /** A GET or POST to the server, signed in as the first test user. */
+  protected static Invocation.Builder request(String url) {
+    return client.target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader);
+  }
 
-  /* Classes */
-  protected static OntologyClass createClass(OntologyClass c) {
-    String url = baseUrlBpOntologies + "/" + Util.getShortIdentifier(c.getOntology()) + "/" + BP_CLASSES;
-    // Service invocation
-    Response response = null;
-    try {
-      response =
-          clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(c));
-      // Check HTTP response
-      Assertions.assertEquals(CedarResponseStatus.CREATED.getStatusCode(), response.getStatus());
-      OntologyClass created = response.readEntity(OntologyClass.class);
-      createdClasses.add(created);
-      return created;
-    } finally {
-      if (response != null) {
-        response.close();
+  /** What a route answers, asserted to be 200 with a JSON body, read as the given type. */
+  protected static <T> T read(String url, GenericType<T> type) {
+    try (Response response = request(url).get()) {
+      if (response.getStatus() != Status.OK.getStatusCode()) {
+        Assertions.fail(url + " answered " + response.getStatus() + ": " + response.readEntity(String.class));
       }
+      Assertions.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE), url);
+      return response.readEntity(type);
     }
   }
 
-  private static void deleteCreatedClasses() throws Exception {
-    for (OntologyClass c : createdClasses) {
-      // Check if the class still exists
-      String findUrl = baseUrlBpOntologies + "/" + Util.getShortIdentifier(c.getOntology()) + "/" +
-          BP_CLASSES + "/" + c.getId();
-      String deleteUrl = baseUrlBp + "/" + BP_CLASSES + "/" + c.getId();
+  protected static <T> T read(String url, Class<T> type) {
+    return read(url, new GenericType<>(type));
+  }
 
-      Response findResponse = null;
-      Response deleteResponse = null;
-      try {
-        findResponse =
-            clientBuilder.build().target(findUrl).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
-        if (findResponse.getStatus() == CedarResponseStatus.OK.getStatusCode()) {
-          deleteResponse = clientBuilder.build().target(deleteUrl).request().header(HTTP_HEADER_AUTHORIZATION,
-              authHeader).delete();
-          if (deleteResponse.getStatus() != CedarResponseStatus.NO_CONTENT.getStatusCode()) {
-            throw new Exception("Couldn't delete class: Id = " + c.getLdId());
-          }
-        } else {
-          throw new Exception("Couldn't find class: Id = " + c.getLdId());
-        }
-      } finally {
-        if (findResponse != null) {
-          findResponse.close();
-        }
-        if (deleteResponse != null) {
-          deleteResponse.close();
-        }
-      }
+  /** The status a route answers. */
+  protected static int statusOf(String url) {
+    try (Response response = request(url).get()) {
+      return response.getStatus();
     }
   }
 
-  /* Relations */
-
-  protected static Relation createRelation(OntologyClass c, Relation r) {
-    String url = baseUrlBp + "/" + BP_RELATIONS;
-    OntologyClass createdClass = createClass(c);
-    // Create provisional relation
-    r.setSourceClassId(createdClass.getId());
-    Response response = null;
-    try {
-      response =
-          clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(r));
-      // Check HTTP response
-      Assertions.assertEquals(CedarResponseStatus.CREATED.getStatusCode(), response.getStatus());
-      Relation created = response.readEntity(Relation.class);
-      createdRelations.add(created);
-      return created;
-    } finally {
-      if (response != null) {
-        response.close();
-      }
-    }
+  /** Asserts a page's paging fields, in the order its JSON gives them. */
+  protected static void assertPaging(PagedResults<?> results, Integer page, Integer pageCount, Integer pageSize,
+                                     Integer totalCount, Integer prevPage, Integer nextPage) {
+    Assertions.assertEquals(Arrays.asList(page, pageCount, pageSize, totalCount, prevPage, nextPage),
+        Arrays.asList(results.getPage(), results.getPageCount(), results.getPageSize(), results.getTotalCount(),
+            results.getPrevPage(), results.getNextPage()),
+        "page, pageCount, pageSize, totalCount, prevPage, nextPage");
   }
 
-  private static void deleteCreatedRelations() throws Exception {
-    for (Relation r : createdRelations) {
-      // Check if the relation still exists
-      String url = baseUrlBp + "/" + BP_RELATIONS + "/" + r.getId();
-      Response findResponse = clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION,
-          authHeader).get();
-      if (findResponse.getStatus() == CedarResponseStatus.OK.getStatusCode()) {
-        Response deleteResponse = clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION,
-            authHeader).delete();
-        if (deleteResponse.getStatus() != CedarResponseStatus.NO_CONTENT.getStatusCode()) {
-          throw new Exception("Couldn't delete relation: Id = " + r.getLdId() +
-              ". This relation could have been automatically removed by BioPortal when deleting the class that " +
-              "contained it");
-        }
-      } else {
-        throw new Exception("Couldn't find relation: Id = " + r.getLdId() +
-            ". This relation could have been automatically removed by BioPortal when deleting the class that " +
-            "contained it");
-      }
-    }
+  /** The child of a tree node with the given identifier, failing when the node was not expanded to it. */
+  protected static TreeNode child(TreeNode node, String iri) {
+    return node.getChildren().stream().filter(c -> c.getLdId().equals(iri)).findFirst()
+        .orElseThrow(() -> new AssertionError(node.getLdId() + " was not expanded to " + iri));
   }
 
-  /* Value Sets */
-
-  protected static ValueSet createValueSet(ValueSet vs) {
-    String url = baseUrlBpVSCollections + "/" + Util.getShortIdentifier(vs.getVsCollection()) + "/" + BP_VALUE_SETS;
-    Response response = null;
-    try {
-      response =
-          clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(vs));
-      // Check HTTP response
-      Assertions.assertEquals(CedarResponseStatus.CREATED.getStatusCode(), response.getStatus());
-      ValueSet created = response.readEntity(ValueSet.class);
-      createdValueSets.add(created);
-      return created;
-    } finally {
-      if (response != null) {
-        response.close();
-      }
-    }
+  protected static String encode(String iri) {
+    return URLEncoder.encode(iri, StandardCharsets.UTF_8);
   }
-
-  private static void deleteCreatedValueSets() throws Exception {
-    for (ValueSet vs : createdValueSets) {
-      // Check if the value set still exists
-      String findUrl = baseUrlBpVSCollections + "/" + Util.getShortIdentifier(vs.getVsCollection()) + "/" +
-          BP_VALUE_SETS + "/" + vs.getId();
-      String deleteUrl = baseUrlBp + "/" + BP_VALUE_SETS + "/" + vs.getId();
-      Response findResponse = clientBuilder.build().target(findUrl).request().header(HTTP_HEADER_AUTHORIZATION,
-          authHeader).get();
-      if (findResponse.getStatus() == CedarResponseStatus.OK.getStatusCode()) {
-        Response deleteResponse =
-            clientBuilder.build().target(deleteUrl).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).delete();
-        if (deleteResponse.getStatus() != CedarResponseStatus.NO_CONTENT.getStatusCode()) {
-          throw new Exception("Couldn't delete value set: Id = " + vs.getLdId());
-        }
-      } else {
-        throw new Exception("Couldn't find value set: Id = " + vs.getLdId());
-      }
-    }
-  }
-
-  /* Values */
-
-  // Creates a value v in a value set vs
-  protected static Value createValue(String vsLdId, Value v) {
-    v.setVsId(vsLdId);
-    String url = null;
-    try {
-      url = baseUrlBpVSCollections + "/" + Util.getShortIdentifier(v.getVsCollection()) + "/"
-          + BP_VALUE_SETS + "/" + Util.encodeIfNeeded(v.getVsId()) + "/" + BP_VALUES;
-    } catch (UnsupportedEncodingException e) {
-      e.printStackTrace();
-    }
-    // Service invocation
-    Response response = null;
-    try {
-      response =
-          clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).post(Entity.json(v));
-      // Check HTTP response
-      Assertions.assertEquals(CedarResponseStatus.CREATED.getStatusCode(), response.getStatus());
-      Value created = response.readEntity(Value.class);
-      createdValues.add(created);
-      return created;
-    } finally {
-      if (response != null) {
-        response.close();
-      }
-    }
-  }
-
-  private static void deleteCreatedValues() throws Exception {
-    for (Value v : createdValues) {
-      // Check if the value still exists
-      String findUrl = baseUrlBpVSCollections + "/" + Util.getShortIdentifier(v.getVsCollection()) + "/" + BP_VALUES
-          + "/" + v.getId();
-      String deleteUrl = baseUrlBp + "/" + BP_VALUES + "/" + v.getId();
-      Response findResponse = clientBuilder.build().target(findUrl).request().header(HTTP_HEADER_AUTHORIZATION,
-          authHeader).get();
-      if (findResponse.getStatus() == CedarResponseStatus.OK.getStatusCode()) {
-        Response deleteResponse =
-            clientBuilder.build().target(deleteUrl).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).delete();
-        if (deleteResponse.getStatus() != CedarResponseStatus.NO_CONTENT.getStatusCode()) {
-          throw new Exception("Couldn't delete value: Id = " + v.getId());
-        }
-      } else {
-        throw new Exception("Couldn't find value: Id = " + v.getId());
-      }
-    }
-  }
-
-  /* Properties */
-  protected static PagedResults<SearchResult> searchProperties(String q) {
-    // Service invocation
-    Response response = null;
-    try {
-      response =
-          clientBuilder.build().target(baseUrlBpPropertySearch).queryParam("q", q).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
-      // Check HTTP response
-      Assertions.assertEquals(CedarResponseStatus.OK.getStatusCode(), response.getStatus());
-      // Check Content-Type
-      Assertions.assertEquals(MediaType.APPLICATION_JSON, response.getHeaderString(HttpHeaders.CONTENT_TYPE));
-      // Check the number of results
-      PagedResults<SearchResult> properties = response.readEntity(new GenericType<>() {
-      });
-      return properties;
-    } finally {
-      if (response != null) {
-        response.close();
-      }
-    }
-  }
-
-  /* Delete all provisional classes that were created for testing. Sometimes the tests fail and some classes are not
-  deleted. This method can be used to perform a full clean-up of the provisional classes created for testing purposes */
-  protected static void deleteProvisionalClassesCreatedForTesting() throws Exception {
-    // Retrieve all provisional classes
-    String url = baseUrlBp + "/" + BP_PROVISIONAL_CLASSES + "?pageSize=5000";
-    // Service invocation
-    Response response = clientBuilder.build().target(url).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
-    PagedResults<OntologyClass> results = response.readEntity(new GenericType<>() {
-    });
-    int deletedCount = 0;
-    for (OntologyClass pc : results.getCollection()) {
-      if (pc.getCreator() != null && pc.getCreator().equals(classCreator)) {
-        if (pc.getPrefLabel().toLowerCase().contains("test")) {
-          // Delete provisional class
-          String deleteUrl = baseUrlBp + "/" + BP_CLASSES + "/" + pc.getId();
-          Response deleteResponse =
-              clientBuilder.build().target(deleteUrl).request().header(HTTP_HEADER_AUTHORIZATION, authHeader).delete();
-          if (deleteResponse.getStatus() != CedarResponseStatus.NO_CONTENT.getStatusCode()) {
-            throw new Exception("Couldn't delete class: Id = " + pc.getLdId());
-          }
-          deletedCount++;
-          System.out.println("Class deleted successfully: " + pc.getPrefLabel());
-        }
-      }
-    }
-    System.out.println("No. classes deleted: " + deletedCount);
-  }
-
-  protected static void shortWaitToEnsureBioPortalIndexUpdated() {
-    // Wait to be sure that the BioPortal search index has been updated
-    try {
-      Thread.sleep(5000);
-    } catch (InterruptedException e) {
-      e.printStackTrace();
-    }
-  }
-
-  protected static void longWaitToEnsureBioPortalIndexUpdated() {
-    // Wait to be sure that the BioPortal search index has been updated
-    try {
-      Thread.sleep(60000);
-    } catch (InterruptedException e) {
-      e.printStackTrace();
-    }
-  }
-
 }

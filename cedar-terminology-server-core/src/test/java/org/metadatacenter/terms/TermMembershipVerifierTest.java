@@ -6,6 +6,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.metadatacenter.cedar.terminology.validation.integratedsearch.ValueConstraints;
 import org.metadatacenter.terms.store.SnapshotStore;
+import org.metadatacenter.terms.util.HTTPException;
 
 import java.io.IOException;
 import java.util.List;
@@ -133,8 +134,8 @@ class TermMembershipVerifierTest {
   @Test void suppressedOrWrappedTimeoutsAreNotProofOfAbsence() throws Exception {
     for (Throwable problem : List.of(new java.net.SocketTimeoutException("unavailable"),
         new java.util.concurrent.CompletionException(new java.net.SocketTimeoutException("unavailable")))) {
-      var notFound = new javax.xml.ws.http.HTTPException(404);
-      var innerNotFound = new javax.xml.ws.http.HTTPException(404);
+      var notFound = new HTTPException(404);
+      var innerNotFound = new HTTPException(404);
       innerNotFound.addSuppressed(problem);
       notFound.addSuppressed(innerNotFound);
       ITerminologyService remote = (ITerminologyService) java.lang.reflect.Proxy.newProxyInstance(
