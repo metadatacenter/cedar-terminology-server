@@ -31,4 +31,12 @@ public sealed interface HierarchyLookup {
    * the store serves no release of the source.
    */
   record TermNotHeld(String acronym, String termIri) implements HierarchyLookup {}
+
+  /**
+   * A value set was asked for in a source the catalog does not record as a value-set collection.
+   *
+   * Says nothing about a release: no release of such a source holds a value set, so naming another
+   * one would not help.
+   */
+  record NotValueSetCollection(String acronym, String termIri) implements HierarchyLookup {}
 }

@@ -3154,7 +3154,10 @@ paths:
         \ because a hierarchy belongs to a release and a term's parent can move between\
         \ two of them. With versionId, the release is that one. Without it, the release\
         \ is the one an unpinned search of the source reads. Children are alphabetical\
-        \ and capped; offset asks for the next page of them."
+        \ and capped; offset asks for the next page of them. With type=valueSet, the\
+        \ term is a value set and the children are its values. The source must be\
+        \ a value-set collection, and a release holds the value set only where values\
+        \ hang below it."
       operationId: versionAwareSearchHierarchy
       parameters:
       - in: query
@@ -3182,6 +3185,12 @@ paths:
         schema:
           type: integer
           format: int32
+      - description: "The constraint type the term is asked about: class, branch or\
+          \ valueSet. Defaults to a class or branch, which read the same tree."
+        in: query
+        name: type
+        schema:
+          type: string
       responses:
         "200":
           content:
@@ -3194,14 +3203,16 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/CedarError"
-          description: A request naming no term
+          description: "A request naming no term, or a type other than class, branch\
+            \ or valueSet"
         "404":
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/CedarError"
-          description: "No such release, a release without that term, or a term the\
-            \ current release does not hold"
+          description: "No such release, a release without that term, a term the current\
+            \ release does not hold, or a value set asked of a source that is not\
+            \ a value-set collection"
         "503":
           content:
             application/json:

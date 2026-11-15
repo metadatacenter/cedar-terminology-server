@@ -685,6 +685,46 @@ public class LocalStoreResourceTest {
         "A term the release does not contain should be named: " + absentTerm);
   }
 
+  /** A term of the LOCALVS collection at the named release, asked about as a value set. */
+  private static String valueSetAt(String term, String versionId) {
+    return "sourceAcronym=" + VS + "&termIri=" + URLEncoder.encode(BASE + term, StandardCharsets.UTF_8)
+        + "&versionId=" + versionId + "&type=valueSet";
+  }
+
+  @Test
+  public void aValueSetIsReadWithItsValuesAtTheReleaseAsked() {
+    JsonNode json = getHierarchy(valueSetAt("disease", "vs2"), Status.OK);
+    Assertions.assertEquals(BASE + "disease", json.get("termIri").asText());
+    Assertions.assertEquals(Set.of(BASE + "cancer", BASE + "infection"), childIris(json));
+    Assertions.assertEquals("vs2", json.get("source").get("version").get("id").asText());
+  }
+
+  @Test
+  public void aReleaseHoldingTheIriAsAValueHoldsNoValueSetOfIt() {
+    // Melanoma has nothing beneath it, so it is a value. As a tree it is found; as a value set the
+    // release says it does not contain it, in the sentence it uses for any term it lacks.
+    getHierarchy(termAt("melanoma", "v2"), Status.OK);
+    JsonNode value = getHierarchy(valueSetAt("melanoma", "vs2"), Status.NOT_FOUND);
+    Assertions.assertTrue(value.get("message").asText().contains("Release vs2 of " + VS + " does not contain"),
+        value.toString());
+    JsonNode absent = getHierarchy(valueSetAt("infection", "vs1"), Status.NOT_FOUND);
+    Assertions.assertTrue(absent.get("message").asText().contains("does not contain " + BASE + "infection"),
+        absent.toString());
+  }
+
+  @Test
+  public void aValueSetAskedOfAnOntologyIsRefused() {
+    JsonNode json = getHierarchy(termAt("cancer", "v2") + "&type=valueSet", Status.NOT_FOUND);
+    Assertions.assertTrue(json.get("message").asText().contains("not a value-set collection"), json.toString());
+  }
+
+  @Test
+  public void aHierarchyOfATypeItDoesNotKnowIsRefused() {
+    getHierarchy(termAt("cancer", "v2") + "&type=class", Status.OK);
+    getHierarchy(termAt("cancer", "v2") + "&type=branch", Status.OK);
+    getHierarchy(termAt("cancer", "v2") + "&type=valueset", Status.BAD_REQUEST);
+  }
+
   @Test
   public void versionAwareSearchRefusesWhatItWillNotAnswer() {
     postSearch("{\"query\":\"melanoma\",\"types\":[\"nonsense\"],"
