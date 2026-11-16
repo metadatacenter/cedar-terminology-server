@@ -297,6 +297,27 @@ public class IngestJobTest {
     }
   }
 
+  /**
+   * A re-ingest of content the catalog already holds, whose snapshot file is gone, is refused: the catalog keeps the
+   * first observation's path, nothing is written in its place, and the attempt is recorded as failed.
+   */
+  @Test
+  public void repeatedContentWhoseSnapshotFileIsGoneIsRefused() throws Exception {
+    var first = new IngestJob(fakeSource()).ingestLatest(catalog, "EX", tempDir.resolve("snapshots"));
+    var catalogued = catalog.resolveVersion("EX", first.versionId()).orElseThrow();
+    Files.delete(first.snapshotFile());
+
+    IOException refused = assertThrows(IOException.class, () -> new IngestJob(fakeSource())
+        .ingestSubmission(catalog, "EX", submission(), tempDir.resolve("snapshots"), true));
+
+    assertTrue(refused.getMessage().contains("restore it before ingesting EX"), refused.getMessage());
+    assertFalse(Files.exists(first.snapshotFile()), "a later download must not replace the original observation");
+    assertEquals(catalogued, catalog.resolveVersion("EX", first.versionId()).orElseThrow());
+    assertEquals(1, catalog.listSnapshots("EX").size());
+    var history = catalog.ingestHistory("EX");
+    assertEquals(List.of("succeeded", "failed"), history.stream().map(CatalogStore.IngestEvent::status).toList());
+  }
+
   @Test
   public void refusesRestrictedOntologyWithoutDownloading() throws Exception {
     SubmissionSource restricted = new SubmissionSource() {

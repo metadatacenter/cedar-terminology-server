@@ -108,6 +108,31 @@ class PropertyBackfillJobTest {
     }
   }
 
+  /**
+   * A catalogued enriched snapshot whose file is gone is refused rather than replaced: the catalog keeps the first
+   * observation's file, so a missing one must be restored.
+   */
+  @Test
+  void aMissingEnrichedSnapshotIsRefusedRatherThanReplaced() throws Exception {
+    Path raw = propertySource();
+    try (CatalogStore c = CatalogStore.openFile(dir.resolve("catalog.sqlite").toString())) {
+      c.initSchema();
+      c.upsertOntology(new CatalogStore.OntologyInfo("EX", "Example", null, "OWL"));
+      var old = snapshot(c, "old.sqlite", "urn:old", "v1", PropertyBackfillJob.sha256(raw));
+      String combined = PropertyBackfillJob.enrich(c, old, raw);
+      var enriched = c.resolveVersion("EX", combined).orElseThrow();
+      Files.delete(Path.of(enriched.filePath()));
+      int events = c.ingestHistory("EX").size();
+
+      var refused = assertThrows(java.io.IOException.class, () -> PropertyBackfillJob.enrich(c, old, raw));
+
+      assertTrue(refused.getMessage().contains("restore it first"), refused.getMessage());
+      assertFalse(Files.exists(Path.of(enriched.filePath())), "nothing was written in the missing file's place");
+      assertEquals(enriched, c.resolveVersion("EX", combined).orElseThrow());
+      assertEquals(events, c.ingestHistory("EX").size(), "a refused enrichment records no success");
+    }
+  }
+
   /** A source declaring one object property, the input every enrichment here reads. */
   private Path propertySource() throws Exception {
     Path raw = dir.resolve("raw.owl");
