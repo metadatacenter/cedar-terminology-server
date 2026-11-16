@@ -715,6 +715,27 @@ public class LocalStoreResourceTest {
         absent.toString());
   }
 
+  /** A term of the LOCALVS collection, asked about as a value set with no release named. */
+  private static String currentValueSet(String term) {
+    return "sourceAcronym=" + VS + "&termIri=" + URLEncoder.encode(BASE + term, StandardCharsets.UTF_8)
+        + "&type=valueSet";
+  }
+
+  @Test
+  public void aValueSetIsReadAtTheCurrentReleaseWhenNoneIsNamed() {
+    // LOCALVS's latest is vs1, where disease has one value; vs2 adds infection beside cancer.
+    JsonNode json = getHierarchy(currentValueSet("disease"), Status.OK);
+    Assertions.assertEquals(Set.of(BASE + "cancer"), childIris(json));
+    Assertions.assertEquals("vs1", json.get("source").get("version").get("id").asText());
+  }
+
+  @Test
+  public void theCurrentReleaseHoldsNoValueSetOfAValue() {
+    JsonNode value = getHierarchy(currentValueSet("melanoma"), Status.NOT_FOUND);
+    Assertions.assertEquals("The store holds no term " + BASE + "melanoma in " + VS + ".",
+        value.get("message").asText(), value.toString());
+  }
+
   @Test
   public void aValueSetAskedOfAnOntologyIsRefused() {
     JsonNode json = getHierarchy(termAt("cancer", "v2") + "&type=valueSet", Status.NOT_FOUND);

@@ -954,6 +954,14 @@ public class VersionAwareSearchServiceTest {
   }
 
   @Test
+  public void aValueSetIsReadAtTheCurrentReleaseWhenNoneIsNamed() throws Exception {
+    HierarchyResponse set = treeOf(service.hierarchy("VSC", VS + "analyte-class", null, 0, 50, true));
+    assertEquals("Analyte class", set.termLabel());
+    assertEquals(3, set.childCount());
+    assertEquals("hash-vs1", set.source().version().id(), "the current release");
+  }
+
+  @Test
   public void aValueIsNotAValueSetOfItsRelease() throws Exception {
     assertInstanceOf(HierarchyLookup.Found.class, service.hierarchy("VSC", VS + "protein", "hash-vs1", 0),
         "read as a tree, the value is a term the release holds");
