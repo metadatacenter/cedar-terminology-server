@@ -93,6 +93,26 @@ public class BioPortalSuccessPathsTest {
     assertEquals(List.of("has part"), labels(get("/bioportal/ontologies/" + ONTOLOGY + "/properties/roots")));
   }
 
+  /**
+   * An ontology without a parsed latest submission is still described. One BioPortal holds as metadata only has no
+   * submissions and no metrics. One whose latest submission failed to parse keeps the metrics of an earlier one, so
+   * it has submissions and a class count, and no submission details.
+   */
+  @Test
+  void anOntologyWithoutAParsedLatestSubmissionIsDescribed() {
+    JsonNode summaryOnly = get("/bioportal/ontologies/" + SUMMARY_ONLY).get("details");
+    assertFalse(summaryOnly.get("hasSubmissions").asBoolean(), summaryOnly.toString());
+    assertFalse(summaryOnly.get("metricsAvailable").asBoolean(), summaryOnly.toString());
+    assertEquals(0, summaryOnly.get("numberOfClasses").asInt(), summaryOnly.toString());
+    assertEquals(List.of("Anatomy"), strings(summaryOnly.get("categories")), "the categories are metadata");
+
+    JsonNode unparsed = get("/bioportal/ontologies/" + UNPARSED).get("details");
+    assertTrue(unparsed.get("hasSubmissions").asBoolean(), unparsed.toString());
+    assertTrue(unparsed.get("metricsAvailable").asBoolean(), unparsed.toString());
+    assertEquals(UNPARSED_CLASSES, unparsed.get("numberOfClasses").asInt(), unparsed.toString());
+    assertTrue(unparsed.get("description").isNull(), "no submission was read: " + unparsed);
+  }
+
   @Test
   void aClassIsReadWithItsHierarchy() {
     String classes = "/bioportal/ontologies/" + ONTOLOGY + "/classes/";

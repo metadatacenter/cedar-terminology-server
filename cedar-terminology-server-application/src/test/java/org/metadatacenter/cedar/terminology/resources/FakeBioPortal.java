@@ -34,6 +34,10 @@ import java.util.function.Predicate;
  * values finds. Vaccine has the child Coronavirus vaccine. VIRONT has the property relatedTo, its child hasHost and
  * its grandchild hasHumanHost, and the property hasHostRange, the one property in this world without a definition.
  * <p>
+ * SUMMONT and UNPARSEDONT are ontologies without classes here. BioPortal holds SUMMONT as metadata only, so its
+ * metrics and latest submission answer 404. UNPARSEDONT's latest submission failed to parse, so that answers 404
+ * while the metrics of an earlier submission still answer.
+ * <p>
  * Three value-set collections hold value sets, each a root with its values as children. CADSR-VS holds Yes No, with
  * the values Yes and No. CEDARVS holds Study File Type, with four values, and Study Type and Role In Study, with one
  * value each. NLMVS holds Coronavirus Vaccines, whose three values come from another vocabulary, as NLMVS values do.
@@ -53,11 +57,15 @@ public final class FakeBioPortal implements AutoCloseable {
 
   public static final String ONTOLOGY = "TESTONT";
   public static final String VIRUSES = "VIRONT";
+  public static final String SUMMARY_ONLY = "SUMMONT";
+  public static final String UNPARSED = "UNPARSEDONT";
+  /** The class count UNPARSEDONT's metrics report, from the earlier submission that parsed. */
+  public static final int UNPARSED_CLASSES = 12;
   public static final String VS_COLLECTION = "CADSR-VS";
   public static final String CEDARVS = "CEDARVS";
   public static final String NLMVS = "NLMVS";
   /** How many ontologies this world holds, which the registry lists beside the fillers. */
-  public static final int ONTOLOGIES = 2;
+  public static final int ONTOLOGIES = 4;
   /** How many filler ontologies the registry lists unless a test asks for another number. */
   public static final int FILLERS = 100;
 
@@ -126,7 +134,8 @@ public final class FakeBioPortal implements AutoCloseable {
 
   private static final List<String> COLLECTIONS = List.of(CEDARVS, NLMVS, VS_COLLECTION);
   /** The ontologies and collections this world holds, in the order the registry lists them. */
-  private static final List<String> SOURCES = List.of(ONTOLOGY, VIRUSES, CEDARVS, NLMVS, VS_COLLECTION);
+  private static final List<String> SOURCES =
+      List.of(ONTOLOGY, VIRUSES, SUMMARY_ONLY, UNPARSED, CEDARVS, NLMVS, VS_COLLECTION);
 
   /** A class, value set, value or property. A null definition means the term has none. */
   private record Term(String iri, String label, String ontology, String parent, String definition,
@@ -324,9 +333,9 @@ public final class FakeBioPortal implements AutoCloseable {
     }
     switch (path.get(2)) {
       case "latest_submission":
-        return submission();
+        return acronym.equals(SUMMARY_ONLY) || acronym.equals(UNPARSED) ? null : submission();
       case "metrics":
-        return metrics(acronym);
+        return acronym.equals(SUMMARY_ONLY) ? null : metrics(acronym);
       case "categories":
         return JSON.createArrayNode().add(JSON.createObjectNode().put("@id", base() + "categories/ANAT")
             .put("acronym", "ANAT").put("name", "Anatomy").put("description", "Anatomy ontologies"));
@@ -465,7 +474,7 @@ public final class FakeBioPortal implements AutoCloseable {
     return JSON.createObjectNode().put("@id", base() + "ontologies/" + acronym)
         .put("@type", "http://data.bioontology.org/metadata/Ontology").put("acronym", acronym).put("name", name)
         .put("ontologyType", base() + "ontology_types/" + (collection ? "VALUE_SET_COLLECTION" : "ONTOLOGY"))
-        .put("flat", false).put("summaryOnly", false);
+        .put("flat", false).put("summaryOnly", acronym.equals(SUMMARY_ONLY));
   }
 
   private ObjectNode submission() {
@@ -477,7 +486,8 @@ public final class FakeBioPortal implements AutoCloseable {
   }
 
   private ObjectNode metrics(String acronym) {
-    long classes = CLASSES.stream().filter(t -> t.ontology().equals(acronym)).count();
+    long classes = acronym.equals(UNPARSED) ? UNPARSED_CLASSES
+        : CLASSES.stream().filter(t -> t.ontology().equals(acronym)).count();
     long properties = PROPERTIES.stream().filter(p -> p.ontology().equals(acronym)).count();
     return JSON.createObjectNode().put("id", base() + "ontologies/" + acronym + "/submissions/1/metrics")
         .put("created", "2026-10-02T00:00:00Z")
