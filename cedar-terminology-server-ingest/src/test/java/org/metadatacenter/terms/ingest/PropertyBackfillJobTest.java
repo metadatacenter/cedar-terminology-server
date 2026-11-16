@@ -84,4 +84,55 @@ class PropertyBackfillJobTest {
       assertThrows(IllegalArgumentException.class, () -> PropertyBackfillJob.enrich(c, old, raw));
     }
   }
+
+  /**
+   * Enriching a retained older release records the enrichment and leaves {@code latest} on the newer release. The
+   * backfill enriches every retained snapshot, so moving {@code latest} to whichever it enriched last would roll each
+   * ontology back to an older release.
+   */
+  @Test
+  void enrichingAnOlderReleaseLeavesLatestOnTheNewerOne() throws Exception {
+    Path raw = propertySource();
+    try (CatalogStore c = CatalogStore.openFile(dir.resolve("catalog.sqlite").toString())) {
+      c.initSchema();
+      c.upsertOntology(new CatalogStore.OntologyInfo("EX", "Example", null, "OWL"));
+      var old = snapshot(c, "old.sqlite", "urn:old", "v1", PropertyBackfillJob.sha256(raw));
+      var newer = snapshot(c, "new.sqlite", "urn:new", "v2", "another-archive");
+      c.setTag("EX", "latest", newer.versionId());
+
+      String combined = PropertyBackfillJob.enrich(c, old, raw);
+
+      assertEquals(newer.versionId(), c.resolveLatest("EX").orElseThrow().versionId());
+      assertEquals(combined, c.propertyEnrichment("EX", old.versionId()).orElseThrow());
+      assertTrue(c.resolveVersion("EX", combined).isPresent());
+    }
+  }
+
+  /** A source declaring one object property, the input every enrichment here reads. */
+  private Path propertySource() throws Exception {
+    Path raw = dir.resolve("raw.owl");
+    Files.writeString(
+        raw,
+        """
+        <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:owl="http://www.w3.org/2002/07/owl#">
+          <owl:ObjectProperty rdf:about="urn:property"/>
+        </rdf:RDF>
+        """);
+    return raw;
+  }
+
+  /** A one-class snapshot of EX written to the given file and catalogued as the given release. */
+  private CatalogStore.SnapshotInfo snapshot(CatalogStore c, String file, String concept, String declared,
+                                             String fileHash) throws Exception {
+    String hash;
+    try (SnapshotStore s = SnapshotStore.openFile(dir.resolve(file).toString())) {
+      s.initSchema();
+      s.addConcept(concept, "Class", false, null);
+      hash = s.normalizedContentHash(true);
+    }
+    var info = new CatalogStore.SnapshotInfo(hash, "EX", declared, "2026-01-01", "2026-02-01", "OWL", "subsumption",
+        1, 0, file, fileHash, "public");
+    c.addSnapshot(info);
+    return info;
+  }
 }
