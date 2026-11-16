@@ -7,9 +7,9 @@ package org.metadatacenter.cedar.terminology.util;
  */
 public class Constants
 {
-  public static int FIRST_PAGE = 1;
-  public static int PAGE_SIZE = 500;
-  public static int LARGE_PAGE_SIZE = 5000;
+  public static final int FIRST_PAGE = 1;
+  public static final int PAGE_SIZE = 500;
+  public static final int LARGE_PAGE_SIZE = 5000;
 
   /** BioPortal API endpoints */
   public static String BP_API_BASE;

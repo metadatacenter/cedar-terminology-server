@@ -29,9 +29,7 @@ public final class BioPortalFailure {
    * <p>Thrown rather than returned by the caller so the control flow stays where it was:
    * {@code throw BioPortalFailure.relay(statusCode, url)}.
    *
-   * <p>A status below 400 is not a failure. Two provisional-class calls throw unconditionally and
-   * reach here with the 204 that means they succeeded, so reporting every status as an error would
-   * put a warning in the log for work that went through.
+   * <p>A status below 400 is not a failure, so it is logged at debug level rather than as a warning.
    */
   public static HTTPException relay(int statusCode, String url) {
     if (statusCode >= 400) {
