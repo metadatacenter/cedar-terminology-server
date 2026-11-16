@@ -67,6 +67,9 @@ public class LocalStoreResourceTest {
     environment.put("CEDAR_TERMINOLOGY_HTTP_PORT", "0");
     environment.put("CEDAR_TERMINOLOGY_ADMIN_PORT", "0");
     environment.put("CEDAR_TERMINOLOGY_STOP_PORT", "0");
+    // No case here asks BioPortal. An address that refuses connections keeps it so, rather than the
+    // BioPortal the environment names, which is the real one on a workstation.
+    environment.put("CEDAR_BIOPORTAL_REST_BASE", "http://127.0.0.1:1/");
     org.metadatacenter.config.environment.CedarEnvironmentSource.setOverride(environment);
   }
 
@@ -320,7 +323,8 @@ public class LocalStoreResourceTest {
     // A date pin serves the newest snapshot released on or before it (as-of-date resolution). v1
     // released 2025-01-01, v2 2025-06-01: a 2025-03-01 pin lands on v1 (3 concepts), a later date on
     // v2 (4). (A date before either would resolve to empty and fall back to the remote adapter, which
-    // is unconfigured here, so that boundary is left to the store-layer unit tests.)
+    // points at an address that refuses connections here, so that boundary is left to the store-layer
+    // unit tests.)
     Assertions.assertEquals(3, integratedSearchOntologyConceptCount(",\"version\":\"2025-03-01\""));
     Assertions.assertEquals(4, integratedSearchOntologyConceptCount(",\"version\":\"2025-09-01\""));
   }
