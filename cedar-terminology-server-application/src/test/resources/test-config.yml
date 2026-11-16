@@ -1,4 +1,6 @@
 server:
+  # The tests stop each application they start; Jetty need not wait for requests to drain.
+  shutdownGracePeriod: 0s
   applicationConnectors:
   - type: http
     bindHost: 127.0.0.1
