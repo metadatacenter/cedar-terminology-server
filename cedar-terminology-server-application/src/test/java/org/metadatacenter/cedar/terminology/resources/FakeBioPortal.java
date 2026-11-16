@@ -56,7 +56,9 @@ public final class FakeBioPortal implements AutoCloseable {
   public static final String VS_COLLECTION = "CADSR-VS";
   public static final String CEDARVS = "CEDARVS";
   public static final String NLMVS = "NLMVS";
-  /** How many filler ontologies the registry lists beside this world's two. */
+  /** How many ontologies this world holds, which the registry lists beside the fillers. */
+  public static final int ONTOLOGIES = 2;
+  /** How many filler ontologies the registry lists unless a test asks for another number. */
   public static final int FILLERS = 100;
 
   /** The API key the server under test is configured with, which every test sets through {@link #environment()}. */
@@ -196,6 +198,7 @@ public final class FakeBioPortal implements AutoCloseable {
 
   private final HttpServer server;
   private final List<Request> requests = new CopyOnWriteArrayList<>();
+  private volatile int fillers = FILLERS;
 
   public FakeBioPortal() throws IOException {
     server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
@@ -211,6 +214,14 @@ public final class FakeBioPortal implements AutoCloseable {
   /** The environment a server under test reads to call this fake: its base address and the key the fake accepts. */
   public Map<String, String> environment() {
     return Map.of("CEDAR_BIOPORTAL_REST_BASE", base(), "CEDAR_BIOPORTAL_API_KEY", API_KEY);
+  }
+
+  /**
+   * Has the registry list the given number of filler ontologies beside this world's own. The server refuses a listing
+   * shorter than BioPortal's real one as a failed load, so fewer fillers model a degraded BioPortal.
+   */
+  public void listFillers(int count) {
+    fillers = count;
   }
 
   /** The requests received so far, in order. */
@@ -299,7 +310,7 @@ public final class FakeBioPortal implements AutoCloseable {
       ArrayNode ontologies = JSON.createArrayNode();
       SOURCES.forEach(acronym -> ontologies.add(ontology(acronym)));
       // The server refuses a listing shorter than BioPortal's real one as a failed load.
-      for (int i = 1; i <= FILLERS; i++) {
+      for (int i = 1; i <= fillers; i++) {
         ontologies.add(ontology(String.format("FILLER%03d", i)));
       }
       return ontologies;
