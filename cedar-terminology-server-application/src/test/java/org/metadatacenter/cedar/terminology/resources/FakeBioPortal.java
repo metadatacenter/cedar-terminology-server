@@ -41,6 +41,13 @@ import java.util.function.Predicate;
  * A search matches labels and synonyms, and property values when the request asks for them. It honours the ontology
  * types, value-set roots and subtree the request names. A search naming a source this world does not hold answers
  * 404, as BioPortal does, and an answer with no results reports no pages.
+ * <p>
+ * It also holds a request to what BioPortal permits and returns. A request must be a GET carrying an API key in the
+ * {@code Authorization} header; any other method answers 405 and a missing or unknown key answers 401. A class
+ * carries only the attributes BioPortal returns for the request: the defaults when {@code include} is absent, which
+ * leave out {@code hasChildren} and {@code properties}, everything under {@code include=all}, and otherwise only the
+ * attributes {@code include} names. Under {@code display_links=false} a class carries no {@code links}. Every
+ * request is recorded with its method and key, so a test can assert what the server sent.
  */
 public final class FakeBioPortal implements AutoCloseable {
 
@@ -51,6 +58,22 @@ public final class FakeBioPortal implements AutoCloseable {
   public static final String NLMVS = "NLMVS";
   /** How many filler ontologies the registry lists beside this world's two. */
   public static final int FILLERS = 100;
+
+  /** The API key the server under test is configured with, which every test sets through {@link #environment()}. */
+  public static final String API_KEY = "fake-bioportal-key";
+  /**
+   * The literal key {@code Cache} sends for its registry and value-set reads instead of the configured one. BioPortal
+   * accepts it because it is a real key; the fake accepts it so that those reads keep working until the server sends
+   * the configured key everywhere (BACKEND-ROADMAP, "BioPortal service credential"). Tests assert which requests
+   * carry it.
+   */
+  public static final String PUBLIC_API_KEY = org.metadatacenter.cedar.terminology.utils.Constants.BP_PUBLIC_API_KEY;
+  private static final String KEY_PREFIX = "apikey token=";
+  private static final List<String> KEYS = List.of(API_KEY, PUBLIC_API_KEY);
+  /** The class attributes BioPortal returns when a request names none. */
+  private static final List<String> DEFAULT_ATTRIBUTES = List.of("prefLabel", "synonym", "definition", "provisional");
+  /** What every class carries whatever the request includes. */
+  private static final List<String> FIXED_ATTRIBUTES = List.of("@id", "@type", "links", "matchType");
 
   public static final String NS = "http://example.org/test#";
   public static final String ROOT = NS + "Root";
@@ -155,8 +178,24 @@ public final class FakeBioPortal implements AutoCloseable {
           List.of(), Map.of()),
       new Term(HAS_HOST_RANGE, "has host range", VIRUSES, null, null, List.of(), Map.of()));
 
+  /** One request the fake received: its method, its path and query as sent, and the API key it carried, or null. */
+  public record Request(String method, String target, String key) {
+
+    /** The request's path, without the query. */
+    public String path() {
+      int question = target.indexOf('?');
+      return question < 0 ? target : target.substring(0, question);
+    }
+
+    /** The decoded value of one query parameter, or null when the request does not send it. */
+    public String parameter(String name) {
+      int question = target.indexOf('?');
+      return question < 0 ? null : query(target.substring(question + 1)).get(name);
+    }
+  }
+
   private final HttpServer server;
-  private final List<String> requests = new CopyOnWriteArrayList<>();
+  private final List<Request> requests = new CopyOnWriteArrayList<>();
 
   public FakeBioPortal() throws IOException {
     server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
@@ -169,8 +208,13 @@ public final class FakeBioPortal implements AutoCloseable {
     return "http://127.0.0.1:" + server.getAddress().getPort() + "/";
   }
 
-  /** The paths and queries asked so far. */
-  public List<String> requests() {
+  /** The environment a server under test reads to call this fake: its base address and the key the fake accepts. */
+  public Map<String, String> environment() {
+    return Map.of("CEDAR_BIOPORTAL_REST_BASE", base(), "CEDAR_BIOPORTAL_API_KEY", API_KEY);
+  }
+
+  /** The requests received so far, in order. */
+  public List<Request> requests() {
     return List.copyOf(requests);
   }
 
@@ -189,7 +233,18 @@ public final class FakeBioPortal implements AutoCloseable {
     exchange.getRequestBody().readAllBytes();
     String rawPath = exchange.getRequestURI().getRawPath();
     String rawQuery = exchange.getRequestURI().getRawQuery();
-    requests.add(rawPath + (rawQuery == null ? "" : "?" + rawQuery));
+    String authorization = exchange.getRequestHeaders().getFirst("Authorization");
+    String key = authorization != null && authorization.startsWith(KEY_PREFIX)
+        ? authorization.substring(KEY_PREFIX.length()) : null;
+    requests.add(new Request(exchange.getRequestMethod(), rawPath + (rawQuery == null ? "" : "?" + rawQuery), key));
+    if (!exchange.getRequestMethod().equals("GET")) {
+      refuse(exchange, 405, "This world answers only GET requests.");
+      return;
+    }
+    if (!KEYS.contains(key)) {
+      refuse(exchange, 401, "You must provide a valid API Key in the Authorization header: apikey token=your_key.");
+      return;
+    }
     Map<String, String> query = query(rawQuery);
     List<String> path = new ArrayList<>();
     for (String segment : rawPath.substring(1).split("/")) {
@@ -205,6 +260,18 @@ public final class FakeBioPortal implements AutoCloseable {
         .getBytes(StandardCharsets.UTF_8);
     exchange.getResponseHeaders().set("Content-Type", "application/json");
     exchange.sendResponseHeaders(answer == null ? 404 : 200, body.length);
+    try (OutputStream out = exchange.getResponseBody()) {
+      out.write(body);
+    }
+  }
+
+  /** An error in BioPortal's shape: the messages and the status. */
+  private static void refuse(HttpExchange exchange, int status, String message) throws IOException {
+    ObjectNode error = JSON.createObjectNode().put("status", status);
+    error.putArray("errors").add(message);
+    byte[] body = JSON.writeValueAsBytes(error);
+    exchange.getResponseHeaders().set("Content-Type", "application/json");
+    exchange.sendResponseHeaders(status, body.length);
     try (OutputStream out = exchange.getResponseBody()) {
       out.write(body);
     }
@@ -267,19 +334,21 @@ public final class FakeBioPortal implements AutoCloseable {
   private Object classes(String acronym, List<String> rest, Map<String, String> query) {
     List<Term> inOntology = CLASSES.stream().filter(t -> t.ontology().equals(acronym)).toList();
     if (rest.isEmpty()) {
-      return paged(inOntology.stream().map(this::bpClass).toList(), query);
+      return paged(inOntology.stream().map(t -> bpClass(t, query)).toList(), query);
     }
     if (rest.get(0).equals("roots")) {
-      return array(inOntology.stream().filter(t -> t.parent() == null).map(this::bpClass).toList());
+      return array(inOntology.stream().filter(t -> t.parent() == null).map(t -> bpClass(t, query)).toList());
     }
     Term term = find(inOntology, rest.get(0));
     if (rest.size() == 1) {
-      return bpClass(term);
+      return bpClass(term, query);
     }
     return switch (rest.get(1)) {
-      case "children" -> paged(childrenOf(CLASSES, term.iri()).stream().map(this::bpClass).toList(), query);
-      case "descendants" -> paged(descendantsOf(CLASSES, term.iri()).stream().map(this::bpClass).toList(), query);
-      case "parents" -> array(term.parent() == null ? List.of() : List.of(bpClass(find(CLASSES, term.parent()))));
+      case "children" -> paged(childrenOf(CLASSES, term.iri()).stream().map(t -> bpClass(t, query)).toList(), query);
+      case "descendants" -> paged(descendantsOf(CLASSES, term.iri()).stream().map(t -> bpClass(t, query)).toList(),
+          query);
+      case "parents" -> array(term.parent() == null ? List.of()
+          : List.of(bpClass(find(CLASSES, term.parent()), query)));
       case "tree" -> tree(CLASSES, term);
       default -> null;
     };
@@ -333,7 +402,7 @@ public final class FakeBioPortal implements AutoCloseable {
     }
     List<ObjectNode> results = new ArrayList<>();
     for (Term term : found) {
-      ObjectNode result = bpClass(term);
+      ObjectNode result = bpClass(term, query);
       String matchType = q == null || contains(term.label(), q) ? "prefLabel"
           : term.synonyms().stream().anyMatch(s -> contains(s, q)) ? "synonym" : "property";
       result.put("matchType", matchType);
@@ -406,7 +475,8 @@ public final class FakeBioPortal implements AutoCloseable {
         .put("classesWithMoreThan25Children", "0").put("classesWithNoDefinition", "0");
   }
 
-  private ObjectNode bpClass(Term term) {
+  /** A class as BioPortal returns it for a request with the given query: see the class description. */
+  private ObjectNode bpClass(Term term, Map<String, String> query) {
     ObjectNode node = JSON.createObjectNode().put("@id", term.iri()).put("@type", "http://www.w3.org/2002/07/owl#Class")
         .put("prefLabel", term.label()).put("hasChildren", !childrenOf(CLASSES, term.iri()).isEmpty())
         .put("provisional", false);
@@ -422,6 +492,16 @@ public final class FakeBioPortal implements AutoCloseable {
       values.forEach(list::add);
     });
     node.set("links", links(term, "classes"));
+    String include = query.get("include");
+    List<String> kept = include == null ? DEFAULT_ATTRIBUTES : Arrays.asList(include.split(","));
+    if (!kept.contains("all")) {
+      List<String> names = new ArrayList<>();
+      node.fieldNames().forEachRemaining(names::add);
+      node.retain(names.stream().filter(name -> FIXED_ATTRIBUTES.contains(name) || kept.contains(name)).toList());
+    }
+    if ("false".equals(query.get("display_links"))) {
+      node.remove("links");
+    }
     return node;
   }
 
