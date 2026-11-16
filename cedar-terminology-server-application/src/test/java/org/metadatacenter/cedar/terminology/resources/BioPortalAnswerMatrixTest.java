@@ -318,17 +318,11 @@ public class BioPortalAnswerMatrixTest {
 
   @Test
   public void noBioPortalRouteAnswersAnIOExceptionAsItsOwnFailure() throws Exception {
-    Path resources = Path.of("src/main/java/org/metadatacenter/cedar/terminology/resources/bioportal");
-    if (!Files.isDirectory(resources)) {
-      return; // running from a different working directory; the matrix still holds
-    }
     List<String> offenders = new ArrayList<>();
-    try (Stream<Path> files = Files.walk(resources)) {
-      for (Path file : files.filter(p -> p.toString().endsWith(".java")).toList()) {
-        String source = Files.readString(file);
-        if (source.matches("(?s).*catch \\((IOException|ExecutionException)[^)]*\\) \\{\\s*throw new CedarProcessingException\\(e\\);.*")) {
-          offenders.add(file.getFileName().toString());
-        }
+    for (Path file : BioPortalResourceSources.files()) {
+      String source = Files.readString(file);
+      if (source.matches("(?s).*catch \\((IOException|ExecutionException)[^)]*\\) \\{\\s*throw new CedarProcessingException\\(e\\);.*")) {
+        offenders.add(file.getFileName().toString());
       }
     }
     assertEquals(List.of(), offenders, "these still answer a BioPortal that did not answer as a 500");
