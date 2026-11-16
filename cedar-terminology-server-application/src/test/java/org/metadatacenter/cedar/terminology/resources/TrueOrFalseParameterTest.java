@@ -36,7 +36,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -45,14 +44,17 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *
  * <p>These parameters are primitive booleans. Three of them declare no default, so an absent one must
  * still arrive as false, and {@code include_details} declares false. BioPortal is a stub that records
- * what it is asked and answers 404, which the routes relay. A flag that is true adds a term to the
- * BioPortal request, so the request shows the value the route was given. A refused value never
- * reaches BioPortal.
+ * what it is asked and answers 404, which the routes relay, except that its registry lists one value-set
+ * collection. A search flag that is true adds a term to the BioPortal request, and {@code include_details}
+ * that is true asks for the collection's metrics, so the requests show the value the route was given. A
+ * refused value never reaches BioPortal.
  */
 @Tag("integration")
 public class TrueOrFalseParameterTest {
 
   private static final List<String> ASKED = new CopyOnWriteArrayList<>();
+  /** The one value-set collection the stub's registry lists. */
+  private static final String COLLECTION = "CEDARVS";
   private static final HttpServer BIOPORTAL = startBioPortal();
   /** Each search asks for a different term, so no answer can come from a cache. */
   private static final AtomicInteger QUERY = new AtomicInteger();
@@ -132,18 +134,32 @@ public class TrueOrFalseParameterTest {
   }
 
   /**
-   * The flag declares a default of false. An absent flag keeps it, and a value other than true or false
-   * is refused like any other.
+   * The flag declares a default of false. True in any case asks for the collection's details, false in any
+   * case and an absent flag do not, and a value other than true or false is refused like any other.
    */
   @Test
   public void includeDetailsIsConvertedOrRefused() throws Exception {
-    for (String query : List.of("", "?include_details=true", "?include_details=FALSE")) {
-      HttpResponse<String> response = get("/bioportal/vs-collections" + query, true);
-      assertNotEquals(400, response.statusCode(), query + " answered " + response.body());
+    for (String query : List.of("?include_details=true", "?include_details=TRUE")) {
+      assertTrue(vsCollections(query).stream().anyMatch(asked -> asked.startsWith("/ontologies/" + COLLECTION + "/metrics")),
+          query + " did not ask for the collection's details: " + ASKED);
+    }
+    for (String query : List.of("", "?include_details=false", "?include_details=FALSE")) {
+      assertEquals(List.of("/ontologies/?include=all"), vsCollections(query),
+          query + " asked for more than the registry");
     }
     for (String value : List.of("abc", "1", "yes", "")) {
       assertRefused(get("/bioportal/vs-collections?include_details=" + value, true), "include_details");
     }
+  }
+
+  /** The BioPortal requests a listing of the value-set collections made, given its query. */
+  private static List<String> vsCollections(String query) throws Exception {
+    ASKED.clear();
+    HttpResponse<String> response = get("/bioportal/vs-collections" + query, true);
+    assertEquals(200, response.statusCode(), query + " answered " + response.body());
+    assertEquals(COLLECTION, JsonMapper.STRICT_MAPPER.readTree(response.body()).path(0).path("id").asText(),
+        response.body());
+    return List.copyOf(ASKED);
   }
 
   /** The BioPortal request a class search made, given the flags the CEDAR request carried. */
@@ -194,9 +210,14 @@ public class TrueOrFalseParameterTest {
   private static void answer(HttpExchange exchange) throws IOException {
     exchange.getRequestBody().readAllBytes();
     ASKED.add(exchange.getRequestURI().toString());
-    byte[] payload = "{\"errors\":[\"none\"]}".getBytes(StandardCharsets.UTF_8);
+    String base = "http://127.0.0.1:" + BIOPORTAL.getAddress().getPort() + "/";
+    boolean registry = exchange.getRequestURI().getPath().matches("/ontologies/?");
+    byte[] payload = (registry
+        ? "[{\"@id\":\"" + base + "ontologies/" + COLLECTION + "\",\"acronym\":\"" + COLLECTION + "\",\"name\":"
+          + "\"CEDAR value sets\",\"ontologyType\":\"" + base + "ontology_types/VALUE_SET_COLLECTION\"}]"
+        : "{\"errors\":[\"none\"]}").getBytes(StandardCharsets.UTF_8);
     exchange.getResponseHeaders().set("Content-Type", "application/json");
-    exchange.sendResponseHeaders(404, payload.length);
+    exchange.sendResponseHeaders(registry ? 200 : 404, payload.length);
     try (OutputStream out = exchange.getResponseBody()) {
       out.write(payload);
     }
