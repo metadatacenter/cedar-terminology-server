@@ -176,8 +176,11 @@ public class LocalStoreResourceTest {
 
   @AfterAll
   public static void tearDown() {
-    RULE.after();
-    LocalStoreTestProperties.clear();
+    try {
+      RULE.after();
+    } finally {
+      LocalStoreTestProperties.clear();
+    }
   }
 
   @Test

@@ -105,6 +105,9 @@ public class TerminologyServerApplication extends CedarMicroserviceApplication<T
     LocalStoreConfig localStore = cedarConfig.getTerminologyConfig().getLocalStore();
     String catalogPath = firstNonBlank(System.getProperty(PROP_CATALOG_PATH),
         localStore == null ? null : localStore.getCatalogPath());
+    // Every service a catalog opens is static, so a start without one must clear what an earlier start in the same
+    // JVM opened, or it serves that store instead of answering that none is configured.
+    versionAwareSearchService = null;
     VersionedPropertyResource.injectService(null);
     ResourceDescriptionResource.injectService(new org.metadatacenter.terms.search.ResourceDescriptionService(null));
     Set<String> localOntologies = parseAllowlist(firstNonBlank(System.getProperty(PROP_LOCAL_ONTOLOGIES),

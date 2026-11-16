@@ -112,8 +112,11 @@ class PropertyStoreFailureTest {
 
   @AfterAll
   static void stop() {
-    SERVER.after();
-    LocalStoreTestProperties.clear();
+    try {
+      SERVER.after();
+    } finally {
+      LocalStoreTestProperties.clear();
+    }
   }
 
   @BeforeEach

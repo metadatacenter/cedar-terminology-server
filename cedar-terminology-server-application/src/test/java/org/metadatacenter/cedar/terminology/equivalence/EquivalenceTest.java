@@ -130,8 +130,11 @@ public class EquivalenceTest {
 
   @AfterAll
   public static void tearDown() {
-    RULE.after();
-    LocalStoreTestProperties.clear();
+    try {
+      RULE.after();
+    } finally {
+      LocalStoreTestProperties.clear();
+    }
   }
 
   /* ---- helpers ---- */

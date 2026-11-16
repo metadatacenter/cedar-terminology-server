@@ -110,8 +110,11 @@ public class TerminologyPagingResourceTest {
 
   @AfterAll
   public static void tearDown() {
-    SERVER.after();
-    LocalStoreTestProperties.clear();
+    try {
+      SERVER.after();
+    } finally {
+      LocalStoreTestProperties.clear();
+    }
   }
 
   private static String children(String query) {
