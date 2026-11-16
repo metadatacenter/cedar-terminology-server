@@ -12,6 +12,7 @@ import java.util.LinkedHashMap;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
+import java.util.function.LongSupplier;
 
 import static org.metadatacenter.cedar.terminology.utils.Constants.*;
 
@@ -58,6 +59,24 @@ public class Cache {
    */
   private static final ConcurrentHashMap<String, Flatness> flatness = new ConcurrentHashMap<>();
 
+  /** The clock both holds are timed by, in milliseconds. A test replaces it to move past an hour. */
+  private static volatile LongSupplier clock = System::currentTimeMillis;
+
+  /** Times both holds by the given clock. */
+  static void useClock(LongSupplier millis) {
+    clock = millis;
+  }
+
+  /**
+   * Drops both holds. An application clears them when it starts, so a server never answers from what an earlier start
+   * in the same JVM fetched from another BioPortal.
+   */
+  public static void clear() {
+    flatness.clear();
+    valueSetIds = null;
+    valueSetIdsFetchedAt = 0;
+  }
+
   /**
    * Whether an ontology is flat (has no hierarchy). Defaults to {@code false} (hierarchical) when
    * metadata is unavailable — e.g. an ontology served from a local snapshot, which carries no
@@ -75,7 +94,7 @@ public class Cache {
    */
   public static boolean isFlat(String ontology) throws IOException, ExecutionException {
     Flatness held = flatness.get(ontology);
-    if (held != null && System.currentTimeMillis() - held.fetchedAt() < IS_FLAT_TTL_MS) {
+    if (held != null && clock.getAsLong() - held.fetchedAt() < IS_FLAT_TTL_MS) {
       return held.isFlat();
     }
     try {
@@ -83,7 +102,7 @@ public class Cache {
       if (o == null) {
         return false;
       }
-      flatness.put(ontology, new Flatness(o.getIsFlat(), System.currentTimeMillis()));
+      flatness.put(ontology, new Flatness(o.getIsFlat(), clock.getAsLong()));
       return o.getIsFlat();
     } catch (RuntimeException metadataUnavailable) {
       return false;
@@ -177,7 +196,7 @@ public class Cache {
    */
   public static Set<String> getValueSetIds() throws IOException {
     Set<String> held = valueSetIds;
-    if (held != null && System.currentTimeMillis() - valueSetIdsFetchedAt < VALUE_SET_IDS_TTL_MS) {
+    if (held != null && clock.getAsLong() - valueSetIdsFetchedAt < VALUE_SET_IDS_TTL_MS) {
       return held;
     }
     Set<String> fetched = new HashSet<>();
@@ -186,7 +205,7 @@ public class Cache {
     }
     Set<String> immutable = Set.copyOf(fetched);
     valueSetIds = immutable;
-    valueSetIdsFetchedAt = System.currentTimeMillis();
+    valueSetIdsFetchedAt = clock.getAsLong();
     return immutable;
   }
 }
