@@ -76,7 +76,6 @@ public abstract class AbstractTerminologyServerResourceTest {
     Map<String, String> environment = new HashMap<>(CedarEnvironmentSource.getAll());
     environment.put("CEDAR_TERMINOLOGY_HTTP_PORT", "0");
     environment.put("CEDAR_TERMINOLOGY_ADMIN_PORT", "0");
-    environment.put("CEDAR_TERMINOLOGY_STOP_PORT", "0");
     environment.putAll(bioPortal.environment());
     CedarEnvironmentSource.setOverride(environment);
     RULE.before();
