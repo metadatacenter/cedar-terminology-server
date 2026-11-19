@@ -20,6 +20,7 @@ import org.metadatacenter.util.test.TestAuthUtil;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.URI;
+import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -51,8 +52,7 @@ public class BioPortalSuccessPathsTest {
     Map<String, String> environment = new HashMap<>(CedarEnvironmentSource.getAll());
     environment.put("CEDAR_TERMINOLOGY_HTTP_PORT", "0");
     environment.put("CEDAR_TERMINOLOGY_ADMIN_PORT", "0");
-    environment.put("CEDAR_TERMINOLOGY_STOP_PORT", "0");
-    environment.put("CEDAR_BIOPORTAL_REST_BASE", BIOPORTAL.base());
+    environment.putAll(BIOPORTAL.environment());
     CedarEnvironmentSource.setOverride(environment);
   }
 
@@ -90,6 +90,26 @@ public class BioPortalSuccessPathsTest {
 
     assertEquals(List.of("Root"), labels(get("/bioportal/ontologies/" + ONTOLOGY + "/classes/roots")));
     assertEquals(List.of("has part"), labels(get("/bioportal/ontologies/" + ONTOLOGY + "/properties/roots")));
+  }
+
+  /**
+   * An ontology without a parsed latest submission is still described. One BioPortal holds as metadata only has no
+   * submissions and no metrics. One whose latest submission failed to parse keeps the metrics of an earlier one, so
+   * it has submissions and a class count, and no submission details.
+   */
+  @Test
+  void anOntologyWithoutAParsedLatestSubmissionIsDescribed() {
+    JsonNode summaryOnly = get("/bioportal/ontologies/" + SUMMARY_ONLY).get("details");
+    assertFalse(summaryOnly.get("hasSubmissions").asBoolean(), summaryOnly.toString());
+    assertFalse(summaryOnly.get("metricsAvailable").asBoolean(), summaryOnly.toString());
+    assertEquals(0, summaryOnly.get("numberOfClasses").asInt(), summaryOnly.toString());
+    assertEquals(List.of("Anatomy"), strings(summaryOnly.get("categories")), "the categories are metadata");
+
+    JsonNode unparsed = get("/bioportal/ontologies/" + UNPARSED).get("details");
+    assertTrue(unparsed.get("hasSubmissions").asBoolean(), unparsed.toString());
+    assertTrue(unparsed.get("metricsAvailable").asBoolean(), unparsed.toString());
+    assertEquals(UNPARSED_CLASSES, unparsed.get("numberOfClasses").asInt(), unparsed.toString());
+    assertTrue(unparsed.get("description").isNull(), "no submission was read: " + unparsed);
   }
 
   @Test
@@ -219,6 +239,80 @@ public class BioPortalSuccessPathsTest {
         .put("name", "Test Ontology");
     assertEquals("passed", verify(HEART, constraints("ontologies", ontology)).path("status").asText());
     assertEquals("failed", verify(NS + "Spleen", constraints("ontologies", ontology)).path("status").asText());
+  }
+
+  /**
+   * What each DAO sends BioPortal: a GET carrying the configured key, asking for the attributes the server reads. The
+   * class reads name {@code properties} only where the server reads a value's notation and matched concept, and the
+   * searches ask for links, which every search result is read through.
+   */
+  @Test
+  void eachDaoSendsTheRequestBioPortalExpects() {
+    String classes = "/bioportal/ontologies/" + ONTOLOGY + "/classes/";
+    String collection = "/bioportal/vs-collections/" + VS_COLLECTION;
+    String attributes = "prefLabel,hasChildren,created,synonym,definition";
+
+    FakeBioPortal.Request classRead = sent(classes + enc(HEART), "/ontologies/" + ONTOLOGY + "/classes/" + HEART);
+    assertEquals(attributes + ",properties", classRead.parameter("include"));
+    FakeBioPortal.Request values = sent(collection + "/value-sets/" + enc(VALUE_SET) + "/values",
+        "/ontologies/" + VS_COLLECTION + "/classes/" + VALUE_SET + "/children");
+    assertEquals(attributes + ",properties", values.parameter("include"), "a caDSR value is read with its properties");
+    FakeBioPortal.Request roots = sent(classes + "roots", "/ontologies/" + ONTOLOGY + "/classes/roots");
+    assertEquals(attributes, roots.parameter("include"));
+    sent("/bioportal/ontologies/" + ONTOLOGY + "/properties/" + enc(HAS_PART),
+        "/ontologies/" + ONTOLOGY + "/properties/" + HAS_PART);
+    sent("/bioportal/classes/provisional", "/provisional_classes");
+    String relation = PROVISIONAL_RELATION.substring(PROVISIONAL_RELATION.lastIndexOf('/') + 1);
+    sent("/bioportal/relations/" + relation, "/provisional_relations/" + relation);
+    FakeBioPortal.Request search = sent("/bioportal/search?q=heart&scope=classes&sources=" + ONTOLOGY, "/search");
+    assertEquals("true", search.parameter("display_links"), search.target());
+    FakeBioPortal.Request propertySearch = sent("/bioportal/property_search?q=part&sources=" + ONTOLOGY,
+        "/property_search");
+    assertEquals("true", propertySearch.parameter("display_links"), propertySearch.target());
+  }
+
+  /**
+   * The literal public key goes only with the registry and value-set reads {@code Cache} makes. Every other request
+   * carries the configured key, so a new caller of that literal fails here rather than in production.
+   */
+  @Test
+  void onlyTheCacheSendsThePublicKey() {
+    get("/bioportal/ontologies");
+    get("/bioportal/ontologies/" + ONTOLOGY);
+    get("/bioportal/value-sets");
+    List<FakeBioPortal.Request> withPublicKey = BIOPORTAL.requests().stream()
+        .filter(r -> PUBLIC_API_KEY.equals(r.key())).toList();
+    assertFalse(withPublicKey.isEmpty(), "Cache sends the public key until the configured one replaces it");
+    for (FakeBioPortal.Request request : withPublicKey) {
+      String path = trimmed(request.path());
+      boolean registry = path.matches("/ontologies(/[^/]+(/(latest_submission|metrics|categories))?)?");
+      boolean valueSets = path.equals("/search") && "true".equals(request.parameter("valueset_roots_only"));
+      assertTrue(registry || valueSets, "only Cache's reads may send the public key: " + request.target());
+    }
+    for (FakeBioPortal.Request request : BIOPORTAL.requests()) {
+      assertEquals("GET", request.method(), request.target());
+      assertTrue(API_KEY.equals(request.key()) || PUBLIC_API_KEY.equals(request.key()), request.target());
+    }
+  }
+
+  /**
+   * The one request a route made BioPortal answer at the given path, asserted to be a GET carrying the configured key.
+   */
+  private static FakeBioPortal.Request sent(String route, String bioPortalPath) {
+    int before = BIOPORTAL.requests().size();
+    get(route);
+    List<FakeBioPortal.Request> matching = BIOPORTAL.requests().subList(before, BIOPORTAL.requests().size()).stream()
+        .filter(r -> trimmed(URLDecoder.decode(r.path(), StandardCharsets.UTF_8)).equals(bioPortalPath)).toList();
+    assertEquals(1, matching.size(), route + " asked " + BIOPORTAL.requests().subList(before, BIOPORTAL.requests().size()));
+    FakeBioPortal.Request request = matching.get(0);
+    assertEquals("GET", request.method(), request.target());
+    assertEquals(API_KEY, request.key(), route + " sent " + request.target() + " with another key");
+    return request;
+  }
+
+  /** A path without the trailing slash some DAOs send, which BioPortal ignores. */
+  private static String trimmed(String path) {
+    return path.endsWith("/") ? path.substring(0, path.length() - 1) : path;
   }
 
   private static ObjectNode constraints(String kind, ObjectNode constraint) {

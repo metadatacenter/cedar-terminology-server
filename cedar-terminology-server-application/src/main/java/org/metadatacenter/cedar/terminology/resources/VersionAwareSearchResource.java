@@ -122,12 +122,14 @@ public class VersionAwareSearchResource extends AbstractTerminologyServerResourc
           + "Always answered from one release's snapshot, because a hierarchy belongs to a release "
           + "and a term's parent can move between two of them. With versionId, the release is that one. "
           + "Without it, the release is the one an unpinned search of the source reads. "
-          + "Children are alphabetical and capped; offset asks for the next page of them.",
+          + "Children are alphabetical and capped; offset asks for the next page of them. "
+          + "With type=valueSet, the term is a value set and the children are its values. The source must be "
+          + "a value-set collection, and a release holds the value set only where values hang below it.",
       tags = {"Search"})
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "The term's ancestors and children", content = @Content(schema = @Schema(implementation = HierarchyResponse.class))),
-      @ApiResponse(responseCode = "400", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "A request naming no term"),
-      @ApiResponse(responseCode = "404", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "No such release, a release without that term, or a term the current release does not hold"),
+      @ApiResponse(responseCode = "400", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "A request naming no term, or a type other than class, branch or valueSet"),
+      @ApiResponse(responseCode = "404", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "No such release, a release without that term, a term the current release does not hold, or a value set asked of a source that is not a value-set collection"),
       @ApiResponse(responseCode = "503", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "No local terminology store is configured")
   })
   public Response hierarchy(@QueryParam("sourceAcronym") String sourceAcronym,
@@ -136,7 +138,10 @@ public class VersionAwareSearchResource extends AbstractTerminologyServerResourc
                             @Parameter(description = "How many children to skip. Defaults to 0.")
                             @QueryParam("offset") @DefaultValue("0") int offset,
                             @Parameter(description = "How many children to return, from 1 to 500. Defaults to 50.")
-                            @QueryParam("limit") Integer limit) throws CedarException {
+                            @QueryParam("limit") Integer limit,
+                            @Parameter(description = "The constraint type the term is asked about: class, branch or "
+                                + "valueSet. Defaults to a class or branch, which read the same tree.")
+                            @QueryParam("type") String type) throws CedarException {
     if (searchService == null) {
       return CedarResponse.status(CedarResponseStatus.SERVICE_UNAVAILABLE)
           .errorKey(CedarErrorKey.INVALID_INPUT)
@@ -167,7 +172,18 @@ public class VersionAwareSearchResource extends AbstractTerminologyServerResourc
                 + ", and offset must not be negative.")
             .build();
       }
-      HierarchyLookup lookup = searchService.hierarchy(sourceAcronym, termIri, versionId, offset, childLimit);
+      // A type the endpoint does not know is refused rather than read as a tree. Reading `valueset`
+      // as a class would answer a question the caller did not ask.
+      boolean valueSet = SearchRequest.TYPE_VALUE_SET.equals(type);
+      if (type != null && !type.isBlank() && !valueSet
+          && !SearchRequest.TYPE_CLASS.equals(type) && !SearchRequest.TYPE_BRANCH.equals(type)) {
+        return CedarResponse.badRequest()
+            .errorKey(CedarErrorKey.INVALID_INPUT)
+            .message("type must be class, branch or valueSet.")
+            .build();
+      }
+      HierarchyLookup lookup = searchService.hierarchy(sourceAcronym, termIri, versionId, offset, childLimit,
+          valueSet);
       if (lookup instanceof HierarchyLookup.Found found) {
         return Response.ok().entity(JsonMapper.STRICT_MAPPER.valueToTree(
             found.hierarchy().paged(childLimit, uriInfo.getRequestUri().toString()))).build();
@@ -193,6 +209,13 @@ public class VersionAwareSearchResource extends AbstractTerminologyServerResourc
             .errorKey(CedarErrorKey.INVALID_INPUT)
             .message("The store holds no term " + absent.termIri() + " in "
                 + absent.acronym() + ".")
+            .build();
+      }
+      if (lookup instanceof HierarchyLookup.NotValueSetCollection notCollection) {
+        return CedarResponse.notFound()
+            .errorKey(CedarErrorKey.INVALID_INPUT)
+            .message(notCollection.acronym() + " is not a value-set collection, so no release of it holds "
+                + "the value set " + notCollection.termIri() + ".")
             .build();
       }
       // Every permitted case is handled above, so this is a case added to the sealed type without a

@@ -61,7 +61,9 @@ public class TerminologyPagingResourceTest {
         new HashMap<>(org.metadatacenter.config.environment.CedarEnvironmentSource.getAll());
     environment.put("CEDAR_TERMINOLOGY_HTTP_PORT", "0");
     environment.put("CEDAR_TERMINOLOGY_ADMIN_PORT", "0");
-    environment.put("CEDAR_TERMINOLOGY_STOP_PORT", "0");
+    // No case here asks BioPortal. An address that refuses connections keeps it so, rather than the
+    // BioPortal the environment names, which is the real one on a workstation.
+    environment.put("CEDAR_BIOPORTAL_REST_BASE", "http://127.0.0.1:1/");
     org.metadatacenter.config.environment.CedarEnvironmentSource.setOverride(environment);
     try {
       Path dir = Files.createTempDirectory("terminology-paging-it");
@@ -110,8 +112,11 @@ public class TerminologyPagingResourceTest {
 
   @AfterAll
   public static void tearDown() {
-    SERVER.after();
-    LocalStoreTestProperties.clear();
+    try {
+      SERVER.after();
+    } finally {
+      LocalStoreTestProperties.clear();
+    }
   }
 
   private static String children(String query) {

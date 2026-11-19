@@ -20,7 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Every route that takes a page size takes it in both spellings.
+ * Every route that takes a page size declares it in both spellings.
  *
  * <p>This server declared the same parameter as {@code page_size} on two routes and {@code pageSize} on
  * nine. JAX-RS binds an unmatched name to the default silently, so a client that learned one spelling
@@ -28,9 +28,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * say the parameter had been ignored.
  *
  * <p>Asserted by reflection over the declared surface rather than against a list written here, so a new
- * route that accepts only one spelling fails.
+ * route that declares only one spelling fails. A declaration is not a reading: {@code PageSizeResourceTest}
+ * asks one route of each family for a page in each spelling and asserts the size it answers.
  */
-class PageSizeSpellingTest {
+class PageSizeDeclarationTest {
 
   private static final Set<String> BOTH_SPELLINGS = Set.of("page_size", "pageSize");
 
@@ -58,8 +59,8 @@ class PageSizeSpellingTest {
   }
 
   @Test
-  @DisplayName("Every page-size route accepts page_size and pageSize")
-  void everyRouteAcceptsBothSpellings() {
+  @DisplayName("Every page-size route declares page_size and pageSize")
+  void everyRouteDeclaresBothSpellings() {
     for (Method method : methodsTakingAPageSize()) {
       Set<String> spellings = Arrays.stream(method.getParameters())
           .map(p -> p.getAnnotation(QueryParam.class))
@@ -68,7 +69,7 @@ class PageSizeSpellingTest {
           .collect(java.util.stream.Collectors.toSet());
       assertEquals(BOTH_SPELLINGS, spellings,
           method.getDeclaringClass().getSimpleName() + "." + method.getName()
-              + " accepts only " + spellings + "; a client using the other spelling gets the default silently");
+              + " declares only " + spellings + "; a client using the other spelling gets the default silently");
     }
   }
 

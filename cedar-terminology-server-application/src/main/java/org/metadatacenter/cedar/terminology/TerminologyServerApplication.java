@@ -2,6 +2,7 @@ package org.metadatacenter.cedar.terminology;
 
 import io.dropwizard.core.setup.Bootstrap;
 import io.dropwizard.core.setup.Environment;
+import org.metadatacenter.cedar.cache.Cache;
 import org.metadatacenter.cedar.terminology.resources.AbstractTerminologyServerResource;
 import org.metadatacenter.cedar.terminology.resources.VersionAwareSearchResource;
 import org.metadatacenter.cedar.terminology.resources.ResourceDescriptionResource;
@@ -87,6 +88,8 @@ public class TerminologyServerApplication extends CedarMicroserviceApplication<T
         new TerminologyService(cedarConfig.getTerminologyConfig().getBioPortal().getBasePath(),
             cedarConfig.getTerminologyConfig().getBioPortal().getConnectTimeout(),
             cedarConfig.getTerminologyConfig().getBioPortal().getSocketTimeout());
+    // The cache's holds are static; what an earlier start in this JVM fetched came from another backend.
+    Cache.clear();
     // Route each request to a local (version-aware) backend when the ontology is served locally,
     // else BioPortal. The local backend is enabled only when a catalog path and a non-empty
     // allowlist are configured; otherwise every request is served by BioPortal (behavior unchanged).
@@ -105,6 +108,9 @@ public class TerminologyServerApplication extends CedarMicroserviceApplication<T
     LocalStoreConfig localStore = cedarConfig.getTerminologyConfig().getLocalStore();
     String catalogPath = firstNonBlank(System.getProperty(PROP_CATALOG_PATH),
         localStore == null ? null : localStore.getCatalogPath());
+    // Every service a catalog opens is static, so a start without one must clear what an earlier start in the same
+    // JVM opened, or it serves that store instead of answering that none is configured.
+    versionAwareSearchService = null;
     VersionedPropertyResource.injectService(null);
     ResourceDescriptionResource.injectService(new org.metadatacenter.terms.search.ResourceDescriptionService(null));
     Set<String> localOntologies = parseAllowlist(firstNonBlank(System.getProperty(PROP_LOCAL_ONTOLOGIES),

@@ -935,4 +935,56 @@ public class VersionAwareSearchServiceTest {
     assertInstanceOf(HierarchyLookup.TermNotHeld.class, service.hierarchy("NOTSERVED", BASE + "mammal", null, 0),
         "a source the store does not serve has no current release to read");
   }
+
+  /*
+   * Whether a release holds a value set.
+   *
+   * A value-set constraint pinned to a release resolves to that release's values, so the picker asks
+   * before it records one. Read as a tree, any concept of the release was found, so a value or an
+   * ontology's class passed for a value set.
+   */
+
+  @Test
+  public void aValueSetTheReleaseHoldsComesWithItsValues() throws Exception {
+    HierarchyResponse set = treeOf(service.hierarchy("VSC", VS + "analyte-class", "hash-vs1", 0, 50, true));
+    assertEquals("Analyte class", set.termLabel());
+    assertEquals(List.of("Lipid", "Nucleic acid", "Protein"),
+        set.children().stream().map(HierarchyResponse.Child::termLabel).toList());
+    assertEquals(3, set.childCount());
+  }
+
+  @Test
+  public void aValueSetIsReadAtTheCurrentReleaseWhenNoneIsNamed() throws Exception {
+    HierarchyResponse set = treeOf(service.hierarchy("VSC", VS + "analyte-class", null, 0, 50, true));
+    assertEquals("Analyte class", set.termLabel());
+    assertEquals(3, set.childCount());
+    assertEquals("hash-vs1", set.source().version().id(), "the current release");
+  }
+
+  @Test
+  public void aValueIsNotAValueSetOfItsRelease() throws Exception {
+    assertInstanceOf(HierarchyLookup.Found.class, service.hierarchy("VSC", VS + "protein", "hash-vs1", 0),
+        "read as a tree, the value is a term the release holds");
+    HierarchyLookup.TermNotInRelease absent = assertInstanceOf(HierarchyLookup.TermNotInRelease.class,
+        service.hierarchy("VSC", VS + "protein", "hash-vs1", 0, 50, true),
+        "a value was accepted as a value set of the release");
+    assertEquals("hash-vs1", absent.versionId());
+    assertInstanceOf(HierarchyLookup.TermNotHeld.class,
+        service.hierarchy("VSC", VS + "protein", null, 0, 50, true));
+  }
+
+  @Test
+  public void aValueSetTheReleaseLacksIsNotInTheRelease() throws Exception {
+    assertInstanceOf(HierarchyLookup.TermNotInRelease.class,
+        service.hierarchy("VSC", VS + "no-such-set", "hash-vs1", 0, 50, true));
+    assertInstanceOf(HierarchyLookup.ReleaseNotHeld.class,
+        service.hierarchy("VSC", VS + "analyte-class", "hash-nonesuch", 0, 50, true));
+  }
+
+  @Test
+  public void anOntologyHoldsNoValueSet() throws Exception {
+    assertInstanceOf(HierarchyLookup.NotValueSetCollection.class,
+        service.hierarchy("EX", BASE + "mammal", "hash-v1", 0, 50, true),
+        "a class with subclasses was accepted as a value set");
+  }
 }

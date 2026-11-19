@@ -9,11 +9,10 @@ import org.junit.jupiter.api.Test;
 import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -72,24 +71,12 @@ class RelayedFailureBodyTest {
   @Test
   @DisplayName("No resource class relays a bare status any more")
   void noBareRelaysRemain() throws Exception {
-    Path resources = Path.of("src/main/java/org/metadatacenter/cedar/terminology/resources/bioportal");
-    if (!Files.isDirectory(resources)) {
-      return; // running from a different working directory; the other tests still hold
+    List<String> offenders = new ArrayList<>();
+    for (Path file : BioPortalResourceSources.files()) {
+      if (Files.readString(file).contains("Response.status(e.getStatusCode()).build()")) {
+        offenders.add(file.getFileName().toString());
+      }
     }
-    try (Stream<Path> files = Files.walk(resources)) {
-      List<String> offenders = files
-          .filter(p -> p.toString().endsWith(".java"))
-          .filter(p -> {
-            try {
-              return Files.readString(p).contains("Response.status(e.getStatusCode()).build()");
-            } catch (Exception e) {
-              return false;
-            }
-          })
-          .map(p -> p.getFileName().toString())
-          .toList();
-      assertFalse(offenders.size() > 0,
-          "these still answer a bare relayed status with no body: " + offenders);
-    }
+    assertEquals(List.of(), offenders, "these still answer a bare relayed status with no body");
   }
 }

@@ -22,7 +22,7 @@ public class OntologyResourceTest extends AbstractTerminologyServerResourceTest 
     List<Ontology> ontologies = read(baseUrlBpOntologies, new GenericType<>() {});
     Map<String, String> names = ontologies.stream().collect(Collectors.toMap(Ontology::getId, Ontology::getName));
     // The registry also lists the three value-set collections, which are left out.
-    Assertions.assertEquals(2 + FILLERS, ontologies.size(), "Every ontology should be listed: " + names.keySet());
+    Assertions.assertEquals(ONTOLOGIES + FILLERS, ontologies.size(), "Every ontology should be listed: " + names.keySet());
     Assertions.assertEquals("Test Ontology", names.get(ONTOLOGY));
     Assertions.assertEquals("Virus Ontology", names.get(VIRUSES));
     for (String collection : List.of(CEDARVS, NLMVS, VS_COLLECTION)) {

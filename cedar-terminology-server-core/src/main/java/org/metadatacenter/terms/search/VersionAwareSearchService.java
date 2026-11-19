@@ -716,8 +716,24 @@ public class VersionAwareSearchService {
   /** The hierarchy, with at most {@code limit} children from {@code offset} on. */
   public HierarchyLookup hierarchy(String acronym, String termIri, String versionId,
                                    int offset, int limit) throws SQLException {
+    return hierarchy(acronym, termIri, versionId, offset, limit, false);
+  }
+
+  /**
+   * The hierarchy, or with {@code valueSet} the value set and its values.
+   *
+   * A value set is a concept with values beneath it, in a source the catalog records as a value-set
+   * collection, which is how the search finds one. Read as a tree, any concept of the release is
+   * found, so a value, or a class of an ontology, passed for a value set. A value-set constraint
+   * pinned to such a release resolves to no values for everyone who reads it later.
+   */
+  public HierarchyLookup hierarchy(String acronym, String termIri, String versionId,
+                                   int offset, int limit, boolean valueSet) throws SQLException {
     if (acronym == null || acronym.isBlank() || termIri == null || termIri.isBlank()) {
       return new HierarchyLookup.TermNotHeld(acronym, termIri);
+    }
+    if (valueSet && !provider.catalog().isValueSetCollection(acronym)) {
+      return new HierarchyLookup.NotValueSetCollection(acronym, termIri);
     }
     boolean pinned = versionId != null && !versionId.isBlank();
     Resolved resolved = pinned ? resolveSource(
@@ -731,10 +747,11 @@ public class VersionAwareSearchService {
     }
     SnapshotStore store = resolved.store();
     Optional<String> label = store.prefLabel(termIri);
-    if (label.isEmpty() && !store.contains(termIri)) {
+    if (label.isEmpty() && !store.contains(termIri) || valueSet && store.childCount(termIri) == 0) {
       // The release was read and does not contain the term. A newer one may: ICO's 2020 release
       // predates its import of MONDO, so `MONDO_0000001` is absent there and present in the three
-      // releases after it.
+      // releases after it. A concept with no values beneath it is a value, so a release holding only
+      // that holds no value set of that IRI.
       return pinned ? new HierarchyLookup.TermNotInRelease(acronym, termIri, versionId)
           : new HierarchyLookup.TermNotHeld(acronym, termIri);
     }
@@ -756,7 +773,8 @@ public class VersionAwareSearchService {
         resolved.block(), path, termIri, label.orElse(null), children.isEmpty() ? null : children,
         store.childCount(termIri), from, store.descendantCount(termIri),
         SnapshotStore.servedDefinition(store.definitions(termIri)), null, null, null, null)
-        .withLinks(descriptions.describe(reference(resolved.block(), "branch", termIri)).links()).paged(limit, null));
+        .withLinks(descriptions.describe(reference(resolved.block(),
+            valueSet ? SearchRequest.TYPE_VALUE_SET : "branch", termIri)).links()).paged(limit, null));
   }
 
   /**

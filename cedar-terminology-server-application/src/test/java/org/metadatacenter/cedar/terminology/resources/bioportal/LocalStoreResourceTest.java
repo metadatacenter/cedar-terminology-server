@@ -66,7 +66,9 @@ public class LocalStoreResourceTest {
         new java.util.HashMap<>(org.metadatacenter.config.environment.CedarEnvironmentSource.getAll());
     environment.put("CEDAR_TERMINOLOGY_HTTP_PORT", "0");
     environment.put("CEDAR_TERMINOLOGY_ADMIN_PORT", "0");
-    environment.put("CEDAR_TERMINOLOGY_STOP_PORT", "0");
+    // No case here asks BioPortal. An address that refuses connections keeps it so, rather than the
+    // BioPortal the environment names, which is the real one on a workstation.
+    environment.put("CEDAR_BIOPORTAL_REST_BASE", "http://127.0.0.1:1/");
     org.metadatacenter.config.environment.CedarEnvironmentSource.setOverride(environment);
   }
 
@@ -176,8 +178,11 @@ public class LocalStoreResourceTest {
 
   @AfterAll
   public static void tearDown() {
-    RULE.after();
-    LocalStoreTestProperties.clear();
+    try {
+      RULE.after();
+    } finally {
+      LocalStoreTestProperties.clear();
+    }
   }
 
   @Test
@@ -317,7 +322,8 @@ public class LocalStoreResourceTest {
     // A date pin serves the newest snapshot released on or before it (as-of-date resolution). v1
     // released 2025-01-01, v2 2025-06-01: a 2025-03-01 pin lands on v1 (3 concepts), a later date on
     // v2 (4). (A date before either would resolve to empty and fall back to the remote adapter, which
-    // is unconfigured here, so that boundary is left to the store-layer unit tests.)
+    // points at an address that refuses connections here, so that boundary is left to the store-layer
+    // unit tests.)
     Assertions.assertEquals(3, integratedSearchOntologyConceptCount(",\"version\":\"2025-03-01\""));
     Assertions.assertEquals(4, integratedSearchOntologyConceptCount(",\"version\":\"2025-09-01\""));
   }
@@ -683,6 +689,67 @@ public class LocalStoreResourceTest {
     JsonNode absentTerm = getHierarchy(termAt("nonesuch", "v2"), Status.NOT_FOUND);
     Assertions.assertTrue(absentTerm.toString().contains("nonesuch"),
         "A term the release does not contain should be named: " + absentTerm);
+  }
+
+  /** A term of the LOCALVS collection at the named release, asked about as a value set. */
+  private static String valueSetAt(String term, String versionId) {
+    return "sourceAcronym=" + VS + "&termIri=" + URLEncoder.encode(BASE + term, StandardCharsets.UTF_8)
+        + "&versionId=" + versionId + "&type=valueSet";
+  }
+
+  @Test
+  public void aValueSetIsReadWithItsValuesAtTheReleaseAsked() {
+    JsonNode json = getHierarchy(valueSetAt("disease", "vs2"), Status.OK);
+    Assertions.assertEquals(BASE + "disease", json.get("termIri").asText());
+    Assertions.assertEquals(Set.of(BASE + "cancer", BASE + "infection"), childIris(json));
+    Assertions.assertEquals("vs2", json.get("source").get("version").get("id").asText());
+  }
+
+  @Test
+  public void aReleaseHoldingTheIriAsAValueHoldsNoValueSetOfIt() {
+    // Melanoma has nothing beneath it, so it is a value. As a tree it is found; as a value set the
+    // release says it does not contain it, in the sentence it uses for any term it lacks.
+    getHierarchy(termAt("melanoma", "v2"), Status.OK);
+    JsonNode value = getHierarchy(valueSetAt("melanoma", "vs2"), Status.NOT_FOUND);
+    Assertions.assertTrue(value.get("message").asText().contains("Release vs2 of " + VS + " does not contain"),
+        value.toString());
+    JsonNode absent = getHierarchy(valueSetAt("infection", "vs1"), Status.NOT_FOUND);
+    Assertions.assertTrue(absent.get("message").asText().contains("does not contain " + BASE + "infection"),
+        absent.toString());
+  }
+
+  /** A term of the LOCALVS collection, asked about as a value set with no release named. */
+  private static String currentValueSet(String term) {
+    return "sourceAcronym=" + VS + "&termIri=" + URLEncoder.encode(BASE + term, StandardCharsets.UTF_8)
+        + "&type=valueSet";
+  }
+
+  @Test
+  public void aValueSetIsReadAtTheCurrentReleaseWhenNoneIsNamed() {
+    // LOCALVS's latest is vs1, where disease has one value; vs2 adds infection beside cancer.
+    JsonNode json = getHierarchy(currentValueSet("disease"), Status.OK);
+    Assertions.assertEquals(Set.of(BASE + "cancer"), childIris(json));
+    Assertions.assertEquals("vs1", json.get("source").get("version").get("id").asText());
+  }
+
+  @Test
+  public void theCurrentReleaseHoldsNoValueSetOfAValue() {
+    JsonNode value = getHierarchy(currentValueSet("melanoma"), Status.NOT_FOUND);
+    Assertions.assertEquals("The store holds no term " + BASE + "melanoma in " + VS + ".",
+        value.get("message").asText(), value.toString());
+  }
+
+  @Test
+  public void aValueSetAskedOfAnOntologyIsRefused() {
+    JsonNode json = getHierarchy(termAt("cancer", "v2") + "&type=valueSet", Status.NOT_FOUND);
+    Assertions.assertTrue(json.get("message").asText().contains("not a value-set collection"), json.toString());
+  }
+
+  @Test
+  public void aHierarchyOfATypeItDoesNotKnowIsRefused() {
+    getHierarchy(termAt("cancer", "v2") + "&type=class", Status.OK);
+    getHierarchy(termAt("cancer", "v2") + "&type=branch", Status.OK);
+    getHierarchy(termAt("cancer", "v2") + "&type=valueset", Status.BAD_REQUEST);
   }
 
   @Test

@@ -4,8 +4,6 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.apache.hc.client5.http.fluent.Request;
 import org.apache.hc.core5.http.ClassicHttpResponse;
-import org.apache.hc.core5.http.ContentType;
-import org.apache.hc.core5.http.HttpResponse;
 import org.apache.hc.core5.util.Timeout;
 import org.metadatacenter.cedar.terminology.util.Constants;
 import org.metadatacenter.terms.bioportal.customObjects.BpPagedResults;
@@ -34,24 +32,6 @@ public class BpProvisionalClassDAO {
   public BpProvisionalClassDAO(int connectTimeout, int socketTimeout) {
     this.connectTimeout = connectTimeout;
     this.socketTimeout = socketTimeout;
-  }
-
-  public BpProvisionalClass create(BpProvisionalClass c, String apiKey) throws IOException {
-    String url = BP_API_BASE + BP_PROVISIONAL_CLASSES;
-    // Send request to the BioPortal API
-    ClassicHttpResponse response = HttpUtil.makeHttpRequest(Request.post(url)
-        .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
-        connectTimeout(Timeout.ofMilliseconds(connectTimeout)).responseTimeout(Timeout.ofMilliseconds(socketTimeout))
-        .bodyString(STRICT_MAPPER.writeValueAsString(c), ContentType.APPLICATION_JSON));
-
-    int statusCode = response.getCode();
-    // The class was successfully created
-    if (statusCode == Status.CREATED.getStatusCode()) {
-      JsonNode bpResult = STRICT_MAPPER.readTree(response.getEntity().getContent());
-      return TOLERANT_MAPPER.convertValue(bpResult, BpProvisionalClass.class);
-    } else {
-      throw BioPortalFailure.relay(statusCode, url);
-    }
   }
 
   // TODO: Issue: not able to retrieve provisional classes from bioportal using the full id
@@ -107,33 +87,6 @@ public class BpProvisionalClassDAO {
     } else {
       throw BioPortalFailure.relay(statusCode, url);
     }
-  }
-
-  public void update(BpProvisionalClass c, String apiKey) throws IOException {
-    String url = BP_API_BASE + BP_PROVISIONAL_CLASSES + Util.getShortIdentifier(c.getId());
-    logger.info("Url: " + url);
-
-    // Send request to the BioPortal API
-    HttpResponse response = HttpUtil.makeHttpRequest(Request.patch(url)
-        .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
-        connectTimeout(Timeout.ofMilliseconds(connectTimeout)).responseTimeout(Timeout.ofMilliseconds(socketTimeout))
-        .bodyString(STRICT_MAPPER.writeValueAsString(c), ContentType.APPLICATION_JSON));
-
-    int statusCode = response.getCode();
-    throw BioPortalFailure.relay(statusCode, url);
-  }
-
-  public void delete(String id, String apiKey) throws IOException {
-    String url = BP_API_BASE + BP_PROVISIONAL_CLASSES + id;
-    logger.info("Url: " + url);
-
-    // Send request to the BioPortal API
-    HttpResponse response = HttpUtil.makeHttpRequest(Request.delete(url)
-        .addHeader("Authorization", Util.getBioPortalAuthHeader(apiKey)).
-        connectTimeout(Timeout.ofMilliseconds(connectTimeout)).responseTimeout(Timeout.ofMilliseconds(socketTimeout)));
-
-    int statusCode = response.getCode();
-    throw BioPortalFailure.relay(statusCode, url);
   }
 
 }

@@ -701,8 +701,6 @@ public class TerminologyService implements ITerminologyService {
       details.setPublication(bpSubmission.getPublication());
       details.setDocumentation(bpSubmission.getDocumentation());
       details.setVersion(bpSubmission.getVersion());
-      details.setHasSubmissions(hasSubmissions);
-      details.setMetricsAvailable(metricsAvailable);
     } catch (HTTPException e) {
       if (e.getStatusCode() == CedarResponseStatus.NOT_FOUND.getStatusCode()) {
         log.error("Latest submission not found for " + ontologyId + " ontology");
@@ -710,6 +708,9 @@ public class TerminologyService implements ITerminologyService {
         throw (e);
       }
     }
+    // What the metrics said holds whether or not the latest submission could be read.
+    details.setHasSubmissions(hasSubmissions);
+    details.setMetricsAvailable(metricsAvailable);
     if (!hasSubmissions) {
       log.warn("No submissions available for " + ontologyId);
     }
