@@ -47,12 +47,12 @@ public class ValueResourceTest extends AbstractTerminologyServerResourceTest {
   }
 
   @Test
-  public void findValuesByValueSetHonoursPageSizeTest() {
+  public void findValuesByValueSetHonoursLimitTest() {
     PagedResults<Value> values =
-        read(valueSetUrl(CEDARVS, STUDY_FILE_TYPE) + "/" + BP_VALUES + "?page=1&pageSize=3", new GenericType<>() {});
+        read(valueSetUrl(CEDARVS, STUDY_FILE_TYPE) + "/" + BP_VALUES + "?limit=3", new GenericType<>() {});
     Assertions.assertEquals(List.of("Study_Medication", "Adverse_Events", "Demographics"),
-        values.getCollection().stream().map(Value::getId).toList(), "The page size was not applied");
-    assertPaging(values, 1, 2, 3, 4, null, 2);
+        values.getCollection().stream().map(Value::getId).toList(), "The limit was not applied");
+    assertPaging(values, 4, 3, 0);
   }
 
   @Test

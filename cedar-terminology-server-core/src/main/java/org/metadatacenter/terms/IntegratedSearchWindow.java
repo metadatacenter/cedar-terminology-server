@@ -61,7 +61,7 @@ final class IntegratedSearchWindow {
         List<SearchResult> collection = answer == null || answer.getCollection() == null
             ? List.of() : answer.getCollection();
         read.addAll(collection);
-        more = !collection.isEmpty() && answer.getNextPage() != null;
+        more = !collection.isEmpty() && answer.hasNextPage();
         if (!more || read.size() >= window) {
           break;
         }

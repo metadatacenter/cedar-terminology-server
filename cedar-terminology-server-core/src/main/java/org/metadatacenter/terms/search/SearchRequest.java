@@ -3,6 +3,7 @@ package org.metadatacenter.terms.search;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.databind.JsonNode;
 import io.swagger.v3.oas.annotations.media.Schema;
+import org.metadatacenter.terms.paging.PageLimits;
 
 import java.util.List;
 
@@ -20,7 +21,15 @@ public record SearchRequest(
     List<String> types,
     List<SourceSelector> sources,
     String lang,
+    /**
+     * Withdrawn page-number paging, still read so that older clients keep working. Absent or 1, it
+     * is ignored; any other page is refused.
+     */
+    @Schema(deprecated = true, description = "Withdrawn. Accepted only as 1, which is ignored; any other value "
+        + "is refused with 400. Send limit and offset instead.")
     Integer page,
+    /** Withdrawn with {@code page}, and ignored. */
+    @Schema(deprecated = true, description = "Withdrawn and ignored. Send limit instead.")
     Integer pageSize,
     Boolean includeVersions,
     /**
@@ -33,21 +42,24 @@ public record SearchRequest(
      * with 950 rather than MELO with 38, however aptly MELO is named.
      */
     String ontologyOrder,
-    /** How many results a block returns; sent instead of page and pageSize. */
+    /** How many results a block returns. */
+    @Schema(description = "How many results a block returns, from 1 to " + PageLimits.MAX_LIMIT + ". Defaults to "
+        + PageLimits.DEFAULT_LIMIT + "; a larger limit is refused with 400.")
     Integer limit,
-    /** How many results a block skips; sent instead of page and pageSize. */
+    /** How many results a block skips. */
+    @Schema(description = "How many results a block skips. Defaults to 0. The response carries no paging links: "
+        + "ask for the next page by sending the offset.")
     Integer offset) {
 
-  /** A request that does not ask for version histories, which is most of them. */
-  public SearchRequest(String query, List<String> types, List<SourceSelector> sources, String lang,
-                       Integer page, Integer pageSize) {
-    this(query, types, sources, lang, page, pageSize, null, null, null, null);
+  /** A request for the first page at the default limit, without version histories. */
+  public SearchRequest(String query, List<String> types, List<SourceSelector> sources, String lang) {
+    this(query, types, sources, lang, null, null, null, null, null, null);
   }
 
-  /** A request paged by number. */
-  public SearchRequest(String query, List<String> types, List<SourceSelector> sources, String lang,
-                       Integer page, Integer pageSize, Boolean includeVersions, String ontologyOrder) {
-    this(query, types, sources, lang, page, pageSize, includeVersions, ontologyOrder, null, null);
+  /** A request paged by {@code limit} and {@code offset}, without version histories. */
+  public static SearchRequest paged(String query, List<String> types, List<SourceSelector> sources, String lang,
+                                    Integer limit, Integer offset) {
+    return new SearchRequest(query, types, sources, lang, null, null, null, null, limit, offset);
   }
 
   public static final String ORDER_BY_MATCHES = "matches";

@@ -30,31 +30,7 @@
         "description" : "Get provisional classes (including provisional value sets and provisional values).",
         "operationId" : "findAllProvisionalClasses",
         "parameters" : [ {
-          "description" : "Page to be returned, counting from 1, for clients that page by number. Cannot be sent with limit or offset. Example: 7.",
-          "in" : "query",
-          "name" : "page",
-          "schema" : {
-            "type" : "integer",
-            "format" : "int32"
-          }
-        }, {
-          "description" : "Number of results per page, at most 1000. Example: 10.",
-          "in" : "query",
-          "name" : "pageSize",
-          "schema" : {
-            "type" : "integer",
-            "format" : "int32"
-          }
-        }, {
-          "description" : "Alias for the page size, accepted in either spelling.",
-          "in" : "query",
-          "name" : "page_size",
-          "schema" : {
-            "type" : "integer",
-            "format" : "int32"
-          }
-        }, {
-          "description" : "How many results to return, from 1 to 1000. Defaults to the configured page size.",
+          "description" : "How many results to return, from 1 to 500. Defaults to 100. A larger limit is refused with 400.",
           "in" : "query",
           "name" : "limit",
           "schema" : {
@@ -79,7 +55,7 @@
                 }
               }
             },
-            "description" : "One page of provisional classes"
+            "description" : "One page of provisional classes. The answer carries totalCount, request (the limit and offset served), currentOffset, and paging, which holds links to the first, previous, next and last pages."
           },
           "400" : {
             "content" : {
@@ -203,7 +179,7 @@
     },
     "/bioportal/integrated-retrieve" : {
       "post" : {
-        "description" : "Retrieve ontology classes, value sets, and values based on CEDAR value constraints. This endpoint takes a controlled term field specification and any user-supplied initial characters and returns conforming values. <br /> <br /> Some sample calls in Insomnia (https://insomnia.rest/) format are available at https://github.com/metadatacenter/cedar-terminology-server/blob/develop/examples/integrated-search.insomnia.json. <br /> <br />Note that in some cases, the server will need to sort the results obtained from BioPortal and the original pagination information will not be valid any more. In those situations, the values of some of the pagination fields returned as part of the results (e.g., pageCount, nextPage, etc.) cannot be computed consistently, and the server will assign a 'null' value to those fields. <br /> <br />A credential is optional. The route has served anonymous callers in every release since it was introduced in 2024.",
+        "description" : "Retrieve ontology classes, value sets, and values based on CEDAR value constraints. This endpoint takes a controlled term field specification and any user-supplied initial characters and returns conforming values. <br /> <br /> Some sample calls in Insomnia (https://insomnia.rest/) format are available at https://github.com/metadatacenter/cedar-terminology-server/blob/develop/examples/integrated-search.insomnia.json. <br /> <br />The results are paged by limit (1 to 500, default 100; a larger limit is refused with 400) and offset, sent in the body. A body with a page other than 1 is refused with 400. <br /> <br />A credential is optional. The route has served anonymous callers in every release since it was introduced in 2024.",
         "operationId" : "cedarIntegratedRetrieve",
         "requestBody" : {
           "content" : {
@@ -225,7 +201,7 @@
                 }
               }
             },
-            "description" : "A paginated list of search results"
+            "description" : "One page of results. The answer carries totalCount, request (the limit and offset served) and currentOffset. A POST has no URL to link to, so the answer carries no paging links: ask for the next page by sending the next offset."
           },
           "400" : {
             "content" : {
@@ -267,7 +243,7 @@
     },
     "/bioportal/integrated-search" : {
       "post" : {
-        "description" : "Search for ontology classes, value sets, and values based on CEDAR value constraints. This endpoint takes a controlled term field specification and any user-supplied initial characters and returns conforming values. <br /> <br /> Some sample calls in Insomnia (https://insomnia.rest/) format are available at https://github.com/metadatacenter/cedar-terminology-server/blob/develop/examples/integrated-search.insomnia.json. <br /> <br />When the server reorders what BioPortal returns (several sources sorted together, one source listed without a query and sorted by label, or a field's actions applied), it reads up to the first 1,000 results of each source, reorders them as one list and pages that list exactly. A source holding more is truncated, and the answer then carries countCapped: true, with totalCount counting what was read. <br /> <br />A credential is optional. The route serves anonymous callers because the CEDAR Embeddable Editor calls it from the browser, often on pages hosted outside CEDAR, and holds no CEDAR credential to send.",
+        "description" : "Search for ontology classes, value sets, and values based on CEDAR value constraints. This endpoint takes a controlled term field specification and any user-supplied initial characters and returns conforming values. <br /> <br /> Some sample calls in Insomnia (https://insomnia.rest/) format are available at https://github.com/metadatacenter/cedar-terminology-server/blob/develop/examples/integrated-search.insomnia.json. <br /> <br />When the server reorders what BioPortal returns (several sources sorted together, one source listed without a query and sorted by label, or a field's actions applied), it reads up to the first 1,000 results of each source, reorders them as one list and pages that list exactly. A source holding more is truncated, and the answer then carries countCapped: true, with totalCount counting what was read. <br /> <br />The results are paged by limit (1 to 500, default 100; a larger limit is refused with 400) and offset, sent in the body. A body's page and pageSize are ignored when page is absent or 1, and a body with any other page is refused with 400. <br /> <br />A credential is optional. The route serves anonymous callers because the CEDAR Embeddable Editor calls it from the browser, often on pages hosted outside CEDAR, and holds no CEDAR credential to send.",
         "operationId" : "cedarIntegratedSearch",
         "parameters" : [ {
           "description" : "Optional BCP-47 language for result labels (e.g. fr). Honored for locally-served, single-source constraints; ignored for BioPortal-proxied ones.",
@@ -297,7 +273,7 @@
                 }
               }
             },
-            "description" : "A paginated list of search results"
+            "description" : "One page of results. The answer carries totalCount, request (the limit and offset served) and currentOffset. A POST has no URL to link to, so the answer carries no paging links: ask for the next page by sending the next offset."
           },
           "400" : {
             "content" : {
@@ -713,31 +689,7 @@
             "type" : "string"
           }
         }, {
-          "description" : "Page to be returned, counting from 1, for clients that page by number. Cannot be sent with limit or offset. Example: 7.",
-          "in" : "query",
-          "name" : "page",
-          "schema" : {
-            "type" : "integer",
-            "format" : "int32"
-          }
-        }, {
-          "description" : "Number of results per page, at most 1000. Example: 10.",
-          "in" : "query",
-          "name" : "pageSize",
-          "schema" : {
-            "type" : "integer",
-            "format" : "int32"
-          }
-        }, {
-          "description" : "Alias for the page size, accepted in either spelling.",
-          "in" : "query",
-          "name" : "page_size",
-          "schema" : {
-            "type" : "integer",
-            "format" : "int32"
-          }
-        }, {
-          "description" : "How many results to return, from 1 to 1000. Defaults to the configured page size.",
+          "description" : "How many results to return, from 1 to 500. Defaults to 100. A larger limit is refused with 400.",
           "in" : "query",
           "name" : "limit",
           "schema" : {
@@ -762,7 +714,7 @@
                 }
               }
             },
-            "description" : "One page of the ontology's classes"
+            "description" : "One page of the ontology's classes. The answer carries totalCount, request (the limit and offset served), currentOffset, and paging, which holds links to the first, previous, next and last pages."
           },
           "400" : {
             "content" : {
@@ -835,31 +787,7 @@
             "type" : "string"
           }
         }, {
-          "description" : "Page to be returned, counting from 1, for clients that page by number. Cannot be sent with limit or offset. Example: 7.",
-          "in" : "query",
-          "name" : "page",
-          "schema" : {
-            "type" : "integer",
-            "format" : "int32"
-          }
-        }, {
-          "description" : "Number of results per page, at most 1000. Example: 10.",
-          "in" : "query",
-          "name" : "pageSize",
-          "schema" : {
-            "type" : "integer",
-            "format" : "int32"
-          }
-        }, {
-          "description" : "Alias for the page size, accepted in either spelling.",
-          "in" : "query",
-          "name" : "page_size",
-          "schema" : {
-            "type" : "integer",
-            "format" : "int32"
-          }
-        }, {
-          "description" : "How many results to return, from 1 to 1000. Defaults to the configured page size.",
+          "description" : "How many results to return, from 1 to 500. Defaults to 100. A larger limit is refused with 400.",
           "in" : "query",
           "name" : "limit",
           "schema" : {
@@ -884,7 +812,7 @@
                 }
               }
             },
-            "description" : "One page of the ontology's provisional classes"
+            "description" : "One page of the ontology's provisional classes. The answer carries totalCount, request (the limit and offset served), currentOffset, and paging, which holds links to the first, previous, next and last pages."
           },
           "400" : {
             "content" : {
@@ -1147,31 +1075,7 @@
             "type" : "string"
           }
         }, {
-          "description" : "Page to be returned, counting from 1, for clients that page by number. Cannot be sent with limit or offset. Example: 7.",
-          "in" : "query",
-          "name" : "page",
-          "schema" : {
-            "type" : "integer",
-            "format" : "int32"
-          }
-        }, {
-          "description" : "Number of results per page, at most 1000. Example: 10.",
-          "in" : "query",
-          "name" : "pageSize",
-          "schema" : {
-            "type" : "integer",
-            "format" : "int32"
-          }
-        }, {
-          "description" : "Alias for the page size, accepted in either spelling.",
-          "in" : "query",
-          "name" : "page_size",
-          "schema" : {
-            "type" : "integer",
-            "format" : "int32"
-          }
-        }, {
-          "description" : "How many results to return, from 1 to 1000. Defaults to the configured page size.",
+          "description" : "How many results to return, from 1 to 500. Defaults to 100. A larger limit is refused with 400.",
           "in" : "query",
           "name" : "limit",
           "schema" : {
@@ -1196,7 +1100,7 @@
                 }
               }
             },
-            "description" : "One page of the class's children"
+            "description" : "One page of the class's children. The answer carries totalCount, request (the limit and offset served), currentOffset, and paging, which holds links to the first, previous, next and last pages."
           },
           "400" : {
             "content" : {
@@ -1277,31 +1181,7 @@
             "type" : "string"
           }
         }, {
-          "description" : "Page to be returned, counting from 1, for clients that page by number. Cannot be sent with limit or offset. Example: 7.",
-          "in" : "query",
-          "name" : "page",
-          "schema" : {
-            "type" : "integer",
-            "format" : "int32"
-          }
-        }, {
-          "description" : "Number of results per page, at most 1000. Example: 10.",
-          "in" : "query",
-          "name" : "pageSize",
-          "schema" : {
-            "type" : "integer",
-            "format" : "int32"
-          }
-        }, {
-          "description" : "Alias for the page size, accepted in either spelling.",
-          "in" : "query",
-          "name" : "page_size",
-          "schema" : {
-            "type" : "integer",
-            "format" : "int32"
-          }
-        }, {
-          "description" : "How many results to return, from 1 to 1000. Defaults to the configured page size.",
+          "description" : "How many results to return, from 1 to 500. Defaults to 100. A larger limit is refused with 400.",
           "in" : "query",
           "name" : "limit",
           "schema" : {
@@ -1326,7 +1206,7 @@
                 }
               }
             },
-            "description" : "One page of the class's descendants"
+            "description" : "One page of the class's descendants. The answer carries totalCount, request (the limit and offset served), currentOffset, and paging, which holds links to the first, previous, next and last pages."
           },
           "400" : {
             "content" : {
@@ -2220,31 +2100,7 @@
             "type" : "boolean"
           }
         }, {
-          "description" : "Page to be returned, counting from 1, for clients that page by number. Cannot be sent with limit or offset. Example: 7.",
-          "in" : "query",
-          "name" : "page",
-          "schema" : {
-            "type" : "integer",
-            "format" : "int32"
-          }
-        }, {
-          "description" : "Number of results per page, at most 1000. Example: 10.",
-          "in" : "query",
-          "name" : "page_size",
-          "schema" : {
-            "type" : "integer",
-            "format" : "int32"
-          }
-        }, {
-          "description" : "Alias for the page size, accepted in either spelling.",
-          "in" : "query",
-          "name" : "pageSize",
-          "schema" : {
-            "type" : "integer",
-            "format" : "int32"
-          }
-        }, {
-          "description" : "How many results to return, from 1 to 1000. Defaults to the configured page size.",
+          "description" : "How many results to return, from 1 to 500. Defaults to 100. A larger limit is refused with 400.",
           "in" : "query",
           "name" : "limit",
           "schema" : {
@@ -2269,7 +2125,7 @@
                 }
               }
             },
-            "description" : "One page of matching properties"
+            "description" : "One page of matching properties. The answer carries totalCount, request (the limit and offset served), currentOffset, and paging, which holds links to the first, previous, next and last pages."
           },
           "400" : {
             "content" : {
@@ -2471,31 +2327,7 @@
             "default" : 1
           }
         }, {
-          "description" : "Page to be returned, counting from 1, for clients that page by number. Cannot be sent with limit or offset. Example: 7.",
-          "in" : "query",
-          "name" : "page",
-          "schema" : {
-            "type" : "integer",
-            "format" : "int32"
-          }
-        }, {
-          "description" : "Number of results per page, at most 1000. Example: 10.",
-          "in" : "query",
-          "name" : "page_size",
-          "schema" : {
-            "type" : "integer",
-            "format" : "int32"
-          }
-        }, {
-          "description" : "Alias for the page size, accepted in either spelling.",
-          "in" : "query",
-          "name" : "pageSize",
-          "schema" : {
-            "type" : "integer",
-            "format" : "int32"
-          }
-        }, {
-          "description" : "How many results to return, from 1 to 1000. Defaults to the configured page size.",
+          "description" : "How many results to return, from 1 to 500. Defaults to 100. A larger limit is refused with 400.",
           "in" : "query",
           "name" : "limit",
           "schema" : {
@@ -2520,7 +2352,7 @@
                 }
               }
             },
-            "description" : "One page of matching classes, value sets and values"
+            "description" : "One page of matching classes, value sets and values. The answer carries totalCount, request (the limit and offset served), currentOffset, and paging, which holds links to the first, previous, next and last pages."
           },
           "400" : {
             "content" : {
@@ -2835,31 +2667,7 @@
             "type" : "string"
           }
         }, {
-          "description" : "Page to be returned, counting from 1, for clients that page by number. Cannot be sent with limit or offset. Example: 7.",
-          "in" : "query",
-          "name" : "page",
-          "schema" : {
-            "type" : "integer",
-            "format" : "int32"
-          }
-        }, {
-          "description" : "Number of results per page, at most 1000. Example: 10.",
-          "in" : "query",
-          "name" : "pageSize",
-          "schema" : {
-            "type" : "integer",
-            "format" : "int32"
-          }
-        }, {
-          "description" : "Alias for the page size, accepted in either spelling.",
-          "in" : "query",
-          "name" : "page_size",
-          "schema" : {
-            "type" : "integer",
-            "format" : "int32"
-          }
-        }, {
-          "description" : "How many results to return, from 1 to 1000. Defaults to the configured page size.",
+          "description" : "How many results to return, from 1 to 500. Defaults to 100. A larger limit is refused with 400.",
           "in" : "query",
           "name" : "limit",
           "schema" : {
@@ -2884,7 +2692,7 @@
                 }
               }
             },
-            "description" : "One page of the collection's value sets"
+            "description" : "One page of the collection's value sets. The answer carries totalCount, request (the limit and offset served), currentOffset, and paging, which holds links to the first, previous, next and last pages."
           },
           "400" : {
             "content" : {
@@ -3145,31 +2953,7 @@
             "type" : "string"
           }
         }, {
-          "description" : "Page to be returned, counting from 1, for clients that page by number. Cannot be sent with limit or offset. Example: 7.",
-          "in" : "query",
-          "name" : "page",
-          "schema" : {
-            "type" : "integer",
-            "format" : "int32"
-          }
-        }, {
-          "description" : "Number of results per page, at most 1000. Example: 10.",
-          "in" : "query",
-          "name" : "pageSize",
-          "schema" : {
-            "type" : "integer",
-            "format" : "int32"
-          }
-        }, {
-          "description" : "Alias for the page size, accepted in either spelling.",
-          "in" : "query",
-          "name" : "page_size",
-          "schema" : {
-            "type" : "integer",
-            "format" : "int32"
-          }
-        }, {
-          "description" : "How many results to return, from 1 to 1000. Defaults to the configured page size.",
+          "description" : "How many results to return, from 1 to 500. Defaults to 100. A larger limit is refused with 400.",
           "in" : "query",
           "name" : "limit",
           "schema" : {
@@ -3194,7 +2978,7 @@
                 }
               }
             },
-            "description" : "One page of the value set's values"
+            "description" : "One page of the value set's values. The answer carries totalCount, request (the limit and offset served), currentOffset, and paging, which holds links to the first, previous, next and last pages."
           },
           "400" : {
             "content" : {
@@ -3365,31 +3149,7 @@
             "type" : "string"
           }
         }, {
-          "description" : "Page to be returned, counting from 1, for clients that page by number. Cannot be sent with limit or offset. Example: 7.",
-          "in" : "query",
-          "name" : "page",
-          "schema" : {
-            "type" : "integer",
-            "format" : "int32"
-          }
-        }, {
-          "description" : "Number of results per page, at most 1000. Example: 10.",
-          "in" : "query",
-          "name" : "pageSize",
-          "schema" : {
-            "type" : "integer",
-            "format" : "int32"
-          }
-        }, {
-          "description" : "Alias for the page size, accepted in either spelling.",
-          "in" : "query",
-          "name" : "page_size",
-          "schema" : {
-            "type" : "integer",
-            "format" : "int32"
-          }
-        }, {
-          "description" : "How many results to return, from 1 to 1000. Defaults to the configured page size.",
+          "description" : "How many results to return, from 1 to 500. Defaults to 100. A larger limit is refused with 400.",
           "in" : "query",
           "name" : "limit",
           "schema" : {
@@ -3414,7 +3174,7 @@
                 }
               }
             },
-            "description" : "One page of the values in the value set the given value belongs to"
+            "description" : "One page of the values in the value set the given value belongs to. The answer carries totalCount, request (the limit and offset served), currentOffset, and paging, which holds links to the first, previous, next and last pages."
           },
           "400" : {
             "content" : {
@@ -4053,6 +3813,7 @@
     },
     "/properties/hierarchy" : {
       "get" : {
+        "description" : "Paged by limit and offset. Nothing counts the properties, so countCapped is always true and totalCount is a lower bound: everything up to this page, and one more when the page came back full. The answer carries request, currentOffset and paging, whose links lead to the first, previous and next pages and leave out the last.",
         "operationId" : "hierarchy",
         "parameters" : [ {
           "in" : "query",
@@ -4088,7 +3849,7 @@
             "default" : 0
           }
         }, {
-          "description" : "How many children to return, from 1 to 200. Defaults to 50.",
+          "description" : "How many children to return, from 1 to 500. Defaults to 100. A larger limit is refused with 400.",
           "in" : "query",
           "name" : "limit",
           "schema" : {
@@ -4115,7 +3876,7 @@
                 }
               }
             },
-            "description" : "sourceAcronym, propertyIri or kind is missing, kind is unknown, limit is outside 1 to 200, or offset is negative. The message names the problem. A limit or offset that is not a 32-bit integer is refused with a message that identifies the parameter and says what form it takes."
+            "description" : "sourceAcronym, propertyIri or kind is missing, kind is unknown, limit is outside 1 to 500, offset is negative, or the request carries page, pageSize or page_size. The message names the problem. A limit or offset that is not a 32-bit integer is refused with a message that identifies the parameter and says what form it takes."
           },
           "404" : {
             "content" : {
@@ -4163,6 +3924,7 @@
     },
     "/properties/roots" : {
       "get" : {
+        "description" : "Paged by limit and offset. Nothing counts the properties, so countCapped is always true and totalCount is a lower bound: everything up to this page, and one more when the page came back full. The answer carries request, currentOffset and paging, whose links lead to the first, previous and next pages and leave out the last.",
         "operationId" : "roots",
         "parameters" : [ {
           "in" : "query",
@@ -4192,7 +3954,7 @@
             "default" : 0
           }
         }, {
-          "description" : "How many roots to return, from 1 to 200. Defaults to 50.",
+          "description" : "How many roots to return, from 1 to 500. Defaults to 100. A larger limit is refused with 400.",
           "in" : "query",
           "name" : "limit",
           "schema" : {
@@ -4219,7 +3981,7 @@
                 }
               }
             },
-            "description" : "sourceAcronym or kind is missing, kind is unknown, limit is outside 1 to 200, or offset is negative. The message names the problem. A limit or offset that is not a 32-bit integer is refused with a message that identifies the parameter and says what form it takes."
+            "description" : "sourceAcronym or kind is missing, kind is unknown, limit is outside 1 to 500, offset is negative, or the request carries page, pageSize or page_size. The message names the problem. A limit or offset that is not a 32-bit integer is refused with a message that identifies the parameter and says what form it takes."
           },
           "404" : {
             "content" : {
@@ -4267,6 +4029,7 @@
     },
     "/properties/search" : {
       "post" : {
+        "description" : "Paged by limit (1 to 500, default 100) and offset. The answer carries totalCount, request and currentOffset. A POST has no URL to link to, so the answer carries no paging links: ask for the next page by sending the next offset.",
         "operationId" : "search",
         "requestBody" : {
           "content" : {
@@ -4296,7 +4059,7 @@
                 }
               }
             },
-            "description" : "The body is missing or is not JSON (malformedJsonRequestBody), or the search is refused: the query is empty, longer than 500 characters or holds no letter or number, a kind is unknown, the paging is out of range or mixes limit and offset with page and pageSize, more than 20 sources are named, or a source names no sourceAcronym. The message names the problem."
+            "description" : "The body is missing or is not JSON (malformedJsonRequestBody), or the search is refused: the query is empty, longer than 500 characters or holds no letter or number, a kind is unknown, the limit or offset is out of range, the body sends a page other than 1, more than 20 sources are named, or a source names no sourceAcronym. The message names the problem."
           },
           "404" : {
             "content" : {
@@ -4489,7 +4252,7 @@
     },
     "/search" : {
       "post" : {
-        "description" : "Search the local terminology store at a named version or the current one, across the constraint types a controlled-term field can carry: ontology, branch, class and valueSet. Returns per-type counts and each type's first page, and describes every source it searched — the version that answered, and whether a constraint on it can be pinned.",
+        "description" : "Search the local terminology store at a named version or the current one, across the constraint types a controlled-term field can carry: ontology, branch, class and valueSet. Returns per-type counts and each type's first page, and describes every source it searched — the version that answered, and whether a constraint on it can be pinned. Each type's block is paged by limit (1 to 500, default 100; a larger limit is refused with 400) and offset, and carries totalCount, countCapped, request and currentOffset. A POST has no URL to link to, so a block carries no paging links: ask for the next page by sending the next offset. A body with a page other than 1 is refused with 400.",
         "operationId" : "versionAwareSearch",
         "requestBody" : {
           "content" : {
@@ -4540,7 +4303,7 @@
     },
     "/search/hierarchy" : {
       "get" : {
-        "description" : "The chain of ancestors above a term, root first, and what hangs directly below it. A search result names a term; whether it is the right term is a question about its neighbourhood, and two concepts with one label are told apart by nothing else. Always answered from one release's snapshot, because a hierarchy belongs to a release and a term's parent can move between two of them. With versionId, the release is that one. Without it, the release is the one an unpinned search of the source reads. Children are alphabetical and capped; offset asks for the next page of them. With type=valueSet, the term is a value set and the children are its values. The source must be a value-set collection, and a release holds the value set only where values hang below it.",
+        "description" : "The chain of ancestors above a term, root first, and what hangs directly below it. A search result names a term; whether it is the right term is a question about its neighbourhood, and two concepts with one label are told apart by nothing else. Always answered from one release's snapshot, because a hierarchy belongs to a release and a term's parent can move between two of them. With versionId, the release is that one. Without it, the release is the one an unpinned search of the source reads. Children are alphabetical and paged by limit and offset; the answer carries totalCount, request, currentOffset and paging, which holds links to the first, previous, next and last pages of children. With type=valueSet, the term is a value set and the children are its values. The source must be a value-set collection, and a release holds the value set only where values hang below it.",
         "operationId" : "versionAwareSearchHierarchy",
         "parameters" : [ {
           "in" : "query",
@@ -4570,7 +4333,7 @@
             "default" : 0
           }
         }, {
-          "description" : "How many children to return, from 1 to 500. Defaults to 50.",
+          "description" : "How many children to return, from 1 to 500. Defaults to 100. A larger limit is refused with 400.",
           "in" : "query",
           "name" : "limit",
           "schema" : {
@@ -5295,22 +5058,24 @@
           "limit" : {
             "type" : "integer",
             "format" : "int32",
-            "description" : "How many results to return, from 1 to 1000. Sent instead of page and pageSize."
+            "description" : "How many results to return, from 1 to 500. Defaults to 100. A larger limit is refused with 400."
           },
           "offset" : {
             "type" : "integer",
             "format" : "int32",
-            "description" : "How many results to skip. Sent instead of page and pageSize."
+            "description" : "How many results to skip. Defaults to 0. The answer carries no paging links: ask for the next page by sending the next offset."
           },
           "page" : {
             "type" : "integer",
             "format" : "int32",
-            "description" : "Page to be returned, counting from 1. Cannot be sent with limit or offset. Example: 7."
+            "deprecated" : true,
+            "description" : "Withdrawn. Accepted only as 1, which is ignored; any other value is refused with 400. Send limit and offset instead."
           },
           "pageSize" : {
             "type" : "integer",
             "format" : "int32",
-            "description" : "Number of results per page, at most 1000. Example: 10."
+            "deprecated" : true,
+            "description" : "Withdrawn and ignored. Send limit instead."
           },
           "valueConstraints" : {
             "$ref" : "#/components/schemas/IntegratedRetrieveValueConstraints"
@@ -5355,7 +5120,7 @@
       },
       "IntegratedRetrieveResults" : {
         "type" : "object",
-        "description" : "A paginated list of integrated-retrieve results.",
+        "description" : "One page of integrated-retrieve results.",
         "properties" : {
           "collection" : {
             "type" : "array",
@@ -5373,31 +5138,6 @@
             "format" : "int64",
             "description" : "The offset of the first result on this page."
           },
-          "nextPage" : {
-            "type" : "integer",
-            "format" : "int32",
-            "description" : "Next page."
-          },
-          "page" : {
-            "type" : "integer",
-            "format" : "int32",
-            "description" : "Current page."
-          },
-          "pageCount" : {
-            "type" : "integer",
-            "format" : "int32",
-            "description" : "Total number of pages."
-          },
-          "pageSize" : {
-            "type" : "integer",
-            "format" : "int32",
-            "description" : "Number of results per page."
-          },
-          "prevPage" : {
-            "type" : "integer",
-            "format" : "int32",
-            "description" : "Previous page."
-          },
           "request" : {
             "$ref" : "#/components/schemas/TerminologyPageRequest"
           },
@@ -5407,7 +5147,7 @@
             "description" : "Total number of results."
           }
         },
-        "required" : [ "collection", "nextPage", "page", "pageCount", "pageSize", "prevPage", "totalCount" ]
+        "required" : [ "collection", "totalCount" ]
       },
       "IntegratedRetrieveValueConstraints" : {
         "type" : "object",
@@ -5585,22 +5325,24 @@
           "limit" : {
             "type" : "integer",
             "format" : "int32",
-            "description" : "How many results to return, from 1 to 1000. Sent instead of page and pageSize."
+            "description" : "How many results to return, from 1 to 500. Defaults to 100. A larger limit is refused with 400."
           },
           "offset" : {
             "type" : "integer",
             "format" : "int32",
-            "description" : "How many results to skip. Sent instead of page and pageSize."
+            "description" : "How many results to skip. Defaults to 0. The answer carries no paging links: ask for the next page by sending the next offset."
           },
           "page" : {
             "type" : "integer",
             "format" : "int32",
-            "description" : "Page to be returned, counting from 1. Cannot be sent with limit or offset. Example: 7."
+            "deprecated" : true,
+            "description" : "Withdrawn. Accepted only as 1, which is ignored; any other value is refused with 400. Send limit and offset instead."
           },
           "pageSize" : {
             "type" : "integer",
             "format" : "int32",
-            "description" : "Number of results per page, at most 1000. Example: 10."
+            "deprecated" : true,
+            "description" : "Withdrawn and ignored. Send limit instead."
           },
           "parameterObject" : {
             "$ref" : "#/components/schemas/IntegratedSearchParameterObject"
@@ -5645,7 +5387,7 @@
       },
       "IntegratedSearchResults" : {
         "type" : "object",
-        "description" : "A paginated list of integrated-search results.",
+        "description" : "One page of integrated-search results.",
         "properties" : {
           "collection" : {
             "type" : "array",
@@ -5663,31 +5405,6 @@
             "format" : "int64",
             "description" : "The offset of the first result on this page."
           },
-          "nextPage" : {
-            "type" : "integer",
-            "format" : "int32",
-            "description" : "Next page."
-          },
-          "page" : {
-            "type" : "integer",
-            "format" : "int32",
-            "description" : "Current page."
-          },
-          "pageCount" : {
-            "type" : "integer",
-            "format" : "int32",
-            "description" : "Total number of pages."
-          },
-          "pageSize" : {
-            "type" : "integer",
-            "format" : "int32",
-            "description" : "Number of results per page."
-          },
-          "prevPage" : {
-            "type" : "integer",
-            "format" : "int32",
-            "description" : "Previous page."
-          },
           "request" : {
             "$ref" : "#/components/schemas/TerminologyPageRequest"
           },
@@ -5697,7 +5414,7 @@
             "description" : "Total number of results."
           }
         },
-        "required" : [ "collection", "nextPage", "page", "pageCount", "pageSize", "prevPage", "totalCount" ]
+        "required" : [ "collection", "totalCount" ]
       },
       "IntegratedSearchValueConstraints" : {
         "type" : "object",
@@ -6046,31 +5763,11 @@
             "type" : "integer",
             "format" : "int64"
           },
-          "nextPage" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "page" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "pageCount" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "pageSize" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
           "paging" : {
             "type" : "object",
             "additionalProperties" : {
               "type" : "string"
             }
-          },
-          "prevPage" : {
-            "type" : "integer",
-            "format" : "int32"
           },
           "request" : {
             "$ref" : "#/components/schemas/PageRequest"
@@ -6098,31 +5795,11 @@
             "type" : "integer",
             "format" : "int64"
           },
-          "nextPage" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "page" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "pageCount" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "pageSize" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
           "paging" : {
             "type" : "object",
             "additionalProperties" : {
               "type" : "string"
             }
-          },
-          "prevPage" : {
-            "type" : "integer",
-            "format" : "int32"
           },
           "request" : {
             "$ref" : "#/components/schemas/PageRequest"
@@ -6150,31 +5827,11 @@
             "type" : "integer",
             "format" : "int64"
           },
-          "nextPage" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "page" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "pageCount" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "pageSize" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
           "paging" : {
             "type" : "object",
             "additionalProperties" : {
               "type" : "string"
             }
-          },
-          "prevPage" : {
-            "type" : "integer",
-            "format" : "int32"
           },
           "request" : {
             "$ref" : "#/components/schemas/PageRequest"
@@ -6202,31 +5859,11 @@
             "type" : "integer",
             "format" : "int64"
           },
-          "nextPage" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "page" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "pageCount" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "pageSize" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
           "paging" : {
             "type" : "object",
             "additionalProperties" : {
               "type" : "string"
             }
-          },
-          "prevPage" : {
-            "type" : "integer",
-            "format" : "int32"
           },
           "request" : {
             "$ref" : "#/components/schemas/PageRequest"
@@ -6325,19 +5962,25 @@
           },
           "limit" : {
             "type" : "integer",
-            "format" : "int32"
+            "format" : "int32",
+            "description" : "How many properties to return, from 1 to 500. Defaults to 100; a larger limit is refused with 400."
           },
           "offset" : {
             "type" : "integer",
-            "format" : "int32"
+            "format" : "int32",
+            "description" : "How many properties to skip. Defaults to 0. A page must end within the first 20,000 properties. The response carries no paging links: ask for the next page by sending the offset."
           },
           "page" : {
             "type" : "integer",
-            "format" : "int32"
+            "format" : "int32",
+            "deprecated" : true,
+            "description" : "Withdrawn. Accepted only as 1, which is ignored; any other value is refused with 400. Send limit and offset instead."
           },
           "pageSize" : {
             "type" : "integer",
-            "format" : "int32"
+            "format" : "int32",
+            "deprecated" : true,
+            "description" : "Withdrawn and ignored. Send limit instead."
           },
           "query" : {
             "type" : "string"
@@ -6375,20 +6018,8 @@
               "$ref" : "#/components/schemas/Hit"
             }
           },
-          "page" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "pageSize" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
           "request" : {
             "$ref" : "#/components/schemas/PageRequest"
-          },
-          "total" : {
-            "type" : "integer",
-            "format" : "int64"
           },
           "totalCount" : {
             "type" : "integer",
@@ -6449,22 +6080,28 @@
           },
           "limit" : {
             "type" : "integer",
-            "format" : "int32"
+            "format" : "int32",
+            "description" : "How many results a block returns, from 1 to 500. Defaults to 100; a larger limit is refused with 400."
           },
           "offset" : {
             "type" : "integer",
-            "format" : "int32"
+            "format" : "int32",
+            "description" : "How many results a block skips. Defaults to 0. The response carries no paging links: ask for the next page by sending the offset."
           },
           "ontologyOrder" : {
             "type" : "string"
           },
           "page" : {
             "type" : "integer",
-            "format" : "int32"
+            "format" : "int32",
+            "deprecated" : true,
+            "description" : "Withdrawn. Accepted only as 1, which is ignored; any other value is refused with 400. Send limit and offset instead."
           },
           "pageSize" : {
             "type" : "integer",
-            "format" : "int32"
+            "format" : "int32",
+            "deprecated" : true,
+            "description" : "Withdrawn and ignored. Send limit instead."
           },
           "query" : {
             "type" : "string"
@@ -6667,7 +6304,7 @@
       },
       "TerminologyPageRequest" : {
         "type" : "object",
-        "description" : "The page that was asked for, as a limit and an offset, after defaults were applied.",
+        "description" : "The page that was served, as a limit and an offset, after defaults were applied. The answer carries no paging links: ask for the next page by sending the next offset.",
         "properties" : {
           "limit" : {
             "type" : "integer",
@@ -6736,14 +6373,6 @@
           },
           "distinctLabelCountCapped" : {
             "type" : "boolean"
-          },
-          "page" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "pageSize" : {
-            "type" : "integer",
-            "format" : "int32"
           },
           "request" : {
             "$ref" : "#/components/schemas/PageRequest"

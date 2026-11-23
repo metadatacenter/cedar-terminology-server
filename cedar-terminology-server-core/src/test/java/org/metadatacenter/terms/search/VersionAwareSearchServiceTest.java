@@ -198,7 +198,7 @@ public class VersionAwareSearchServiceTest {
   }
 
   private static SearchRequest request(String query, List<String> types, List<SourceSelector> sources) {
-    return new SearchRequest(query, types, sources, null, 1, 20);
+    return new SearchRequest(query, types, sources, null);
   }
 
   private static SourceSelector ex(String versionId) {
@@ -279,7 +279,7 @@ public class VersionAwareSearchServiceTest {
   @Test
   public void aHitFoundThroughAnotherNameSaysWhatMatched() throws Exception {
     SearchResponse response = service.search(new SearchRequest("chat", List.of("class"),
-        List.of(ex("hash-v1")), null, 1, 20));
+        List.of(ex("hash-v1")), null));
 
     List<ClassHit> hits = hits(response, "class");
     assertEquals(1, hits.size());
@@ -300,7 +300,7 @@ public class VersionAwareSearchServiceTest {
   @Test
   public void langChoosesTheLabelShown() throws Exception {
     SearchResponse response = service.search(new SearchRequest("cat", List.of("class"),
-        List.of(ex("hash-v1")), "fr", 1, 20));
+        List.of(ex("hash-v1")), "fr"));
     assertEquals("chat domestique", ((ClassHit) response.results().get("class").collection().get(0)).termLabel());
   }
 
@@ -396,12 +396,12 @@ public class VersionAwareSearchServiceTest {
   public void theOntologyResultsCanIgnoreNamesAndRankByMatchesInstead() throws Exception {
     // Browsing and narrowing want different orders. A vocabulary named after the query leads when an
     // author is looking for one, and is the wrong thing to narrow to when it holds few of the terms.
-    SearchRequest byMatches = new SearchRequest("mammal", List.of("ontology"), List.of(), null, 1, 20,
-        null, SearchRequest.ORDER_BY_MATCHES);
+    SearchRequest byMatches = new SearchRequest("mammal", List.of("ontology"), List.of(), null, null, null,
+        null, SearchRequest.ORDER_BY_MATCHES, null, null);
     assertNotNull(withIndex().search(byMatches).results().get("ontology"));
     assertTrue(new SearchRequest("x", null, null, null, null, null, null,
-        SearchRequest.ORDER_BY_MATCHES).ordersOntologiesByMatches());
-    assertFalse(new SearchRequest("x", null, null, null, null, null).ordersOntologiesByMatches());
+        SearchRequest.ORDER_BY_MATCHES, null, null).ordersOntologiesByMatches());
+    assertFalse(new SearchRequest("x", null, null, null).ordersOntologiesByMatches());
   }
 
   @Test
@@ -528,7 +528,7 @@ public class VersionAwareSearchServiceTest {
       var indexed = new VersionAwareSearchService(provider, index);
       for (String type : List.of("class", "branch")) {
         for (int page = 1; page <= 2; page++) {
-          var response = indexed.search(new SearchRequest("ca", List.of(type), List.of(), null, page, 1));
+          var response = indexed.search(SearchRequest.paged("ca", List.of(type), List.of(), null, 1, page - 1));
           var result = response.results().get(type);
           assertEquals(2, result.totalCount());
           assertEquals(2, result.distinctLabelCount());
@@ -704,9 +704,9 @@ public class VersionAwareSearchServiceTest {
 
   @Test
   public void pagingSlicesTheResultsAndReportsTheWholeCount() throws Exception {
-    SearchRequest first = new SearchRequest("a", List.of("class"), List.of(ex(null)), null, 1, 2);
+    SearchRequest first = SearchRequest.paged("a", List.of("class"), List.of(ex(null)), null, 2, 0);
     TypeResults page1 = service.search(first).results().get("class");
-    TypeResults page2 = service.search(new SearchRequest("a", List.of("class"), List.of(ex(null)), null, 2, 2))
+    TypeResults page2 = service.search(SearchRequest.paged("a", List.of("class"), List.of(ex(null)), null, 2, 2))
         .results().get("class");
 
     assertEquals(2, page1.collection().size());
@@ -729,7 +729,7 @@ public class VersionAwareSearchServiceTest {
 
   private static SearchRequest byOffset(String query, List<String> types, List<SourceSelector> sources,
                                         Integer limit, Integer offset) {
-    return new SearchRequest(query, types, sources, null, null, null, null, null, limit, offset);
+    return SearchRequest.paged(query, types, sources, null, limit, offset);
   }
 
   @Test
@@ -748,27 +748,47 @@ public class VersionAwareSearchServiceTest {
   }
 
   @Test
-  public void aPageRequestStatesItselfAsAnOffsetToo() throws Exception {
-    TypeResults second = service.search(new SearchRequest("a", List.of("class"), List.of(ex(null)), null, 2, 1))
+  public void aBodyAtPageOneIsServedByItsLimitAndOffsetAndItsPageSizeIsIgnored() throws Exception {
+    TypeResults second = service.search(
+            new SearchRequest("a", List.of("class"), List.of(ex(null)), null, 1, 50, null, null, 1, 1))
+        .results().get("class");
+    TypeResults defaulted = service.search(
+            new SearchRequest("a", List.of("class"), List.of(ex(null)), null, 1, 50, null, null, null, null))
+        .results().get("class");
+    TypeResults sizeOnly = service.search(
+            new SearchRequest("a", List.of("class"), List.of(ex(null)), null, null, 2, null, null, null, null))
         .results().get("class");
 
-    assertEquals(2, second.page());
     assertEquals(1, second.currentOffset());
     assertEquals(new org.metadatacenter.util.http.PagedListResponse.PageRequest(1, 1), second.request());
+    assertEquals(new org.metadatacenter.util.http.PagedListResponse.PageRequest(100, 0), defaulted.request());
+    assertEquals(new org.metadatacenter.util.http.PagedListResponse.PageRequest(100, 0), sizeOnly.request());
   }
 
   @Test
-  public void bothKindsOfPagingTogetherAreRefused() {
-    assertThrows(VersionAwareSearchService.BadSearchRequestException.class, () -> service.search(
-        new SearchRequest("a", List.of("class"), List.of(ex(null)), null, 1, null, null, null, 10, null)));
+  public void aBodyAtAnyOtherPageIsRefused() {
+    VersionAwareSearchService.BadSearchRequestException refused =
+        assertThrows(VersionAwareSearchService.BadSearchRequestException.class, () -> service.search(
+            new SearchRequest("a", List.of("class"), List.of(ex(null)), null, 2, 1, null, null, null, null)));
+    assertTrue(refused.getMessage().contains("limit") && refused.getMessage().contains("offset"));
   }
 
   @Test
-  public void aLimitOutOfRangeIsRefusedWhereAPageSizeWasClamped() {
+  public void noLimitIsTheDefaultOfAHundred() throws Exception {
+    TypeResults page = service.search(request("a", List.of("class"), List.of(ex(null)))).results().get("class");
+
+    assertEquals(new org.metadatacenter.util.http.PagedListResponse.PageRequest(100, 0), page.request());
+    assertEquals(0, page.currentOffset());
+  }
+
+  @Test
+  public void aLimitOutOfRangeIsRefusedRatherThanClamped() throws Exception {
+    assertEquals(500, service.search(byOffset("a", List.of("class"), List.of(ex(null)), 500, 0))
+        .results().get("class").request().limit());
     assertThrows(VersionAwareSearchService.BadSearchRequestException.class,
         () -> service.search(byOffset("a", List.of("class"), List.of(ex(null)), 0, 0)));
     assertThrows(VersionAwareSearchService.BadSearchRequestException.class,
-        () -> service.search(byOffset("a", List.of("class"), List.of(ex(null)), 201, 0)));
+        () -> service.search(byOffset("a", List.of("class"), List.of(ex(null)), 501, 0)));
     assertThrows(VersionAwareSearchService.BadSearchRequestException.class,
         () -> service.search(byOffset("a", List.of("class"), List.of(ex(null)), 10, -1)));
   }
@@ -787,10 +807,10 @@ public class VersionAwareSearchServiceTest {
   }
 
   @Test
-  public void aHierarchyWithoutALimitKeepsItsFiftyChildDefault() throws Exception {
+  public void aHierarchyWithoutALimitHasTheHundredChildDefault() throws Exception {
     HierarchyResponse tree = treeOf(withIndex().hierarchy("EX", BASE + "mammal", null, 0));
 
-    assertEquals(50, tree.request().limit());
+    assertEquals(100, tree.request().limit());
   }
 
   /* ---------------------------------------------------------------------------------------------

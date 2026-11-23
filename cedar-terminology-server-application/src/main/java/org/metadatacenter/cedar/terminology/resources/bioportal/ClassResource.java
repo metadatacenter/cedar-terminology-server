@@ -91,7 +91,7 @@ public class ClassResource extends AbstractTerminologyServerResource {
   @Path("ontologies/{ontology}/classes")
   @Operation(summary = "Get classes", description = "Get all classes from a specific ontology (including both regular and provisional classes).")
   @ApiResponses({
-      @ApiResponse(responseCode = "200", description = "One page of the ontology's classes", content = @Content(schema = @Schema(implementation = PagedOntologyClasses.class))),
+      @ApiResponse(responseCode = "200", description = "One page of the ontology's classes" + PAGED_GET_ENVELOPE, content = @Content(schema = @Schema(implementation = PagedOntologyClasses.class))),
       @ApiResponse(responseCode = "400", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Bad request"),
       @ApiResponse(responseCode = "401", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Unauthorized"),
       @ApiResponse(responseCode = "403", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Forbidden"),
@@ -101,20 +101,13 @@ public class ClassResource extends AbstractTerminologyServerResource {
   public Response findAllClassesForOntology(
       @Parameter(description = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
       @PathParam("ontology") String ontology,
-      @Parameter(description = "Page to be returned, counting from 1, for clients that page by number. Cannot be "
-          + "sent with limit or offset. Example: 7.")
-      @QueryParam("page") Integer page,
-      @Parameter(description = "Number of results per page, at most 1000. Example: 10.")
-      @QueryParam("pageSize") int pageSize,
-      @Parameter(description = "Alias for the page size, accepted in either spelling.")
-      @QueryParam("page_size") int pageSizeAlias,
-      @Parameter(description = "How many results to return, from 1 to 1000. Defaults to the configured page size.")
+      @Parameter(description = LIMIT_DESCRIPTION)
       @QueryParam("limit") Integer limit,
-      @Parameter(description = "How many results to skip. Defaults to 0.")
+      @Parameter(description = OFFSET_DESCRIPTION)
       @QueryParam("offset") Integer offset) throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
-    OffsetPaging.Request paging = pagingOf(page, pageSize, pageSizeAlias, limit, offset);
+    OffsetPaging.Request paging = pagingOf(limit, offset);
     try {
       PagedResults<OntologyClass> classes =
           enveloped(OffsetPaging.fetch(paging, (p, s) ->
@@ -165,7 +158,7 @@ public class ClassResource extends AbstractTerminologyServerResource {
   @Path("ontologies/{ontology}/classes/{id}/children")
   @Operation(summary = "Get class children", description = "Get class children (only for regular classes).")
   @ApiResponses({
-      @ApiResponse(responseCode = "200", description = "One page of the class's children", content = @Content(schema = @Schema(implementation = PagedOntologyClasses.class))),
+      @ApiResponse(responseCode = "200", description = "One page of the class's children" + PAGED_GET_ENVELOPE, content = @Content(schema = @Schema(implementation = PagedOntologyClasses.class))),
       @ApiResponse(responseCode = "400", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Bad request"),
       @ApiResponse(responseCode = "401", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Unauthorized"),
       @ApiResponse(responseCode = "403", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Forbidden"),
@@ -177,20 +170,13 @@ public class ClassResource extends AbstractTerminologyServerResource {
       @PathParam("id") @Encoded String id,
       @Parameter(description = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
       @PathParam("ontology") String ontology,
-      @Parameter(description = "Page to be returned, counting from 1, for clients that page by number. Cannot be "
-          + "sent with limit or offset. Example: 7.")
-      @QueryParam("page") Integer page,
-      @Parameter(description = "Number of results per page, at most 1000. Example: 10.")
-      @QueryParam("pageSize") int pageSize,
-      @Parameter(description = "Alias for the page size, accepted in either spelling.")
-      @QueryParam("page_size") int pageSizeAlias,
-      @Parameter(description = "How many results to return, from 1 to 1000. Defaults to the configured page size.")
+      @Parameter(description = LIMIT_DESCRIPTION)
       @QueryParam("limit") Integer limit,
-      @Parameter(description = "How many results to skip. Defaults to 0.")
+      @Parameter(description = OFFSET_DESCRIPTION)
       @QueryParam("offset") Integer offset) throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
-    OffsetPaging.Request paging = pagingOf(page, pageSize, pageSizeAlias, limit, offset);
+    OffsetPaging.Request paging = pagingOf(limit, offset);
     try {
       PagedResults<OntologyClass> children = enveloped(OffsetPaging.fetch(paging, (p, s) ->
           terminologyService.getClassChildren(id, ontology, p,
@@ -211,7 +197,7 @@ public class ClassResource extends AbstractTerminologyServerResource {
       + "optional. The route was opened to anonymous callers in 2019 for CEDAR's public metadata viewer, and it "
       + "has served them in every release since.")
   @ApiResponses({
-      @ApiResponse(responseCode = "200", description = "One page of the class's descendants", content = @Content(schema = @Schema(implementation = PagedOntologyClasses.class))),
+      @ApiResponse(responseCode = "200", description = "One page of the class's descendants" + PAGED_GET_ENVELOPE, content = @Content(schema = @Schema(implementation = PagedOntologyClasses.class))),
       @ApiResponse(responseCode = "400", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Bad request"),
       @ApiResponse(responseCode = "404", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Not found"),
       @ApiResponse(responseCode = "500", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Internal server error")
@@ -227,20 +213,13 @@ public class ClassResource extends AbstractTerminologyServerResource {
       @PathParam("id") @Encoded String id,
       @Parameter(description = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
       @PathParam("ontology") String ontology,
-      @Parameter(description = "Page to be returned, counting from 1, for clients that page by number. Cannot be "
-          + "sent with limit or offset. Example: 7.")
-      @QueryParam("page") Integer page,
-      @Parameter(description = "Number of results per page, at most 1000. Example: 10.")
-      @QueryParam("pageSize") int pageSize,
-      @Parameter(description = "Alias for the page size, accepted in either spelling.")
-      @QueryParam("page_size") int pageSizeAlias,
-      @Parameter(description = "How many results to return, from 1 to 1000. Defaults to the configured page size.")
+      @Parameter(description = LIMIT_DESCRIPTION)
       @QueryParam("limit") Integer limit,
-      @Parameter(description = "How many results to skip. Defaults to 0.")
+      @Parameter(description = OFFSET_DESCRIPTION)
       @QueryParam("offset") Integer offset)
       throws CedarException {
     CedarRequestContext ctx = buildAnonymousRequestContext();
-    OffsetPaging.Request paging = pagingOf(page, pageSize, pageSizeAlias, limit, offset);
+    OffsetPaging.Request paging = pagingOf(limit, offset);
     try {
       PagedResults<OntologyClass> descendants = enveloped(OffsetPaging.fetch(paging, (p, s) ->
           terminologyService.getClassDescendants(id, ontology,
@@ -288,7 +267,7 @@ public class ClassResource extends AbstractTerminologyServerResource {
   @Path("classes/provisional")
   @Operation(summary = "Get provisional classes", description = "Get provisional classes (including provisional value sets and provisional values).")
   @ApiResponses({
-      @ApiResponse(responseCode = "200", description = "One page of provisional classes", content = @Content(schema = @Schema(implementation = PagedOntologyClasses.class))),
+      @ApiResponse(responseCode = "200", description = "One page of provisional classes" + PAGED_GET_ENVELOPE, content = @Content(schema = @Schema(implementation = PagedOntologyClasses.class))),
       @ApiResponse(responseCode = "400", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Bad request"),
       @ApiResponse(responseCode = "401", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Unauthorized"),
       @ApiResponse(responseCode = "403", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Forbidden"),
@@ -296,20 +275,13 @@ public class ClassResource extends AbstractTerminologyServerResource {
       @ApiResponse(responseCode = "500", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Internal server error")
   })
   public Response findAllProvisionalClasses(
-      @Parameter(description = "Page to be returned, counting from 1, for clients that page by number. Cannot be "
-          + "sent with limit or offset. Example: 7.")
-      @QueryParam("page") Integer page,
-      @Parameter(description = "Number of results per page, at most 1000. Example: 10.")
-      @QueryParam("pageSize") int pageSize,
-      @Parameter(description = "Alias for the page size, accepted in either spelling.")
-      @QueryParam("page_size") int pageSizeAlias,
-      @Parameter(description = "How many results to return, from 1 to 1000. Defaults to the configured page size.")
+      @Parameter(description = LIMIT_DESCRIPTION)
       @QueryParam("limit") Integer limit,
-      @Parameter(description = "How many results to skip. Defaults to 0.")
+      @Parameter(description = OFFSET_DESCRIPTION)
       @QueryParam("offset") Integer offset) throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
-    OffsetPaging.Request paging = pagingOf(page, pageSize, pageSizeAlias, limit, offset);
+    OffsetPaging.Request paging = pagingOf(limit, offset);
     try {
       PagedResults<OntologyClass> classes = enveloped(OffsetPaging.fetch(paging, (p, s) ->
           terminologyService.findAllProvisionalClasses(null, p, s, apiKey)), paging);
@@ -330,7 +302,7 @@ public class ClassResource extends AbstractTerminologyServerResource {
   @Operation(summary = "Get all provisional classes in a particular ontology", description = "Get all provisional classes in a particular ontology (including provisional value sets and " +
           "provisional values)")
   @ApiResponses({
-      @ApiResponse(responseCode = "200", description = "One page of the ontology's provisional classes", content = @Content(schema = @Schema(implementation = PagedOntologyClasses.class))),
+      @ApiResponse(responseCode = "200", description = "One page of the ontology's provisional classes" + PAGED_GET_ENVELOPE, content = @Content(schema = @Schema(implementation = PagedOntologyClasses.class))),
       @ApiResponse(responseCode = "400", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Bad request"),
       @ApiResponse(responseCode = "401", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Unauthorized"),
       @ApiResponse(responseCode = "403", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Forbidden"),
@@ -340,20 +312,13 @@ public class ClassResource extends AbstractTerminologyServerResource {
   public Response findAllProvisionalClassesForOntology(
       @Parameter(description = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
       @PathParam("ontology") String ontology,
-      @Parameter(description = "Page to be returned, counting from 1, for clients that page by number. Cannot be "
-          + "sent with limit or offset. Example: 7.")
-      @QueryParam("page") Integer page,
-      @Parameter(description = "Number of results per page, at most 1000. Example: 10.")
-      @QueryParam("pageSize") int pageSize,
-      @Parameter(description = "Alias for the page size, accepted in either spelling.")
-      @QueryParam("page_size") int pageSizeAlias,
-      @Parameter(description = "How many results to return, from 1 to 1000. Defaults to the configured page size.")
+      @Parameter(description = LIMIT_DESCRIPTION)
       @QueryParam("limit") Integer limit,
-      @Parameter(description = "How many results to skip. Defaults to 0.")
+      @Parameter(description = OFFSET_DESCRIPTION)
       @QueryParam("offset") Integer offset) throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
-    OffsetPaging.Request paging = pagingOf(page, pageSize, pageSizeAlias, limit, offset);
+    OffsetPaging.Request paging = pagingOf(limit, offset);
     try {
       PagedResults<OntologyClass> classes =
           enveloped(OffsetPaging.fetch(paging, (p, s) ->

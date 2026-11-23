@@ -87,7 +87,7 @@ class VersionedPropertyPagingTest {
     List<String> seen = new ArrayList<>();
     for (int offset = 0; offset < 30; offset += 4) {
       seen.addAll(labels(service.search(
-          new VersionedPropertyService.Request("prop", bothReleases(), null, null, null, 4, offset))));
+          VersionedPropertyService.Request.paged("prop", bothReleases(), null, 4, offset))));
     }
 
     assertEquals(30, seen.size());
@@ -100,38 +100,55 @@ class VersionedPropertyPagingTest {
   @Test
   void anOffsetInsideAPageMatchesTheSliceOfTheWhole() throws Exception {
     List<String> whole = labels(service.search(
-        new VersionedPropertyService.Request("prop", bothReleases(), null, null, null, 30, 0)));
+        VersionedPropertyService.Request.paged("prop", bothReleases(), null, 30, 0)));
 
     VersionedPropertyService.Result window = service.search(
-        new VersionedPropertyService.Request("prop", bothReleases(), null, null, null, 5, 11));
+        VersionedPropertyService.Request.paged("prop", bothReleases(), null, 5, 11));
 
     assertEquals(whole.subList(11, 16), labels(window));
     assertEquals(30, window.totalCount());
-    assertEquals(30, window.total(), "the old field says the same");
     assertEquals(11, window.currentOffset());
     assertEquals(5, window.request().limit());
   }
 
   @Test
-  void aPageRequestStillWorksAndStatesItsOffset() throws Exception {
+  void aBodyAtPageOneIsServedByItsLimitAndOffsetAndItsPageSizeIsIgnored() throws Exception {
     VersionedPropertyService.Result page = service.search(
-        new VersionedPropertyService.Request("prop", bothReleases(), null, 3, 5));
+        new VersionedPropertyService.Request("prop", bothReleases(), null, 1, 5, 3, 10));
+    VersionedPropertyService.Result defaulted = service.search(
+        new VersionedPropertyService.Request("prop", bothReleases(), null, 1, 5, null, null));
 
-    assertEquals(3, page.page());
     assertEquals(10, page.currentOffset());
-    assertEquals(5, page.items().size());
+    assertEquals(3, page.items().size());
+    assertEquals(new org.metadatacenter.util.http.PagedListResponse.PageRequest(100, 0), defaulted.request());
+    assertEquals(30, defaulted.items().size());
   }
 
   @Test
-  void bothKindsOfPagingAndOutOfRangeLimitsAreRefused() {
+  void aBodyAtAnyOtherPageIsRefused() {
+    IllegalArgumentException refused = assertThrows(IllegalArgumentException.class, () -> service.search(
+        new VersionedPropertyService.Request("prop", bothReleases(), null, 2, 5, null, null)));
+    assertTrue(refused.getMessage().contains("limit") && refused.getMessage().contains("offset"));
+  }
+
+  @Test
+  void noLimitIsTheDefaultOfAHundredAndFiveHundredIsTheMost() throws Exception {
+    assertEquals(100, service.search(VersionedPropertyService.Request.paged("prop", bothReleases(), null, null, null))
+        .request().limit());
+    assertEquals(500, service.search(VersionedPropertyService.Request.paged("prop", bothReleases(), null, 500, 0))
+        .request().limit());
     assertThrows(IllegalArgumentException.class, () -> service.search(
-        new VersionedPropertyService.Request("prop", bothReleases(), null, 1, null, 10, null)));
+        VersionedPropertyService.Request.paged("prop", bothReleases(), null, 501, 0)));
+  }
+
+  @Test
+  void outOfRangeLimitsAreRefused() {
     assertThrows(IllegalArgumentException.class, () -> service.search(
-        new VersionedPropertyService.Request("prop", bothReleases(), null, null, null, 201, 0)));
+        VersionedPropertyService.Request.paged("prop", bothReleases(), null, 501, 0)));
     assertThrows(IllegalArgumentException.class, () -> service.search(
-        new VersionedPropertyService.Request("prop", bothReleases(), null, null, null, 10, -1)));
+        VersionedPropertyService.Request.paged("prop", bothReleases(), null, 10, -1)));
     assertThrows(IllegalArgumentException.class, () -> service.search(
-        new VersionedPropertyService.Request("prop", bothReleases(), null, null, null, 100, 19_950)));
+        VersionedPropertyService.Request.paged("prop", bothReleases(), null, 100, 19_950)));
   }
 
   @Test

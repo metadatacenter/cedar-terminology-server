@@ -386,7 +386,7 @@ public class TerminologyService implements ITerminologyService {
 
             allResults.addAll(resultsForSourceInPage);
 
-            if (numberOfResultsForSourceSoFar == expectedMaximumNumberOfResultsForSource || pageOfResultsForSource.getNextPage() == null)
+            if (numberOfResultsForSourceSoFar == expectedMaximumNumberOfResultsForSource || !pageOfResultsForSource.hasNextPage())
               finishedWithSource = true;
             else
               effectivePageForSource++;
@@ -395,12 +395,9 @@ public class TerminologyService implements ITerminologyService {
         currentIndex += numberOfResultsInSource;
       }
     }
-    Integer prevPage = page > 1 ? page - 1 : null;
-    Integer totalCount = totalNumberOfResults;
-    Integer pageCount = (int) Math.ceil((double) totalNumberOfResults / pageSize);
-    Integer nextPage = (page * pageSize <= totalNumberOfResults) ? (page + 1) : null;
+    boolean hasNextPage = page * pageSize < totalNumberOfResults;
 
-    return new PagedResults(page, pageCount, allResults.size(), totalCount, prevPage, nextPage, allResults);
+    return new PagedResults<>(totalNumberOfResults, hasNextPage, allResults);
   }
 
   private PagedResults<SearchResult> integratedSearchEnumeratedClasses(Optional<String> q,
@@ -1029,7 +1026,7 @@ public class TerminologyService implements ITerminologyService {
       while (page != null) {
         PagedResults<ValueSet> results = findValueSetsByVsCollection(vsCollection, page, LARGE_PAGE_SIZE, apiKey);
         valueSets.addAll(results.getCollection());
-        page = results.getNextPage();
+        page = results.hasNextPage() ? page + 1 : null;
       }
     }
     return valueSets;

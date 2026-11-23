@@ -121,8 +121,6 @@ public record SearchResponse(String query, List<SourceBlock> sources, Map<String
       boolean countCapped,
       Integer distinctLabelCount,
       Boolean distinctLabelCountCapped,
-      int page,
-      int pageSize,
       /**
        * The page itself. Which hit shape it holds follows from the type this block answers for, so
        * the schema names all four rather than the interface they share: {@link Hit} declares only
@@ -136,15 +134,12 @@ public record SearchResponse(String query, List<SourceBlock> sources, Map<String
       /** Where this page starts, counted as {@code limit} counts: labels for terms and branches. */
       long currentOffset) {
 
-    /**
-     * A block for the page at {@code offset} with {@code limit}. {@code page} and {@code pageSize}
-     * are the same page stated by number, for the clients that page that way.
-     */
+    /** A block for the page at {@code offset} with {@code limit}. */
     public static TypeResults at(int totalCount, boolean countCapped, Integer distinctLabelCount,
                                  Boolean distinctLabelCountCapped, int offset, int limit,
                                  List<? extends Hit> collection) {
       return new TypeResults(totalCount, countCapped, distinctLabelCount, distinctLabelCountCapped,
-          offset / limit + 1, limit, collection, new PagedListResponse.PageRequest(limit, offset), offset);
+          collection, new PagedListResponse.PageRequest(limit, offset), offset);
     }
 
     public static TypeResults at(int totalCount, boolean countCapped, int offset, int limit,

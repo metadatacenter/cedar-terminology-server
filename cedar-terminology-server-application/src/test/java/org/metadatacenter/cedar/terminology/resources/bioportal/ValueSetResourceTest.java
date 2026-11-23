@@ -44,11 +44,11 @@ public class ValueSetResourceTest extends AbstractTerminologyServerResourceTest 
   }
 
   @Test
-  public void findValueSetsByVsCollectionHonoursPageSizeTest() {
-    PagedResults<ValueSet> valueSets = read(valueSetsUrl(CEDARVS) + "?page=1&pageSize=2", new GenericType<>() {});
+  public void findValueSetsByVsCollectionHonoursLimitTest() {
+    PagedResults<ValueSet> valueSets = read(valueSetsUrl(CEDARVS) + "?limit=2", new GenericType<>() {});
     Assertions.assertEquals(List.of(STUDY_FILE_TYPE, STUDY_TYPE),
-        valueSets.getCollection().stream().map(ValueSet::getLdId).toList(), "The page size was not applied");
-    assertPaging(valueSets, 1, 2, 2, 3, null, 2);
+        valueSets.getCollection().stream().map(ValueSet::getLdId).toList(), "The limit was not applied");
+    assertPaging(valueSets, 3, 2, 0);
   }
 
   /**

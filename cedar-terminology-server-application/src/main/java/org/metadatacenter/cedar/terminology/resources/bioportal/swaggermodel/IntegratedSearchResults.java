@@ -12,31 +12,17 @@ import java.util.List;
  * this class mirrors a single paginated-result entry, used together with
  * {@code responseContainer = "List"} on the operation.</p>
  */
-@Schema(name = "IntegratedSearchResults", description = "A paginated list of integrated-search results.")
+@Schema(name = "IntegratedSearchResults", description = "One page of integrated-search results.")
 public class IntegratedSearchResults {
-
-  @Schema(description = "Current page.", requiredMode = Schema.RequiredMode.REQUIRED)
-  private Integer page;
-
-  @Schema(description = "Total number of pages.", requiredMode = Schema.RequiredMode.REQUIRED)
-  private Integer pageCount;
-
-  @Schema(description = "Number of results per page.", requiredMode = Schema.RequiredMode.REQUIRED)
-  private Integer pageSize;
 
   @Schema(description = "Total number of results.", requiredMode = Schema.RequiredMode.REQUIRED)
   private Integer totalCount;
 
-  @Schema(description = "Previous page.", requiredMode = Schema.RequiredMode.REQUIRED)
-  private Integer prevPage;
-
-  @Schema(description = "Next page.", requiredMode = Schema.RequiredMode.REQUIRED)
-  private Integer nextPage;
-
   @Schema(description = "The results contained in this page.", requiredMode = Schema.RequiredMode.REQUIRED)
   private List<Result> collection;
 
-  @Schema(description = "The page that was asked for, as a limit and an offset, after defaults were applied.")
+  @Schema(description = "The page that was served, as a limit and an offset, after defaults were applied. The "
+      + "answer carries no paging links: ask for the next page by sending the next offset.")
   private PageRequest request;
 
   @Schema(description = "The offset of the first result on this page.")
@@ -51,52 +37,12 @@ public class IntegratedSearchResults {
       + "source, so totalCount counts what was read rather than everything that matches.")
   private Boolean countCapped;
 
-  public Integer getPage() {
-    return page;
-  }
-
-  public void setPage(Integer page) {
-    this.page = page;
-  }
-
-  public Integer getPageCount() {
-    return pageCount;
-  }
-
-  public void setPageCount(Integer pageCount) {
-    this.pageCount = pageCount;
-  }
-
-  public Integer getPageSize() {
-    return pageSize;
-  }
-
-  public void setPageSize(Integer pageSize) {
-    this.pageSize = pageSize;
-  }
-
   public Integer getTotalCount() {
     return totalCount;
   }
 
   public void setTotalCount(Integer totalCount) {
     this.totalCount = totalCount;
-  }
-
-  public Integer getPrevPage() {
-    return prevPage;
-  }
-
-  public void setPrevPage(Integer prevPage) {
-    this.prevPage = prevPage;
-  }
-
-  public Integer getNextPage() {
-    return nextPage;
-  }
-
-  public void setNextPage(Integer nextPage) {
-    this.nextPage = nextPage;
   }
 
   public List<Result> getCollection() {

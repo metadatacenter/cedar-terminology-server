@@ -94,7 +94,7 @@ class LocalResultActionsTest {
     while (page != null) {
       PagedResults<SearchResult> answer = router.integratedSearch(Optional.empty(), vc, page, size, "key", null);
       all.addAll(answer.getCollection());
-      page = answer.getNextPage();
+      page = answer.hasNextPage() ? page + 1 : null;
       assertTrue(all.size() < 10_000, "the walk did not end");
     }
     return all;
@@ -117,7 +117,7 @@ class LocalResultActionsTest {
     assertFalse(labels(walked).contains("Term 017"));
     assertEquals(10, first.getCollection().size());
     assertEquals(23, first.getTotalCount());
-    assertEquals(2, first.getNextPage());
+    assertTrue(first.hasNextPage());
     Set<String> ids = new HashSet<>();
     walked.forEach(r -> assertTrue(ids.add(r.getLdId()), "seen twice: " + r.getPrefLabel()));
   }

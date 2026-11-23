@@ -133,7 +133,6 @@ public class SearchResourceTest extends AbstractTerminologyServerResourceTest {
   public void searchWrongPropertyTest() {
     PagedResults<SearchResult> results = searchProperties("q=wrongproperty333");
     Assertions.assertTrue(results.getCollection().isEmpty());
-    Assertions.assertEquals(0, results.getPageSize());
     Assertions.assertEquals(0, results.getTotalCount());
   }
 

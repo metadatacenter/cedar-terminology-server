@@ -8,11 +8,16 @@ public class IntegratedSearchBody {
   @Valid
   @NotNull
   private ParameterObject parameterObject;
-  private int page;
-  private int pageSize;
-  /** How many results to return; sent instead of page and pageSize. */
+  /**
+   * The withdrawn page-number paging, still read because published clients send {@code page} 1 with
+   * every request. Absent or 1, it is ignored; any other page is refused.
+   */
+  private Integer page;
+  /** Withdrawn with {@code page}, and ignored. */
+  private Integer pageSize;
+  /** How many results to return. */
   private Integer limit;
-  /** How many results to skip; sent instead of page and pageSize. */
+  /** How many results to skip. */
   private Integer offset;
 
   public IntegratedSearchBody() { }
@@ -21,11 +26,11 @@ public class IntegratedSearchBody {
     return parameterObject;
   }
 
-  public int getPage() {
+  public Integer getPage() {
     return page;
   }
 
-  public int getPageSize() {
+  public Integer getPageSize() {
     return pageSize;
   }
 

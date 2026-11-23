@@ -24,12 +24,12 @@ import org.metadatacenter.config.environment.CedarEnvironmentSource;
 import org.metadatacenter.config.environment.CedarEnvironmentVariableProvider;
 import org.metadatacenter.model.SystemComponent;
 import org.metadatacenter.terms.customObjects.PagedResults;
+import org.metadatacenter.util.http.PagedListResponse;
 import org.metadatacenter.terms.domainObjects.TreeNode;
 import org.metadatacenter.util.test.TestAuthUtil;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -137,13 +137,11 @@ public abstract class AbstractTerminologyServerResourceTest {
     }
   }
 
-  /** Asserts a page's paging fields, in the order its JSON gives them. */
-  protected static void assertPaging(PagedResults<?> results, Integer page, Integer pageCount, Integer pageSize,
-                                     Integer totalCount, Integer prevPage, Integer nextPage) {
-    Assertions.assertEquals(Arrays.asList(page, pageCount, pageSize, totalCount, prevPage, nextPage),
-        Arrays.asList(results.getPage(), results.getPageCount(), results.getPageSize(), results.getTotalCount(),
-            results.getPrevPage(), results.getNextPage()),
-        "page, pageCount, pageSize, totalCount, prevPage, nextPage");
+  /** Asserts a page's count and the limit and offset it was served with. */
+  protected static void assertPaging(PagedResults<?> results, Integer totalCount, int limit, int offset) {
+    Assertions.assertEquals(totalCount, results.getTotalCount(), "totalCount");
+    Assertions.assertEquals(new PagedListResponse.PageRequest(limit, offset), results.getRequest(), "request");
+    Assertions.assertEquals(Long.valueOf(offset), results.getCurrentOffset(), "currentOffset");
   }
 
   /** The child of a tree node with the given identifier, failing when the node was not expanded to it. */

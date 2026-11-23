@@ -23,7 +23,7 @@ import org.metadatacenter.config.environment.CedarEnvironmentSource;
 import org.metadatacenter.config.environment.CedarEnvironmentVariableProvider;
 import org.metadatacenter.model.SystemComponent;
 import org.metadatacenter.terms.customObjects.PagedResults;
-import org.metadatacenter.terms.util.OffsetPaging;
+import org.metadatacenter.terms.paging.PageLimits;
 import org.metadatacenter.terms.domainObjects.Ontology;
 import org.metadatacenter.terms.domainObjects.OntologyClass;
 import org.metadatacenter.terms.domainObjects.SearchResult;
@@ -161,20 +161,20 @@ public class EquivalenceTest {
 
   /**
    * GET every page of a class relation (children/descendants) and assert its id set equals the
-   * golden. A page holds at most {@link OffsetPaging#MAX_LIMIT} entries, so a large branch is read
+   * golden. A page holds at most {@link PageLimits#MAX_LIMIT} entries, so a large branch is read
    * a page at a time.
    */
   private void assertPagedClassSet(String ontology, String iri, String relation, String golden)
       throws Exception {
     Set<String> ids = new java.util.HashSet<>();
-    for (Integer page = 1; page != null; ) {
+    for (Integer offset = 0; offset != null; ) {
       Response r = get(baseBp + "/ontologies/" + ontology + "/classes/" + enc(iri) + "/" + relation
-          + "?page=" + page + "&pageSize=" + OffsetPaging.MAX_LIMIT);
+          + "?offset=" + offset + "&limit=" + PageLimits.MAX_LIMIT);
       Assertions.assertEquals(200, r.getStatus());
       PagedResults<OntologyClass> pr = r.readEntity(new GenericType<PagedResults<OntologyClass>>() {});
       r.close();
       ids.addAll(shortIds(pr.getCollection()));
-      page = pr.getNextPage();
+      offset = pr.getPaging() != null && pr.getPaging().containsKey("next") ? offset + PageLimits.MAX_LIMIT : null;
     }
     Assertions.assertEquals(loadGoldenIds(golden), ids);
   }
@@ -316,8 +316,7 @@ public class EquivalenceTest {
     parameterObject.put("inputText", "");
     ObjectNode body = MAPPER.createObjectNode();
     body.set("parameterObject", parameterObject);
-    body.put("page", 1);
-    body.put("pageSize", 50);
+    body.put("limit", 50);
 
     Response r = clientBuilder.build().target(URI.create(baseBp + "/integrated-search")).request()
         .post(Entity.json(body));
@@ -356,13 +355,13 @@ public class EquivalenceTest {
     ObjectNode parameterObject = MAPPER.createObjectNode();
     parameterObject.set("valueConstraints", valueConstraints);
     parameterObject.put("inputText", "assay");
-    // Read every page, a page holding at most OffsetPaging.MAX_LIMIT results.
+    // Read every page, a page holding at most PageLimits.MAX_LIMIT results.
     Set<String> local = new java.util.HashSet<>();
-    for (Integer page = 1; page != null; ) {
+    for (Integer offset = 0; offset != null; ) {
       ObjectNode body = MAPPER.createObjectNode();
       body.set("parameterObject", parameterObject);
-      body.put("page", page);
-      body.put("pageSize", OffsetPaging.MAX_LIMIT);
+      body.put("offset", offset);
+      body.put("limit", PageLimits.MAX_LIMIT);
       Response r = clientBuilder.build().target(URI.create(baseBp + "/integrated-search")).request()
           .post(Entity.json(body));
       Assertions.assertEquals(200, r.getStatus());
@@ -370,7 +369,8 @@ public class EquivalenceTest {
       r.close();
       results.getCollection().stream()
           .map(sr -> sr.getLdId().substring(sr.getLdId().lastIndexOf('/') + 1)).forEach(local::add);
-      page = results.getNextPage();
+      int next = offset + PageLimits.MAX_LIMIT;
+      offset = results.getTotalCount() != null && next < results.getTotalCount() ? next : null;
     }
     Set<String> bp = loadGoldenIds("obi_search_assay_bp_ids");
     Set<String> intersection = new java.util.HashSet<>(local);
@@ -404,14 +404,13 @@ public class EquivalenceTest {
     return vc;
   }
 
-  private PagedResults<SearchResult> integratedSearch(ObjectNode valueConstraints, String inputText, int pageSize) {
+  private PagedResults<SearchResult> integratedSearch(ObjectNode valueConstraints, String inputText, int limit) {
     ObjectNode parameterObject = MAPPER.createObjectNode();
     parameterObject.set("valueConstraints", valueConstraints);
     parameterObject.put("inputText", inputText);
     ObjectNode body = MAPPER.createObjectNode();
     body.set("parameterObject", parameterObject);
-    body.put("page", 1);
-    body.put("pageSize", pageSize);
+    body.put("limit", limit);
     Response r = clientBuilder.build().target(URI.create(baseBp + "/integrated-search")).request()
         .post(Entity.json(body));
     Assertions.assertEquals(200, r.getStatus());

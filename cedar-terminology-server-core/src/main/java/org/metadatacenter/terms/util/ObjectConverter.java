@@ -137,8 +137,7 @@ public class ObjectConverter {
     for (BpClass c : bpr.getCollection()) {
       valueSets.add(toValueSet(c));
     }
-    return new PagedResults<>(bpr.getPage(), bpr.getPageCount(), bpr.getCollection().size(), bpr.getTotalCount(), bpr.getPrevPage(),
-        bpr.getNextPage(), valueSets);
+    return new PagedResults<>(bpr.getTotalCount(), bpr.getNextPage() != null, valueSets);
   }
 
   public static PagedResults<Value> toValueResults(BpPagedResults<BpClass> bpr) {
@@ -146,8 +145,7 @@ public class ObjectConverter {
     for (BpClass c : bpr.getCollection()) {
       values.add(toValue(c));
     }
-    return new PagedResults<>(bpr.getPage(), bpr.getPageCount(), bpr.getCollection().size(), bpr.getTotalCount(), bpr.getPrevPage(),
-        bpr.getNextPage(), values);
+    return new PagedResults<>(bpr.getTotalCount(), bpr.getNextPage() != null, values);
   }
 
   public static PagedResults<OntologyClass> toClassResults(BpPagedResults<BpClass> bpr) {
@@ -157,8 +155,7 @@ public class ObjectConverter {
         classes.add(toOntologyClass(c));
       }
     }
-    return new PagedResults<>(bpr.getPage(), bpr.getPageCount(), bpr.getCollection().size(), bpr.getTotalCount(), bpr.getPrevPage(),
-        bpr.getNextPage(), classes);
+    return new PagedResults<>(bpr.getTotalCount(), bpr.getNextPage() != null, classes);
   }
 
   public static PagedResults<OntologyClass> toClassResultsFromProvClassResults(BpPagedResults<BpProvisionalClass> bpr) {
@@ -166,8 +163,7 @@ public class ObjectConverter {
     for (BpProvisionalClass c : bpr.getCollection()) {
       classes.add(toOntologyClass(c));
     }
-    return new PagedResults<>(bpr.getPage(), bpr.getPageCount(), bpr.getCollection().size(), bpr.getTotalCount(), bpr.getPrevPage(),
-        bpr.getNextPage(), classes);
+    return new PagedResults<>(bpr.getTotalCount(), bpr.getNextPage() != null, classes);
   }
 
   /**
@@ -218,8 +214,7 @@ public class ObjectConverter {
           c.getPrefLabel(), null, definition, source, c.getMatchType(), matchedSynonyms);
       results.add(r);
     }
-    return new PagedResults<>(bpr.getPage(), bpr.getPageCount(), bpr.getCollection().size(), bpr.getTotalCount(), bpr.getPrevPage(),
-        bpr.getNextPage(), results);
+    return new PagedResults<>(bpr.getTotalCount(), bpr.getNextPage() != null, results);
   }
 
   public static PagedResults<SearchResult> toPagedSearchResults(BpPagedResults<BpProperty> bpProperties) {
@@ -234,8 +229,7 @@ public class ObjectConverter {
           Util.getShortType(bpProperty.getType()), bpProperty.getPrefLabel(), null, definition, source, null, new ArrayList<>());
       results.add(searchResult);
     }
-    return new PagedResults<>(bpProperties.getPage(), bpProperties.getPageCount(), bpProperties.getCollection().size(),
-        bpProperties.getTotalCount(), bpProperties.getPrevPage(), bpProperties.getNextPage(), results);
+    return new PagedResults<>(bpProperties.getTotalCount(), bpProperties.getNextPage() != null, results);
   }
 
   public static List<OntologyProperty> toPropertyListResults(List<BpProperty> bpr) {
@@ -361,9 +355,7 @@ public class ObjectConverter {
       results.add(toSearchResult(c));
     }
 
-    return new PagedResults<>(classPagedResults.getPage(), classPagedResults.getPageCount(),
-        classPagedResults.getCollection().size(), classPagedResults.getTotalCount(), classPagedResults.getPrevPage(),
-        classPagedResults.getNextPage(), results);
+    return new PagedResults<>(classPagedResults.getTotalCount(), classPagedResults.hasNextPage(), results);
   }
 
   public static PagedResults<SearchResult> valueResultsToSearchResults(PagedResults<Value> valuePagedResults) {
@@ -373,9 +365,7 @@ public class ObjectConverter {
       results.add(toSearchResult(v));
     }
 
-    return new PagedResults<>(valuePagedResults.getPage(), valuePagedResults.getPageCount(),
-        valuePagedResults.getCollection().size(), valuePagedResults.getTotalCount(), valuePagedResults.getPrevPage(),
-        valuePagedResults.getNextPage(), results);
+    return new PagedResults<>(valuePagedResults.getTotalCount(), valuePagedResults.hasNextPage(), results);
   }
 
   /**

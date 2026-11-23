@@ -1,6 +1,8 @@
 package org.metadatacenter.terms.util;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import org.junit.jupiter.api.Test;
+import org.metadatacenter.util.json.JsonMapper;
 import org.metadatacenter.terms.customObjects.PagedResults;
 
 import java.util.List;
@@ -8,7 +10,7 @@ import java.util.Optional;
 import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PaginatedResultsTest {
@@ -20,10 +22,7 @@ class PaginatedResultsTest {
     PagedResults<Integer> page = Util.generatePaginatedResults(TWENTY, 2, 6, Optional.empty());
 
     assertEquals(List.of(6, 7, 8, 9, 10, 11), page.getCollection());
-    assertEquals(2, page.getPage());
-    assertEquals(1, page.getPrevPage());
-    assertEquals(3, page.getNextPage());
-    assertEquals(4, page.getPageCount());
+    assertTrue(page.hasNextPage());
     assertEquals(20, page.getTotalCount());
   }
 
@@ -32,8 +31,7 @@ class PaginatedResultsTest {
     PagedResults<Integer> page = Util.generatePaginatedResults(TWENTY, 9, 6, Optional.empty());
 
     assertTrue(page.getCollection().isEmpty());
-    assertEquals(9, page.getPage());
-    assertNull(page.getNextPage());
+    assertFalse(page.hasNextPage());
   }
 
   @Test
@@ -41,7 +39,7 @@ class PaginatedResultsTest {
     PagedResults<Integer> last = Util.generatePaginatedResults(TWENTY, 4, 5, Optional.empty());
 
     assertEquals(List.of(15, 16, 17, 18, 19), last.getCollection());
-    assertNull(last.getNextPage());
+    assertFalse(last.hasNextPage());
   }
 
   @Test
@@ -49,6 +47,23 @@ class PaginatedResultsTest {
     PagedResults<Integer> last = Util.generatePaginatedResults(TWENTY, 4, 6, Optional.empty());
 
     assertEquals(List.of(18, 19), last.getCollection());
-    assertNull(last.getNextPage());
+    assertFalse(last.hasNextPage());
+  }
+
+  @Test
+  void aSerializedPageCarriesTheEnvelopeAndNoPageNumberFields() {
+    PagedResults<Integer> page = Util.generatePaginatedResults(TWENTY, 2, 6, Optional.empty())
+        .envelope(6, 6, "http://t/x?limit=6&offset=6");
+
+    JsonNode json = JsonMapper.STRICT_MAPPER.valueToTree(page);
+
+    assertEquals(6, json.get("currentOffset").asInt());
+    assertEquals(6, json.get("request").get("limit").asInt());
+    assertEquals(6, json.get("request").get("offset").asInt());
+    assertEquals(20, json.get("totalCount").asInt());
+    assertTrue(json.has("paging"));
+    for (String dropped : List.of("page", "pageCount", "pageSize", "prevPage", "nextPage", "hasNextPage")) {
+      assertFalse(json.has(dropped), dropped);
+    }
   }
 }

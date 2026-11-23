@@ -34,7 +34,6 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -43,9 +42,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *
  * <p>The fixture's one ontology has a root with 23 children whose labels are written out of order, so
  * paging has something to walk and an offset something to land inside. Each route family is checked
- * for what a client relies on: that an offset lands where it says, that the links carry the filters
- * and never a page number, that the page-number parameters still answer as they did, and that asking
- * both ways at once is refused.
+ * for what a client relies on: that an offset lands where it says, that the links carry the filters,
+ * that a limit defaults to 100 and is refused above 500, and that the withdrawn page-number paging is
+ * refused, except for the {@code page} 1 that published clients send in a JSON body.
  */
 @Tag("integration")
 public class TerminologyPagingResourceTest {
@@ -128,7 +127,7 @@ public class TerminologyPagingResourceTest {
 
   @Test
   public void anOffsetLandsWhereItSaysAndTheEnvelopeSaysSo() throws Exception {
-    List<String> whole = labels(get(children("?page=1&pageSize=100")));
+    List<String> whole = labels(get(children("?limit=100")));
 
     JsonNode page = get(children("?limit=5&offset=7"));
 
@@ -143,7 +142,7 @@ public class TerminologyPagingResourceTest {
 
   @Test
   public void followingNextVisitsEveryChildOnceInTheSourcesOrder() throws Exception {
-    List<String> whole = labels(get(children("?page=1&pageSize=100")));
+    List<String> whole = labels(get(children("")));
 
     List<String> walked = new ArrayList<>();
     String next = children("?limit=6");
@@ -158,26 +157,44 @@ public class TerminologyPagingResourceTest {
   }
 
   @Test
-  public void aPageNumberStillAnswersAndItsLinksCarryOnlyTheOffset() throws Exception {
-    JsonNode page = get(children("?page=2&pageSize=5"));
+  public void aPageCarriesTheEnvelopeAndNoneOfTheWithdrawnFields() throws Exception {
+    JsonNode page = get(children("?limit=5&offset=5"));
 
-    assertEquals(2, page.get("page").asInt());
-    assertEquals(3, page.get("nextPage").asInt());
     assertEquals(5, page.get("currentOffset").asLong());
+    assertEquals(5, page.get("request").get("limit").asInt());
+    assertEquals(5, page.get("request").get("offset").asInt());
+    assertTrue(page.has("paging"));
+    assertNoPageNumberFields(page);
     String next = page.get("paging").get("next").asText();
     assertEquals("10", param(next, "offset"));
-    assertNull(param(next, "page"), "a link must not mix the two kinds of paging");
-    assertNull(param(next, "pageSize"));
     assertEquals(200, status(pathOf(next)), "a link can be followed");
   }
 
   @Test
-  public void bothKindsOfPagingAndOutOfRangeLimitsAreRefused() throws Exception {
-    assertEquals(400, status(children("?page=2&limit=5")));
-    assertEquals(400, status(children("?pageSize=5&offset=5")));
+  public void withoutALimitAPageHoldsAHundred() throws Exception {
+    JsonNode page = get(children(""));
+
+    assertEquals(100, page.get("request").get("limit").asInt());
+    assertEquals(0, page.get("request").get("offset").asInt());
+    assertEquals(0, page.get("currentOffset").asLong());
+  }
+
+  @Test
+  public void aLimitOfFiveHundredIsServedAndOneMoreIsRefused() throws Exception {
+    assertEquals(500, get(children("?limit=500")).get("request").get("limit").asInt());
+    assertEquals(400, status(children("?limit=501")));
     assertEquals(400, status(children("?limit=0")));
-    assertEquals(400, status(children("?limit=1001")));
     assertEquals(400, status(children("?offset=-1")));
+  }
+
+  @Test
+  public void everyPageNumberParameterIsRefusedNamingLimitAndOffset() throws Exception {
+    for (String query : List.of("?page=1", "?page=2", "?pageSize=5", "?page_size=5", "?page=1&limit=5",
+        "?pageSize=5&offset=5")) {
+      HttpResponse<String> r = send(HttpRequest.newBuilder(uri(children(query))).GET());
+      assertEquals(400, r.statusCode(), query + " -> " + r.body());
+      assertTrue(r.body().contains("limit") && r.body().contains("offset"), query + " -> " + r.body());
+    }
   }
 
   // ---- integrated search, a POST -----------------------------------------------------------------
@@ -188,7 +205,7 @@ public class TerminologyPagingResourceTest {
         + "\",\"acronym\":\"" + ONT + "\",\"name\":\"" + ONT + "\"}],\"branches\":[],\"valueSets\":[],"
         + "\"classes\":[]}";
     JsonNode whole = post("/bioportal/integrated-search", "{\"parameterObject\":{\"valueConstraints\":" + constraint
-        + ",\"inputText\":\"child\"},\"page\":1,\"pageSize\":100}");
+        + ",\"inputText\":\"child\"},\"limit\":100}");
 
     JsonNode page = post("/bioportal/integrated-search", "{\"parameterObject\":{\"valueConstraints\":" + constraint
         + ",\"inputText\":\"child\"},\"limit\":4,\"offset\":9}");
@@ -197,8 +214,44 @@ public class TerminologyPagingResourceTest {
     assertEquals(9, page.get("currentOffset").asLong());
     assertEquals(4, page.get("request").get("limit").asInt());
     assertFalse(page.has("paging"), "a POST has no URL to link to");
-    assertEquals(400, postStatus("/bioportal/integrated-search", "{\"parameterObject\":{\"valueConstraints\":"
-        + constraint + ",\"inputText\":\"child\"},\"page\":2,\"limit\":4}"));
+    assertNoPageNumberFields(page);
+  }
+
+  @Test
+  public void integratedSearchServesThePublishedEditorsBodyAtTheDefaultLimit() throws Exception {
+    String body = "{\"parameterObject\":{\"valueConstraints\":" + localConstraint() + ",\"inputText\":\"child\"}";
+
+    JsonNode legacy = post("/bioportal/integrated-search", body + ",\"page\":1,\"pageSize\":50}");
+    JsonNode sizeOnly = post("/bioportal/integrated-search", body + ",\"pageSize\":5}");
+    JsonNode bare = post("/bioportal/integrated-search", body + "}");
+
+    assertEquals(100, legacy.get("request").get("limit").asInt(), "pageSize is ignored");
+    assertEquals(0, legacy.get("currentOffset").asLong());
+    assertEquals(CHILDREN, legacy.get("collection").size());
+    assertEquals(100, sizeOnly.get("request").get("limit").asInt(), "pageSize without page is page 1");
+    assertEquals(100, bare.get("request").get("limit").asInt());
+    assertNoPageNumberFields(legacy);
+  }
+
+  @Test
+  public void integratedSearchRefusesAnyOtherPageAndALimitAboveFiveHundred() throws Exception {
+    String body = "{\"parameterObject\":{\"valueConstraints\":" + localConstraint() + ",\"inputText\":\"child\"}";
+
+    HttpResponse<String> second = send(HttpRequest.newBuilder(uri("/bioportal/integrated-search"))
+        .header("Content-Type", "application/json")
+        .POST(HttpRequest.BodyPublishers.ofString(body + ",\"page\":2,\"pageSize\":50}")));
+    assertEquals(400, second.statusCode(), second.body());
+    assertTrue(second.body().contains("limit") && second.body().contains("offset"), second.body());
+    assertEquals(400, postStatus("/bioportal/integrated-search", body + ",\"page\":2,\"limit\":4}"));
+    assertEquals(500, post("/bioportal/integrated-search", body + ",\"limit\":500}").get("request").get("limit")
+        .asInt());
+    assertEquals(400, postStatus("/bioportal/integrated-search", body + ",\"limit\":501}"));
+  }
+
+  private static String localConstraint() {
+    return "{\"ontologies\":[{\"uri\":\"https://data.bioontology.org/ontologies/" + ONT
+        + "\",\"acronym\":\"" + ONT + "\",\"name\":\"" + ONT + "\"}],\"branches\":[],\"valueSets\":[],"
+        + "\"classes\":[]}";
   }
 
   @Test
@@ -233,14 +286,30 @@ public class TerminologyPagingResourceTest {
   @Test
   public void theVersionedSearchPagesEachBlockByOffset() throws Exception {
     String body = "{\"query\":\"child\",\"types\":[\"class\"],\"sources\":[{\"sourceAcronym\":\"" + ONT + "\"}]";
-    JsonNode whole = post("/search", body + ",\"pageSize\":100}").get("results").get("class");
+    JsonNode whole = post("/search", body + "}").get("results").get("class");
 
     JsonNode block = post("/search", body + ",\"limit\":3,\"offset\":4}").get("results").get("class");
 
     assertEquals(labels(whole, "termLabel").subList(4, 7), labels(block, "termLabel"));
     assertEquals(4, block.get("currentOffset").asLong());
     assertEquals(3, block.get("request").get("limit").asInt());
-    assertEquals(400, postStatus("/search", body + ",\"page\":1,\"limit\":3}"));
+    assertNoPageNumberFields(block);
+  }
+
+  @Test
+  public void theVersionedSearchIgnoresPageOneRefusesTheRestAndBoundsItsLimit() throws Exception {
+    String body = "{\"query\":\"child\",\"types\":[\"class\"],\"sources\":[{\"sourceAcronym\":\"" + ONT + "\"}]";
+
+    JsonNode legacy = post("/search", body + ",\"page\":1,\"pageSize\":50}").get("results").get("class");
+
+    assertEquals(100, legacy.get("request").get("limit").asInt(), "pageSize is ignored");
+    assertEquals(0, legacy.get("currentOffset").asLong());
+    assertEquals(3, post("/search", body + ",\"page\":1,\"limit\":3}").get("results").get("class")
+        .get("request").get("limit").asInt());
+    assertEquals(400, postStatus("/search", body + ",\"page\":2}"));
+    assertEquals(500, post("/search", body + ",\"limit\":500}").get("results").get("class").get("request")
+        .get("limit").asInt());
+    assertEquals(400, postStatus("/search", body + ",\"limit\":501}"));
   }
 
   @Test
@@ -255,8 +324,12 @@ public class TerminologyPagingResourceTest {
     assertEquals(20, page.get("currentOffset").asLong());
     assertFalse(page.get("paging").has("next"));
     assertEquals("10", param(page.get("paging").get("prev").asText(), "offset"));
-    assertEquals(50, get(path).get("request").get("limit").asInt(), "without a limit, fifty as before");
+    assertEquals(100, get(path).get("request").get("limit").asInt(), "without a limit, a hundred");
+    assertEquals(500, get(path + "&limit=500").get("request").get("limit").asInt());
     assertEquals(400, status(path + "&limit=501"));
+    assertEquals(400, status(path + "&page=2"));
+    assertEquals(400, status(path + "&pageSize=5"));
+    assertEquals(400, status(path + "&page_size=5"));
   }
 
   // ---- helpers -----------------------------------------------------------------------------------
@@ -276,6 +349,13 @@ public class TerminologyPagingResourceTest {
         "{\"iri\":\"urn:test:value\",\"valueConstraints\":{\"futureConstraint\":true}}",
         "{\"iri\":\"urn:test:value\",\"valueConstraints\":{\"branches\":[{\"uri\":\"urn:root\",\"acronym\":\"EX\",\"maxDepth\":1.5}]}}")) {
       assertEquals(400, postStatus("/bioportal/validate-term", invalid), invalid);
+    }
+  }
+
+  /** Asserts that a page carries none of the page-number fields BioPortal answers with. */
+  private static void assertNoPageNumberFields(JsonNode page) {
+    for (String dropped : List.of("page", "pageCount", "pageSize", "prevPage", "nextPage", "total")) {
+      assertFalse(page.has(dropped), dropped + " in " + page);
     }
   }
 

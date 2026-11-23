@@ -134,7 +134,7 @@ public class SqliteTerminologyServiceTest {
     // mammal has two children: cat, dog (ordered by iri)
     PagedResults<OntologyClass> page1 = service.getClassChildren(iri("mammal"), EX, 1, 1, null);
     assertEquals(Integer.valueOf(2), page1.getTotalCount());
-    assertEquals(Integer.valueOf(2), page1.getPageCount());
+    assertTrue(page1.hasNextPage());
     assertEquals(List.of("cat"), ids(page1.getCollection()));
 
     PagedResults<OntologyClass> page2 = service.getClassChildren(iri("mammal"), EX, 2, 1, null);
@@ -168,15 +168,15 @@ public class SqliteTerminologyServiceTest {
     PagedResults<SearchResult> p1 = classSearch("a", 1, 1);
     assertEquals(List.of(iri("cat")), ldIds(p1.getCollection()));
     assertEquals(Integer.valueOf(3), p1.getTotalCount());
-    assertEquals(Integer.valueOf(3), p1.getPageCount());
-    assertEquals(Integer.valueOf(1), p1.getPageSize()); // items on this page, not the requested size
-    assertNull(p1.getPrevPage());
-    assertEquals(Integer.valueOf(2), p1.getNextPage());
+    assertTrue(p1.hasNextPage());
 
     PagedResults<SearchResult> p2 = classSearch("a", 2, 1);
     assertEquals(List.of(iri("animal")), ldIds(p2.getCollection()));
-    assertEquals(Integer.valueOf(1), p2.getPrevPage());
-    assertEquals(Integer.valueOf(3), p2.getNextPage());
+    assertTrue(p2.hasNextPage());
+
+    PagedResults<SearchResult> p3 = classSearch("a", 3, 1);
+    assertEquals(List.of(iri("mammal")), ldIds(p3.getCollection()));
+    assertFalse(p3.hasNextPage());
   }
 
   @Test
@@ -184,8 +184,7 @@ public class SqliteTerminologyServiceTest {
     PagedResults<SearchResult> r = classSearch("zzz", 1, 50);
     assertTrue(r.getCollection().isEmpty());
     assertEquals(Integer.valueOf(0), r.getTotalCount());
-    assertEquals(Integer.valueOf(0), r.getPageCount());
-    assertEquals(Integer.valueOf(0), r.getPageSize());
+    assertFalse(r.hasNextPage());
   }
 
   @Test

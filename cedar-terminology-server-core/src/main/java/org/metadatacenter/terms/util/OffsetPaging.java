@@ -3,6 +3,7 @@ package org.metadatacenter.terms.util;
 import org.metadatacenter.exception.CedarException;
 import org.metadatacenter.rest.exception.CedarAssertionException;
 import org.metadatacenter.terms.customObjects.PagedResults;
+import org.metadatacenter.terms.paging.PageLimits;
 import org.metadatacenter.util.http.PagedQuery;
 
 import java.io.IOException;
@@ -11,12 +12,13 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Reads either kind of paging a terminology route accepts, and serves an offset from sources that
- * page by number.
+ * Reads the {@code limit} and {@code offset} a terminology route is paged by, and serves an offset
+ * from sources that page by number.
  *
- * <p>The routes take {@code limit} and {@code offset}, CEDAR's paging. They still take the one-based
- * {@code page} and a page size, which is what BioPortal takes and what their older clients send. A
- * request may use one kind or the other, not both.
+ * <p>A {@code limit} defaults to {@link PageLimits#DEFAULT_LIMIT} and is refused above
+ * {@link PageLimits#MAX_LIMIT}. Paging by page number is withdrawn. A JSON body may still carry
+ * {@code page} 1, which older clients send with every request, and is then served by its
+ * {@code limit} and {@code offset}; any other page is refused.
  *
  * <p>Every source behind these routes pages by number, BioPortal and the local store alike. An
  * offset on a page boundary is one page; an offset inside a page is served from the two pages it
@@ -24,18 +26,11 @@ import java.util.Optional;
  */
 public final class OffsetPaging {
 
-  /** The largest page a client may ask for, by limit or by page size. */
-  public static final int MAX_LIMIT = 1000;
-
   private OffsetPaging() {
   }
 
-  /**
-   * The page asked for, as an offset and a limit.
-   *
-   * @param byOffset whether the client sent {@code limit} or {@code offset}, rather than a page number
-   */
-  public record Request(int offset, int limit, boolean byOffset) {
+  /** The page asked for, as an offset and a limit. */
+  public record Request(int offset, int limit) {
   }
 
   /** One source, read a page at a time, with one-based page numbers. */
@@ -44,54 +39,43 @@ public final class OffsetPaging {
     PagedResults<T> page(int page, int size) throws IOException;
   }
 
-  /**
-   * The page a request asks for.
-   *
-   * @param page         the one-based page, or null when none was sent
-   * @param pageSize     the page size, already defaulted
-   * @param pageSizeSent whether a page size was sent in either spelling
-   */
-  public static Request resolve(Integer limit, Integer offset, Integer page, int pageSize, boolean pageSizeSent,
-                                int defaultLimit) throws CedarException {
-    boolean byNumber = page != null || pageSizeSent;
-    boolean byOffset = limit != null || offset != null;
-    if (byNumber && byOffset) {
-      throw new CedarAssertionException("Send either limit and offset or page and a page size, not both")
-          .badRequest();
-    }
-    if (byOffset) {
-      PagedQuery query = new PagedQuery(defaultLimit, MAX_LIMIT)
-          .limit(Optional.ofNullable(limit)).offset(Optional.ofNullable(offset));
-      query.validate();
-      return new Request(query.getOffset(), query.getLimit(), true);
-    }
-    // A page size has the ceiling a limit has. Asked by number, a source could be made to return any
-    // number of entries in one page, where the same request by limit was refused.
-    if (pageSize > MAX_LIMIT) {
-      throw new CedarAssertionException("A page size is at most " + MAX_LIMIT).badRequest();
-    }
-    int number = page == null ? 1 : Math.max(1, page);
-    return new Request((number - 1) * pageSize, pageSize, false);
+  /** The page a request asks for by {@code limit} and {@code offset}, either of which may be absent. */
+  public static Request resolve(Integer limit, Integer offset) throws CedarException {
+    PagedQuery query = new PagedQuery(PageLimits.DEFAULT_LIMIT, PageLimits.MAX_LIMIT)
+        .limit(Optional.ofNullable(limit)).offset(Optional.ofNullable(offset));
+    query.validate();
+    return new Request(query.getOffset(), query.getLimit());
   }
 
   /**
-   * The page a request asks for, read from a source that pages by number.
-   *
-   * <p>A request by page number is passed to the source as it was, and the source's own paging
-   * fields are kept. A request by offset has its paging fields worked out from the offset.
+   * The page a JSON body asks for. A {@code page} that is absent or 1 is ignored, and the body is
+   * served by its {@code limit} and {@code offset}; any other page is refused.
+   */
+  public static Request resolveBody(Integer page, Integer limit, Integer offset) throws CedarException {
+    if (!isFirstOrAbsent(page)) {
+      throw new CedarAssertionException(PageLimits.PAGE_NUMBERS_WITHDRAWN).parameter("page", page).badRequest();
+    }
+    return resolve(limit, offset);
+  }
+
+  /** Whether a body's {@code page} is one this server ignores rather than refuses. */
+  public static boolean isFirstOrAbsent(Integer page) {
+    return page == null || page == 1;
+  }
+
+  /**
+   * The page a request asks for, read from a source that pages by number, with its paging worked
+   * out from the offset.
    */
   public static <T> PagedResults<T> fetch(Request request, PageSource<T> source) throws IOException {
     int limit = request.limit();
     int firstPage = request.offset() / limit + 1;
-    if (!request.byOffset()) {
-      return source.page(firstPage, limit);
-    }
     int skip = request.offset() % limit;
     PagedResults<T> first = source.page(firstPage, limit);
     List<T> collected = new ArrayList<>(first.getCollection() == null ? List.of() : first.getCollection());
     Integer total = first.getTotalCount();
     boolean capped = Boolean.TRUE.equals(first.getCountCapped());
-    if (skip > 0 && first.getNextPage() != null && !collected.isEmpty()) {
+    if (skip > 0 && first.hasNextPage() && !collected.isEmpty()) {
       PagedResults<T> second = source.page(firstPage + 1, limit);
       if (second.getCollection() != null) {
         collected.addAll(second.getCollection());
@@ -102,10 +86,7 @@ public final class OffsetPaging {
         Math.min(skip + limit, collected.size())));
     int end = request.offset() + slice.size();
     boolean more = total != null ? end < total : slice.size() == limit;
-    PagedResults<T> page = new PagedResults<>(firstPage,
-        total == null ? null : (int) Math.ceil((double) total / limit), slice.size(), total,
-        request.offset() > 0 ? Math.max(1, (request.offset() - 1) / limit + 1) : null,
-        more ? end / limit + 1 : null, slice);
+    PagedResults<T> page = new PagedResults<>(total, more, slice);
     if (capped) {
       page.setCountCapped(true);
     }

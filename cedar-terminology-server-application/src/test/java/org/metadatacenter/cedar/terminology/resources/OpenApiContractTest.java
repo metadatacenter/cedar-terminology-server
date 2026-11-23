@@ -17,25 +17,57 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * The integrated search and retrieve bodies document every paging property the routes read, and the
- * property routes document every answer they give.
+ * The integrated search and retrieve bodies document the paging the routes read, the property
+ * routes document every answer they give, and no route documents the withdrawn page-number paging
+ * as a way to page.
  *
  * <p>The integrated routes read {@code limit} and {@code offset} from the body, but the document is
- * generated from a model of its own, and the generator drops a property that has no accessor. The
- * model declared both without one, so the document described page-number paging alone.
+ * generated from a model of its own, and the generator drops a property that has no accessor.
  */
 class OpenApiContractTest {
 
   @ParameterizedTest
   @ValueSource(strings = {"IntegratedSearchRequestBody", "IntegratedRetrieveRequestBody"})
-  void integratedBodiesDocumentBothKindsOfPaging(String schema) throws IOException {
+  void integratedBodiesDocumentLimitAndOffsetAndMarkPageNumbersWithdrawn(String schema) throws IOException {
     JsonNode properties = readSpec().path("components").path("schemas").path(schema).path("properties");
     Set<String> documented = new TreeSet<>();
     properties.fieldNames().forEachRemaining(documented::add);
-    assertTrue(documented.containsAll(Set.of("limit", "offset", "page", "pageSize")), documented.toString());
+    assertTrue(documented.containsAll(Set.of("limit", "offset")), documented.toString());
     for (String paging : Set.of("limit", "offset")) {
       assertEquals("integer", properties.path(paging).path("type").asText(), paging);
     }
+    String limit = properties.path("limit").path("description").asText();
+    assertTrue(limit.contains("from 1 to 500") && limit.contains("Defaults to 100"), limit);
+    for (String withdrawn : Set.of("page", "pageSize")) {
+      assertTrue(properties.path(withdrawn).path("deprecated").asBoolean(), withdrawn + " is not marked withdrawn");
+    }
+  }
+
+  /** No route documents page, pageSize or page_size as a query parameter. */
+  @org.junit.jupiter.api.Test
+  void noRouteDocumentsAPageNumberParameter() throws IOException {
+    JsonNode paths = readSpec().path("paths");
+    paths.fields().forEachRemaining(path -> path.getValue().fields().forEachRemaining(operation -> {
+      for (JsonNode parameter : operation.getValue().path("parameters")) {
+        String name = parameter.path("name").asText();
+        assertFalse(Set.of("page", "pageSize", "page_size").contains(name),
+            operation.getKey() + " " + path.getKey() + " documents " + name);
+      }
+    }));
+  }
+
+  /** No answer schema documents BioPortal's page-number fields. */
+  @ParameterizedTest
+  @ValueSource(strings = {"IntegratedSearchResults", "IntegratedRetrieveResults", "PagedSearchResults",
+      "PagedOntologyClasses", "PagedValueSets", "PagedValues", "TypeResults", "Result"})
+  void noAnswerDocumentsPageNumberFields(String schema) throws IOException {
+    JsonNode properties = readSpec().path("components").path("schemas").path(schema).path("properties");
+    assertFalse(properties.isMissingNode(), schema + " is not in the document");
+    for (String dropped : Set.of("page", "pageCount", "pageSize", "prevPage", "nextPage", "total")) {
+      assertFalse(properties.has(dropped), schema + " documents " + dropped);
+    }
+    assertTrue(properties.has("totalCount") && properties.has("request") && properties.has("currentOffset"),
+        schema + " " + properties);
   }
 
   /**
@@ -67,11 +99,7 @@ class OpenApiContractTest {
     assertTrue(responses.at("/500/description").asText().contains("errorId"), path);
   }
 
-  /**
-   * The property hierarchy and roots document the range of {@code limit}, which is the store's page
-   * bound. Neither documented the parameter, and the route accepted up to 500 while the store refused
-   * any page over 200.
-   */
+  /** The property hierarchy and roots document the range of {@code limit}, which is the store's page bound. */
   @ParameterizedTest
   @ValueSource(strings = {"/properties/hierarchy", "/properties/roots"})
   void propertyPagesDocumentTheirLimit(String path) throws IOException {
@@ -83,8 +111,8 @@ class OpenApiContractTest {
       }
     }
     assertNotNull(limit, path + " documents no limit");
-    assertTrue(limit.contains("from 1 to 200. Defaults to 50."), limit);
-    assertTrue(operation.at("/responses/400/description").asText().contains("limit is outside 1 to 200"),
+    assertTrue(limit.contains("from 1 to 500. Defaults to 100."), limit);
+    assertTrue(operation.at("/responses/400/description").asText().contains("limit is outside 1 to 500"),
         operation.at("/responses/400/description").asText());
   }
 

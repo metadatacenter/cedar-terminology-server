@@ -14,6 +14,7 @@ import jakarta.ws.rs.core.*;
 import java.sql.SQLException;
 import org.metadatacenter.util.http.CedarError;
 import org.metadatacenter.util.http.CedarResponse;
+import org.metadatacenter.terms.paging.PageLimits;
 import org.metadatacenter.terms.search.VersionedPropertyService;
 
 /** Read-only property API backed by the same ontology snapshots as version-aware class search. */
@@ -61,14 +62,17 @@ public class VersionedPropertyResource {
   @POST
   @Path("/search")
   @Consumes(MediaType.APPLICATION_JSON)
-  @Operation(summary = "Search properties in local ontology snapshots")
+  @Operation(summary = "Search properties in local ontology snapshots",
+      description = "Paged by limit (1 to " + PageLimits.MAX_LIMIT + ", default " + PageLimits.DEFAULT_LIMIT
+          + ") and offset. The answer carries totalCount, request and currentOffset. A POST has no URL to link to, "
+          + "so the answer carries no paging links: ask for the next page by sending the next offset.")
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "Local ontology property data",
           content = @Content(schema = @Schema(implementation = VersionedPropertyService.Result.class))),
       @ApiResponse(responseCode = "400", description = "The body is missing or is not JSON "
           + "(malformedJsonRequestBody), or the search is refused: the query is empty, longer than 500 "
-          + "characters or holds no letter or number, a kind is unknown, the paging is out of range or mixes "
-          + "limit and offset with page and pageSize, more than 20 sources are named, or a source names no "
+          + "characters or holds no letter or number, a kind is unknown, the limit or offset is out of range, "
+          + "the body sends a page other than 1, more than 20 sources are named, or a source names no "
           + "sourceAcronym. The message names the problem.",
           content = @Content(schema = @Schema(implementation = CedarError.class))),
       @ApiResponse(responseCode = "404", description = "A named source's release, or its snapshot, is not held "
@@ -136,7 +140,8 @@ public class VersionedPropertyResource {
 
   @GET
   @Path("/hierarchy")
-  @Operation(summary = "Property ancestors and paged children at an ontology version")
+  @Operation(summary = "Property ancestors and paged children at an ontology version",
+      description = CHILD_ENVELOPE)
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "Local ontology property data",
           content = @Content(schema = @Schema(implementation = VersionedPropertyService.Hierarchy.class))),
@@ -159,13 +164,14 @@ public class VersionedPropertyResource {
       @QueryParam("kind") String kind,
       @Parameter(description = CHILD_OFFSET) @QueryParam("offset") @DefaultValue("0") int offset,
       @Parameter(description = CHILD_LIMIT) @QueryParam("limit") Integer limit) {
-    return read(() -> service.hierarchy(acronym, version, iri, kind, offset, childLimit(limit, offset))
+    return read(() -> service.hierarchy(acronym, version, iri, kind, offset, childLimit(limit, offset, uriInfo))
         .paged(uriInfo.getRequestUri().toString()));
   }
 
   @GET
   @Path("/roots")
-  @Operation(summary = "Paged root properties at an ontology version")
+  @Operation(summary = "Paged root properties at an ontology version",
+      description = CHILD_ENVELOPE)
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "Local ontology property data",
           content = @Content(schema = @Schema(implementation = VersionedPropertyService.Roots.class))),
@@ -187,19 +193,25 @@ public class VersionedPropertyResource {
       @QueryParam("kind") String kind,
       @Parameter(description = ROOT_OFFSET) @QueryParam("offset") @DefaultValue("0") int offset,
       @Parameter(description = ROOT_LIMIT) @QueryParam("limit") Integer limit) {
-    return read(() -> service.roots(acronym, version, kind, offset, childLimit(limit, offset))
+    return read(() -> service.roots(acronym, version, kind, offset, childLimit(limit, offset, uriInfo))
         .paged(uriInfo.getRequestUri().toString()));
   }
 
   private static final String NOT_ACCEPTABLE = "The request does not accept a JSON response";
+  private static final String CHILD_ENVELOPE = "Paged by limit and offset. Nothing counts the properties, so "
+      + "countCapped is always true and totalCount is a lower bound: everything up to this page, and one more when "
+      + "the page came back full. The answer carries request, currentOffset and paging, whose links lead to the "
+      + "first, previous and next pages and leave out the last.";
   private static final String CHILD_LIMIT = "How many children to return, from 1 to "
-      + VersionedPropertyService.MAX_CHILD_LIMIT + ". Defaults to " + VersionedPropertyService.DEFAULT_CHILD_LIMIT + ".";
+      + VersionedPropertyService.MAX_CHILD_LIMIT + ". Defaults to " + VersionedPropertyService.DEFAULT_CHILD_LIMIT
+      + ". A larger limit is refused with 400.";
   private static final String CHILD_OFFSET = "How many children to skip. Defaults to 0.";
   private static final String ROOT_LIMIT = "How many roots to return, from 1 to "
-      + VersionedPropertyService.MAX_CHILD_LIMIT + ". Defaults to " + VersionedPropertyService.DEFAULT_CHILD_LIMIT + ".";
+      + VersionedPropertyService.MAX_CHILD_LIMIT + ". Defaults to " + VersionedPropertyService.DEFAULT_CHILD_LIMIT
+      + ". A larger limit is refused with 400.";
   private static final String ROOT_OFFSET = "How many roots to skip. Defaults to 0.";
   private static final String OUT_OF_RANGE = "limit is outside 1 to " + VersionedPropertyService.MAX_CHILD_LIMIT
-      + ", or offset is negative.";
+      + ", offset is negative, or the request carries page, pageSize or page_size.";
   private static final String NOT_A_NUMBER = "A limit or offset that is not a 32-bit integer is refused with a "
       + "message that identifies the parameter and says what form it takes.";
   private static final String NOT_CONFIGURED = "No local terminology store is configured";
@@ -210,12 +222,16 @@ public class VersionedPropertyResource {
       + "reports, or the server failed in another way. The body's errorId identifies the failure in the server log.";
 
   /**
-   * The page size a hierarchy or roots request asks for, refused when out of range.
+   * The page size a hierarchy or roots request asks for, refused when out of range or when the
+   * request carries a withdrawn page-number parameter.
    *
    * <p>The bound is the store's own page bound, so a limit this accepts is one the store can read. A
    * larger one is refused here, with a message naming the range, rather than by the store.
    */
-  private static int childLimit(Integer limit, int offset) {
+  private static int childLimit(Integer limit, int offset, UriInfo uriInfo) {
+    if (AbstractTerminologyServerResource.pageNumberParameter(uriInfo).isPresent()) {
+      throw new IllegalArgumentException(PageLimits.PAGE_NUMBERS_WITHDRAWN);
+    }
     int value = limit == null ? VersionedPropertyService.DEFAULT_CHILD_LIMIT : limit;
     if (value < 1 || value > VersionedPropertyService.MAX_CHILD_LIMIT || offset < 0) {
       throw new IllegalArgumentException("limit must be 1–" + VersionedPropertyService.MAX_CHILD_LIMIT

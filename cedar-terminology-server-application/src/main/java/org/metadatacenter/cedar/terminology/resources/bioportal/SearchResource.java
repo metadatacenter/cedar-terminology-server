@@ -59,7 +59,7 @@ public class SearchResource extends AbstractTerminologyServerResource {
       + "A credential is optional. The route serves anonymous callers because the CEDAR Embeddable Designer "
       + "searches it from the browser and holds no CEDAR credential to send.", tags = {"Classes", "Value sets", "Values"})
   @ApiResponses({
-      @ApiResponse(responseCode = "200", description = "One page of matching classes, value sets and values", content = @Content(schema = @Schema(implementation = PagedSearchResults.class))),
+      @ApiResponse(responseCode = "200", description = "One page of matching classes, value sets and values" + PAGED_GET_ENVELOPE, content = @Content(schema = @Schema(implementation = PagedSearchResults.class))),
       @ApiResponse(responseCode = "400", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Bad request"),
       @ApiResponse(responseCode = "404", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Not found"),
       @ApiResponse(responseCode = "500", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Internal server error")
@@ -87,22 +87,15 @@ public class SearchResource extends AbstractTerminologyServerResource {
       @QueryParam("subtree_root_id") String subtreeRootId,
       @Parameter(description = "Subtree depth.")
       @QueryParam("max_depth") @DefaultValue("1") int maxDepth,
-      @Parameter(description = "Page to be returned, counting from 1, for clients that page by number. Cannot be "
-          + "sent with limit or offset. Example: 7.")
-      @QueryParam("page") Integer page,
-      @Parameter(description = "Number of results per page, at most 1000. Example: 10.")
-      @QueryParam("page_size") int pageSize,
-      @Parameter(description = "Alias for the page size, accepted in either spelling.")
-      @QueryParam("pageSize") int pageSizeAlias,
-      @Parameter(description = "How many results to return, from 1 to 1000. Defaults to the configured page size.")
+      @Parameter(description = LIMIT_DESCRIPTION)
       @QueryParam("limit") Integer limit,
-      @Parameter(description = "How many results to skip. Defaults to 0.")
+      @Parameter(description = OFFSET_DESCRIPTION)
       @QueryParam("offset") Integer offset) throws CedarException {
 
     CedarRequestContext c = buildAnonymousRequestContext();
 
     try {
-      OffsetPaging.Request paging = pagingOf(page, pageSize, pageSizeAlias, limit, offset);
+      OffsetPaging.Request paging = pagingOf(limit, offset);
       // Review and clean scope
       List<String> scopeList = new ArrayList<>();
       List<String> referenceScopeList = Arrays
@@ -147,7 +140,7 @@ public class SearchResource extends AbstractTerminologyServerResource {
   @Path("/property_search")
   @Operation(summary = "Property search", description = "Search for properties.", tags = {"Properties"})
   @ApiResponses({
-      @ApiResponse(responseCode = "200", description = "One page of matching properties", content = @Content(schema = @Schema(implementation = PagedSearchResults.class))),
+      @ApiResponse(responseCode = "200", description = "One page of matching properties" + PAGED_GET_ENVELOPE, content = @Content(schema = @Schema(implementation = PagedSearchResults.class))),
       @ApiResponse(responseCode = "400", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Bad request"),
       @ApiResponse(responseCode = "401", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Unauthorized"),
       @ApiResponse(responseCode = "403", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Forbidden"),
@@ -165,23 +158,16 @@ public class SearchResource extends AbstractTerminologyServerResource {
       @QueryParam("exact_match") boolean exactMatch,
       @Parameter(description = "Filter results only to those that include definitions.")
       @QueryParam("require_definitions") boolean requireDefinitions,
-      @Parameter(description = "Page to be returned, counting from 1, for clients that page by number. Cannot be "
-          + "sent with limit or offset. Example: 7.")
-      @QueryParam("page") Integer page,
-      @Parameter(description = "Number of results per page, at most 1000. Example: 10.")
-      @QueryParam("page_size") int pageSize,
-      @Parameter(description = "Alias for the page size, accepted in either spelling.")
-      @QueryParam("pageSize") int pageSizeAlias,
-      @Parameter(description = "How many results to return, from 1 to 1000. Defaults to the configured page size.")
+      @Parameter(description = LIMIT_DESCRIPTION)
       @QueryParam("limit") Integer limit,
-      @Parameter(description = "How many results to skip. Defaults to 0.")
+      @Parameter(description = OFFSET_DESCRIPTION)
       @QueryParam("offset") Integer offset) throws CedarException {
 
     CedarRequestContext c = buildRequestContext();
     c.must(c.user()).be(LoggedIn);
 
     try {
-      OffsetPaging.Request paging = pagingOf(page, pageSize, pageSizeAlias, limit, offset);
+      OffsetPaging.Request paging = pagingOf(limit, offset);
       // Sources list
       List<String> sourcesList = new ArrayList<>();
       if (sources != null && sources.length() > 0) {

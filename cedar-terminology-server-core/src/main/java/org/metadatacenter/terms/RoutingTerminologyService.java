@@ -220,7 +220,7 @@ public class RoutingTerminologyService implements ITerminologyService {
     // answered above; reaching here means it is not served locally. Return no results rather than
     // BioPortal's content for a different source.
     if (hasNonBioPortalSource(valueConstraints)) {
-      return emptyResults(page, pageSize);
+      return emptyResults();
     }
     return remote.integratedSearch(q, valueConstraints, page, pageSize, apiKey, lang);
   }
@@ -260,8 +260,8 @@ public class RoutingTerminologyService implements ITerminologyService {
     return sourceSystem != null && !sourceSystem.isBlank() && !"bioportal".equalsIgnoreCase(sourceSystem);
   }
 
-  private static PagedResults<SearchResult> emptyResults(int page, int pageSize) {
-    return new PagedResults<>(page, 0, pageSize, 0, null, null, java.util.List.of());
+  private static PagedResults<SearchResult> emptyResults() {
+    return new PagedResults<>(0, false, java.util.List.of());
   }
 
   /** Whether any ontology / branch / value-set constraint carries an explicit version pin (a value that

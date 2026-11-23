@@ -85,7 +85,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     PagedResults<SearchResult> results = search(generateRequestBody("", ontology(ONTOLOGY), none(), none(), none(),
         Optional.empty(), Optional.of(3)));
     Assertions.assertEquals(List.of("Heart", "Organ", "Root"), labels(results));
-    assertPaging(results, 1, 2, 3, 4, null, 2);
+    assertPaging(results, 4, 3, 0);
   }
 
   @Test
@@ -93,7 +93,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     PagedResults<SearchResult> results = search(generateRequestBody(null, ontology(ONTOLOGY), none(), none(), none(),
         Optional.empty(), Optional.of(3)));
     Assertions.assertEquals(List.of("Heart", "Organ", "Root"), labels(results));
-    assertPaging(results, 1, 2, 3, 4, null, 2);
+    assertPaging(results, 4, 3, 0);
   }
 
   @Test
@@ -102,7 +102,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     PagedResults<SearchResult> results = search(generateRequestBody(inputText, ontology(ONTOLOGY), none(), none(),
         none(), Optional.empty(), Optional.of(10)));
     Assertions.assertTrue(results.getCollection().isEmpty(), "Wrong number of results");
-    assertPaging(results, 1, 0, 0, 0, null, null);
+    assertPaging(results, 0, 10, 0);
   }
 
   @Test
@@ -118,7 +118,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
           "Class source does not match the expected source");
     }
     // Six classes of VIRONT have "virus" in their label, so a second page holds the other two.
-    assertPaging(results, 1, 2, 4, 6, null, 2);
+    assertPaging(results, 6, 4, 0);
   }
 
   /**
@@ -130,7 +130,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     PagedResults<SearchResult> results = search(generateRequestBody("", none(), branch(VIRUSES, VIRUS), none(), none(),
         Optional.empty(), Optional.of(3)));
     Assertions.assertEquals(List.of("Bat coronavirus", "Coronavirus", "Human coronavirus"), labels(results));
-    assertPaging(results, 1, 2, 3, 4, null, 2);
+    assertPaging(results, 4, 3, 0);
   }
 
   @Test
@@ -138,7 +138,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     PagedResults<SearchResult> results = search(generateRequestBody(null, none(), branch(VIRUSES, VIRUS), none(),
         none(), Optional.empty(), Optional.of(3)));
     Assertions.assertEquals(List.of("Bat coronavirus", "Coronavirus", "Human coronavirus"), labels(results));
-    assertPaging(results, 1, 2, 3, 4, null, 2);
+    assertPaging(results, 4, 3, 0);
   }
 
   @Test
@@ -155,7 +155,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
       Assertions.assertEquals(VIRUSES, Util.getShortIdentifier(r.getSource()),
           "Class source does not match the expected source");
     }
-    assertPaging(results, 1, 1, 3, 3, null, null);
+    assertPaging(results, 3, 100, 0);
   }
 
   @Test
@@ -164,7 +164,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     PagedResults<SearchResult> results = search(generateRequestBody(inputText, none(), branch(VIRUSES, VIRUS), none(),
         none(), Optional.empty(), Optional.of(1)));
     Assertions.assertTrue(results.getCollection().isEmpty(), "Wrong number of results");
-    assertPaging(results, 1, 0, 0, 0, null, null);
+    assertPaging(results, 0, 1, 0);
   }
 
   /**
@@ -177,7 +177,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
         valueSet(NLMVS, CORONAVIRUS_VACCINES), none(), Optional.empty(), Optional.of(200)));
     Assertions.assertEquals(List.of("Inactivated virus vaccine", "mRNA coronavirus vaccine",
         "Viral vector coronavirus vaccine"), labels(results));
-    assertPaging(results, 1, 1, 3, 3, null, null);
+    assertPaging(results, 3, 200, 0);
   }
 
   @Test
@@ -186,7 +186,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
         valueSet(NLMVS, CORONAVIRUS_VACCINES), none(), Optional.empty(), Optional.empty()));
     Assertions.assertEquals(List.of(MRNA_VACCINE, VECTOR_VACCINE),
         results.getCollection().stream().map(SearchResult::getLdId).toList());
-    assertPaging(results, 1, 1, 2, 2, null, null);
+    assertPaging(results, 2, 100, 0);
   }
 
   /**
@@ -200,14 +200,14 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
         Optional.empty(), Optional.of(10)));
     Assertions.assertEquals(enumeratedClasses.size(), results.getCollection().size(), "Wrong number of results");
     assertEnumeratedClassesInLabelOrder(enumeratedClasses, results.getCollection());
-    assertPaging(results, 1, 1, 3, 3, null, null);
+    assertPaging(results, 3, 10, 0);
   }
 
   @Test
   public void searchEnumeratedClassesEmptySearchTwoPages() throws IOException {
     ArrayNode enumeratedClasses = enumeratedClasses();
     PagedResults<SearchResult> resultsPage1 = search(generateRequestBody("", none(), none(), none(), enumeratedClasses,
-        Optional.of(1), Optional.of(2)));
+        Optional.of(0), Optional.of(2)));
     PagedResults<SearchResult> resultsPage2 = search(generateRequestBody("", none(), none(), none(), enumeratedClasses,
         Optional.of(2), Optional.of(2)));
     Assertions.assertEquals(2, resultsPage1.getCollection().size(), "Wrong number of results");
@@ -216,8 +216,8 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     List<SearchResult> results = new ArrayList<>(resultsPage1.getCollection());
     results.addAll(resultsPage2.getCollection());
     assertEnumeratedClassesInLabelOrder(enumeratedClasses, results);
-    assertPaging(resultsPage1, 1, 2, 2, 3, null, 2);
-    assertPaging(resultsPage2, 2, 2, 1, 3, 1, null);
+    assertPaging(resultsPage1, 3, 2, 0);
+    assertPaging(resultsPage2, 3, 2, 2);
   }
 
   @Test
@@ -226,7 +226,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
         enumeratedClasses(), Optional.empty(), Optional.of(10)));
     Assertions.assertEquals(1, results.getCollection().size(), "Wrong number of results");
     assertEnumeratedClass(ENUMERATED_CLASS_1_URI, "cutaneous mycosis", results.getCollection().get(0));
-    assertPaging(results, 1, 1, 1, 1, null, null);
+    assertPaging(results, 1, 10, 0);
   }
 
   /**
@@ -250,7 +250,7 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
       Assertions.assertEquals(ONTOLOGY, Util.getShortIdentifier(r.getSource()), "Wrong source");
     }
     // Both sources are sorted together and paged as one list: two enumerated classes and four of the ontology.
-    assertPaging(results, 1, 2, 3, 6, null, 2);
+    assertPaging(results, 6, 3, 0);
   }
 
   /**
@@ -337,8 +337,8 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
   }
 
   private static ObjectNode generateRequestBody(String inputText, ArrayNode ontologies, ArrayNode branches,
-                                                ArrayNode valueSets, ArrayNode classes, Optional<Integer> page,
-                                                Optional<Integer> pageSize) {
+                                                ArrayNode valueSets, ArrayNode classes, Optional<Integer> offset,
+                                                Optional<Integer> limit) {
     // valueConstraints object
     ObjectNode valueConstraints = mapper.createObjectNode();
     valueConstraints.set(VALUE_CONSTRAINTS_ONTOLOGIES, ontologies);
@@ -354,8 +354,8 @@ public class IntegratedSearchResourceTest extends AbstractTerminologyServerResou
     // Request body
     ObjectNode requestBody = mapper.createObjectNode();
     requestBody.set(BP_INTEGRATED_SEARCH_PARAMS_FIELD, parameterObject);
-    page.ifPresent(p -> requestBody.put(BP_PAGE_PARAM, p));
-    pageSize.ifPresent(s -> requestBody.put(BP_PAGE_SIZE_PARAM, s));
+    offset.ifPresent(o -> requestBody.put("offset", o));
+    limit.ifPresent(l -> requestBody.put("limit", l));
     return requestBody;
   }
 

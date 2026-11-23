@@ -51,7 +51,7 @@ public class RoutingTerminologyServiceTest {
           case "getClassTree" -> List.of(new TreeNode(null, null, null, null, REMOTE, null, false, null, false));
           case "findClass", "findRegularClass" ->
               new OntologyClass(REMOTE, iri("remote"), REMOTE, null, REMOTE, null, null, null, null, false, null, false);
-          case "search", "integratedSearch" -> new PagedResults<>(1, 1, 1, 1, null, null,
+          case "search", "integratedSearch" -> new PagedResults<>(1, false,
               List.of(new SearchResult(REMOTE, iri("remote"), null, "OntologyClass", REMOTE, null, null, REMOTE, null,
                   null)));
           default -> throw new UnsupportedOperationException("remote stub does not implement " + method.getName());

@@ -12,7 +12,9 @@ import org.metadatacenter.terms.search.SearchResponse.TermRef;
 import org.metadatacenter.terms.search.SearchResponse.TypeResults;
 import org.metadatacenter.terms.search.SearchResponse.ValueSetHit;
 import org.metadatacenter.terms.search.SearchResponse.VersionInfo;
+import org.metadatacenter.terms.paging.PageLimits;
 import org.metadatacenter.terms.store.CatalogStore;
+import org.metadatacenter.terms.util.OffsetPaging;
 import org.metadatacenter.terms.store.SearchIndexStore;
 import org.metadatacenter.terms.store.SnapshotStore;
 
@@ -77,15 +79,13 @@ public class VersionAwareSearchService {
   private static final int MAX_ANCESTOR_DEPTH = 32;
 
   /** Children shown at once. A SNOMED node can have hundreds; the count says how many were left. */
-  static final int CHILD_LIMIT = 50;
+  public static final int CHILD_LIMIT = PageLimits.DEFAULT_LIMIT;
   /** The most children one request may ask for. */
-  public static final int MAX_CHILD_LIMIT = 500;
+  public static final int MAX_CHILD_LIMIT = PageLimits.MAX_LIMIT;
 
   /** How many descendants a branch row illustrates. */
   private static final int EXAMPLE_COUNT = 3;
 
-  private static final int DEFAULT_PAGE_SIZE = 20;
-  private static final int MAX_PAGE_SIZE = 200;
 
   private final CatalogSnapshotProvider provider;
   private final SearchIndexStore index;
@@ -251,7 +251,7 @@ public class VersionAwareSearchService {
         else hits.add(hit);
       }
       results.put(entry.getKey(), new TypeResults(page.totalCount(), page.countCapped(), page.distinctLabelCount(),
-          page.distinctLabelCountCapped(), page.page(), page.pageSize(), hits, page.request(), page.currentOffset()));
+          page.distinctLabelCountCapped(), hits, page.request(), page.currentOffset()));
     }
     return new SearchResponse(response.query(), List.copyOf(sources.values()), results);
   }
@@ -682,9 +682,9 @@ public class VersionAwareSearchService {
     // query for nothing.
     Integer labels = scope.isEmpty() ? 0 : index.matchCount(query, scope, true, branchesOnly, FACET_CAP);
     // The terms list is already the page — it holds every hit of the page's labels, which is more
-    // rows than pageSize on purpose. Slicing it again would cut a label in half and leave a client
+    // rows than limit on purpose. Slicing it again would cut a label in half and leave a client
     // folding a partial group.
-    // Already the page: it holds every hit of the page's labels, which is more rows than pageSize on
+    // Already the page: it holds every hit of the page's labels, which is more rows than limit on
     // purpose. Slicing again would cut a label in half and leave a client folding a partial group.
     return TypeResults.at(total, total >= FACET_CAP,
         labels, labels == null ? null : labels >= FACET_CAP,
@@ -1019,29 +1019,22 @@ public class VersionAwareSearchService {
   }
 
   /**
-   * The offset and limit a request asks for, by {@code limit} and {@code offset} or by {@code page}
-   * and {@code pageSize}. A page size out of range is clamped, as it always was; a limit out of range
-   * is refused, as CEDAR's paging refuses one everywhere else.
+   * The offset and limit a request asks for. A {@code page} that is absent or 1 is ignored, with
+   * {@code pageSize}; any other page is refused, as a limit out of range is.
    */
   private static int[] pagingOf(SearchRequest request) {
-    boolean byOffset = request.limit() != null || request.offset() != null;
-    if (byOffset && (request.page() != null || request.pageSize() != null)) {
-      throw new BadSearchRequestException("Send either limit and offset or page and pageSize, not both.");
+    if (!OffsetPaging.isFirstOrAbsent(request.page())) {
+      throw new BadSearchRequestException(PageLimits.PAGE_NUMBERS_WITHDRAWN);
     }
-    if (byOffset) {
-      int limit = request.limit() == null ? DEFAULT_PAGE_SIZE : request.limit();
-      if (limit < 1 || limit > MAX_PAGE_SIZE) {
-        throw new BadSearchRequestException("limit must be between 1 and " + MAX_PAGE_SIZE + ".");
-      }
-      int offset = request.offset() == null ? 0 : request.offset();
-      if (offset < 0) {
-        throw new BadSearchRequestException("offset must not be negative.");
-      }
-      return new int[]{offset, limit};
+    int limit = request.limit() == null ? PageLimits.DEFAULT_LIMIT : request.limit();
+    if (limit < 1 || limit > PageLimits.MAX_LIMIT) {
+      throw new BadSearchRequestException("limit must be between 1 and " + PageLimits.MAX_LIMIT + ".");
     }
-    int page = Math.max(1, request.page() == null ? 1 : request.page());
-    int pageSize = clampPageSize(request.pageSize());
-    return new int[]{(page - 1) * pageSize, pageSize};
+    int offset = request.offset() == null ? 0 : request.offset();
+    if (offset < 0) {
+      throw new BadSearchRequestException("offset must not be negative.");
+    }
+    return new int[]{offset, limit};
   }
 
   /* ----------------------------------------------------------------------------------------------
@@ -1061,13 +1054,6 @@ public class VersionAwareSearchService {
   /** Every type but {@code ontology}, which reads the catalog rather than a snapshot. */
   private static boolean needsASource(List<String> types) {
     return types.stream().anyMatch(t -> !SearchRequest.TYPE_ONTOLOGY.equals(t));
-  }
-
-  private static int clampPageSize(Integer requested) {
-    if (requested == null || requested <= 0) {
-      return DEFAULT_PAGE_SIZE;
-    }
-    return Math.min(requested, MAX_PAGE_SIZE);
   }
 
   private static boolean containsIgnoreCase(String haystack, String needle) {

@@ -462,7 +462,7 @@ public class LocalStoreResourceTest {
         "{\"query\":\"disease\",\"sources\":[{\"sourceAcronym\":\"LOCALTEST\",\"versionId\":\"v2\"}]}"))) {
       Assertions.assertEquals(200, response.getStatus());
       JsonNode json = response.readEntity(JsonNode.class);
-      Assertions.assertEquals(1, json.get("total").asInt());
+      Assertions.assertEquals(1, json.get("totalCount").asInt());
       Assertions.assertEquals("v2", json.get("items").get(0).get("versionId").asText());
     }
     try (Response response = clientBuilder.build().target(root + "/hierarchy")
@@ -496,16 +496,12 @@ public class LocalStoreResourceTest {
   }
 
   /**
-   * A property hierarchy or roots page holds at most the store's 200, and the route refuses a larger
+   * A property hierarchy or roots page holds at most the store's 500, and the route refuses a larger
    * limit itself, with a message naming the range.
-   *
-   * <p>The routes accepted a limit up to 500 while the store refused any page over 200. A limit from
-   * 201 to 500 passed the route and was refused by the store, whose message spoke of an invalid page
-   * and did not mention the limit.
    */
   @org.junit.jupiter.params.ParameterizedTest(name = "{0} with limit {1}")
-  @org.junit.jupiter.params.provider.CsvSource({"hierarchy,200,200", "hierarchy,201,400", "hierarchy,500,400",
-      "roots,200,200", "roots,201,400", "roots,500,400"})
+  @org.junit.jupiter.params.provider.CsvSource({"hierarchy,500,200", "hierarchy,501,400",
+      "roots,500,200", "roots,501,400"})
   public void aPropertyPageIsBoundedByTheStorePageSize(String route, int limit, int status) {
     jakarta.ws.rs.client.WebTarget target = clientBuilder.build()
         .target("http://localhost:" + RULE.getLocalPort() + "/properties/" + route)
@@ -522,9 +518,67 @@ public class LocalStoreResourceTest {
         Assertions.assertEquals(1, (route.equals("hierarchy") ? body.path("children") : body.path("items")).size(),
             body.toString());
       } else {
-        Assertions.assertEquals("limit must be 1–200 and offset must not be negative", body.path("message").asText(),
+        Assertions.assertEquals("limit must be 1–500 and offset must not be negative", body.path("message").asText(),
             body.toString());
       }
+    }
+  }
+
+  /** A property hierarchy or roots request carrying a page-number parameter is refused. */
+  @org.junit.jupiter.params.ParameterizedTest(name = "{0} with {1}")
+  @org.junit.jupiter.params.provider.CsvSource({"hierarchy,page", "hierarchy,pageSize", "hierarchy,page_size",
+      "roots,page", "roots,pageSize", "roots,page_size"})
+  public void aPropertyPageRefusesAPageNumber(String route, String parameter) {
+    jakarta.ws.rs.client.WebTarget target = clientBuilder.build()
+        .target("http://localhost:" + RULE.getLocalPort() + "/properties/" + route)
+        .queryParam("sourceAcronym", ONT).queryParam("versionId", "v2").queryParam("kind", "object")
+        .queryParam(parameter, 1);
+    if (route.equals("hierarchy")) {
+      target = target.queryParam("propertyIri", BASE + "relatedTo");
+    }
+    try (Response response = target.request().get()) {
+      JsonNode body = response.readEntity(JsonNode.class);
+      Assertions.assertEquals(400, response.getStatus(), body.toString());
+      String message = body.path("message").asText();
+      Assertions.assertTrue(message.contains("limit") && message.contains("offset"), message);
+    }
+  }
+
+  /**
+   * A property search defaults to 100, serves 500 and refuses 501, ignores a body's page 1 with its
+   * page size, refuses any other page, and answers without the page-number fields.
+   */
+  @Test
+  public void aPropertySearchPagesByLimitAndOffsetAlone() {
+    String url = "http://localhost:" + RULE.getLocalPort() + "/properties/search";
+    String body = "{\"query\":\"disease\",\"sources\":[{\"sourceAcronym\":\"LOCALTEST\",\"versionId\":\"v2\"}]";
+    java.util.function.Function<String, Response> post =
+        extra -> clientBuilder.build().target(url).request().post(Entity.json(body + extra + "}"));
+    try (Response response = post.apply("")) {
+      JsonNode json = response.readEntity(JsonNode.class);
+      Assertions.assertEquals(200, response.getStatus(), json.toString());
+      Assertions.assertEquals(100, json.path("request").path("limit").asInt(), json.toString());
+      Assertions.assertEquals(0, json.path("currentOffset").asInt(), json.toString());
+      for (String dropped : List.of("total", "page", "pageSize")) {
+        Assertions.assertFalse(json.has(dropped), dropped + " in " + json);
+      }
+    }
+    try (Response response = post.apply(",\"page\":1,\"pageSize\":50")) {
+      JsonNode json = response.readEntity(JsonNode.class);
+      Assertions.assertEquals(200, response.getStatus(), json.toString());
+      Assertions.assertEquals(100, json.path("request").path("limit").asInt(), json.toString());
+    }
+    try (Response response = post.apply(",\"limit\":500")) {
+      Assertions.assertEquals(200, response.getStatus());
+    }
+    try (Response response = post.apply(",\"limit\":501")) {
+      Assertions.assertEquals(400, response.getStatus());
+    }
+    try (Response response = post.apply(",\"page\":2")) {
+      JsonNode json = response.readEntity(JsonNode.class);
+      Assertions.assertEquals(400, response.getStatus(), json.toString());
+      String message = json.path("message").asText();
+      Assertions.assertTrue(message.contains("limit") && message.contains("offset"), message);
     }
   }
 

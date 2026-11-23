@@ -124,7 +124,7 @@ class IntegratedSearchPagingTest {
     return "{\"uri\":\"" + ONTOLOGY_BASE + acronym + "\",\"acronym\":\"" + acronym + "\",\"name\":\"" + acronym + "\"}";
   }
 
-  /** Walks every page from 1 the way a client does, following nextPage. */
+  /** Walks every page from 1, following the service's own report of a next page. */
   private static List<SearchResult> walk(TerminologyService service, Optional<String> q, ValueConstraints vc,
                                          int pageSize) throws Exception {
     List<SearchResult> all = new ArrayList<>();
@@ -132,9 +132,8 @@ class IntegratedSearchPagingTest {
     int guard = 0;
     while (page != null) {
       PagedResults<SearchResult> answer = service.integratedSearch(q, vc, page, pageSize, "key", null);
-      assertEquals(page, answer.getPage(), "the server answers the page it was asked for");
       all.addAll(answer.getCollection());
-      page = answer.getNextPage();
+      page = answer.hasNextPage() ? page + 1 : null;
       assertTrue(++guard < 1_000, "the walk did not end");
     }
     return all;
@@ -176,11 +175,8 @@ class IntegratedSearchPagingTest {
     PagedResults<SearchResult> first = service().integratedSearch(Optional.empty(), vc, 1, 10, "key", null);
     PagedResults<SearchResult> second = service().integratedSearch(Optional.empty(), vc, 2, 10, "key", null);
 
-    assertEquals(2, second.getPage());
-    assertEquals(3, second.getNextPage());
-    assertEquals(1, second.getPrevPage());
+    assertTrue(second.hasNextPage());
     assertEquals(60, second.getTotalCount());
-    assertEquals(6, second.getPageCount());
     assertFalse(labels(second.getCollection()).contains(labels(first.getCollection()).get(0)));
     assertNull(second.getCountCapped());
   }
@@ -266,7 +262,7 @@ class IntegratedSearchPagingTest {
     assertEquals(39, walked.size());
     assertFalse(labels(walked).contains("beta 0007"));
     assertEquals(39, first.getTotalCount());
-    assertEquals(2, first.getNextPage(), "actions no longer leave the paging blank");
+    assertTrue(first.hasNextPage(), "actions no longer leave the paging blank");
     assertEquals(10, first.getCollection().size());
   }
 
@@ -350,6 +346,6 @@ class IntegratedSearchPagingTest {
 
     assertEquals(List.of("search:3"), upstreamCalls, "one upstream page, the one asked for");
     assertEquals(5, third.getCollection().size());
-    assertNull(third.getNextPage());
+    assertFalse(third.hasNextPage());
   }
 }

@@ -7,6 +7,7 @@ import org.metadatacenter.util.http.PagedListResponse;
 import java.sql.SQLException;
 import java.util.*;
 import org.metadatacenter.terms.CatalogSnapshotProvider;
+import org.metadatacenter.terms.paging.PageLimits;
 import org.metadatacenter.terms.store.*;
 
 /**
@@ -17,31 +18,42 @@ public final class VersionedPropertyService {
   public record Source(String sourceAcronym, String versionId) {}
 
   /**
-   * A property search. It is paged either by {@code limit} and {@code offset}, CEDAR's paging, or by
-   * {@code page} and {@code pageSize}, not both.
+   * A property search, paged by {@code limit} and {@code offset}. {@code page} and {@code pageSize}
+   * are the withdrawn page-number paging, still read so that older clients keep working: a page that
+   * is absent or 1 is ignored with its page size, and any other page is refused.
    */
   @Schema(additionalProperties = Schema.AdditionalPropertiesValue.FALSE)
   public record Request(
-      String query, List<Source> sources, List<String> kinds, Integer page, Integer pageSize,
-      Integer limit, Integer offset) {
+      String query, List<Source> sources, List<String> kinds,
+      @Schema(deprecated = true, description = "Withdrawn. Accepted only as 1, which is ignored; any other "
+          + "value is refused with 400. Send limit and offset instead.")
+      Integer page,
+      @Schema(deprecated = true, description = "Withdrawn and ignored. Send limit instead.")
+      Integer pageSize,
+      @Schema(description = "How many properties to return, from 1 to " + PageLimits.MAX_LIMIT + ". Defaults to "
+          + PageLimits.DEFAULT_LIMIT + "; a larger limit is refused with 400.")
+      Integer limit,
+      @Schema(description = "How many properties to skip. Defaults to 0. A page must end within the first "
+          + "20,000 properties. The response carries no paging links: ask for the next page by sending the offset.")
+      Integer offset) {
 
-    public Request(String query, List<Source> sources, List<String> kinds, Integer page, Integer pageSize) {
-      this(query, sources, kinds, page, pageSize, null, null);
+    /** A search paged by {@code limit} and {@code offset}. */
+    public static Request paged(String query, List<Source> sources, List<String> kinds, Integer limit,
+                                Integer offset) {
+      return new Request(query, sources, kinds, null, null, limit, offset);
     }
   }
 
   /**
-   * A page of properties. {@code total}, {@code page} and {@code pageSize} are the fields this route
-   * answered with before it took an offset; {@code totalCount}, {@code request} and
-   * {@code currentOffset} state the same page as CEDAR's paging does. A POST has no URL to link to,
-   * so there are no links: the next page is asked for by sending the offset.
+   * A page of properties: {@code totalCount} counts every match, and {@code request} and
+   * {@code currentOffset} state the page as CEDAR's paging does. A POST has no URL to link to, so
+   * there are no links: the next page is asked for by sending the offset.
    */
-  public record Result(long total, int page, int pageSize, List<PropertySearchIndex.Hit> items,
-                       long totalCount, PagedListResponse.PageRequest request, long currentOffset) {
+  public record Result(List<PropertySearchIndex.Hit> items, long totalCount, PagedListResponse.PageRequest request,
+                       long currentOffset) {
 
     static Result at(long total, int offset, int limit, List<PropertySearchIndex.Hit> items) {
-      return new Result(total, offset / limit + 1, limit, items, total,
-          new PagedListResponse.PageRequest(limit, offset), offset);
+      return new Result(items, total, new PagedListResponse.PageRequest(limit, offset), offset);
     }
   }
 
@@ -83,14 +95,11 @@ public final class VersionedPropertyService {
   }
 
   /**
-   * The most children or roots one request may ask for, and how many it gets by default.
-   *
-   * <p>The bound is the store's page bound. It was 500 while the store refused any page over 200, so
-   * a limit from 201 to 500 passed the route and was refused by the store, with a message about a
-   * page rather than about the limit.
+   * The most children or roots one request may ask for, and how many it gets by default. The bound
+   * is the store's page bound, so a limit the route accepts is one the store can read.
    */
   public static final int MAX_CHILD_LIMIT = SnapshotProperties.MAX_PAGE_SIZE;
-  public static final int DEFAULT_CHILD_LIMIT = 50;
+  public static final int DEFAULT_CHILD_LIMIT = PageLimits.DEFAULT_LIMIT;
 
   private static Map<String, String> links(String requestUrl, long totalCount,
                                            PagedListResponse.PageRequest request) {
@@ -147,23 +156,13 @@ public final class VersionedPropertyService {
   public Result search(Request request) throws SQLException {
     if (request == null) throw new IllegalArgumentException("A search needs a JSON body");
     SnapshotProperties.queryTokens(request.query());
-    boolean byOffset = request.limit() != null || request.offset() != null;
-    if (byOffset && (request.page() != null || request.pageSize() != null))
-      throw new IllegalArgumentException("Send either limit and offset or page and pageSize, not both");
-    int start, size;
-    if (byOffset) {
-      size = request.limit() == null ? 20 : request.limit();
-      start = request.offset() == null ? 0 : request.offset();
-      if (size < 1 || size > 200 || start < 0 || start + size > 20_000)
-        throw new IllegalArgumentException("limit must be 1–200, offset must not be negative, and a page must end "
-            + "within the first 20,000 properties");
-    } else {
-      int page = request.page() == null ? 1 : request.page();
-      size = request.pageSize() == null ? 20 : request.pageSize();
-      if (page < 1 || page > 100 || size < 1 || size > 200)
-        throw new IllegalArgumentException("page must be 1–100 and pageSize 1–200");
-      start = (page - 1) * size;
-    }
+    if (request.page() != null && request.page() != 1)
+      throw new IllegalArgumentException(PageLimits.PAGE_NUMBERS_WITHDRAWN);
+    int size = request.limit() == null ? PageLimits.DEFAULT_LIMIT : request.limit();
+    int start = request.offset() == null ? 0 : request.offset();
+    if (size < 1 || size > PageLimits.MAX_LIMIT || start < 0 || start + size > 20_000)
+      throw new IllegalArgumentException("limit must be 1–" + PageLimits.MAX_LIMIT + ", offset must not be "
+          + "negative, and a page must end within the first 20,000 properties");
     List<String> kinds = request.kinds() == null ? List.of() : request.kinds();
     SnapshotProperties.validateKinds(kinds);
     List<Source> sources = request.sources() == null ? List.of() : request.sources();
@@ -190,11 +189,12 @@ public final class VersionedPropertyService {
       // Snapshot reads for explicitly selected releases. Fetch just enough per source to form the
       // global page.
       long count = 0;
-      for (int offset = 0; offset < start + size; offset += 200) {
+      int chunk = SnapshotProperties.MAX_PAGE_SIZE;
+      for (int offset = 0; offset < start + size; offset += chunk) {
         var result =
             resolved
                 .properties()
-                .search(request.query(), kinds, offset, Math.min(200, start + size - offset));
+                .search(request.query(), kinds, offset, Math.min(chunk, start + size - offset));
         count = result.total();
         for (var property : result.items())
           all.add(new PropertySearchIndex.Hit(resolved.acronym(), resolved.version(), property));

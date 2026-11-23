@@ -1,6 +1,7 @@
 package org.metadatacenter.cedar.terminology.resources.bioportal.swaggermodel;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import org.metadatacenter.terms.paging.PageLimits;
 
 import java.util.List;
 
@@ -21,16 +22,19 @@ public class IntegratedSearchRequestBody {
       "search query.", requiredMode = Schema.RequiredMode.REQUIRED)
   private ParameterObject parameterObject;
 
-  @Schema(description = "Page to be returned, counting from 1. Cannot be sent with limit or offset. Example: 7.")
+  @Schema(deprecated = true, description = "Withdrawn. Accepted only as 1, which is ignored; any other value is "
+      + "refused with 400. Send limit and offset instead.")
   private Integer page;
 
-  @Schema(description = "Number of results per page, at most 1000. Example: 10.")
+  @Schema(deprecated = true, description = "Withdrawn and ignored. Send limit instead.")
   private Integer pageSize;
 
-  @Schema(description = "How many results to return, from 1 to 1000. Sent instead of page and pageSize.")
+  @Schema(description = "How many results to return, from 1 to " + PageLimits.MAX_LIMIT + ". Defaults to "
+      + PageLimits.DEFAULT_LIMIT + ". A larger limit is refused with 400.")
   private Integer limit;
 
-  @Schema(description = "How many results to skip. Sent instead of page and pageSize.")
+  @Schema(description = "How many results to skip. Defaults to 0. The answer carries no paging links: ask for "
+      + "the next page by sending the next offset.")
   private Integer offset;
 
   public ParameterObject getParameterObject() {

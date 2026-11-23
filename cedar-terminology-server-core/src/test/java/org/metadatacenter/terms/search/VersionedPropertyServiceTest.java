@@ -65,24 +65,24 @@ class VersionedPropertyServiceTest {
         assertEquals(
             1,
             service
-                .search(new VersionedPropertyService.Request("After", null, null, null, null))
-                .total());
+                .search(VersionedPropertyService.Request.paged("After", null, null, null, null))
+                .totalCount());
         assertEquals(
             0,
             service
-                .search(new VersionedPropertyService.Request("Before", null, null, null, null))
-                .total());
+                .search(VersionedPropertyService.Request.paged("Before", null, null, null, null))
+                .totalCount());
         assertEquals(
             1,
             service
                 .search(
-                    new VersionedPropertyService.Request(
+                    VersionedPropertyService.Request.paged(
                         "Before",
                         List.of(new VersionedPropertyService.Source("EX", old)),
                         null,
                         null,
                         null))
-                .total());
+                .totalCount());
         assertThrows(
             IllegalStateException.class, () -> service.find("EX", legacy, "urn:p", "object"));
         assertThrows(

@@ -1,5 +1,7 @@
 package org.metadatacenter.terms.store;
 
+import org.metadatacenter.terms.paging.PageLimits;
+
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.sql.*;
@@ -23,7 +25,7 @@ public final class SnapshotProperties {
   public record Page(long total, List<Summary> items) {}
 
   /** The most properties one page of a search, a property's children or the roots may hold. */
-  public static final int MAX_PAGE_SIZE = 200;
+  public static final int MAX_PAGE_SIZE = PageLimits.MAX_LIMIT;
 
   @FunctionalInterface
   interface ConnectionSource {

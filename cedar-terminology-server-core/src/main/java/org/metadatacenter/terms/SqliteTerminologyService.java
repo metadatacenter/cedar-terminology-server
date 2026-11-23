@@ -8,6 +8,7 @@ import org.metadatacenter.cedar.terminology.validation.integratedsearch.Ontology
 import org.metadatacenter.cedar.terminology.validation.integratedsearch.ValueConstraints;
 import org.metadatacenter.cedar.terminology.validation.integratedsearch.ValueSetValueConstraint;
 import org.metadatacenter.terms.customObjects.PagedResults;
+import org.metadatacenter.terms.paging.PageLimits;
 import org.metadatacenter.terms.domainObjects.*;
 import org.metadatacenter.terms.store.CatalogStore;
 import org.metadatacenter.terms.store.SnapshotDiff;
@@ -230,18 +231,9 @@ public class SqliteTerminologyService implements ITerminologyService {
     for (int i = from; i < to; i++) {
       slice.add(toClass(rows.get(i), ontology));
     }
-    Integer prev = page > 1 ? page - 1 : null;
-    Integer next = page < pageCount ? page + 1 : null;
-    return new PagedResults<>(page, pageCount, pageSize, total, prev, next, slice);
+    return new PagedResults<>(total, page < pageCount, slice);
   }
 
-  /**
-   * Paginates a flat list of matched concepts into a {@link SearchResult} page, reproducing
-   * BioPortal's single-source contract: {@code totalCount} is the full match count,
-   * {@code pageCount} is derived from the requested page size, and the {@code pageSize} field
-   * carries the number of items actually on this page (not the requested size). An empty match set
-   * yields {@code pageCount = 0} and {@code pageSize = 0}, as BioPortal does.
-   */
   /**
    * The ontology's matches from the index, or {@code null} where the snapshot should answer.
    *
@@ -308,19 +300,21 @@ public class SqliteTerminologyService implements ITerminologyService {
     }
     int total = index.matchCount(query, List.of(acronym), false, INDEX_ROUTING_CAP);
     int pageCount = total == 0 ? 0 : (int) Math.ceil((double) total / size);
-    Integer prev = page > 1 ? page - 1 : null;
-    Integer next = page < pageCount ? page + 1 : null;
-    return new PagedResults<>(page, pageCount, slice.size(), total, prev, next, slice);
+    return new PagedResults<>(total, page < pageCount, slice);
   }
 
-  /** What a page holds when the caller names no size, matching the snapshot path's own default. */
-  private static final int DEFAULT_PAGE_SIZE = 50;
+  /** What a page holds when the caller names no size, the routes' own default. */
+  private static final int DEFAULT_PAGE_SIZE = PageLimits.DEFAULT_LIMIT;
 
   /** Whether a constraint names a release, rather than taking whichever is current. */
   private static boolean isPinned(String version) {
     return version != null && !version.isBlank() && !"latest".equalsIgnoreCase(version.trim());
   }
 
+  /**
+   * Paginates a flat list of matched concepts into a {@link SearchResult} page: {@code totalCount}
+   * is the full match count, and the source holds a next page when this one does not reach it.
+   */
   private PagedResults<SearchResult> pagedSearchResults(List<SnapshotStore.Concept> rows, String ontology,
                                                         int page, int pageSize) {
     try {
@@ -344,7 +338,7 @@ public class SqliteTerminologyService implements ITerminologyService {
       throws SQLException {
     int total = rows.size();
     if (total == 0) {
-      return new PagedResults<>(page, 0, 0, 0, null, null, new ArrayList<>());
+      return new PagedResults<>(0, false, new ArrayList<>());
     }
     int reqSize = pageSize <= 0 ? total : pageSize;
     int pageCount = (int) Math.ceil((double) total / reqSize);
@@ -367,9 +361,7 @@ public class SqliteTerminologyService implements ITerminologyService {
       }
       slice.add(result);
     }
-    Integer prev = page > 1 ? page - 1 : null;
-    Integer next = page < pageCount ? page + 1 : null;
-    return new PagedResults<>(page, pageCount, slice.size(), total, prev, next, slice);
+    return new PagedResults<>(total, page < pageCount, slice);
   }
 
   private static UnsupportedOperationException unsupported(String op) {
@@ -823,16 +815,14 @@ public class SqliteTerminologyService implements ITerminologyService {
   private PagedResults<SearchResult> pageOf(List<SearchResult> all, int page, int pageSize) {
     int total = all.size();
     if (total == 0) {
-      return new PagedResults<>(page, 0, 0, 0, null, null, new ArrayList<>());
+      return new PagedResults<>(0, false, new ArrayList<>());
     }
     int reqSize = pageSize <= 0 ? total : pageSize;
     int pageCount = (int) Math.ceil((double) total / reqSize);
     int from = Math.min(Math.max(0, (page - 1) * reqSize), total);
     int to = Math.min(total, from + reqSize);
     List<SearchResult> slice = new ArrayList<>(all.subList(from, to));
-    Integer prev = page > 1 ? page - 1 : null;
-    Integer next = page < pageCount ? page + 1 : null;
-    return new PagedResults<>(page, pageCount, slice.size(), total, prev, next, slice);
+    return new PagedResults<>(total, page < pageCount, slice);
   }
 
   @Override

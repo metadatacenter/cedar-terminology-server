@@ -22,6 +22,7 @@ import org.metadatacenter.error.CedarErrorKey;
 import org.metadatacenter.exception.CedarException;
 import org.metadatacenter.exception.CedarProcessingException;
 import org.metadatacenter.http.CedarResponseStatus;
+import org.metadatacenter.terms.paging.PageLimits;
 import org.metadatacenter.terms.search.HierarchyLookup;
 import org.metadatacenter.terms.search.HierarchyResponse;
 import org.metadatacenter.terms.search.SearchRequest;
@@ -71,7 +72,11 @@ public class VersionAwareSearchResource extends AbstractTerminologyServerResourc
       description = "Search the local terminology store at a named version or the current one, across the "
           + "constraint types a controlled-term field can carry: ontology, branch, class and valueSet. "
           + "Returns per-type counts and each type's first page, and describes every source it searched — "
-          + "the version that answered, and whether a constraint on it can be pinned.",
+          + "the version that answered, and whether a constraint on it can be pinned. Each type's block is paged by "
+          + "limit (1 to " + PageLimits.MAX_LIMIT + ", default " + PageLimits.DEFAULT_LIMIT + "; a larger limit is "
+          + "refused with 400) and offset, and carries totalCount, countCapped, request and currentOffset. A POST "
+          + "has no URL to link to, so a block carries no paging links: ask for the next page by sending the next "
+          + "offset. A body with a page other than 1 is refused with 400.",
       tags = {"Search"})
   @RequestBody(description = "The query, the constraint types to answer, and the sources to search. A source "
       + "names the version to search it at, or none to search the current one. Keys are the versioned "
@@ -122,7 +127,8 @@ public class VersionAwareSearchResource extends AbstractTerminologyServerResourc
           + "Always answered from one release's snapshot, because a hierarchy belongs to a release "
           + "and a term's parent can move between two of them. With versionId, the release is that one. "
           + "Without it, the release is the one an unpinned search of the source reads. "
-          + "Children are alphabetical and capped; offset asks for the next page of them. "
+          + "Children are alphabetical and paged by limit and offset; the answer carries totalCount, request, "
+          + "currentOffset and paging, which holds links to the first, previous, next and last pages of children. "
           + "With type=valueSet, the term is a value set and the children are its values. The source must be "
           + "a value-set collection, and a release holds the value set only where values hang below it.",
       tags = {"Search"})
@@ -137,7 +143,9 @@ public class VersionAwareSearchResource extends AbstractTerminologyServerResourc
                             @QueryParam("versionId") String versionId,
                             @Parameter(description = "How many children to skip. Defaults to 0.")
                             @QueryParam("offset") @DefaultValue("0") int offset,
-                            @Parameter(description = "How many children to return, from 1 to 500. Defaults to 50.")
+                            @Parameter(description = "How many children to return, from 1 to "
+                                + VersionAwareSearchService.MAX_CHILD_LIMIT + ". Defaults to "
+                                + VersionAwareSearchService.CHILD_LIMIT + ". A larger limit is refused with 400.")
                             @QueryParam("limit") Integer limit,
                             @Parameter(description = "The constraint type the term is asked about: class, branch or "
                                 + "valueSet. Defaults to a class or branch, which read the same tree.")
@@ -164,7 +172,8 @@ public class VersionAwareSearchResource extends AbstractTerminologyServerResourc
       // preview feature on the Java this stack is pinned to, and a preview flag is not worth one
       // conditional. The chain covers every permitted case, and the compiler would not tell us if a
       // fifth were added — the sealed declaration is where to look for the full list.
-      int childLimit = limit == null ? 50 : limit;
+      refusePageNumbers();
+      int childLimit = limit == null ? VersionAwareSearchService.CHILD_LIMIT : limit;
       if (childLimit < 1 || childLimit > VersionAwareSearchService.MAX_CHILD_LIMIT || offset < 0) {
         return CedarResponse.badRequest()
             .errorKey(CedarErrorKey.INVALID_INPUT)

@@ -132,11 +132,8 @@ public class Util {
   public static <T> PagedResults<T> generatePaginatedResults(List<T> allResults, Integer page, Integer pageSize,
                                                              Optional<Integer> totalCount) {
     List<T> relevantResults = new ArrayList<>();
-    Integer pageCount = null;
-    Integer prevPage = null;
-    Integer nextPage = null;
+    boolean hasNextPage = false;
     if (allResults.size() > 0) {
-      pageCount = (int) Math.ceil((double) allResults.size() / pageSize); // round up
       int startIndex = (page * pageSize) - pageSize;
       // A page past the end is empty. It used to be reset to page 1 while keeping the end index it
       // had already computed, which answered every result at once — and a caller walking the pages
@@ -145,28 +142,13 @@ public class Util {
         int endIndex = Math.min(startIndex + pageSize, allResults.size());
         relevantResults = allResults.subList(startIndex, endIndex); // Note that endIndex is exclusive
       }
-      prevPage = page > 1 ? page - 1 : null;
       // Strictly less: a total that fills its last page exactly has no page after it.
-      nextPage = (page * pageSize < allResults.size()) ? (page + 1) : null;
-    } else {
-      page = null;
+      hasNextPage = page * pageSize < allResults.size();
     }
 
     Integer total = totalCount.isPresent() ? totalCount.get() : allResults.size();
 
-    return new PagedResults(page, pageCount, relevantResults.size(), total, prevPage, nextPage,
-        relevantResults);
-  }
-
-  /**
-   * Used when we cannot generate proper pagination results because we re-sort the results that come from BioPortal.
-   */
-  public static <T> PagedResults<T> generatePaginatedResultsInvalidPagination(List<T> allResults, int pageSize,
-                                                                               Integer totalCount) {
-    if (allResults.size() > pageSize) {
-      allResults = allResults.subList(0, pageSize);
-    }
-    return new PagedResults(1, null, allResults.size(), totalCount, null, null, allResults);
+    return new PagedResults<>(total, hasNextPage, relevantResults);
   }
 
   public static boolean isProvisionalClass(String classId) {
@@ -226,11 +208,8 @@ public class Util {
   public static PagedResults<SearchResult> sortByPrefLabel(PagedResults<SearchResult> pagedResults) {
     List<SearchResult> results = pagedResults.getCollection();
     pagedResults.setCollection(sortByPrefLabel(results));
-    // After sorting the results, the next page cannot be properly computed. Therefore, we have to adjust the
-    // pagination information to avoid confusion. We disable the previous and next page and set the total number of pages to 1.
-    pagedResults.setPrevPage(null);
-    pagedResults.setNextPage(null);
-    pagedResults.setPageCount(1);
+    // Sorting one page leaves no next page that continues its order, so none is reported.
+    pagedResults.setHasNextPage(false);
     return pagedResults;
   }
 

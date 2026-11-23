@@ -28,11 +28,11 @@ public class ClassResourceTest extends AbstractTerminologyServerResourceTest {
   @Test
   public void findAllClassesForOntologyTest() {
     PagedResults<OntologyClass> classes =
-        read(baseUrlBpOntologies + "/" + VIRUSES + "/" + BP_CLASSES + "?page=1&pageSize=4", new GenericType<>() {});
-    Assertions.assertEquals(4, classes.getCollection().size(), "The page size was not applied");
+        read(baseUrlBpOntologies + "/" + VIRUSES + "/" + BP_CLASSES + "?limit=4", new GenericType<>() {});
+    Assertions.assertEquals(4, classes.getCollection().size(), "The limit was not applied");
     Assertions.assertEquals(9, classes.getTotalCount(), "VIRONT holds nine classes");
-    Assertions.assertEquals(3, classes.getPageCount(), "Three pages of four should hold the nine classes");
-    Assertions.assertEquals(2, classes.getNextPage());
+    assertPaging(classes, 9, 4, 0);
+    Assertions.assertTrue(classes.getPaging().get("next").contains("offset=4"));
   }
 
   @Test
@@ -60,17 +60,17 @@ public class ClassResourceTest extends AbstractTerminologyServerResourceTest {
   @Test
   public void findAllProvisionalClassesTest() {
     PagedResults<OntologyClass> classes =
-        read(baseUrlBp + "/" + BP_PROVISIONAL_CLASSES + "?page=1&pageSize=1", new GenericType<>() {});
+        read(baseUrlBp + "/" + BP_PROVISIONAL_CLASSES + "?limit=1", new GenericType<>() {});
     Assertions.assertEquals(2, classes.getTotalCount());
-    Assertions.assertEquals(1, classes.getCollection().size(), "The page size was not applied");
-    Assertions.assertEquals(2, classes.getPageCount(), "A one-class page over two classes should report two pages");
+    Assertions.assertEquals(1, classes.getCollection().size(), "The limit was not applied");
+    Assertions.assertTrue(classes.getPaging().containsKey("next"), "A one-class page over two classes has a next page");
     Assertions.assertTrue(classes.getCollection().get(0).isProvisional());
   }
 
   @Test
   public void findAllProvisionalClassesForOntologyTest() {
     PagedResults<OntologyClass> classes = read(baseUrlBpOntologies + "/" + ONTOLOGY + "/" + BP_PROVISIONAL_CLASSES
-        + "?page=1&pageSize=5", new GenericType<>() {});
+        + "?limit=5", new GenericType<>() {});
     Assertions.assertEquals(List.of(PROVISIONAL_CLASS, PROVISIONAL_LUNG),
         classes.getCollection().stream().map(OntologyClass::getLdId).toList());
     for (OntologyClass c : classes.getCollection()) {

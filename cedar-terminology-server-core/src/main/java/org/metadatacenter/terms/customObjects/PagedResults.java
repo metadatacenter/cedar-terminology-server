@@ -1,5 +1,6 @@
 package org.metadatacenter.terms.customObjects;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import org.metadatacenter.constant.HttpConstants;
 import org.metadatacenter.util.http.LinkHeaderUtil;
@@ -9,25 +10,24 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * A page of results with BioPortal's paging fields and, beside them, CEDAR's body paging envelope.
+ * A page of results in CEDAR's body paging envelope.
  *
- * <p>{@code page}, {@code pageCount}, {@code pageSize}, {@code prevPage} and {@code nextPage} are
- * BioPortal's, kept for the clients that page by number; {@code pageSize} counts the results on this
- * page, not the size asked for. {@code request}, {@code currentOffset} and {@code paging} are the
- * envelope, filled by {@link #envelope}. {@code countCapped} is present, and true, only when the
- * results were read from a window that did not hold them all: {@code totalCount} is then the number
- * the window reached rather than the whole, and there is no {@code last} link.
+ * <p>{@code totalCount} counts every result, not just this page's. {@code request},
+ * {@code currentOffset} and {@code paging} are the envelope, filled by {@link #envelope}.
+ * {@code countCapped} is present, and true, only when the results were read from a window that did
+ * not hold them all: {@code totalCount} is then the number the window reached rather than the whole,
+ * and there is no {@code last} link.
+ *
+ * <p>The sources behind the routes page by number, and {@link #hasNextPage} records whether the
+ * source holds a page after this one. It is read when a page is assembled and is never serialized.
  */
 public class PagedResults<T>
 {
 
-  private Integer page;
-  private Integer pageCount;
-  private Integer pageSize;
   private Integer totalCount;
-  private Integer prevPage;
-  private Integer nextPage;
   private List<T> collection;
+  @JsonIgnore
+  private boolean hasNextPage;
   @JsonInclude(JsonInclude.Include.NON_NULL)
   private Boolean countCapped;
   @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -39,39 +39,11 @@ public class PagedResults<T>
 
   public PagedResults() {}
 
-  public PagedResults(Integer page, Integer pageCount, Integer pageSize, Integer totalCount, Integer prevPage, Integer nextPage, List<T> collection)
+  public PagedResults(Integer totalCount, boolean hasNextPage, List<T> collection)
   {
-    this.page = page;
-    this.pageCount = pageCount;
-    this.pageSize = pageSize;
     this.totalCount = totalCount;
-    this.prevPage = prevPage;
-    this.nextPage = nextPage;
+    this.hasNextPage = hasNextPage;
     this.collection = collection;
-  }
-
-  public Integer getPage() {
-    return page;
-  }
-
-  public void setPage(Integer page) {
-    this.page = page;
-  }
-
-  public Integer getPageCount() {
-    return pageCount;
-  }
-
-  public void setPageCount(Integer pageCount) {
-    this.pageCount = pageCount;
-  }
-
-  public Integer getPageSize() {
-    return pageSize;
-  }
-
-  public void setPageSize(Integer pageSize) {
-    this.pageSize = pageSize;
   }
 
   public Integer getTotalCount() {
@@ -82,20 +54,15 @@ public class PagedResults<T>
     this.totalCount = totalCount;
   }
 
-  public Integer getPrevPage() {
-    return prevPage;
+  /** Whether the source holds a page after this one. */
+  @JsonIgnore
+  public boolean hasNextPage() {
+    return hasNextPage;
   }
 
-  public void setPrevPage(Integer prevPage) {
-    this.prevPage = prevPage;
-  }
-
-  public Integer getNextPage() {
-    return nextPage;
-  }
-
-  public void setNextPage(Integer nextPage) {
-    this.nextPage = nextPage;
+  @JsonIgnore
+  public void setHasNextPage(boolean hasNextPage) {
+    this.hasNextPage = hasNextPage;
   }
 
   public List<T> getCollection()

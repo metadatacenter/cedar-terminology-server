@@ -21,8 +21,7 @@ class IntegratedSearchWindowTest {
       for (int i = (page - 1) * size; i < Math.min(page * size, total); i++) {
         collection.add(result(name + i));
       }
-      Integer next = page * size < total ? page + 1 : null;
-      return new PagedResults<>(page, null, collection.size(), total, page > 1 ? page - 1 : null, next, collection);
+      return new PagedResults<>(total, page * size < total, collection);
     };
   }
 
@@ -78,7 +77,7 @@ class IntegratedSearchWindowTest {
   @Test
   void anEmptyPageEndsASourceEvenIfItClaimsANextPage() throws Exception {
     IntegratedSearchWindow.Source liar = (page, size) ->
-        new PagedResults<>(page, null, 0, 100, null, page + 1, List.of());
+        new PagedResults<>(100, true, List.of());
 
     IntegratedSearchWindow.Window window = IntegratedSearchWindow.collect(List.of(liar), 10, 5);
 

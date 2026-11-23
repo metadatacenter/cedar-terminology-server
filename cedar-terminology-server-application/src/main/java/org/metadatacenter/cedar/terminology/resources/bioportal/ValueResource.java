@@ -108,7 +108,7 @@ public class ValueResource extends AbstractTerminologyServerResource {
   @Path("vs-collections/{vs_collection}/value-sets/{vs}/values")
   @Operation(summary = "Find all values in a value set", description = "Find all values in a value set (either regular or provisional).")
   @ApiResponses({
-      @ApiResponse(responseCode = "200", description = "One page of the value set's values", content = @Content(schema = @Schema(implementation = PagedValues.class))),
+      @ApiResponse(responseCode = "200", description = "One page of the value set's values" + PAGED_GET_ENVELOPE, content = @Content(schema = @Schema(implementation = PagedValues.class))),
       @ApiResponse(responseCode = "400", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Bad request"),
       @ApiResponse(responseCode = "401", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Unauthorized"),
       @ApiResponse(responseCode = "403", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Forbidden"),
@@ -121,20 +121,13 @@ public class ValueResource extends AbstractTerminologyServerResource {
       @Parameter(description = "Value set identifier. Example: http://www.semanticweb.org/jgraybeal/ontologies/2015/7/" +
           "cedarvaluesets#Study_File_Type", required = true)
       @PathParam("vs") @Encoded String vsId,
-      @Parameter(description = "Page to be returned, counting from 1, for clients that page by number. Cannot be "
-          + "sent with limit or offset. Example: 7.")
-      @QueryParam("page") Integer page,
-      @Parameter(description = "Number of results per page, at most 1000. Example: 10.")
-      @QueryParam("pageSize") int pageSize,
-      @Parameter(description = "Alias for the page size, accepted in either spelling.")
-      @QueryParam("page_size") int pageSizeAlias,
-      @Parameter(description = "How many results to return, from 1 to 1000. Defaults to the configured page size.")
+      @Parameter(description = LIMIT_DESCRIPTION)
       @QueryParam("limit") Integer limit,
-      @Parameter(description = "How many results to skip. Defaults to 0.")
+      @Parameter(description = OFFSET_DESCRIPTION)
       @QueryParam("offset") Integer offset) throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
-    OffsetPaging.Request paging = pagingOf(page, pageSize, pageSizeAlias, limit, offset);
+    OffsetPaging.Request paging = pagingOf(limit, offset);
     try {
       PagedResults<Value> values = enveloped(OffsetPaging.fetch(paging, (p, s) ->
           terminologyService.findValuesByValueSet(vsId, vsCollection, p, s, apiKey)), paging);
@@ -151,7 +144,7 @@ public class ValueResource extends AbstractTerminologyServerResource {
   @Path("vs-collections/{vs_collection}/values/{id}/all-values")
   @Operation(summary = "Find all values in the value set that the given value belongs to", description = "Find all values in the value set that the given value belongs to.")
   @ApiResponses({
-      @ApiResponse(responseCode = "200", description = "One page of the values in the value set the given value belongs to", content = @Content(schema = @Schema(implementation = PagedValues.class))),
+      @ApiResponse(responseCode = "200", description = "One page of the values in the value set the given value belongs to" + PAGED_GET_ENVELOPE, content = @Content(schema = @Schema(implementation = PagedValues.class))),
       @ApiResponse(responseCode = "400", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Bad request"),
       @ApiResponse(responseCode = "401", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Unauthorized"),
       @ApiResponse(responseCode = "403", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Forbidden"),
@@ -163,20 +156,13 @@ public class ValueResource extends AbstractTerminologyServerResource {
       @PathParam("id") @Encoded String id,
       @Parameter(description = "Value set collection. Example: CEDARVS.", required = true)
       @PathParam("vs_collection") String vsCollection,
-      @Parameter(description = "Page to be returned, counting from 1, for clients that page by number. Cannot be "
-          + "sent with limit or offset. Example: 7.")
-      @QueryParam("page") Integer page,
-      @Parameter(description = "Number of results per page, at most 1000. Example: 10.")
-      @QueryParam("pageSize") int pageSize,
-      @Parameter(description = "Alias for the page size, accepted in either spelling.")
-      @QueryParam("page_size") int pageSizeAlias,
-      @Parameter(description = "How many results to return, from 1 to 1000. Defaults to the configured page size.")
+      @Parameter(description = LIMIT_DESCRIPTION)
       @QueryParam("limit") Integer limit,
-      @Parameter(description = "How many results to skip. Defaults to 0.")
+      @Parameter(description = OFFSET_DESCRIPTION)
       @QueryParam("offset") Integer offset) throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
-    OffsetPaging.Request paging = pagingOf(page, pageSize, pageSizeAlias, limit, offset);
+    OffsetPaging.Request paging = pagingOf(limit, offset);
     try {
       PagedResults<Value> values =
           enveloped(OffsetPaging.fetch(paging, (p, s) ->

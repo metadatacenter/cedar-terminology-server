@@ -1,11 +1,15 @@
 package org.metadatacenter.cedar.terminology.resources;
 
+import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.io.IOException;
 import org.metadatacenter.exception.CedarProcessingException;
 import org.metadatacenter.exception.CedarDependencyUnavailableException;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import jakarta.ws.rs.core.MultivaluedMap;
 import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.UriInfo;
 import org.metadatacenter.cedar.util.dw.CedarMicroserviceResource;
 import org.metadatacenter.error.CedarErrorKey;
 import org.metadatacenter.http.CedarResponseStatus;
@@ -14,37 +18,44 @@ import org.metadatacenter.util.http.CedarResponse;
 import org.metadatacenter.config.CedarConfig;
 import org.metadatacenter.terms.ITerminologyService;
 import org.metadatacenter.terms.customObjects.PagedResults;
+import org.metadatacenter.terms.paging.PageLimits;
 import org.metadatacenter.terms.util.OffsetPaging;
+import org.metadatacenter.rest.exception.CedarAssertionException;
 import org.metadatacenter.exception.CedarException;
 
 public abstract class AbstractTerminologyServerResource extends CedarMicroserviceResource {
 
   public static ITerminologyService terminologyService;
   protected static String apiKey;
-  protected static int defaultPageSize;
+
+  /** The {@code limit} parameter of every offset-paged GET route. */
+  protected static final String LIMIT_DESCRIPTION = "How many results to return, from 1 to " + PageLimits.MAX_LIMIT
+      + ". Defaults to " + PageLimits.DEFAULT_LIMIT + ". A larger limit is refused with 400.";
+
+  /** The {@code offset} parameter of every offset-paged GET route. */
+  protected static final String OFFSET_DESCRIPTION = "How many results to skip. Defaults to 0.";
+
+  /** What the answer of an offset-paged GET route carries besides its results. */
+  protected static final String PAGED_GET_ENVELOPE = ". The answer carries totalCount, request (the limit and "
+      + "offset served), currentOffset, and paging, which holds links to the first, previous, next and last pages.";
+
+  /** What the answer of an offset-paged POST route carries besides its results. */
+  protected static final String PAGED_POST_ENVELOPE = ". The answer carries totalCount, request (the limit and "
+      + "offset served) and currentOffset. A POST has no URL to link to, so the answer carries no paging links: "
+      + "ask for the next page by sending the next offset.";
+
+  /** The query parameters of the withdrawn page-number paging. A GET request carrying one is refused. */
+  private static final List<String> PAGE_NUMBER_PARAMETERS = List.of("page", "pageSize", "page_size");
 
   protected AbstractTerminologyServerResource(CedarConfig cedarConfig) {
     super(cedarConfig);
     apiKey = cedarConfig.getTerminologyConfig().getBioPortal().getApiKey();
-    defaultPageSize = cedarConfig.getTerminologyConfig().getBioPortal().getDefaultPageSize();
   }
 
   public static void injectTerminologyService(ITerminologyService terminologyService) {
     AbstractTerminologyServerResource.terminologyService = terminologyService;
   }
 
-  /**
-   * Resolves a page size a caller may have spelled either way.
-   *
-   * <p>This server spells the same parameter both {@code page_size} and {@code pageSize}, on adjacent
-   * routes. JAX-RS binds an unmatched name to the default silently, so a client that learned one
-   * spelling got the default from every route using the other, with nothing to say why. Both are
-   * accepted everywhere now; {@code page_size} is the documented spelling, matching the shared constant
-   * files, and wins when a caller sends both.
-   *
-   * <p>Zero means absent: the routes declare no {@code @DefaultValue}, so an unbound int arrives as 0,
-   * which is the sentinel every one of them already tested for.
-   */
   /**
    * Renders a BioPortal failure this server is relaying, with a body saying so.
    *
@@ -122,34 +133,31 @@ public abstract class AbstractTerminologyServerResource extends CedarMicroservic
   }
 
   /**
-   * The page a GET request asks for, by {@code limit} and {@code offset} or by the one-based
-   * {@code page} and a page size in either spelling.
+   * The page a GET request asks for by {@code limit} and {@code offset}. A request carrying
+   * {@code page}, {@code pageSize} or {@code page_size} is refused.
    */
-  protected static OffsetPaging.Request pagingOf(Integer page, int pageSize, int pageSizeAlias, Integer limit,
-                                                 Integer offset) throws CedarException {
-    return OffsetPaging.resolve(limit, offset, page, resolvePageSize(pageSize, pageSizeAlias),
-        pageSize > 0 || pageSizeAlias > 0, defaultPageSize);
+  protected OffsetPaging.Request pagingOf(Integer limit, Integer offset) throws CedarException {
+    refusePageNumbers();
+    return OffsetPaging.resolve(limit, offset);
   }
 
-  /**
-   * The page with CEDAR's paging envelope filled in, its links built from this request's own URL.
-   * The page-number parameters are taken out of the links: a link carries {@code offset} and
-   * {@code limit}, and a request sending both kinds of paging is refused.
-   */
+  /** Refuses a GET request carrying {@code page}, {@code pageSize} or {@code page_size}. */
+  protected void refusePageNumbers() throws CedarException {
+    Optional<String> name = pageNumberParameter(uriInfo);
+    if (name.isPresent()) {
+      throw new CedarAssertionException(PageLimits.PAGE_NUMBERS_WITHDRAWN)
+          .parameter(name.get(), uriInfo.getQueryParameters().getFirst(name.get())).badRequest();
+    }
+  }
+
+  /** The first withdrawn page-number parameter a request carries, if it carries one. */
+  public static Optional<String> pageNumberParameter(UriInfo info) {
+    MultivaluedMap<String, String> query = info.getQueryParameters();
+    return PAGE_NUMBER_PARAMETERS.stream().filter(query::containsKey).findFirst();
+  }
+
+  /** The page with CEDAR's paging envelope filled in, its links built from this request's own URL. */
   protected <T> PagedResults<T> enveloped(PagedResults<T> results, OffsetPaging.Request paging) {
-    String url = uriInfo.getRequestUriBuilder()
-        .replaceQueryParam("page").replaceQueryParam("pageSize").replaceQueryParam("page_size")
-        .build().toString();
-    return results.envelope(paging.limit(), paging.offset(), url);
-  }
-
-  protected static int resolvePageSize(int pageSize, int pageSizeAlias) {
-    if (pageSize > 0) {
-      return pageSize;
-    }
-    if (pageSizeAlias > 0) {
-      return pageSizeAlias;
-    }
-    return defaultPageSize;
+    return results.envelope(paging.limit(), paging.offset(), uriInfo.getRequestUri().toString());
   }
 }

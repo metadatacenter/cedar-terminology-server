@@ -1,6 +1,7 @@
 package org.metadatacenter.cedar.terminology.resources.bioportal;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import jakarta.ws.rs.core.Response;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -13,12 +14,10 @@ import java.util.stream.Stream;
 import static org.metadatacenter.cedar.terminology.resources.FakeBioPortal.*;
 
 /**
- * Each family of paged routes answers a page of the size asked for, whichever spelling of the parameter carries it.
- * <p>
- * {@code PageSizeDeclarationTest} holds every paged route to declaring both spellings. Declaring one is not reading
- * it: a route that bound {@code page_size} and then ignored it would answer the default page size silently, which is
- * the defect the second spelling was added against. A page size of one is smaller than any of these listings, so the
- * default could not pass for it.
+ * Each family of paged GET routes answers the limit asked for, defaults to 100, refuses a limit above
+ * 500, and refuses the withdrawn page-number parameters with a message naming {@code limit} and
+ * {@code offset}. A limit of one is smaller than any of these listings, so the default could not pass
+ * for it.
  */
 public class PageSizeResourceTest extends AbstractTerminologyServerResourceTest {
 
@@ -30,22 +29,50 @@ public class PageSizeResourceTest extends AbstractTerminologyServerResourceTest 
       "vs-collections/" + CEDARVS + "/value-sets?",
       "vs-collections/" + CEDARVS + "/value-sets/" + encode(STUDY_FILE_TYPE) + "/values?");
 
-  static Stream<Arguments> cases() {
+  static Stream<Arguments> withdrawn() {
     List<Arguments> cases = new ArrayList<>();
     for (String route : ROUTES) {
-      for (String spelling : List.of("page_size", "pageSize")) {
-        cases.add(Arguments.of(route, spelling));
+      for (String parameter : List.of("page=1", "page=2", "pageSize=1", "page_size=1")) {
+        cases.add(Arguments.of(route, parameter));
       }
     }
     return cases.stream();
   }
 
-  @ParameterizedTest(name = "{0}{1}=1")
-  @MethodSource("cases")
-  public void theRouteAnswersThePageSizeAskedFor(String route, String spelling) {
-    JsonNode page = read(baseUrlBp + "/" + route + spelling + "=1", JsonNode.class);
-    Assertions.assertEquals(1, page.path("pageSize").asInt(), page.toString());
+  static Stream<String> routes() {
+    return ROUTES.stream();
+  }
+
+  @ParameterizedTest(name = "{0}limit=1")
+  @MethodSource("routes")
+  public void theRouteAnswersTheLimitAskedFor(String route) {
+    JsonNode page = read(baseUrlBp + "/" + route + "limit=1", JsonNode.class);
     Assertions.assertEquals(1, page.path("collection").size(), page.toString());
+    Assertions.assertEquals(1, page.path("request").path("limit").asInt(), page.toString());
+    Assertions.assertEquals(0, page.path("currentOffset").asInt(), page.toString());
     Assertions.assertTrue(page.path("totalCount").asInt() > 1, "the listing must be longer than the page: " + page);
+    Assertions.assertTrue(page.path("paging").has("next"), page.toString());
+    for (String dropped : List.of("page", "pageCount", "pageSize", "prevPage", "nextPage")) {
+      Assertions.assertFalse(page.has(dropped), dropped + " in " + page);
+    }
+  }
+
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("routes")
+  public void withoutALimitThePageHoldsAHundredAndFiveHundredIsTheMost(String route) {
+    Assertions.assertEquals(100, read(baseUrlBp + "/" + route, JsonNode.class).path("request").path("limit").asInt());
+    Assertions.assertEquals(500,
+        read(baseUrlBp + "/" + route + "limit=500", JsonNode.class).path("request").path("limit").asInt());
+    Assertions.assertEquals(400, statusOf(baseUrlBp + "/" + route + "limit=501"));
+  }
+
+  @ParameterizedTest(name = "{0}{1}")
+  @MethodSource("withdrawn")
+  public void aPageNumberParameterIsRefusedNamingLimitAndOffset(String route, String parameter) {
+    try (Response response = request(baseUrlBp + "/" + route + parameter).get()) {
+      Assertions.assertEquals(400, response.getStatus());
+      String body = response.readEntity(String.class);
+      Assertions.assertTrue(body.contains("limit") && body.contains("offset"), body);
+    }
   }
 }

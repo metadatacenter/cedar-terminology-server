@@ -1,6 +1,7 @@
 package org.metadatacenter.cedar.terminology.resources.bioportal;
 
 import org.metadatacenter.terms.util.HTTPException;
+import org.metadatacenter.terms.paging.PageLimits;
 import org.metadatacenter.terms.util.OffsetPaging;
 import com.codahale.metrics.annotation.Timed;
 import io.swagger.v3.oas.annotations.Operation;
@@ -52,17 +53,15 @@ public class IntegratedRetrieveResource extends AbstractTerminologyServerResourc
           "takes a controlled term field specification and any user-supplied initial characters and returns " +
           "conforming values. <br /> <br /> Some sample calls in Insomnia (https://insomnia.rest/) format are " +
           "available at https://github.com/metadatacenter/cedar-terminology-server/blob/develop/examples/" +
-          "integrated-search.insomnia.json. <br /> <br />Note that in some cases, the server will need to sort the " +
-          "results obtained from BioPortal and the original pagination information will not be valid any more. In " +
-          "those situations, the values of some of the pagination fields returned as part of the results (e.g., " +
-          "pageCount, nextPage, etc.) cannot be computed consistently, and the server will assign a 'null' value to " +
-          "those fields. <br /> <br />A credential is optional. The route has served anonymous callers in every " +
+          "integrated-search.insomnia.json. <br /> <br />The results are paged by limit (1 to " + PageLimits.MAX_LIMIT +
+          ", default " + PageLimits.DEFAULT_LIMIT + "; a larger limit is refused with 400) and offset, sent in the " +
+          "body. A body with a page other than 1 is refused with 400. <br /> <br />A credential is optional. The route has served anonymous callers in every " +
           "release since it was introduced in 2024.", tags = {"Classes", "Value sets", "Values"})
   @RequestBody(description = "Object that encapsulates the information needed to run the " +
           "search query. The \"valueConstraints\" field specification is based on CEDAR's \"_valueConstraints\" " +
           "field. See https://more.metadatacenter.org/tools-training/outreach/cedar-template-model for more details.", required = true, content = @Content(schema = @Schema(implementation = org.metadatacenter.cedar.terminology.resources.bioportal.swaggermodel.IntegratedRetrieveRequestBody.class)))
   @ApiResponses({
-      @ApiResponse(responseCode = "200", description = "A paginated list of search results", content = @Content(schema = @Schema(implementation = IntegratedRetrieveResults.class))),
+      @ApiResponse(responseCode = "200", description = "One page of results" + PAGED_POST_ENVELOPE, content = @Content(schema = @Schema(implementation = IntegratedRetrieveResults.class))),
       @ApiResponse(responseCode = "400", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Bad request"),
       @ApiResponse(responseCode = "404", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Not found"),
       @ApiResponse(responseCode = "500", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Internal server error")
@@ -83,9 +82,7 @@ public class IntegratedRetrieveResource extends AbstractTerminologyServerResourc
     // c.must(c.user()).be(LoggedIn);
 
     try {
-      OffsetPaging.Request paging = OffsetPaging.resolve(body.getLimit(), body.getOffset(),
-          body.getPage() > 0 ? body.getPage() : null, extractPageSize(body), body.getPageSize() > 0,
-          defaultPageSize);
+      OffsetPaging.Request paging = OffsetPaging.resolveBody(body.getPage(), body.getLimit(), body.getOffset());
 
       PagedResults<?> results = OffsetPaging.fetch(paging, (p, s) ->
           terminologyService.integratedRetrieve(body.getValueConstraints(), p, s, apiKey))
@@ -100,21 +97,4 @@ public class IntegratedRetrieveResource extends AbstractTerminologyServerResourc
     }
   }
 
-  public int extractPage(IntegratedRetrieveBody body) {
-    int page = body.getPage();
-    // If page not defined or invalid, set it to the first page
-    if (page <= 0) {
-      page = 1;
-    }
-    return page;
-  }
-
-  public int extractPageSize(IntegratedRetrieveBody body) {
-    int pageSize = body.getPageSize();
-    // If pageSize not defined or invalid, set it to the default value
-    if (pageSize <= 0) {
-      pageSize = defaultPageSize;
-    }
-    return pageSize;
-  }
 }
