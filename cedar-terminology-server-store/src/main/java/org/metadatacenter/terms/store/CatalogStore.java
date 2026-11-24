@@ -369,6 +369,9 @@ public class CatalogStore implements AutoCloseable {
   }
 
   private void initIngestHistory() throws SQLException {
+    // A migrated catalog needs no write, and a serving store may hold it read-only, as a container
+    // does when the store is bind-mounted read-only. Take the writer lock only when there is work.
+    if (tableHasColumn("ingest_event", "id")) return;
     inTransaction(() -> {
       try (Statement s = connection().createStatement()) {
         // Serialize migration with ingest/publication, including the initial legacy copy.

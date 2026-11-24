@@ -650,4 +650,28 @@ public class CatalogStoreTest {
       assertFalse(absolute.startsWith(dir.resolve("snapshots").toString()));
     }
   }
+
+  @Test
+  public void aServingStoreOpensAMigratedCatalogItCannotWrite(@TempDir Path dir) throws Exception {
+    // A container mounts the store read-only. Schema initialization on a catalog that needs no
+    // migration must then succeed without writing, or the server falls back to BioPortal alone.
+    Path catalogFile = dir.resolve("catalog.sqlite");
+    try (CatalogStore fileCatalog = CatalogStore.openFile(catalogFile.toString())) {
+      fileCatalog.initSchema();
+      fileCatalog.upsertOntology(new OntologyInfo("DOID", "Human Disease Ontology", null, "OWL"));
+      fileCatalog.addSnapshot(new SnapshotInfo("roV", "DOID", "release/x", "2025-01-01",
+          "2026-01-01T00:00:00Z", "OWL", "subsumption", 1, 1,
+          "snapshots/DOID/roV.sqlite", "roV", "open"));
+      fileCatalog.setTag("DOID", CatalogStore.TAG_LATEST, "roV");
+    }
+    assertTrue(catalogFile.toFile().setWritable(false, false));
+    assertTrue(dir.toFile().setWritable(false, false));
+    try (CatalogStore served = CatalogStore.openForRead(catalogFile.toString())) {
+      served.initSchema();
+      assertEquals("roV", served.resolveLatest("DOID").orElseThrow().versionId());
+    } finally {
+      dir.toFile().setWritable(true, true);
+      catalogFile.toFile().setWritable(true, true);
+    }
+  }
 }
