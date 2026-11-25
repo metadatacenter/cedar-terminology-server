@@ -330,7 +330,7 @@ public class LocalStoreResourceTest {
 
   @Test
   public void versionDiffServedFromLocalStore() {
-    String url = childrenUrlBase + "/" + ONT + "/versions/diff?from=v1&to=v2";
+    String url = childrenUrlBase + "/" + ONT + "/versions/diff?from_version=v1&to_version=v2";
     Response response = clientBuilder.build().target(url).request()
         .header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
 
@@ -350,11 +350,37 @@ public class LocalStoreResourceTest {
 
   @Test
   public void versionDiffForUnknownVersionIs404() {
-    String url = childrenUrlBase + "/" + ONT + "/versions/diff?from=v1&to=nope";
+    String url = childrenUrlBase + "/" + ONT + "/versions/diff?from_version=v1&to_version=nope";
     Response response = clientBuilder.build().target(url).request()
         .header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
     response.close();
     Assertions.assertEquals(Status.NOT_FOUND.getStatusCode(), response.getStatus());
+  }
+
+  /**
+   * from and to became from_version and to_version. A request that still sends an old name is refused
+   * rather than answered as though it had sent no version, and so is one that leaves a version out.
+   * Each refusal names the parameter at fault.
+   */
+  @Test
+  public void versionDiffRefusesTheOldNamesAndAMissingVersion() throws Exception {
+    Map<String, Set<String>> refusals = Map.of(
+        "from=v1&to=v2", Set.of("from"),
+        "from_version=v1&to_version=v2&to=v2", Set.of("to"),
+        "to_version=v2", Set.of("from_version"),
+        "from_version=v1", Set.of("to_version"));
+    for (var refusal : refusals.entrySet()) {
+      String url = childrenUrlBase + "/" + ONT + "/versions/diff?" + refusal.getKey();
+      Response response = clientBuilder.build().target(url).request()
+          .header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
+      String body = response.readEntity(String.class);
+      response.close();
+      Assertions.assertEquals(Status.BAD_REQUEST.getStatusCode(), response.getStatus(), refusal.getKey() + ": " + body);
+      Set<String> named = new java.util.HashSet<>();
+      new com.fasterxml.jackson.databind.ObjectMapper().readTree(body).path("parameters").fieldNames()
+          .forEachRemaining(named::add);
+      Assertions.assertEquals(refusal.getValue(), named, refusal.getKey() + ": " + body);
+    }
   }
 
   /**

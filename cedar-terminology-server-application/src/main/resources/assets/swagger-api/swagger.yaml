@@ -461,7 +461,9 @@ paths:
         \ and removed. It also counts the concepts whose preferred label, obsolescence\
         \ or replacement changed and the concepts newly obsoleted, and it lists up\
         \ to 25 each of the concepts added, removed and changed. The route returns\
-        \ 404 when the ontology or either version is not served locally."
+        \ 404 when the ontology or either version is not served locally, and 400 when\
+        \ from_version or to_version is missing or the request sends from or to, which\
+        \ they replaced."
       operationId: diffVersions
       parameters:
       - description: Ontology acronym.
@@ -472,13 +474,13 @@ paths:
           type: string
       - description: Base version (version_id or tag).
         in: query
-        name: from
+        name: from_version
         required: true
         schema:
           type: string
       - description: "Target version (version_id or tag, e.g. latest)."
         in: query
-        name: to
+        name: to_version
         required: true
         schema:
           type: string
@@ -489,6 +491,13 @@ paths:
               schema:
                 $ref: "#/components/schemas/VersionDiff"
           description: The vocabulary diff between the two versions
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CedarError"
+          description: "A version is missing, or the request sent from or to, which\
+            \ from_version and to_version replaced"
         "401":
           content:
             application/json:

@@ -16,6 +16,7 @@ import org.metadatacenter.config.CedarConfig;
 import org.metadatacenter.exception.CedarException;
 import org.metadatacenter.exception.CedarProcessingException;
 import org.metadatacenter.rest.context.CedarRequestContext;
+import org.metadatacenter.rest.exception.CedarAssertionException;
 import org.metadatacenter.terms.domainObjects.Ontology;
 import org.metadatacenter.terms.domainObjects.OntologyClass;
 import org.metadatacenter.terms.domainObjects.OntologyProperty;
@@ -31,6 +32,7 @@ import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
@@ -41,6 +43,11 @@ import java.util.concurrent.ExecutionException;
 import static org.metadatacenter.rest.assertion.GenericAssertions.LoggedIn;
 import static org.metadatacenter.constant.CedarPathParameters.PP_ID;
 import static org.metadatacenter.constant.CedarPathParameters.PP_ONTOLOGY;
+import static org.metadatacenter.constant.CedarQueryParameters.QP_FROM;
+import static org.metadatacenter.constant.CedarQueryParameters.QP_FROM_VERSION;
+import static org.metadatacenter.constant.CedarQueryParameters.QP_TO;
+import static org.metadatacenter.constant.CedarQueryParameters.QP_TO_VERSION;
+import static org.metadatacenter.constant.CedarQueryParameters.QP_URI;
 
 @Path("/bioportal")
 @Produces(MediaType.APPLICATION_JSON)
@@ -185,7 +192,7 @@ public class OntologyResource extends AbstractTerminologyServerResource {
   public Response resolveCurrentVersionForClass(
       @Parameter(description = "Class/term IRI. Example: http://purl.obolibrary.org/obo/DOID_9351.",
           required = true)
-      @jakarta.ws.rs.QueryParam("uri") String uri) throws CedarException {
+      @QueryParam(QP_URI) String uri) throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
     try {
@@ -208,10 +215,12 @@ public class OntologyResource extends AbstractTerminologyServerResource {
           + "the count in each version and the number added and removed. It also counts the concepts "
           + "whose preferred label, obsolescence or replacement changed and the concepts newly "
           + "obsoleted, and it lists up to 25 each of the concepts added, removed and changed. The "
-          + "route returns 404 when the ontology or either version is not served locally.",
+          + "route returns 404 when the ontology or either version is not served locally, and 400 when "
+          + "from_version or to_version is missing or the request sends from or to, which they replaced.",
       tags = {"Ontologies"})
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "The vocabulary diff between the two versions", content = @Content(schema = @Schema(implementation = VersionDiff.class))),
+      @ApiResponse(responseCode = "400", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "A version is missing, or the request sent from or to, which from_version and to_version replaced"),
       @ApiResponse(responseCode = "401", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Unauthorized"),
       @ApiResponse(responseCode = "404", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Ontology or version not found locally"),
       @ApiResponse(responseCode = "500", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Internal server error")
@@ -219,13 +228,17 @@ public class OntologyResource extends AbstractTerminologyServerResource {
   public Response diffVersions(
       @Parameter(description = "Ontology acronym.", required = true) @PathParam(PP_ID) String id,
       @Parameter(description = "Base version (version_id or tag).", required = true)
-      @jakarta.ws.rs.QueryParam("from") String from,
+      @QueryParam(QP_FROM_VERSION) String fromVersion,
       @Parameter(description = "Target version (version_id or tag, e.g. latest).", required = true)
-      @jakarta.ws.rs.QueryParam("to") String to) throws CedarException {
+      @QueryParam(QP_TO_VERSION) String toVersion) throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
+    refuseRenamedParameter(QP_FROM, QP_FROM_VERSION);
+    refuseRenamedParameter(QP_TO, QP_TO_VERSION);
+    requireParameter(QP_FROM_VERSION, fromVersion);
+    requireParameter(QP_TO_VERSION, toVersion);
     try {
-      var diff = terminologyService.diffVersions(id, from, to);
+      var diff = terminologyService.diffVersions(id, fromVersion, toVersion);
       if (diff == null) {
         return CedarResponse.notFound().build();
       }
@@ -293,4 +306,19 @@ public class OntologyResource extends AbstractTerminologyServerResource {
     }
   }
 
+
+  /** Refuses a request that sends a parameter by the name it had before the naming convention. */
+  private void refuseRenamedParameter(String oldName, String newName) throws CedarException {
+    List<String> values = uriInfo.getQueryParameters().get(oldName);
+    if (values != null) {
+      throw new CedarAssertionException(oldName + " is no longer supported. Send " + newName + " instead.")
+          .parameter(oldName, values.isEmpty() ? null : values.get(0)).badRequest();
+    }
+  }
+
+  private static void requireParameter(String name, String value) throws CedarException {
+    if (value == null || value.isBlank()) {
+      throw new CedarAssertionException(name + " is required.").parameter(name, value).badRequest();
+    }
+  }
 }
