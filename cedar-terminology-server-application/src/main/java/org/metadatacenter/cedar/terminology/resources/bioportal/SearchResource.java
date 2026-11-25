@@ -38,6 +38,17 @@ import java.util.List;
 
 import static org.metadatacenter.rest.assertion.GenericAssertions.LoggedIn;
 import static org.metadatacenter.cedar.terminology.util.Constants.*;
+import static org.metadatacenter.constant.CedarQueryParameters.QP_EXACT_MATCH;
+import static org.metadatacenter.constant.CedarQueryParameters.QP_LIMIT;
+import static org.metadatacenter.constant.CedarQueryParameters.QP_MAX_DEPTH;
+import static org.metadatacenter.constant.CedarQueryParameters.QP_OFFSET;
+import static org.metadatacenter.constant.CedarQueryParameters.QP_Q;
+import static org.metadatacenter.constant.CedarQueryParameters.QP_REQUIRE_DEFINITIONS;
+import static org.metadatacenter.constant.CedarQueryParameters.QP_SCOPE;
+import static org.metadatacenter.constant.CedarQueryParameters.QP_SOURCE;
+import static org.metadatacenter.constant.CedarQueryParameters.QP_SOURCES;
+import static org.metadatacenter.constant.CedarQueryParameters.QP_SUBTREE_ROOT_ID;
+import static org.metadatacenter.constant.CedarQueryParameters.QP_SUGGEST;
 
 @Path("/bioportal")
 @Produces(MediaType.APPLICATION_JSON)
@@ -70,27 +81,27 @@ public class SearchResource extends AbstractTerminologyServerResource {
   @AnonymousAccess
   public Response search(
       @Parameter(description = "Search query. Example: melanoma.", required = true)
-      @QueryParam("q") @NotEmpty String q,
+      @QueryParam(QP_Q) @NotEmpty String q,
       @Parameter(description = "Comma-separated list of search scopes. Accepted values={all, classes, value_sets, values}. " +
           "Default: all.")
-      @QueryParam("scope") @DefaultValue("all") String scope,
+      @QueryParam(QP_SCOPE) @DefaultValue("all") String scope,
       @Parameter(description = "Comma-separated list of target ontologies and/or value sets. Example: " +
           "'ontologies=CEDARVS,NCIT'. By default, all BioPortal ontologies and value sets are considered. The value " +
           "of 'scope' overrides the list of sources specified using this parameter.")
-      @QueryParam("sources") String sources,
+      @QueryParam(QP_SOURCES) String sources,
       @Parameter(description = "Will perform a search specifically geared towards type-ahead suggestions. Default: false.")
-      @QueryParam("suggest") boolean suggest,
+      @QueryParam(QP_SUGGEST) boolean suggest,
       @Parameter(description = "Ontology for which the subtree search will be performed. Example: NCIT.")
-      @QueryParam("source") String source,
+      @QueryParam(QP_SOURCE) String source,
       @Parameter(description = "Class identifier that limits the search to the branch rooted on that class. It must be URL " +
           "encoded. Example: http%3A%2F%2Fncicb.nci.nih.gov%2Fxml%2Fowl%2FEVS%2FThesaurus.owl%23C3224.")
-      @QueryParam("subtree_root_id") String subtreeRootId,
+      @QueryParam(QP_SUBTREE_ROOT_ID) String subtreeRootId,
       @Parameter(description = "Subtree depth.")
-      @QueryParam("max_depth") @DefaultValue("1") int maxDepth,
+      @QueryParam(QP_MAX_DEPTH) @DefaultValue("1") int maxDepth,
       @Parameter(description = LIMIT_DESCRIPTION)
-      @QueryParam("limit") Integer limit,
+      @QueryParam(QP_LIMIT) Integer limit,
       @Parameter(description = OFFSET_DESCRIPTION)
-      @QueryParam("offset") Integer offset) throws CedarException {
+      @QueryParam(QP_OFFSET) Integer offset) throws CedarException {
 
     CedarRequestContext c = buildAnonymousRequestContext();
 
@@ -149,19 +160,19 @@ public class SearchResource extends AbstractTerminologyServerResource {
   })
   public Response propertySearch(
       @Parameter(description = "Search query. Example: title.", required = true)
-      @QueryParam("q") @NotEmpty String q,
+      @QueryParam(QP_Q) @NotEmpty String q,
       @Parameter(description = "Comma-separated list of target ontologies. Example: 'ontologies=BIBFRAME'. By default, all " +
           "BioPortal ontologies and value sets are considered.")
-      @QueryParam("sources") String sources,
+      @QueryParam(QP_SOURCES) String sources,
       @Parameter(description = "Restricts results only to the exact matches of the query in the property id, label, or the " +
           "generated label (a label, auto-generated from the id). Default: false.")
-      @QueryParam("exact_match") boolean exactMatch,
+      @QueryParam(QP_EXACT_MATCH) boolean exactMatch,
       @Parameter(description = "Filter results only to those that include definitions.")
-      @QueryParam("require_definitions") boolean requireDefinitions,
+      @QueryParam(QP_REQUIRE_DEFINITIONS) boolean requireDefinitions,
       @Parameter(description = LIMIT_DESCRIPTION)
-      @QueryParam("limit") Integer limit,
+      @QueryParam(QP_LIMIT) Integer limit,
       @Parameter(description = OFFSET_DESCRIPTION)
-      @QueryParam("offset") Integer offset) throws CedarException {
+      @QueryParam(QP_OFFSET) Integer offset) throws CedarException {
 
     CedarRequestContext c = buildRequestContext();
     c.must(c.user()).be(LoggedIn);

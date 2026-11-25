@@ -9,6 +9,7 @@ import org.metadatacenter.util.http.PagedQuery;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -41,8 +42,17 @@ public final class OffsetPaging {
 
   /** The page a request asks for by {@code limit} and {@code offset}, either of which may be absent. */
   public static Request resolve(Integer limit, Integer offset) throws CedarException {
+    return resolve(limit, offset, null);
+  }
+
+  /**
+   * The page a GET request asks for, refused when its query carries a withdrawn page-number
+   * parameter. A null query is not checked.
+   */
+  public static Request resolve(Integer limit, Integer offset, Map<String, List<String>> queryParameters)
+      throws CedarException {
     PagedQuery query = new PagedQuery(PageLimits.DEFAULT_LIMIT, PageLimits.MAX_LIMIT)
-        .limit(Optional.ofNullable(limit)).offset(Optional.ofNullable(offset));
+        .limit(Optional.ofNullable(limit)).offset(Optional.ofNullable(offset)).queryParameters(queryParameters);
     query.validate();
     return new Request(query.getOffset(), query.getLimit());
   }

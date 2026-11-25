@@ -28,6 +28,8 @@ import java.io.IOException;
 import java.util.List;
 
 import static org.metadatacenter.rest.assertion.GenericAssertions.LoggedIn;
+import static org.metadatacenter.constant.CedarPathParameters.PP_ID;
+import static org.metadatacenter.constant.CedarPathParameters.PP_ONTOLOGY;
 
 @Path("/bioportal")
 @Produces(MediaType.APPLICATION_JSON)
@@ -53,9 +55,9 @@ public class PropertyResource extends AbstractTerminologyServerResource {
   })
   public Response findProperty(
       @Parameter(description = "Property identifier. Examples: http://id.loc.gov/ontologies/bibframe/place.", required = true)
-      @PathParam("id") @Encoded String id,
+      @PathParam(PP_ID) @Encoded String id,
       @Parameter(description = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
-      @PathParam("ontology") String ontology)
+      @PathParam(PP_ONTOLOGY) String ontology)
       throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
@@ -84,7 +86,7 @@ public class PropertyResource extends AbstractTerminologyServerResource {
   // Note that this endpoint is not paged
   public Response findAllPropertiesForOntology(
       @Parameter(description = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
-      @PathParam("ontology") String ontology) throws CedarException {
+      @PathParam(PP_ONTOLOGY) String ontology) throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
     try {
@@ -111,9 +113,9 @@ public class PropertyResource extends AbstractTerminologyServerResource {
   })
   public Response findPropertyTree(
       @Parameter(description = "Property identifier. Examples: http://id.loc.gov/ontologies/bibframe/place.", required = true)
-      @PathParam("id") @Encoded String id,
+      @PathParam(PP_ID) @Encoded String id,
       @Parameter(description = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
-      @PathParam("ontology") String ontology) throws
+      @PathParam(PP_ONTOLOGY) String ontology) throws
       CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
@@ -141,9 +143,9 @@ public class PropertyResource extends AbstractTerminologyServerResource {
   })
   public Response findPropertyChildren(
       @Parameter(description = "Property identifier. Examples: http://id.loc.gov/ontologies/bibframe/place.", required = true)
-      @PathParam("id") @Encoded String id,
+      @PathParam(PP_ID) @Encoded String id,
       @Parameter(description = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
-      @PathParam("ontology") String ontology)
+      @PathParam(PP_ONTOLOGY) String ontology)
       throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
@@ -171,9 +173,9 @@ public class PropertyResource extends AbstractTerminologyServerResource {
   })
   public Response findPropertyDescendants(
       @Parameter(description = "Property identifier. Examples: http://id.loc.gov/ontologies/bibframe/place.", required = true)
-      @PathParam("id") @Encoded String id,
+      @PathParam(PP_ID) @Encoded String id,
       @Parameter(description = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
-      @PathParam("ontology") String ontology)
+      @PathParam(PP_ONTOLOGY) String ontology)
       throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
@@ -201,9 +203,9 @@ public class PropertyResource extends AbstractTerminologyServerResource {
   })
   public Response findPropertyParents(
       @Parameter(description = "Property identifier. Examples: http://id.loc.gov/ontologies/bibframe/place.", required = true)
-      @PathParam("id") @Encoded String id,
+      @PathParam(PP_ID) @Encoded String id,
       @Parameter(description = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
-      @PathParam("ontology") String ontology)
+      @PathParam(PP_ONTOLOGY) String ontology)
       throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);

@@ -29,6 +29,8 @@ import java.io.IOException;
 import java.util.List;
 
 import static org.metadatacenter.rest.assertion.GenericAssertions.LoggedIn;
+import static org.metadatacenter.constant.CedarQueryParameters.QP_COLLECTION;
+import static org.metadatacenter.constant.CedarQueryParameters.QP_INCLUDE_DETAILS;
 
 @Path("/bioportal")
 @Produces(MediaType.APPLICATION_JSON)
@@ -55,7 +57,7 @@ public class ValueSetCollectionResource extends AbstractTerminologyServerResourc
   public Response findAllVSCollections(
       @Parameter(description = "If true, additional details about each value set collection will be included in the " +
           "response. Default: false.")
-      @QueryParam("include_details") @DefaultValue("false") boolean includeDetails)
+      @QueryParam(QP_INCLUDE_DETAILS) @DefaultValue("false") boolean includeDetails)
       throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
@@ -85,7 +87,7 @@ public class ValueSetCollectionResource extends AbstractTerminologyServerResourc
   })
   public Response resolveCurrentVersionForValueSetCollection(
       @Parameter(description = "Value-set collection acronym. Example: CEDARVS.", required = true)
-      @QueryParam("collection") String collection) throws CedarException {
+      @QueryParam(QP_COLLECTION) String collection) throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
     try {

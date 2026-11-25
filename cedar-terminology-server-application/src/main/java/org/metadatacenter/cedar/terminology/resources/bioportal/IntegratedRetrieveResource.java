@@ -1,5 +1,6 @@
 package org.metadatacenter.cedar.terminology.resources.bioportal;
 
+import org.metadatacenter.cedar.util.dw.AnonymousAccess;
 import org.metadatacenter.terms.util.HTTPException;
 import org.metadatacenter.terms.paging.PageLimits;
 import org.metadatacenter.terms.util.OffsetPaging;
@@ -69,6 +70,7 @@ public class IntegratedRetrieveResource extends AbstractTerminologyServerResourc
   // swagger-core gives every method the class's api_key requirement. An entry with a blank name adds
   // the empty alternative beside it, which is how OpenAPI says that a credential is optional.
   @SecurityRequirement(combine = @SecurityRequirementEntry(name = ""))
+  @AnonymousAccess
   public Response cedarIntegratedRetrieve(@Valid IntegratedRetrieveBody body) throws CedarException {
 
     // This route is anonymous because it always has been, not because a client needs it. The credential
@@ -77,9 +79,9 @@ public class IntegratedRetrieveResource extends AbstractTerminologyServerResourc
     // anonymous, never calls it, and the one CEDAR client that does, the artifact library, sends an API
     // key. Restoring the check would therefore refuse only callers outside CEDAR, whom nothing here can
     // count. The BioPortal lookups the route performs run on the API key this server holds, so an
-    // anonymous caller spends CEDAR's BioPortal quota, and nothing here bounds that.
-    // CedarRequestContext c = buildRequestContext();
-    // c.must(c.user()).be(LoggedIn);
+    // anonymous caller spends CEDAR's BioPortal quota, and nothing here bounds that. The anonymous
+    // context reads no credential, so an invalid one is ignored, as it was before the route built one.
+    buildAnonymousRequestContext();
 
     try {
       OffsetPaging.Request paging = OffsetPaging.resolveBody(body.getPage(), body.getLimit(), body.getOffset());

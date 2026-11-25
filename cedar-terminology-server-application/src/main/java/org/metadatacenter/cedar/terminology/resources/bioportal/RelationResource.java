@@ -26,6 +26,7 @@ import java.io.IOException;
 import java.net.URI;
 
 import static org.metadatacenter.rest.assertion.GenericAssertions.LoggedIn;
+import static org.metadatacenter.constant.CedarPathParameters.PP_ID;
 
 @Path("/bioportal")
 @Produces(MediaType.APPLICATION_JSON)
@@ -51,7 +52,7 @@ public class RelationResource extends AbstractTerminologyServerResource {
   })
   public Response findRelation(
       @Parameter(description = "Provisional relation short identifier. Examples: 720f50f0-ae6f-0133-848f-005056010073.", required = true)
-      @PathParam("id") String id) throws CedarException {
+      @PathParam(PP_ID) String id) throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
     try {

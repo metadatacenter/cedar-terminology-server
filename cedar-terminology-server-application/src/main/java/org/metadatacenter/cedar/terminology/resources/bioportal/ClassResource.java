@@ -40,6 +40,11 @@ import java.util.List;
 import java.util.concurrent.ExecutionException;
 
 import static org.metadatacenter.rest.assertion.GenericAssertions.LoggedIn;
+import static org.metadatacenter.constant.CedarPathParameters.PP_ID;
+import static org.metadatacenter.constant.CedarPathParameters.PP_ONTOLOGY;
+import static org.metadatacenter.constant.CedarQueryParameters.QP_LANG;
+import static org.metadatacenter.constant.CedarQueryParameters.QP_LIMIT;
+import static org.metadatacenter.constant.CedarQueryParameters.QP_OFFSET;
 
 @Path("/bioportal")
 @Produces(MediaType.APPLICATION_JSON)
@@ -67,12 +72,12 @@ public class ClassResource extends AbstractTerminologyServerResource {
       @Parameter(description = "Class identifier. Examples: http://data.bioontology.org/provisional_classes/" +
           "4f82a7f0-bbba-0133-b23e-005056010074 (provisional class). " +
           "http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C3224 (regular class).", required = true)
-      @PathParam("id") @Encoded String id,
+      @PathParam(PP_ID) @Encoded String id,
       @Parameter(description = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
-      @PathParam("ontology") String ontology,
+      @PathParam(PP_ONTOLOGY) String ontology,
       @Parameter(description = "Optional BCP-47 language for the returned label (e.g. fr). Honored for "
           + "locally-served ontologies; ignored for BioPortal-proxied ones.")
-      @QueryParam("lang") String lang) throws
+      @QueryParam(QP_LANG) String lang) throws
       CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
@@ -100,11 +105,11 @@ public class ClassResource extends AbstractTerminologyServerResource {
   })
   public Response findAllClassesForOntology(
       @Parameter(description = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
-      @PathParam("ontology") String ontology,
+      @PathParam(PP_ONTOLOGY) String ontology,
       @Parameter(description = LIMIT_DESCRIPTION)
-      @QueryParam("limit") Integer limit,
+      @QueryParam(QP_LIMIT) Integer limit,
       @Parameter(description = OFFSET_DESCRIPTION)
-      @QueryParam("offset") Integer offset) throws CedarException {
+      @QueryParam(QP_OFFSET) Integer offset) throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
     OffsetPaging.Request paging = pagingOf(limit, offset);
@@ -134,9 +139,9 @@ public class ClassResource extends AbstractTerminologyServerResource {
   })
   public Response findClassTree(
       @Parameter(description = "Class identifier. Example: http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C3224.", required = true)
-      @PathParam("id") @Encoded String id,
+      @PathParam(PP_ID) @Encoded String id,
       @Parameter(description = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
-      @PathParam("ontology") String ontology) throws
+      @PathParam(PP_ONTOLOGY) String ontology) throws
       CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
@@ -167,13 +172,13 @@ public class ClassResource extends AbstractTerminologyServerResource {
   })
   public Response findClassChildren(
       @Parameter(description = "Class identifier. Example: http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C3224.", required = true)
-      @PathParam("id") @Encoded String id,
+      @PathParam(PP_ID) @Encoded String id,
       @Parameter(description = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
-      @PathParam("ontology") String ontology,
+      @PathParam(PP_ONTOLOGY) String ontology,
       @Parameter(description = LIMIT_DESCRIPTION)
-      @QueryParam("limit") Integer limit,
+      @QueryParam(QP_LIMIT) Integer limit,
       @Parameter(description = OFFSET_DESCRIPTION)
-      @QueryParam("offset") Integer offset) throws CedarException {
+      @QueryParam(QP_OFFSET) Integer offset) throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
     OffsetPaging.Request paging = pagingOf(limit, offset);
@@ -210,13 +215,13 @@ public class ClassResource extends AbstractTerminologyServerResource {
       @Parameter(description = "Class identifier. Examples: http://data.bioontology.org/provisional_classes/" +
           "4f82a7f0-bbba-0133-b23e-005056010074 (provisional class). " +
           "http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C3224 (regular class).", required = true)
-      @PathParam("id") @Encoded String id,
+      @PathParam(PP_ID) @Encoded String id,
       @Parameter(description = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
-      @PathParam("ontology") String ontology,
+      @PathParam(PP_ONTOLOGY) String ontology,
       @Parameter(description = LIMIT_DESCRIPTION)
-      @QueryParam("limit") Integer limit,
+      @QueryParam(QP_LIMIT) Integer limit,
       @Parameter(description = OFFSET_DESCRIPTION)
-      @QueryParam("offset") Integer offset)
+      @QueryParam(QP_OFFSET) Integer offset)
       throws CedarException {
     CedarRequestContext ctx = buildAnonymousRequestContext();
     OffsetPaging.Request paging = pagingOf(limit, offset);
@@ -246,9 +251,9 @@ public class ClassResource extends AbstractTerminologyServerResource {
   })
   public Response findClassParents(
       @Parameter(description = "Class identifier. Example: http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C3224.", required = true)
-      @PathParam("id") @Encoded String id,
+      @PathParam(PP_ID) @Encoded String id,
       @Parameter(description = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
-      @PathParam("ontology") String ontology)
+      @PathParam(PP_ONTOLOGY) String ontology)
       throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
@@ -276,9 +281,9 @@ public class ClassResource extends AbstractTerminologyServerResource {
   })
   public Response findAllProvisionalClasses(
       @Parameter(description = LIMIT_DESCRIPTION)
-      @QueryParam("limit") Integer limit,
+      @QueryParam(QP_LIMIT) Integer limit,
       @Parameter(description = OFFSET_DESCRIPTION)
-      @QueryParam("offset") Integer offset) throws CedarException {
+      @QueryParam(QP_OFFSET) Integer offset) throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
     OffsetPaging.Request paging = pagingOf(limit, offset);
@@ -311,11 +316,11 @@ public class ClassResource extends AbstractTerminologyServerResource {
   })
   public Response findAllProvisionalClassesForOntology(
       @Parameter(description = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
-      @PathParam("ontology") String ontology,
+      @PathParam(PP_ONTOLOGY) String ontology,
       @Parameter(description = LIMIT_DESCRIPTION)
-      @QueryParam("limit") Integer limit,
+      @QueryParam(QP_LIMIT) Integer limit,
       @Parameter(description = OFFSET_DESCRIPTION)
-      @QueryParam("offset") Integer offset) throws CedarException {
+      @QueryParam(QP_OFFSET) Integer offset) throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
     OffsetPaging.Request paging = pagingOf(limit, offset);

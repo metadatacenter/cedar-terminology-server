@@ -39,6 +39,8 @@ import java.util.List;
 import java.util.concurrent.ExecutionException;
 
 import static org.metadatacenter.rest.assertion.GenericAssertions.LoggedIn;
+import static org.metadatacenter.constant.CedarPathParameters.PP_ID;
+import static org.metadatacenter.constant.CedarPathParameters.PP_ONTOLOGY;
 
 @Path("/bioportal")
 @Produces(MediaType.APPLICATION_JSON)
@@ -89,7 +91,7 @@ public class OntologyResource extends AbstractTerminologyServerResource {
   })
   public Response findOntology(
       @Parameter(description = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
-      @PathParam("id") String id) throws CedarException {
+      @PathParam(PP_ID) String id) throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
     try {
@@ -121,7 +123,7 @@ public class OntologyResource extends AbstractTerminologyServerResource {
   })
   public Response getVersions(
       @Parameter(description = "Ontology acronym. Examples: DOID, INCENTIVE.", required = true)
-      @PathParam("id") String id) throws CedarException {
+      @PathParam(PP_ID) String id) throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
     try {
@@ -150,7 +152,7 @@ public class OntologyResource extends AbstractTerminologyServerResource {
   })
   public Response resolveCurrentVersion(
       @Parameter(description = "Ontology acronym. Examples: DOID, INCENTIVE.", required = true)
-      @PathParam("id") String id) throws CedarException {
+      @PathParam(PP_ID) String id) throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
     try {
@@ -215,7 +217,7 @@ public class OntologyResource extends AbstractTerminologyServerResource {
       @ApiResponse(responseCode = "500", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Internal server error")
   })
   public Response diffVersions(
-      @Parameter(description = "Ontology acronym.", required = true) @PathParam("id") String id,
+      @Parameter(description = "Ontology acronym.", required = true) @PathParam(PP_ID) String id,
       @Parameter(description = "Base version (version_id or tag).", required = true)
       @jakarta.ws.rs.QueryParam("from") String from,
       @Parameter(description = "Target version (version_id or tag, e.g. latest).", required = true)
@@ -248,7 +250,7 @@ public class OntologyResource extends AbstractTerminologyServerResource {
   })
   public Response findRootClasses(
       @Parameter(description = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
-      @PathParam("ontology") String ontology) throws CedarException {
+      @PathParam(PP_ONTOLOGY) String ontology) throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
     try {
@@ -278,7 +280,7 @@ public class OntologyResource extends AbstractTerminologyServerResource {
   })
   public Response findRootProperties(
       @Parameter(description = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
-      @PathParam("ontology") String ontology) throws CedarException {
+      @PathParam(PP_ONTOLOGY) String ontology) throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
     try {

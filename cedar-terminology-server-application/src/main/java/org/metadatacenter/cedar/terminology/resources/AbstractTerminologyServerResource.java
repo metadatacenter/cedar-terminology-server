@@ -1,26 +1,22 @@
 package org.metadatacenter.cedar.terminology.resources;
 
-import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.io.IOException;
 import org.metadatacenter.exception.CedarProcessingException;
 import org.metadatacenter.exception.CedarDependencyUnavailableException;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import jakarta.ws.rs.core.MultivaluedMap;
 import jakarta.ws.rs.core.Response;
-import jakarta.ws.rs.core.UriInfo;
 import org.metadatacenter.cedar.util.dw.CedarMicroserviceResource;
 import org.metadatacenter.error.CedarErrorKey;
 import org.metadatacenter.http.CedarResponseStatus;
 import org.metadatacenter.terms.util.HTTPException;
 import org.metadatacenter.util.http.CedarResponse;
+import org.metadatacenter.util.http.PagedQuery;
 import org.metadatacenter.config.CedarConfig;
 import org.metadatacenter.terms.ITerminologyService;
 import org.metadatacenter.terms.customObjects.PagedResults;
 import org.metadatacenter.terms.paging.PageLimits;
 import org.metadatacenter.terms.util.OffsetPaging;
-import org.metadatacenter.rest.exception.CedarAssertionException;
 import org.metadatacenter.exception.CedarException;
 
 public abstract class AbstractTerminologyServerResource extends CedarMicroserviceResource {
@@ -43,9 +39,6 @@ public abstract class AbstractTerminologyServerResource extends CedarMicroservic
   protected static final String PAGED_POST_ENVELOPE = ". The answer carries totalCount, request (the limit and "
       + "offset served) and currentOffset. A POST has no URL to link to, so the answer carries no paging links: "
       + "ask for the next page by sending the next offset.";
-
-  /** The query parameters of the withdrawn page-number paging. A GET request carrying one is refused. */
-  private static final List<String> PAGE_NUMBER_PARAMETERS = List.of("page", "pageSize", "page_size");
 
   protected AbstractTerminologyServerResource(CedarConfig cedarConfig) {
     super(cedarConfig);
@@ -137,23 +130,12 @@ public abstract class AbstractTerminologyServerResource extends CedarMicroservic
    * {@code page}, {@code pageSize} or {@code page_size} is refused.
    */
   protected OffsetPaging.Request pagingOf(Integer limit, Integer offset) throws CedarException {
-    refusePageNumbers();
-    return OffsetPaging.resolve(limit, offset);
+    return OffsetPaging.resolve(limit, offset, uriInfo.getQueryParameters());
   }
 
   /** Refuses a GET request carrying {@code page}, {@code pageSize} or {@code page_size}. */
   protected void refusePageNumbers() throws CedarException {
-    Optional<String> name = pageNumberParameter(uriInfo);
-    if (name.isPresent()) {
-      throw new CedarAssertionException(PageLimits.PAGE_NUMBERS_WITHDRAWN)
-          .parameter(name.get(), uriInfo.getQueryParameters().getFirst(name.get())).badRequest();
-    }
-  }
-
-  /** The first withdrawn page-number parameter a request carries, if it carries one. */
-  public static Optional<String> pageNumberParameter(UriInfo info) {
-    MultivaluedMap<String, String> query = info.getQueryParameters();
-    return PAGE_NUMBER_PARAMETERS.stream().filter(query::containsKey).findFirst();
+    PagedQuery.refusePageNumbers(uriInfo.getQueryParameters(), PageLimits.PAGE_NUMBERS_WITHDRAWN);
   }
 
   /** The page with CEDAR's paging envelope filled in, its links built from this request's own URL. */

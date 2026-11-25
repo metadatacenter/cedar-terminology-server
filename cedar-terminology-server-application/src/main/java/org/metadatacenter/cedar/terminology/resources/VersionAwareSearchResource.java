@@ -34,6 +34,13 @@ import org.metadatacenter.util.json.JsonMapper;
 
 import java.sql.SQLException;
 
+import static org.metadatacenter.constant.CedarQueryParameters.QP_LIMIT;
+import static org.metadatacenter.constant.CedarQueryParameters.QP_OFFSET;
+import static org.metadatacenter.constant.CedarQueryParameters.QP_SOURCE_ACRONYM;
+import static org.metadatacenter.constant.CedarQueryParameters.QP_TERM_IRI;
+import static org.metadatacenter.constant.CedarQueryParameters.QP_TYPE;
+import static org.metadatacenter.constant.CedarQueryParameters.QP_VERSION_ID;
+
 /**
  * Version-aware search, at a new root path rather than under {@code /bioportal}.
  *
@@ -138,18 +145,18 @@ public class VersionAwareSearchResource extends AbstractTerminologyServerResourc
       @ApiResponse(responseCode = "404", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "No such release, a release without that term, a term the current release does not hold, or a value set asked of a source that is not a value-set collection"),
       @ApiResponse(responseCode = "503", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "No local terminology store is configured")
   })
-  public Response hierarchy(@QueryParam("sourceAcronym") String sourceAcronym,
-                            @QueryParam("termIri") String termIri,
-                            @QueryParam("versionId") String versionId,
+  public Response hierarchy(@QueryParam(QP_SOURCE_ACRONYM) String sourceAcronym,
+                            @QueryParam(QP_TERM_IRI) String termIri,
+                            @QueryParam(QP_VERSION_ID) String versionId,
                             @Parameter(description = "How many children to skip. Defaults to 0.")
-                            @QueryParam("offset") @DefaultValue("0") int offset,
+                            @QueryParam(QP_OFFSET) @DefaultValue("0") int offset,
                             @Parameter(description = "How many children to return, from 1 to "
                                 + VersionAwareSearchService.MAX_CHILD_LIMIT + ". Defaults to "
                                 + VersionAwareSearchService.CHILD_LIMIT + ". A larger limit is refused with 400.")
-                            @QueryParam("limit") Integer limit,
+                            @QueryParam(QP_LIMIT) Integer limit,
                             @Parameter(description = "The constraint type the term is asked about: class, branch or "
                                 + "valueSet. Defaults to a class or branch, which read the same tree.")
-                            @QueryParam("type") String type) throws CedarException {
+                            @QueryParam(QP_TYPE) String type) throws CedarException {
     if (searchService == null) {
       return CedarResponse.status(CedarResponseStatus.SERVICE_UNAVAILABLE)
           .errorKey(CedarErrorKey.INVALID_INPUT)

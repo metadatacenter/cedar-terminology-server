@@ -16,6 +16,14 @@ import org.metadatacenter.util.http.CedarError;
 import org.metadatacenter.util.http.CedarResponse;
 import org.metadatacenter.terms.paging.PageLimits;
 import org.metadatacenter.terms.search.VersionedPropertyService;
+import org.metadatacenter.util.http.PagedQuery;
+
+import static org.metadatacenter.constant.CedarQueryParameters.QP_KIND;
+import static org.metadatacenter.constant.CedarQueryParameters.QP_LIMIT;
+import static org.metadatacenter.constant.CedarQueryParameters.QP_OFFSET;
+import static org.metadatacenter.constant.CedarQueryParameters.QP_PROPERTY_IRI;
+import static org.metadatacenter.constant.CedarQueryParameters.QP_SOURCE_ACRONYM;
+import static org.metadatacenter.constant.CedarQueryParameters.QP_VERSION_ID;
 
 /** Read-only property API backed by the same ontology snapshots as version-aware class search. */
 @Path("/properties")
@@ -109,7 +117,7 @@ public class VersionedPropertyResource {
       @ApiResponse(responseCode = "503", description = NOT_CONFIGURED,
           content = @Content(schema = @Schema(implementation = CedarError.class)))
   })
-  public Response versions(@QueryParam("sourceAcronym") String acronym) {
+  public Response versions(@QueryParam(QP_SOURCE_ACRONYM) String acronym) {
     return read(() -> service.versions(acronym));
   }
 
@@ -131,10 +139,10 @@ public class VersionedPropertyResource {
           content = @Content(schema = @Schema(implementation = CedarError.class)))
   })
   public Response find(
-      @QueryParam("sourceAcronym") String acronym,
-      @QueryParam("versionId") String version,
-      @QueryParam("propertyIri") String iri,
-      @QueryParam("kind") String kind) {
+      @QueryParam(QP_SOURCE_ACRONYM) String acronym,
+      @QueryParam(QP_VERSION_ID) String version,
+      @QueryParam(QP_PROPERTY_IRI) String iri,
+      @QueryParam(QP_KIND) String kind) {
     return read(() -> service.find(acronym, version, iri, kind));
   }
 
@@ -158,12 +166,12 @@ public class VersionedPropertyResource {
           content = @Content(schema = @Schema(implementation = CedarError.class)))
   })
   public Response hierarchy(
-      @QueryParam("sourceAcronym") String acronym,
-      @QueryParam("versionId") String version,
-      @QueryParam("propertyIri") String iri,
-      @QueryParam("kind") String kind,
-      @Parameter(description = CHILD_OFFSET) @QueryParam("offset") @DefaultValue("0") int offset,
-      @Parameter(description = CHILD_LIMIT) @QueryParam("limit") Integer limit) {
+      @QueryParam(QP_SOURCE_ACRONYM) String acronym,
+      @QueryParam(QP_VERSION_ID) String version,
+      @QueryParam(QP_PROPERTY_IRI) String iri,
+      @QueryParam(QP_KIND) String kind,
+      @Parameter(description = CHILD_OFFSET) @QueryParam(QP_OFFSET) @DefaultValue("0") int offset,
+      @Parameter(description = CHILD_LIMIT) @QueryParam(QP_LIMIT) Integer limit) {
     return read(() -> service.hierarchy(acronym, version, iri, kind, offset, childLimit(limit, offset, uriInfo))
         .paged(uriInfo.getRequestUri().toString()));
   }
@@ -188,11 +196,11 @@ public class VersionedPropertyResource {
           content = @Content(schema = @Schema(implementation = CedarError.class)))
   })
   public Response roots(
-      @QueryParam("sourceAcronym") String acronym,
-      @QueryParam("versionId") String version,
-      @QueryParam("kind") String kind,
-      @Parameter(description = ROOT_OFFSET) @QueryParam("offset") @DefaultValue("0") int offset,
-      @Parameter(description = ROOT_LIMIT) @QueryParam("limit") Integer limit) {
+      @QueryParam(QP_SOURCE_ACRONYM) String acronym,
+      @QueryParam(QP_VERSION_ID) String version,
+      @QueryParam(QP_KIND) String kind,
+      @Parameter(description = ROOT_OFFSET) @QueryParam(QP_OFFSET) @DefaultValue("0") int offset,
+      @Parameter(description = ROOT_LIMIT) @QueryParam(QP_LIMIT) Integer limit) {
     return read(() -> service.roots(acronym, version, kind, offset, childLimit(limit, offset, uriInfo))
         .paged(uriInfo.getRequestUri().toString()));
   }
@@ -229,7 +237,7 @@ public class VersionedPropertyResource {
    * larger one is refused here, with a message naming the range, rather than by the store.
    */
   private static int childLimit(Integer limit, int offset, UriInfo uriInfo) {
-    if (AbstractTerminologyServerResource.pageNumberParameter(uriInfo).isPresent()) {
+    if (PagedQuery.pageNumberParameter(uriInfo.getQueryParameters()).isPresent()) {
       throw new IllegalArgumentException(PageLimits.PAGE_NUMBERS_WITHDRAWN);
     }
     int value = limit == null ? VersionedPropertyService.DEFAULT_CHILD_LIMIT : limit;

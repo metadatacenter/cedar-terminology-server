@@ -32,6 +32,11 @@ import java.net.URI;
 import java.net.URISyntaxException;
 
 import static org.metadatacenter.rest.assertion.GenericAssertions.LoggedIn;
+import static org.metadatacenter.constant.CedarPathParameters.PP_ID;
+import static org.metadatacenter.constant.CedarPathParameters.PP_VS;
+import static org.metadatacenter.constant.CedarPathParameters.PP_VS_COLLECTION;
+import static org.metadatacenter.constant.CedarQueryParameters.QP_LIMIT;
+import static org.metadatacenter.constant.CedarQueryParameters.QP_OFFSET;
 
 @Path("/bioportal")
 @Produces(MediaType.APPLICATION_JSON)
@@ -57,9 +62,9 @@ public class ValueResource extends AbstractTerminologyServerResource {
   })
   public Response findValue(
       @Parameter(description = "Value identifier. Example: 42f22880-b04b-0133-848f-005056010073", required = true)
-      @PathParam("id") @Encoded String id,
+      @PathParam(PP_ID) @Encoded String id,
       @Parameter(description = "Value set collection. Example: CEDARVS.", required = true)
-      @PathParam("vs_collection") String vsCollection) throws
+      @PathParam(PP_VS_COLLECTION) String vsCollection) throws
       CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
@@ -87,9 +92,9 @@ public class ValueResource extends AbstractTerminologyServerResource {
   })
   public Response findValueTree(
       @Parameter(description = "Value identifier. Example: 42f22880-b04b-0133-848f-005056010073", required = true)
-      @PathParam("id") @Encoded String id,
+      @PathParam(PP_ID) @Encoded String id,
       @Parameter(description = "Value set collection. Example: CEDARVS.", required = true)
-      @PathParam("vs_collection") String vsCollection)
+      @PathParam(PP_VS_COLLECTION) String vsCollection)
       throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
@@ -117,14 +122,14 @@ public class ValueResource extends AbstractTerminologyServerResource {
   })
   public Response findValuesByValueSet(
       @Parameter(description = "Value set collection. Example: CEDARVS.", required = true)
-      @PathParam("vs_collection") String vsCollection,
+      @PathParam(PP_VS_COLLECTION) String vsCollection,
       @Parameter(description = "Value set identifier. Example: http://www.semanticweb.org/jgraybeal/ontologies/2015/7/" +
           "cedarvaluesets#Study_File_Type", required = true)
-      @PathParam("vs") @Encoded String vsId,
+      @PathParam(PP_VS) @Encoded String vsId,
       @Parameter(description = LIMIT_DESCRIPTION)
-      @QueryParam("limit") Integer limit,
+      @QueryParam(QP_LIMIT) Integer limit,
       @Parameter(description = OFFSET_DESCRIPTION)
-      @QueryParam("offset") Integer offset) throws CedarException {
+      @QueryParam(QP_OFFSET) Integer offset) throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
     OffsetPaging.Request paging = pagingOf(limit, offset);
@@ -153,13 +158,13 @@ public class ValueResource extends AbstractTerminologyServerResource {
   })
   public Response findAllValuesInValueSetByValue(
       @Parameter(description = "Value identifier. Example: 42f22880-b04b-0133-848f-005056010073", required = true)
-      @PathParam("id") @Encoded String id,
+      @PathParam(PP_ID) @Encoded String id,
       @Parameter(description = "Value set collection. Example: CEDARVS.", required = true)
-      @PathParam("vs_collection") String vsCollection,
+      @PathParam(PP_VS_COLLECTION) String vsCollection,
       @Parameter(description = LIMIT_DESCRIPTION)
-      @QueryParam("limit") Integer limit,
+      @QueryParam(QP_LIMIT) Integer limit,
       @Parameter(description = OFFSET_DESCRIPTION)
-      @QueryParam("offset") Integer offset) throws CedarException {
+      @QueryParam(QP_OFFSET) Integer offset) throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
     OffsetPaging.Request paging = pagingOf(limit, offset);

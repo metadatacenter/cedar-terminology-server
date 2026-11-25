@@ -197,6 +197,16 @@ public class TerminologyPagingResourceTest {
     }
   }
 
+  @Test
+  public void aPageNumberParameterIsRefusedNamingIt() throws Exception {
+    for (String name : List.of("page", "pageSize", "page_size")) {
+      HttpResponse<String> r = send(HttpRequest.newBuilder(uri(children("?" + name + "=2"))).GET());
+      assertEquals(400, r.statusCode(), name + " -> " + r.body());
+      assertEquals("2", JsonMapper.STRICT_MAPPER.readTree(r.body()).path("parameters").path(name).asText(null),
+          name + " -> " + r.body());
+    }
+  }
+
   // ---- integrated search, a POST -----------------------------------------------------------------
 
   @Test

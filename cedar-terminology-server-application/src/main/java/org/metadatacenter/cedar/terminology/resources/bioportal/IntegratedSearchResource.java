@@ -1,5 +1,6 @@
 package org.metadatacenter.cedar.terminology.resources.bioportal;
 
+import org.metadatacenter.cedar.util.dw.AnonymousAccess;
 import org.metadatacenter.terms.util.HTTPException;
 import org.metadatacenter.terms.paging.PageLimits;
 import org.metadatacenter.terms.util.OffsetPaging;
@@ -37,6 +38,8 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.Optional;
+
+import static org.metadatacenter.constant.CedarQueryParameters.QP_LANG;
 
 @Path("/bioportal")
 @Produces(MediaType.APPLICATION_JSON)
@@ -82,17 +85,18 @@ public class IntegratedSearchResource extends AbstractTerminologyServerResource 
   // swagger-core gives every method the class's api_key requirement. An entry with a blank name adds
   // the empty alternative beside it, which is how OpenAPI says that a credential is optional.
   @SecurityRequirement(combine = @SecurityRequirementEntry(name = ""))
+  @AnonymousAccess
   public Response cedarIntegratedSearch(@Valid IntegratedSearchBody body,
       @Parameter(description = "Optional BCP-47 language for result labels (e.g. fr). Honored for "
           + "locally-served, single-source constraints; ignored for BioPortal-proxied ones.")
-      @QueryParam("lang") String lang) throws CedarException {
+      @QueryParam(QP_LANG) String lang) throws CedarException {
 
     // Anonymous by decision, not by omission. Third-party deployments of the embeddable editor reach
-    // this route without a CEDAR session, which is why the credential check below is disabled rather
-    // than deleted. The price is that the BioPortal lookups it performs run on the API key this
-    // server holds, so an anonymous caller spends CEDAR's BioPortal quota. Nothing here bounds that.
-    // CedarRequestContext c = buildRequestContext();
-    // c.must(c.user()).be(LoggedIn);
+    // this route without a CEDAR session. The price is that the BioPortal lookups it performs run on
+    // the API key this server holds, so an anonymous caller spends CEDAR's BioPortal quota. Nothing
+    // here bounds that. The anonymous context reads no credential, so an invalid one is ignored, as
+    // it was before the route built a context.
+    buildAnonymousRequestContext();
 
     try {
       OffsetPaging.Request paging = OffsetPaging.resolveBody(body.getPage(), body.getLimit(), body.getOffset());

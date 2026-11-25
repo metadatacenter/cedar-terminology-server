@@ -104,6 +104,15 @@ public class AnonymousBioPortalRoutesTest {
 
     HttpResponse<String> authenticated = send(method, request, authHeader);
     assertEquals(anonymous.statusCode(), authenticated.statusCode(), authenticated.body());
+
+    // A credential the server cannot verify is ignored rather than refused, as it was before these
+    // routes declared themselves anonymous.
+    for (String invalid : new String[]{"Bearer not-a-token", "apiKey not-a-key"}) {
+      ASKED.set(0);
+      HttpResponse<String> answered = send(method, request, invalid);
+      assertTrue(ASKED.get() > 0, invalid + " was refused before BioPortal was asked: " + answered.body());
+      assertEquals(anonymous.statusCode(), answered.statusCode(), invalid + ": " + answered.body());
+    }
   }
 
   @Test
