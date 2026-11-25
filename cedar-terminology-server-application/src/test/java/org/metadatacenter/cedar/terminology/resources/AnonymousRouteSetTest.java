@@ -10,11 +10,17 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.metadatacenter.cedar.terminology.TerminologyServerApplication;
+import org.metadatacenter.cedar.util.dw.AnonymousAccess;
 import org.metadatacenter.cedar.terminology.TerminologyServerConfiguration;
 import org.metadatacenter.config.environment.CedarEnvironmentSource;
 import org.metadatacenter.util.json.JsonMapper;
 
+import jakarta.ws.rs.HttpMethod;
+import jakarta.ws.rs.Path;
+
 import java.io.IOException;
+import java.lang.annotation.Annotation;
+import java.lang.reflect.Method;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
@@ -34,6 +40,7 @@ import java.util.TreeSet;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * The exact set of routes that answer a caller holding no credential.
@@ -66,7 +73,7 @@ public class AnonymousRouteSetTest {
 
   /**
    * Every route an anonymous caller is answered by. A change here is a change to who can reach the server.
-   * The four BioPortal routes declare {@code @AnonymousAccess}. The rest build no request context at all.
+   * Each is served by a method annotated {@code @AnonymousAccess}, which the second test checks.
    */
   private static final TreeSet<String> ANONYMOUS_ROUTES = new TreeSet<>(List.of(
       "GET /",
@@ -115,6 +122,49 @@ public class AnonymousRouteSetTest {
       }
     }
     assertEquals(ANONYMOUS_ROUTES, anonymous, "status of every route sent anonymously: " + statuses);
+  }
+
+  @Test
+  public void everyAnonymousRouteDeclaresIt() {
+    Map<String, Method> handlers = new TreeMap<>();
+    List<Class<?>> resources = new java.util.ArrayList<>(SERVER.getEnvironment().jersey().getResourceConfig().getClasses());
+    for (Object instance : SERVER.getEnvironment().jersey().getResourceConfig().getInstances()) {
+      resources.add(instance.getClass());
+    }
+    for (Class<?> resource : resources) {
+      Path base = resource.getAnnotation(Path.class);
+      if (base == null) {
+        continue;
+      }
+      for (Method method : resource.getMethods()) {
+        String verb = httpMethod(method);
+        if (verb != null) {
+          Path sub = method.getAnnotation(Path.class);
+          handlers.put(verb + " " + route(base.value(), sub == null ? "" : sub.value()), method);
+        }
+      }
+    }
+    for (String route : ANONYMOUS_ROUTES) {
+      Method handler = handlers.get(route);
+      assertNotNull(handler, "no handler found for " + route + " among " + handlers.keySet());
+      assertTrue(handler.isAnnotationPresent(AnonymousAccess.class),
+          route + " answers an anonymous caller, so " + handler + " must declare @AnonymousAccess");
+    }
+  }
+
+  private static String httpMethod(Method method) {
+    for (Annotation annotation : method.getAnnotations()) {
+      HttpMethod verb = annotation.annotationType().getAnnotation(HttpMethod.class);
+      if (verb != null) {
+        return verb.value();
+      }
+    }
+    return null;
+  }
+
+  private static String route(String base, String sub) {
+    String joined = ("/" + base + "/" + sub).replaceAll("/+", "/");
+    return joined.length() > 1 && joined.endsWith("/") ? joined.substring(0, joined.length() - 1) : joined;
   }
 
   private static HttpResponse<String> send(String method, String template, JsonNode operation) throws Exception {

@@ -1,5 +1,6 @@
 package org.metadatacenter.cedar.terminology.resources.bioportal;
 
+import org.metadatacenter.cedar.util.dw.AnonymousAccess;
 import com.codahale.metrics.annotation.Timed;
 import com.fasterxml.jackson.databind.*;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -38,6 +39,7 @@ public class TermVerificationResource extends AbstractTerminologyServerResource 
 
   public TermVerificationResource(CedarConfig config) { super(config); }
 
+  @AnonymousAccess
   @POST @Timed @Consumes(MediaType.APPLICATION_JSON)
   @Operation(summary = "Verify an exact term identifier against complete field value constraints",
       description = "Returns passed, failed, notChecked or unavailable independently of save policy. "

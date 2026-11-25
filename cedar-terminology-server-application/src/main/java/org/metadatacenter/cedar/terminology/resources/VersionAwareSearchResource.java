@@ -17,6 +17,7 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import org.metadatacenter.cedar.util.dw.AnonymousAccess;
 import org.metadatacenter.config.CedarConfig;
 import org.metadatacenter.error.CedarErrorKey;
 import org.metadatacenter.exception.CedarException;
@@ -71,6 +72,7 @@ public class VersionAwareSearchResource extends AbstractTerminologyServerResourc
     VersionAwareSearchResource.searchService = service;
   }
 
+  @AnonymousAccess
   @POST
   @Timed
   @Consumes(MediaType.APPLICATION_JSON)
@@ -123,6 +125,7 @@ public class VersionAwareSearchResource extends AbstractTerminologyServerResourc
     }
   }
 
+  @AnonymousAccess
   @GET
   @Timed
   @Path("/hierarchy")

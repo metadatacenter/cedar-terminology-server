@@ -12,6 +12,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.*;
 import java.sql.SQLException;
+import org.metadatacenter.cedar.util.dw.AnonymousAccess;
 import org.metadatacenter.util.http.CedarError;
 import org.metadatacenter.util.http.CedarResponse;
 import org.metadatacenter.terms.paging.PageLimits;
@@ -67,6 +68,7 @@ public class VersionedPropertyResource {
     }
   }
 
+  @AnonymousAccess
   @POST
   @Path("/search")
   @Consumes(MediaType.APPLICATION_JSON)
@@ -100,6 +102,7 @@ public class VersionedPropertyResource {
     return read(() -> service.search(request));
   }
 
+  @AnonymousAccess
   @GET
   @Path("/versions")
   @Operation(summary = "Ontology releases and their property extraction availability")
@@ -121,6 +124,7 @@ public class VersionedPropertyResource {
     return read(() -> service.versions(acronym));
   }
 
+  @AnonymousAccess
   @GET
   @Operation(summary = "Find a property at an ontology version")
   @ApiResponses({
@@ -146,6 +150,7 @@ public class VersionedPropertyResource {
     return read(() -> service.find(acronym, version, iri, kind));
   }
 
+  @AnonymousAccess
   @GET
   @Path("/hierarchy")
   @Operation(summary = "Property ancestors and paged children at an ontology version",
@@ -176,6 +181,7 @@ public class VersionedPropertyResource {
         .paged(uriInfo.getRequestUri().toString()));
   }
 
+  @AnonymousAccess
   @GET
   @Path("/roots")
   @Operation(summary = "Paged root properties at an ontology version",

@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
+import org.metadatacenter.cedar.util.dw.AnonymousAccess;
 import org.metadatacenter.terms.search.ResourceDescription;
 import org.metadatacenter.terms.search.ResourceDescriptionService;
 import org.metadatacenter.terms.search.TerminologyLinksContract;
@@ -22,6 +23,7 @@ public class ResourceDescriptionResource {
   private static ResourceDescriptionService service = new ResourceDescriptionService(null);
   public static void injectService(ResourceDescriptionService value) { service = value; }
 
+  @AnonymousAccess
   @POST
   @Consumes(MediaType.APPLICATION_JSON)
   @Operation(operationId = "describeTerminologyResource", summary = "Resolve public links for a CEDAR constraint reference")

@@ -1,5 +1,6 @@
 package org.metadatacenter.cedar.terminology.resources;
 
+import org.metadatacenter.cedar.util.dw.AnonymousAccess;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
@@ -8,6 +9,7 @@ import jakarta.ws.rs.core.Response;
 /** Static compatibility asset for the existing BioPortal mark. No remote image proxying. */
 @Path("/resources/icons/bioportal.png")
 public class ResourceIconResource {
+  @AnonymousAccess
   @GET @Produces("image/png")
   @io.swagger.v3.oas.annotations.Operation(operationId = "terminologySourceIcon", summary = "Get the BioPortal source icon")
   @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Source icon",
