@@ -66,6 +66,10 @@
       <groupId>org.metadatacenter</groupId>
       <artifactId>cedar-server-globals-library</artifactId>
     </dependency>
+    <dependency>
+      <groupId>org.metadatacenter</groupId>
+      <artifactId>cedar-core-library</artifactId>
+    </dependency>
 
     <dependency>
       <groupId>org.metadatacenter</groupId>
