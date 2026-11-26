@@ -1,5 +1,7 @@
 package org.metadatacenter.cedar.terminology.resources.bioportal;
 
+import static org.metadatacenter.constant.CedarPathParameters.PP_ACRONYM;
+
 import com.codahale.metrics.annotation.Timed;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -57,7 +59,7 @@ public class PropertyResource extends AbstractTerminologyServerResource {
       @Parameter(description = "Property identifier. Examples: http://id.loc.gov/ontologies/bibframe/place.", required = true)
       @PathParam(PP_ID) @Encoded String id,
       @Parameter(description = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
-      @PathParam("acronym") String ontology)
+      @PathParam(PP_ACRONYM) String ontology)
       throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
@@ -86,7 +88,7 @@ public class PropertyResource extends AbstractTerminologyServerResource {
   // Note that this endpoint is not paged
   public Response findAllPropertiesForOntology(
       @Parameter(description = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
-      @PathParam("acronym") String ontology) throws CedarException {
+      @PathParam(PP_ACRONYM) String ontology) throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
     try {
@@ -115,7 +117,7 @@ public class PropertyResource extends AbstractTerminologyServerResource {
       @Parameter(description = "Property identifier. Examples: http://id.loc.gov/ontologies/bibframe/place.", required = true)
       @PathParam(PP_ID) @Encoded String id,
       @Parameter(description = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
-      @PathParam("acronym") String ontology) throws
+      @PathParam(PP_ACRONYM) String ontology) throws
       CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
@@ -145,7 +147,7 @@ public class PropertyResource extends AbstractTerminologyServerResource {
       @Parameter(description = "Property identifier. Examples: http://id.loc.gov/ontologies/bibframe/place.", required = true)
       @PathParam(PP_ID) @Encoded String id,
       @Parameter(description = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
-      @PathParam("acronym") String ontology)
+      @PathParam(PP_ACRONYM) String ontology)
       throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
@@ -175,7 +177,7 @@ public class PropertyResource extends AbstractTerminologyServerResource {
       @Parameter(description = "Property identifier. Examples: http://id.loc.gov/ontologies/bibframe/place.", required = true)
       @PathParam(PP_ID) @Encoded String id,
       @Parameter(description = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
-      @PathParam("acronym") String ontology)
+      @PathParam(PP_ACRONYM) String ontology)
       throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
@@ -205,7 +207,7 @@ public class PropertyResource extends AbstractTerminologyServerResource {
       @Parameter(description = "Property identifier. Examples: http://id.loc.gov/ontologies/bibframe/place.", required = true)
       @PathParam(PP_ID) @Encoded String id,
       @Parameter(description = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
-      @PathParam("acronym") String ontology)
+      @PathParam(PP_ACRONYM) String ontology)
       throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);

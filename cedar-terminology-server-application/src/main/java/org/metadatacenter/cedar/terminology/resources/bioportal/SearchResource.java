@@ -1,5 +1,8 @@
 package org.metadatacenter.cedar.terminology.resources.bioportal;
 
+import static org.metadatacenter.constant.CedarQueryParameters.QP_SOURCE_ACRONYM;
+import static org.metadatacenter.constant.CedarQueryParameters.QP_TERM_IRI;
+
 import org.metadatacenter.terms.util.HTTPException;
 import org.metadatacenter.terms.util.OffsetPaging;
 import com.codahale.metrics.annotation.Timed;
@@ -92,10 +95,10 @@ public class SearchResource extends AbstractTerminologyServerResource {
       @Parameter(description = "Will perform a search specifically geared towards type-ahead suggestions. Default: false.")
       @QueryParam(QP_SUGGEST) boolean suggest,
       @Parameter(description = "Ontology for which the subtree search will be performed. Example: NCIT.")
-      @QueryParam("source_acronym") String source,
+      @QueryParam(QP_SOURCE_ACRONYM) String source,
       @Parameter(description = "Class identifier that limits the search to the branch rooted on that class. It must be URL " +
           "encoded. Example: http%3A%2F%2Fncicb.nci.nih.gov%2Fxml%2Fowl%2FEVS%2FThesaurus.owl%23C3224.")
-      @QueryParam("term_iri") String subtreeRootId,
+      @QueryParam(QP_TERM_IRI) String subtreeRootId,
       @Parameter(description = "Subtree depth.")
       @QueryParam(QP_MAX_DEPTH) @DefaultValue("1") int maxDepth,
       @Parameter(description = LIMIT_DESCRIPTION)

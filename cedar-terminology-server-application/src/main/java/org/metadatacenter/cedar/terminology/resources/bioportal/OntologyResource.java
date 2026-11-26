@@ -1,5 +1,8 @@
 package org.metadatacenter.cedar.terminology.resources.bioportal;
 
+import static org.metadatacenter.constant.CedarPathParameters.PP_ACRONYM;
+import static org.metadatacenter.constant.CedarQueryParameters.QP_TERM_IRI;
+
 import com.codahale.metrics.annotation.Timed;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -98,7 +101,7 @@ public class OntologyResource extends AbstractTerminologyServerResource {
   })
   public Response findOntology(
       @Parameter(description = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
-      @PathParam("acronym") String id) throws CedarException {
+      @PathParam(PP_ACRONYM) String id) throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
     try {
@@ -130,7 +133,7 @@ public class OntologyResource extends AbstractTerminologyServerResource {
   })
   public Response getVersions(
       @Parameter(description = "Ontology acronym. Examples: DOID, INCENTIVE.", required = true)
-      @PathParam("acronym") String id) throws CedarException {
+      @PathParam(PP_ACRONYM) String id) throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
     try {
@@ -159,7 +162,7 @@ public class OntologyResource extends AbstractTerminologyServerResource {
   })
   public Response resolveCurrentVersion(
       @Parameter(description = "Ontology acronym. Examples: DOID, INCENTIVE.", required = true)
-      @PathParam("acronym") String id) throws CedarException {
+      @PathParam(PP_ACRONYM) String id) throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
     try {
@@ -192,7 +195,7 @@ public class OntologyResource extends AbstractTerminologyServerResource {
   public Response resolveCurrentVersionForClass(
       @Parameter(description = "Class/term IRI. Example: http://purl.obolibrary.org/obo/DOID_9351.",
           required = true)
-      @QueryParam("term_iri") String uri) throws CedarException {
+      @QueryParam(QP_TERM_IRI) String uri) throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
     try {
@@ -226,7 +229,7 @@ public class OntologyResource extends AbstractTerminologyServerResource {
       @ApiResponse(responseCode = "500", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "Internal server error")
   })
   public Response diffVersions(
-      @Parameter(description = "Ontology acronym.", required = true) @PathParam("acronym") String id,
+      @Parameter(description = "Ontology acronym.", required = true) @PathParam(PP_ACRONYM) String id,
       @Parameter(description = "Base version (version_id or tag).", required = true)
       @QueryParam(QP_FROM_VERSION) String fromVersion,
       @Parameter(description = "Target version (version_id or tag, e.g. latest).", required = true)
@@ -263,7 +266,7 @@ public class OntologyResource extends AbstractTerminologyServerResource {
   })
   public Response findRootClasses(
       @Parameter(description = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
-      @PathParam("acronym") String ontology) throws CedarException {
+      @PathParam(PP_ACRONYM) String ontology) throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
     try {
@@ -293,7 +296,7 @@ public class OntologyResource extends AbstractTerminologyServerResource {
   })
   public Response findRootProperties(
       @Parameter(description = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
-      @PathParam("acronym") String ontology) throws CedarException {
+      @PathParam(PP_ACRONYM) String ontology) throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
     try {

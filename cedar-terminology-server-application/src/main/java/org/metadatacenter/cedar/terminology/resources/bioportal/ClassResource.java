@@ -1,5 +1,7 @@
 package org.metadatacenter.cedar.terminology.resources.bioportal;
 
+import static org.metadatacenter.constant.CedarPathParameters.PP_ACRONYM;
+
 import org.metadatacenter.terms.util.HTTPException;
 import org.metadatacenter.terms.util.OffsetPaging;
 import com.codahale.metrics.annotation.Timed;
@@ -74,7 +76,7 @@ public class ClassResource extends AbstractTerminologyServerResource {
           "http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C3224 (regular class).", required = true)
       @PathParam(PP_ID) @Encoded String id,
       @Parameter(description = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
-      @PathParam("acronym") String ontology,
+      @PathParam(PP_ACRONYM) String ontology,
       @Parameter(description = "Optional BCP-47 language for the returned label (e.g. fr). Honored for "
           + "locally-served ontologies; ignored for BioPortal-proxied ones.")
       @QueryParam(QP_LANG) String lang) throws
@@ -105,7 +107,7 @@ public class ClassResource extends AbstractTerminologyServerResource {
   })
   public Response findAllClassesForOntology(
       @Parameter(description = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
-      @PathParam("acronym") String ontology,
+      @PathParam(PP_ACRONYM) String ontology,
       @Parameter(description = LIMIT_DESCRIPTION)
       @QueryParam(QP_LIMIT) Integer limit,
       @Parameter(description = OFFSET_DESCRIPTION)
@@ -141,7 +143,7 @@ public class ClassResource extends AbstractTerminologyServerResource {
       @Parameter(description = "Class identifier. Example: http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C3224.", required = true)
       @PathParam(PP_ID) @Encoded String id,
       @Parameter(description = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
-      @PathParam("acronym") String ontology) throws
+      @PathParam(PP_ACRONYM) String ontology) throws
       CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
@@ -174,7 +176,7 @@ public class ClassResource extends AbstractTerminologyServerResource {
       @Parameter(description = "Class identifier. Example: http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C3224.", required = true)
       @PathParam(PP_ID) @Encoded String id,
       @Parameter(description = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
-      @PathParam("acronym") String ontology,
+      @PathParam(PP_ACRONYM) String ontology,
       @Parameter(description = LIMIT_DESCRIPTION)
       @QueryParam(QP_LIMIT) Integer limit,
       @Parameter(description = OFFSET_DESCRIPTION)
@@ -217,7 +219,7 @@ public class ClassResource extends AbstractTerminologyServerResource {
           "http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C3224 (regular class).", required = true)
       @PathParam(PP_ID) @Encoded String id,
       @Parameter(description = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
-      @PathParam("acronym") String ontology,
+      @PathParam(PP_ACRONYM) String ontology,
       @Parameter(description = LIMIT_DESCRIPTION)
       @QueryParam(QP_LIMIT) Integer limit,
       @Parameter(description = OFFSET_DESCRIPTION)
@@ -253,7 +255,7 @@ public class ClassResource extends AbstractTerminologyServerResource {
       @Parameter(description = "Class identifier. Example: http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C3224.", required = true)
       @PathParam(PP_ID) @Encoded String id,
       @Parameter(description = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
-      @PathParam("acronym") String ontology)
+      @PathParam(PP_ACRONYM) String ontology)
       throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
@@ -316,7 +318,7 @@ public class ClassResource extends AbstractTerminologyServerResource {
   })
   public Response findAllProvisionalClassesForOntology(
       @Parameter(description = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
-      @PathParam("acronym") String ontology,
+      @PathParam(PP_ACRONYM) String ontology,
       @Parameter(description = LIMIT_DESCRIPTION)
       @QueryParam(QP_LIMIT) Integer limit,
       @Parameter(description = OFFSET_DESCRIPTION)
