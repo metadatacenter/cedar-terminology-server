@@ -77,7 +77,7 @@ public class AnonymousRouteSetTest {
    */
   private static final TreeSet<String> ANONYMOUS_ROUTES = new TreeSet<>(List.of(
       "GET /",
-      "GET /bioportal/ontologies/{ontology}/classes/{id}/descendants",
+      "GET /bioportal/ontologies/{acronym}/classes/{id}/descendants",
       "GET /bioportal/search",
       "GET /properties",
       "GET /properties/hierarchy",

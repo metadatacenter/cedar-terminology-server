@@ -43,7 +43,7 @@ public class PropertyResource extends AbstractTerminologyServerResource {
 
   @GET
   @Timed
-  @Path("ontologies/{ontology}/properties/{id}")
+  @Path("ontologies/{acronym}/properties/{id}")
   @Operation(summary = "Find property", description = "Find property by id.")
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "The property", content = @Content(schema = @Schema(implementation = OntologyProperty.class))),
@@ -57,7 +57,7 @@ public class PropertyResource extends AbstractTerminologyServerResource {
       @Parameter(description = "Property identifier. Examples: http://id.loc.gov/ontologies/bibframe/place.", required = true)
       @PathParam(PP_ID) @Encoded String id,
       @Parameter(description = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
-      @PathParam(PP_ONTOLOGY) String ontology)
+      @PathParam("acronym") String ontology)
       throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
@@ -73,7 +73,7 @@ public class PropertyResource extends AbstractTerminologyServerResource {
 
   @GET
   @Timed
-  @Path("ontologies/{ontology}/properties")
+  @Path("ontologies/{acronym}/properties")
   @Operation(summary = "Get properties", description = "Get all properties from a specific ontology.")
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "Every property in the ontology", content = @Content(array = @ArraySchema(schema = @Schema(implementation = OntologyProperty.class)))),
@@ -86,7 +86,7 @@ public class PropertyResource extends AbstractTerminologyServerResource {
   // Note that this endpoint is not paged
   public Response findAllPropertiesForOntology(
       @Parameter(description = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
-      @PathParam(PP_ONTOLOGY) String ontology) throws CedarException {
+      @PathParam("acronym") String ontology) throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
     try {
@@ -101,7 +101,7 @@ public class PropertyResource extends AbstractTerminologyServerResource {
 
   @GET
   @Timed
-  @Path("ontologies/{ontology}/properties/{id}/tree")
+  @Path("ontologies/{acronym}/properties/{id}/tree")
   @Operation(summary = "Get property tree", description = "Get property tree.")
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "The paths from the ontology's roots down to the property", content = @Content(array = @ArraySchema(schema = @Schema(implementation = TreeNode.class)))),
@@ -115,7 +115,7 @@ public class PropertyResource extends AbstractTerminologyServerResource {
       @Parameter(description = "Property identifier. Examples: http://id.loc.gov/ontologies/bibframe/place.", required = true)
       @PathParam(PP_ID) @Encoded String id,
       @Parameter(description = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
-      @PathParam(PP_ONTOLOGY) String ontology) throws
+      @PathParam("acronym") String ontology) throws
       CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
@@ -131,7 +131,7 @@ public class PropertyResource extends AbstractTerminologyServerResource {
 
   @GET
   @Timed
-  @Path("ontologies/{ontology}/properties/{id}/children")
+  @Path("ontologies/{acronym}/properties/{id}/children")
   @Operation(summary = "Get property children", description = "Get property children (only for regular classes).")
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "The property's children", content = @Content(array = @ArraySchema(schema = @Schema(implementation = OntologyProperty.class)))),
@@ -145,7 +145,7 @@ public class PropertyResource extends AbstractTerminologyServerResource {
       @Parameter(description = "Property identifier. Examples: http://id.loc.gov/ontologies/bibframe/place.", required = true)
       @PathParam(PP_ID) @Encoded String id,
       @Parameter(description = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
-      @PathParam(PP_ONTOLOGY) String ontology)
+      @PathParam("acronym") String ontology)
       throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
@@ -161,7 +161,7 @@ public class PropertyResource extends AbstractTerminologyServerResource {
 
   @GET
   @Timed
-  @Path("ontologies/{ontology}/properties/{id}/descendants")
+  @Path("ontologies/{acronym}/properties/{id}/descendants")
   @Operation(summary = "Get property descendants", description = "Get property descendants.")
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "The property's descendants", content = @Content(array = @ArraySchema(schema = @Schema(implementation = OntologyProperty.class)))),
@@ -175,7 +175,7 @@ public class PropertyResource extends AbstractTerminologyServerResource {
       @Parameter(description = "Property identifier. Examples: http://id.loc.gov/ontologies/bibframe/place.", required = true)
       @PathParam(PP_ID) @Encoded String id,
       @Parameter(description = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
-      @PathParam(PP_ONTOLOGY) String ontology)
+      @PathParam("acronym") String ontology)
       throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
@@ -191,7 +191,7 @@ public class PropertyResource extends AbstractTerminologyServerResource {
 
   @GET
   @Timed
-  @Path("ontologies/{ontology}/properties/{id}/parents")
+  @Path("ontologies/{acronym}/properties/{id}/parents")
   @Operation(summary = "Get property parents", description = "Get property parents.")
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "The property's parents", content = @Content(array = @ArraySchema(schema = @Schema(implementation = OntologyProperty.class)))),
@@ -205,7 +205,7 @@ public class PropertyResource extends AbstractTerminologyServerResource {
       @Parameter(description = "Property identifier. Examples: http://id.loc.gov/ontologies/bibframe/place.", required = true)
       @PathParam(PP_ID) @Encoded String id,
       @Parameter(description = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
-      @PathParam(PP_ONTOLOGY) String ontology)
+      @PathParam("acronym") String ontology)
       throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);

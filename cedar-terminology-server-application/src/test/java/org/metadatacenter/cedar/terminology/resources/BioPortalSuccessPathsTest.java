@@ -182,7 +182,7 @@ public class BioPortalSuccessPathsTest {
     }
     assertEquals(Map.of("Yes No", "ValueSet", "Yes", "Value"), kinds);
 
-    JsonNode properties = get("/bioportal/property_search?q=part&sources=" + ONTOLOGY).get("collection");
+    JsonNode properties = get("/bioportal/property-search?q=part&sources=" + ONTOLOGY).get("collection");
     assertEquals(List.of("has part"), labels(properties));
   }
 
@@ -266,7 +266,7 @@ public class BioPortalSuccessPathsTest {
     sent("/bioportal/relations/" + relation, "/provisional_relations/" + relation);
     FakeBioPortal.Request search = sent("/bioportal/search?q=heart&scope=classes&sources=" + ONTOLOGY, "/search");
     assertEquals("true", search.parameter("display_links"), search.target());
-    FakeBioPortal.Request propertySearch = sent("/bioportal/property_search?q=part&sources=" + ONTOLOGY,
+    FakeBioPortal.Request propertySearch = sent("/bioportal/property-search?q=part&sources=" + ONTOLOGY,
         "/property_search");
     assertEquals("true", propertySearch.parameter("display_links"), propertySearch.target());
   }

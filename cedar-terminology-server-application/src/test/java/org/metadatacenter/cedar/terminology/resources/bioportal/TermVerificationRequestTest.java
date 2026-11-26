@@ -67,6 +67,14 @@ class TermVerificationRequestTest {
     assertEquals(400, response.getStatus(), String.valueOf(body));
   }
 
+  @Test void canonicalAndReleasedClientNamesAgreeButCannotBeCombined() throws Exception {
+    for (String name : new String[]{"termIri", "iri"}) {
+      assertEquals(200, resource.verify(json("{'" + name + "': '" + TERM + "', 'valueConstraints': {}}")).getStatus());
+      assertEquals(TERM, verifiedIri.get());
+    }
+    assertRefused(json("{'termIri': '" + TERM + "', 'iri': '" + TERM + "', 'valueConstraints': {}}"));
+  }
+
   @Test void aBodyThatIsNotExactlyAnIriAndItsConstraintsIsRefused() throws Exception {
     assertRefused(null);
     assertRefused(json("[]"));

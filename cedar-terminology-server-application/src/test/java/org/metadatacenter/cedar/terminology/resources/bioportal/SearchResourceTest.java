@@ -169,4 +169,14 @@ public class SearchResourceTest extends AbstractTerminologyServerResourceTest {
     }
   }
 
+
+  @Test
+  public void retiredSubtreeNamesCannotSilentlyBroadenASearch() {
+    for (String query : List.of("source=VIRONT", "subtree_root_id=urn:root")) {
+      try (var response = request(baseUrlBpSearch + "?q=vaccine&" + query).get()) {
+        Assertions.assertEquals(400, response.getStatus());
+        Assertions.assertTrue(response.readEntity(String.class).contains("source_acronym and term_iri"));
+      }
+    }
+  }
 }

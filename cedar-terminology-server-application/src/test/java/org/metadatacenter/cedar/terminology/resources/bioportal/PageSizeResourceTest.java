@@ -25,7 +25,7 @@ public class PageSizeResourceTest extends AbstractTerminologyServerResourceTest 
   private static final List<String> ROUTES = List.of(
       "ontologies/" + ONTOLOGY + "/classes/" + encode(ROOT) + "/children?",
       "search?q=coronavirus&scope=classes&sources=" + VIRUSES + "&",
-      "property_search?q=has&sources=" + VIRUSES + "&",
+      "property-search?q=has&sources=" + VIRUSES + "&",
       "vs-collections/" + CEDARVS + "/value-sets?",
       "vs-collections/" + CEDARVS + "/value-sets/" + encode(STUDY_FILE_TYPE) + "/values?");
 

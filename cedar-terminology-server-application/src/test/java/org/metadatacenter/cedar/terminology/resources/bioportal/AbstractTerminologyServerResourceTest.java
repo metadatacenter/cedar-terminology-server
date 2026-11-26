@@ -91,7 +91,7 @@ public abstract class AbstractTerminologyServerResourceTest {
     baseUrlBpSearch = baseUrlBp + "/" + BP_SEARCH;
     baseUrlBpIntegratedSearch = baseUrlBp + "/" + BP_INTEGRATED_SEARCH;
     baseUrlBpIntegratedRetrieve = baseUrlBp + "/" + BP_INTEGRATED_RETRIEVE;
-    baseUrlBpPropertySearch = baseUrlBp + "/" + BP_PROPERTY_SEARCH;
+    baseUrlBpPropertySearch = baseUrlBp + "/property-search";
     baseUrlBpOntologies = baseUrlBp + "/" + BP_ONTOLOGIES;
     baseUrlBpVSCollections = baseUrlBp + "/" + BP_VALUE_SET_COLLECTIONS;
 

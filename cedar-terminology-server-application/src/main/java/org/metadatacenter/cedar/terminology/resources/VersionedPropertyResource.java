@@ -120,7 +120,7 @@ public class VersionedPropertyResource {
       @ApiResponse(responseCode = "503", description = NOT_CONFIGURED,
           content = @Content(schema = @Schema(implementation = CedarError.class)))
   })
-  public Response versions(@QueryParam(QP_SOURCE_ACRONYM) String acronym) {
+  public Response versions(@QueryParam("source_acronym") String acronym) {
     return read(() -> service.versions(acronym));
   }
 
@@ -143,9 +143,9 @@ public class VersionedPropertyResource {
           content = @Content(schema = @Schema(implementation = CedarError.class)))
   })
   public Response find(
-      @QueryParam(QP_SOURCE_ACRONYM) String acronym,
-      @QueryParam(QP_VERSION_ID) String version,
-      @QueryParam(QP_PROPERTY_IRI) String iri,
+      @QueryParam("source_acronym") String acronym,
+      @QueryParam("version_id") String version,
+      @QueryParam("property_iri") String iri,
       @QueryParam(QP_KIND) String kind) {
     return read(() -> service.find(acronym, version, iri, kind));
   }
@@ -171,9 +171,9 @@ public class VersionedPropertyResource {
           content = @Content(schema = @Schema(implementation = CedarError.class)))
   })
   public Response hierarchy(
-      @QueryParam(QP_SOURCE_ACRONYM) String acronym,
-      @QueryParam(QP_VERSION_ID) String version,
-      @QueryParam(QP_PROPERTY_IRI) String iri,
+      @QueryParam("source_acronym") String acronym,
+      @QueryParam("version_id") String version,
+      @QueryParam("property_iri") String iri,
       @QueryParam(QP_KIND) String kind,
       @Parameter(description = CHILD_OFFSET) @QueryParam(QP_OFFSET) @DefaultValue("0") int offset,
       @Parameter(description = CHILD_LIMIT) @QueryParam(QP_LIMIT) Integer limit) {
@@ -202,8 +202,8 @@ public class VersionedPropertyResource {
           content = @Content(schema = @Schema(implementation = CedarError.class)))
   })
   public Response roots(
-      @QueryParam(QP_SOURCE_ACRONYM) String acronym,
-      @QueryParam(QP_VERSION_ID) String version,
+      @QueryParam("source_acronym") String acronym,
+      @QueryParam("version_id") String version,
       @QueryParam(QP_KIND) String kind,
       @Parameter(description = ROOT_OFFSET) @QueryParam(QP_OFFSET) @DefaultValue("0") int offset,
       @Parameter(description = ROOT_LIMIT) @QueryParam(QP_LIMIT) Integer limit) {

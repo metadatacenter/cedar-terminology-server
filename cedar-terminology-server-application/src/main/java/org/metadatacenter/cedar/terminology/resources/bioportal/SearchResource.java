@@ -92,10 +92,10 @@ public class SearchResource extends AbstractTerminologyServerResource {
       @Parameter(description = "Will perform a search specifically geared towards type-ahead suggestions. Default: false.")
       @QueryParam(QP_SUGGEST) boolean suggest,
       @Parameter(description = "Ontology for which the subtree search will be performed. Example: NCIT.")
-      @QueryParam(QP_SOURCE) String source,
+      @QueryParam("source_acronym") String source,
       @Parameter(description = "Class identifier that limits the search to the branch rooted on that class. It must be URL " +
           "encoded. Example: http%3A%2F%2Fncicb.nci.nih.gov%2Fxml%2Fowl%2FEVS%2FThesaurus.owl%23C3224.")
-      @QueryParam(QP_SUBTREE_ROOT_ID) String subtreeRootId,
+      @QueryParam("term_iri") String subtreeRootId,
       @Parameter(description = "Subtree depth.")
       @QueryParam(QP_MAX_DEPTH) @DefaultValue("1") int maxDepth,
       @Parameter(description = LIMIT_DESCRIPTION)
@@ -104,6 +104,10 @@ public class SearchResource extends AbstractTerminologyServerResource {
       @QueryParam(QP_OFFSET) Integer offset) throws CedarException {
 
     CedarRequestContext c = buildAnonymousRequestContext();
+    if (uriInfo.getQueryParameters().containsKey("source")
+        || uriInfo.getQueryParameters().containsKey("subtree_root_id")) {
+      return CedarResponse.badRequest().message("Use source_acronym and term_iri for subtree searches").build();
+    }
 
     try {
       OffsetPaging.Request paging = pagingOf(limit, offset);
@@ -148,7 +152,7 @@ public class SearchResource extends AbstractTerminologyServerResource {
    */
   @GET
   @Timed
-  @Path("/property_search")
+  @Path("/property-search")
   @Operation(summary = "Property search", description = "Search for properties.", tags = {"Properties"})
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "One page of matching properties" + PAGED_GET_ENVELOPE, content = @Content(schema = @Schema(implementation = PagedSearchResults.class))),

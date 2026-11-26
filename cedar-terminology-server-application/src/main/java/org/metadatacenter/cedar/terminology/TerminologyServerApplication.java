@@ -212,6 +212,7 @@ public class TerminologyServerApplication extends CedarMicroserviceApplication<T
     final CedarMicroserviceIndexResource index =
         new CedarMicroserviceIndexResource(cedarConfig, getServerName());
 
+    environment.jersey().register(new PublishedTerminologyQueryFilter());
     environment.jersey().register(index);
     // Register resources
     environment.jersey().register(new SearchResource(cedarConfig));

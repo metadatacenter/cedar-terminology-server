@@ -148,9 +148,9 @@ public class VersionAwareSearchResource extends AbstractTerminologyServerResourc
       @ApiResponse(responseCode = "404", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "No such release, a release without that term, a term the current release does not hold, or a value set asked of a source that is not a value-set collection"),
       @ApiResponse(responseCode = "503", content = @Content(schema = @Schema(implementation = CedarError.class)), description = "No local terminology store is configured")
   })
-  public Response hierarchy(@QueryParam(QP_SOURCE_ACRONYM) String sourceAcronym,
-                            @QueryParam(QP_TERM_IRI) String termIri,
-                            @QueryParam(QP_VERSION_ID) String versionId,
+  public Response hierarchy(@QueryParam("source_acronym") String sourceAcronym,
+                            @QueryParam("term_iri") String termIri,
+                            @QueryParam("version_id") String versionId,
                             @Parameter(description = "How many children to skip. Defaults to 0.")
                             @QueryParam(QP_OFFSET) @DefaultValue("0") int offset,
                             @Parameter(description = "How many children to return, from 1 to "

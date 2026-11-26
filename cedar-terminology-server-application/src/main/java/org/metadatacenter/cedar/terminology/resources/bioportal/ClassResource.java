@@ -58,7 +58,7 @@ public class ClassResource extends AbstractTerminologyServerResource {
 
   @GET
   @Timed
-  @Path("ontologies/{ontology}/classes/{id}")
+  @Path("ontologies/{acronym}/classes/{id}")
   @Operation(summary = "Find class", description = "Find class (either regular or provisional) by ontology and class id.")
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "The class", content = @Content(schema = @Schema(implementation = OntologyClass.class))),
@@ -74,7 +74,7 @@ public class ClassResource extends AbstractTerminologyServerResource {
           "http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C3224 (regular class).", required = true)
       @PathParam(PP_ID) @Encoded String id,
       @Parameter(description = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
-      @PathParam(PP_ONTOLOGY) String ontology,
+      @PathParam("acronym") String ontology,
       @Parameter(description = "Optional BCP-47 language for the returned label (e.g. fr). Honored for "
           + "locally-served ontologies; ignored for BioPortal-proxied ones.")
       @QueryParam(QP_LANG) String lang) throws
@@ -93,7 +93,7 @@ public class ClassResource extends AbstractTerminologyServerResource {
 
   @GET
   @Timed
-  @Path("ontologies/{ontology}/classes")
+  @Path("ontologies/{acronym}/classes")
   @Operation(summary = "Get classes", description = "Get all classes from a specific ontology (including both regular and provisional classes).")
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "One page of the ontology's classes" + PAGED_GET_ENVELOPE, content = @Content(schema = @Schema(implementation = PagedOntologyClasses.class))),
@@ -105,7 +105,7 @@ public class ClassResource extends AbstractTerminologyServerResource {
   })
   public Response findAllClassesForOntology(
       @Parameter(description = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
-      @PathParam(PP_ONTOLOGY) String ontology,
+      @PathParam("acronym") String ontology,
       @Parameter(description = LIMIT_DESCRIPTION)
       @QueryParam(QP_LIMIT) Integer limit,
       @Parameter(description = OFFSET_DESCRIPTION)
@@ -127,7 +127,7 @@ public class ClassResource extends AbstractTerminologyServerResource {
 
   @GET
   @Timed
-  @Path("ontologies/{ontology}/classes/{id}/tree")
+  @Path("ontologies/{acronym}/classes/{id}/tree")
   @Operation(summary = "Get class tree", description = "Get class tree (only for regular classes).")
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "The paths from the ontology's roots down to the class", content = @Content(array = @ArraySchema(schema = @Schema(implementation = TreeNode.class)))),
@@ -141,7 +141,7 @@ public class ClassResource extends AbstractTerminologyServerResource {
       @Parameter(description = "Class identifier. Example: http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C3224.", required = true)
       @PathParam(PP_ID) @Encoded String id,
       @Parameter(description = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
-      @PathParam(PP_ONTOLOGY) String ontology) throws
+      @PathParam("acronym") String ontology) throws
       CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
@@ -160,7 +160,7 @@ public class ClassResource extends AbstractTerminologyServerResource {
 
   @GET
   @Timed
-  @Path("ontologies/{ontology}/classes/{id}/children")
+  @Path("ontologies/{acronym}/classes/{id}/children")
   @Operation(summary = "Get class children", description = "Get class children (only for regular classes).")
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "One page of the class's children" + PAGED_GET_ENVELOPE, content = @Content(schema = @Schema(implementation = PagedOntologyClasses.class))),
@@ -174,7 +174,7 @@ public class ClassResource extends AbstractTerminologyServerResource {
       @Parameter(description = "Class identifier. Example: http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C3224.", required = true)
       @PathParam(PP_ID) @Encoded String id,
       @Parameter(description = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
-      @PathParam(PP_ONTOLOGY) String ontology,
+      @PathParam("acronym") String ontology,
       @Parameter(description = LIMIT_DESCRIPTION)
       @QueryParam(QP_LIMIT) Integer limit,
       @Parameter(description = OFFSET_DESCRIPTION)
@@ -197,7 +197,7 @@ public class ClassResource extends AbstractTerminologyServerResource {
 
   @GET
   @Timed
-  @Path("ontologies/{ontology}/classes/{id}/descendants")
+  @Path("ontologies/{acronym}/classes/{id}/descendants")
   @Operation(summary = "Get class descendants", description = "Get class descendants. <br /> <br />A credential is "
       + "optional. The route was opened to anonymous callers in 2019 for CEDAR's public metadata viewer, and it "
       + "has served them in every release since.")
@@ -217,7 +217,7 @@ public class ClassResource extends AbstractTerminologyServerResource {
           "http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C3224 (regular class).", required = true)
       @PathParam(PP_ID) @Encoded String id,
       @Parameter(description = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
-      @PathParam(PP_ONTOLOGY) String ontology,
+      @PathParam("acronym") String ontology,
       @Parameter(description = LIMIT_DESCRIPTION)
       @QueryParam(QP_LIMIT) Integer limit,
       @Parameter(description = OFFSET_DESCRIPTION)
@@ -239,7 +239,7 @@ public class ClassResource extends AbstractTerminologyServerResource {
 
   @GET
   @Timed
-  @Path("ontologies/{ontology}/classes/{id}/parents")
+  @Path("ontologies/{acronym}/classes/{id}/parents")
   @Operation(summary = "Get class parents", description = "Get class parents.")
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "The class's parents", content = @Content(array = @ArraySchema(schema = @Schema(implementation = OntologyClass.class)))),
@@ -253,7 +253,7 @@ public class ClassResource extends AbstractTerminologyServerResource {
       @Parameter(description = "Class identifier. Example: http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C3224.", required = true)
       @PathParam(PP_ID) @Encoded String id,
       @Parameter(description = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
-      @PathParam(PP_ONTOLOGY) String ontology)
+      @PathParam("acronym") String ontology)
       throws CedarException {
     CedarRequestContext ctx = buildRequestContext();
     ctx.must(ctx.user()).be(LoggedIn);
@@ -303,7 +303,7 @@ public class ClassResource extends AbstractTerminologyServerResource {
 
   @GET
   @Timed
-  @Path("ontologies/{ontology}/classes/provisional")
+  @Path("ontologies/{acronym}/classes/provisional")
   @Operation(summary = "Get all provisional classes in a particular ontology", description = "Get all provisional classes in a particular ontology (including provisional value sets and " +
           "provisional values)")
   @ApiResponses({
@@ -316,7 +316,7 @@ public class ClassResource extends AbstractTerminologyServerResource {
   })
   public Response findAllProvisionalClassesForOntology(
       @Parameter(description = "BioPortal ontology identifier. Examples: NCIT, FMA, OBI.", required = true)
-      @PathParam(PP_ONTOLOGY) String ontology,
+      @PathParam("acronym") String ontology,
       @Parameter(description = LIMIT_DESCRIPTION)
       @QueryParam(QP_LIMIT) Integer limit,
       @Parameter(description = OFFSET_DESCRIPTION)

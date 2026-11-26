@@ -141,7 +141,7 @@ public class AnonymousBioPortalRoutesTest {
   @ParameterizedTest(name = "{0} {1}")
   @CsvSource(delimiter = '|', value = {
       "get  | /bioportal/search",
-      "get  | /bioportal/ontologies/{ontology}/classes/{id}/descendants",
+      "get  | /bioportal/ontologies/{acronym}/classes/{id}/descendants",
       "post | /bioportal/integrated-search",
       "post | /bioportal/integrated-retrieve"})
   public void theSpecSaysThatACredentialIsOptional(String method, String path) throws IOException {

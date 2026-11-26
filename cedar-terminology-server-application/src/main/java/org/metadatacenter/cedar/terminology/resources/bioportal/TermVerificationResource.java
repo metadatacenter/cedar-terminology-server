@@ -30,7 +30,8 @@ import java.util.Set;
 @Path("/bioportal/validate-term")
 @Produces(MediaType.APPLICATION_JSON)
 public class TermVerificationResource extends AbstractTerminologyServerResource {
-  public record VerificationRequest(String iri, ValueConstraints valueConstraints) {}
+  @Schema(name = "TermVerificationRequest", additionalProperties = Schema.AdditionalPropertiesValue.FALSE)
+  public record VerificationRequest(String termIri, ValueConstraints valueConstraints) {}
   private static final ObjectMapper MAPPER = JsonMapper.STRICT_MAPPER.copy()
       .disable(MapperFeature.ALLOW_COERCION_OF_SCALARS)
       .disable(DeserializationFeature.ACCEPT_FLOAT_AS_INT);
@@ -50,12 +51,14 @@ public class TermVerificationResource extends AbstractTerminologyServerResource 
   @ApiResponse(responseCode = "400", description = "Malformed identifier or value-constraint shape", content = @Content(schema = @Schema(implementation = CedarError.class)))
   public Response verify(@Parameter(hidden = true) JsonNode body) {
     try {
-      if (body == null || !body.isObject() || body.size() != 2 || !body.has("iri")
-          || !body.path("iri").isTextual() || !body.path("valueConstraints").isObject()) {
-        return invalid("Expected an object containing iri (string) and valueConstraints (object).");
+      // Released CEE/CED bundles send iri. Reject ambiguity while those hosts migrate.
+      String identifier = body != null && body.has("termIri") ? "termIri" : "iri";
+      if (body == null || !body.isObject() || body.size() != 2 || !body.has(identifier)
+          || !body.path(identifier).isTextual() || !body.path("valueConstraints").isObject()) {
+        return invalid("Expected an object containing termIri (string) and valueConstraints (object).");
       }
-      String iri = body.path("iri").textValue();
-      if (!IriReference.toUri(iri).isAbsolute()) return invalid("iri must be an absolute IRI.");
+      String iri = body.path(identifier).textValue();
+      if (!IriReference.toUri(iri).isAbsolute()) return invalid("termIri must be an absolute IRI.");
       ObjectNode input = body.path("valueConstraints").deepCopy();
       for (String array : ARRAYS) {
         if (!input.has(array)) input.putArray(array);

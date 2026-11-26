@@ -110,7 +110,7 @@ public class ValueResource extends AbstractTerminologyServerResource {
 
   @GET
   @Timed
-  @Path("vs-collections/{vs_collection}/value-sets/{vs}/values")
+  @Path("vs-collections/{vs_collection}/value-sets/{id}/values")
   @Operation(summary = "Find all values in a value set", description = "Find all values in a value set (either regular or provisional).")
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "One page of the value set's values" + PAGED_GET_ENVELOPE, content = @Content(schema = @Schema(implementation = PagedValues.class))),
@@ -125,7 +125,7 @@ public class ValueResource extends AbstractTerminologyServerResource {
       @PathParam(PP_VS_COLLECTION) String vsCollection,
       @Parameter(description = "Value set identifier. Example: http://www.semanticweb.org/jgraybeal/ontologies/2015/7/" +
           "cedarvaluesets#Study_File_Type", required = true)
-      @PathParam(PP_VS) @Encoded String vsId,
+      @PathParam(PP_ID) @Encoded String vsId,
       @Parameter(description = LIMIT_DESCRIPTION)
       @QueryParam(QP_LIMIT) Integer limit,
       @Parameter(description = OFFSET_DESCRIPTION)

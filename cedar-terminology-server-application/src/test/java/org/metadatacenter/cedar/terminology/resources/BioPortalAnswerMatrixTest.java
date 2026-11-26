@@ -111,37 +111,37 @@ public class BioPortalAnswerMatrixTest {
    */
   private static final Map<String, String> REQUESTS = Map.ofEntries(
       Map.entry("GET /bioportal/ontologies", "/bioportal/ontologies"),
-      Map.entry("GET /bioportal/ontologies/{id}", ONTOLOGY),
-      Map.entry("GET /bioportal/ontologies/{ontology}/classes/roots", ONTOLOGY + "/classes/roots"),
-      Map.entry("GET /bioportal/ontologies/{ontology}/properties/roots", ONTOLOGY + "/properties/roots"),
-      Map.entry("GET /bioportal/ontologies/{ontology}/classes", ONTOLOGY + "/classes"),
-      Map.entry("GET /bioportal/ontologies/{ontology}/classes/{id}", ONTOLOGY + "/classes/" + CLASS),
-      Map.entry("GET /bioportal/ontologies/{ontology}/classes/{id}/children", ONTOLOGY + "/classes/" + CLASS + "/children"),
-      Map.entry("GET /bioportal/ontologies/{ontology}/classes/{id}/descendants",
+      Map.entry("GET /bioportal/ontologies/{acronym}", ONTOLOGY),
+      Map.entry("GET /bioportal/ontologies/{acronym}/classes/roots", ONTOLOGY + "/classes/roots"),
+      Map.entry("GET /bioportal/ontologies/{acronym}/properties/roots", ONTOLOGY + "/properties/roots"),
+      Map.entry("GET /bioportal/ontologies/{acronym}/classes", ONTOLOGY + "/classes"),
+      Map.entry("GET /bioportal/ontologies/{acronym}/classes/{id}", ONTOLOGY + "/classes/" + CLASS),
+      Map.entry("GET /bioportal/ontologies/{acronym}/classes/{id}/children", ONTOLOGY + "/classes/" + CLASS + "/children"),
+      Map.entry("GET /bioportal/ontologies/{acronym}/classes/{id}/descendants",
           ONTOLOGY + "/classes/" + CLASS + "/descendants"),
-      Map.entry("GET /bioportal/ontologies/{ontology}/classes/{id}/parents", ONTOLOGY + "/classes/" + CLASS + "/parents"),
-      Map.entry("GET /bioportal/ontologies/{ontology}/classes/{id}/tree", ONTOLOGY + "/classes/" + CLASS + "/tree"),
-      Map.entry("GET /bioportal/ontologies/{ontology}/classes/provisional", ONTOLOGY + "/classes/provisional"),
+      Map.entry("GET /bioportal/ontologies/{acronym}/classes/{id}/parents", ONTOLOGY + "/classes/" + CLASS + "/parents"),
+      Map.entry("GET /bioportal/ontologies/{acronym}/classes/{id}/tree", ONTOLOGY + "/classes/" + CLASS + "/tree"),
+      Map.entry("GET /bioportal/ontologies/{acronym}/classes/provisional", ONTOLOGY + "/classes/provisional"),
       Map.entry("GET /bioportal/classes/provisional", "/bioportal/classes/provisional"),
-      Map.entry("GET /bioportal/ontologies/{ontology}/properties", ONTOLOGY + "/properties"),
-      Map.entry("GET /bioportal/ontologies/{ontology}/properties/{id}", ONTOLOGY + "/properties/" + CLASS),
-      Map.entry("GET /bioportal/ontologies/{ontology}/properties/{id}/children",
+      Map.entry("GET /bioportal/ontologies/{acronym}/properties", ONTOLOGY + "/properties"),
+      Map.entry("GET /bioportal/ontologies/{acronym}/properties/{id}", ONTOLOGY + "/properties/" + CLASS),
+      Map.entry("GET /bioportal/ontologies/{acronym}/properties/{id}/children",
           ONTOLOGY + "/properties/" + CLASS + "/children"),
-      Map.entry("GET /bioportal/ontologies/{ontology}/properties/{id}/descendants",
+      Map.entry("GET /bioportal/ontologies/{acronym}/properties/{id}/descendants",
           ONTOLOGY + "/properties/" + CLASS + "/descendants"),
-      Map.entry("GET /bioportal/ontologies/{ontology}/properties/{id}/parents",
+      Map.entry("GET /bioportal/ontologies/{acronym}/properties/{id}/parents",
           ONTOLOGY + "/properties/" + CLASS + "/parents"),
-      Map.entry("GET /bioportal/ontologies/{ontology}/properties/{id}/tree", ONTOLOGY + "/properties/" + CLASS + "/tree"),
+      Map.entry("GET /bioportal/ontologies/{acronym}/properties/{id}/tree", ONTOLOGY + "/properties/" + CLASS + "/tree"),
       Map.entry("GET /bioportal/relations/{id}", "/bioportal/relations/7c2d1e3f"),
       Map.entry("GET /bioportal/search", "/bioportal/search?q=cancer&scope=classes&sources=NCIT"),
-      Map.entry("GET /bioportal/property_search", "/bioportal/property_search?q=cancer&sources=NCIT"),
+      Map.entry("GET /bioportal/property-search", "/bioportal/property-search?q=cancer&sources=NCIT"),
       Map.entry("GET /bioportal/vs-collections", "/bioportal/vs-collections"),
       Map.entry("GET /bioportal/value-sets", "/bioportal/value-sets"),
       Map.entry("GET /bioportal/vs-collections/{vs_collection}/value-sets", COLLECTION + "/value-sets"),
       Map.entry("GET /bioportal/vs-collections/{vs_collection}/value-sets/{id}", COLLECTION + "/value-sets/" + CLASS),
       Map.entry("GET /bioportal/vs-collections/{vs_collection}/value-sets/{id}/tree",
           COLLECTION + "/value-sets/" + CLASS + "/tree"),
-      Map.entry("GET /bioportal/vs-collections/{vs_collection}/value-sets/{vs}/values",
+      Map.entry("GET /bioportal/vs-collections/{vs_collection}/value-sets/{id}/values",
           COLLECTION + "/value-sets/" + CLASS + "/values"),
       Map.entry("GET /bioportal/vs-collections/{vs_collection}/values/{id}", COLLECTION + "/values/" + CLASS),
       Map.entry("GET /bioportal/vs-collections/{vs_collection}/values/{id}/value-set",
@@ -157,9 +157,9 @@ public class BioPortalAnswerMatrixTest {
   /** The routes under {@code /bioportal} that read the local catalog alone and never ask BioPortal. */
   private static final Set<String> LOCAL_ROUTES = Set.of(
       "GET /bioportal/classes/version-current",
-      "GET /bioportal/ontologies/{id}/versions",
-      "GET /bioportal/ontologies/{id}/versions/current",
-      "GET /bioportal/ontologies/{id}/versions/diff",
+      "GET /bioportal/ontologies/{acronym}/versions",
+      "GET /bioportal/ontologies/{acronym}/versions/current",
+      "GET /bioportal/ontologies/{acronym}/versions/diff",
       "GET /bioportal/vs-collections/version-current");
 
   /** The term verification route, whose answer to a BioPortal failure is a verdict rather than a status. */
@@ -275,7 +275,7 @@ public class BioPortalAnswerMatrixTest {
   }
 
   static Stream<String> stalledRoutes() {
-    return Stream.of("GET /bioportal/ontologies/{ontology}/classes/{id}", "GET /bioportal/ontologies");
+    return Stream.of("GET /bioportal/ontologies/{acronym}/classes/{id}", "GET /bioportal/ontologies");
   }
 
   /**

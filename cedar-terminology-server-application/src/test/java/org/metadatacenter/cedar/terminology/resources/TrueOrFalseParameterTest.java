@@ -128,7 +128,7 @@ public class TrueOrFalseParameterTest {
   @ValueSource(strings = {"exact_match", "require_definitions"})
   public void aPropertySearchFlagThatIsNeitherTrueNorFalseIsRefused(String parameter) throws Exception {
     for (String value : List.of("abc", "1", "yes", "")) {
-      assertRefused(get("/bioportal/property_search?q=title&" + parameter + "=" + value, true), parameter);
+      assertRefused(get("/bioportal/property-search?q=title&" + parameter + "=" + value, true), parameter);
     }
   }
 
@@ -175,7 +175,7 @@ public class TrueOrFalseParameterTest {
   private static String propertySearch(String flags) throws Exception {
     ASKED.clear();
     String term = "title" + QUERY.incrementAndGet();
-    HttpResponse<String> response = get("/bioportal/property_search?q=" + term + flags, true);
+    HttpResponse<String> response = get("/bioportal/property-search?q=" + term + flags, true);
     assertEquals(404, response.statusCode(), "BioPortal's 404 is relayed: " + response.body());
     return ASKED.stream().filter(asked -> asked.contains(term)).findFirst()
         .orElseThrow(() -> new AssertionError("the property search did not ask BioPortal: " + ASKED));

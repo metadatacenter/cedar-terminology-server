@@ -282,7 +282,7 @@ public class LocalStoreResourceTest {
     // A class-valued constraint names a term IRI but not its ontology. The IRI's namespace is mapped
     // back to LOCALTEST, whose current triple (v2) is returned — the freeze-on-publish path for a
     // class constraint. This is the only endpoint that resolves an ontology from a bare term IRI.
-    String url = "http://localhost:" + RULE.getLocalPort() + "/" + BP_ENDPOINT + "/classes/version-current?uri="
+    String url = "http://localhost:" + RULE.getLocalPort() + "/" + BP_ENDPOINT + "/classes/version-current?term_iri="
         + URLEncoder.encode(BASE + "melanoma", StandardCharsets.UTF_8);
     Response response = clientBuilder.build().target(url).request()
         .header(HTTP_HEADER_AUTHORIZATION, authHeader).get();
@@ -300,7 +300,7 @@ public class LocalStoreResourceTest {
   public void classCurrentVersionIs404ForAnUnservedNamespace() {
     // A term whose namespace maps to no locally served ontology cannot be pinned — 404, so a class
     // constraint pointing outside the local store is left unpinned rather than mis-resolved.
-    String url = "http://localhost:" + RULE.getLocalPort() + "/" + BP_ENDPOINT + "/classes/version-current?uri="
+    String url = "http://localhost:" + RULE.getLocalPort() + "/" + BP_ENDPOINT + "/classes/version-current?term_iri="
         + URLEncoder.encode("http://elsewhere.example/nope", StandardCharsets.UTF_8);
     Response response = clientBuilder.build().target(url).request()
         .header(HTTP_HEADER_AUTHORIZATION, authHeader).get();

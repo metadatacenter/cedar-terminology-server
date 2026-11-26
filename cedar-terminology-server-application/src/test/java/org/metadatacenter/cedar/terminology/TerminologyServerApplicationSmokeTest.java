@@ -240,7 +240,7 @@ public class TerminologyServerApplicationSmokeTest {
       "POST /bioportal/integrated-retrieve",
       "POST /bioportal/validate-term",
       "GET /bioportal/search",
-      "GET /bioportal/ontologies/{ontology}/classes/{id}/descendants");
+      "GET /bioportal/ontologies/{acronym}/classes/{id}/descendants");
 
   /**
    * Every terminology route that declares an authentication gate stops an anonymous caller at it.
@@ -265,7 +265,7 @@ public class TerminologyServerApplicationSmokeTest {
         .filter(endpoint -> !UNAUTHENTICATED_ROUTES.contains(endpoint.key()))
         // property_search declares @NotEmpty on its query, and bean validation answers 400 before
         // the method body reaches the gate. It is probed with a query below instead.
-        .filter(endpoint -> !endpoint.key().equals("GET /bioportal/property_search"))
+        .filter(endpoint -> !endpoint.key().equals("GET /bioportal/property-search"))
         .toList();
     Assertions.assertTrue(gated.size() >= 33,
         "the gated terminology surface should be nearly the whole route list: " + gated);
@@ -280,7 +280,7 @@ public class TerminologyServerApplicationSmokeTest {
    */
   @Test
   public void thePropertySearchRouteIsGuarded() throws Exception {
-    HttpResponse<String> response = get("/bioportal/property_search?q=title");
+    HttpResponse<String> response = get("/bioportal/property-search?q=title");
     Assertions.assertEquals(401, response.statusCode());
   }
 
